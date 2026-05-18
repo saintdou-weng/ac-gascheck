@@ -222,6 +222,14 @@ select.fg-input{cursor:pointer}
   body{background:#fff}.main{max-width:100%;padding:0}
 }
 </style>
+  <!-- AC_GASCHECK Shared System -->
+  <link rel="stylesheet" href="./shared/ac_nav.css">
+  <script src="./shared/ac_config.js"></script>
+  <script src="./shared/ac_i18n.js"></script>
+  <script src="./shared/ac_date_engine.js"></script>
+  <script src="./shared/ac_cloud.js"></script>
+  <script src="./shared/ac_telegram.js"></script>
+  <script src="./shared/ac_nav.js"></script>
 </head>
 <body>
 
@@ -1423,6 +1431,33 @@ function updateLocTabLabels() {
   sv('f-date', today);
   // Set period
   dateEngine.setPeriod('month', document.querySelector('.period-tabs .ptab'));
+})();
+</script>
+<script>
+(function(){
+  var INIT_NAV = function(){
+    try {
+      if(typeof AC_NAV==='undefined') return;
+      AC_NAV.inject('dormitory',{
+        getRecords: function(){
+          try{
+            var mods = (typeof AC_CFG!=='undefined') ? AC_CFG.MODULES : [];
+            var mod  = mods.find(function(m){return m.id==='dormitory';}) || {};
+            var raw  = localStorage.getItem(mod.lsKey||'');
+            if(!raw) return [];
+            var d = JSON.parse(raw);
+            if(Array.isArray(d)) return d;
+            if(d.records) return d.records;
+            return Object.values(d).filter(Array.isArray).reduce(function(a,b){return a.concat(b);}, []);
+          }catch(e){return [];}
+        },
+        onPull: function(recs){ console.log('Pulled dormitory:', recs.length); }
+      });
+      if(typeof AC_CLOUD!=='undefined') setTimeout(function(){AC_CLOUD.updateBar();}, 500);
+    } catch(e) { console.warn('AC_NAV init failed:', e); }
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', INIT_NAV);
+  else INIT_NAV();
 })();
 </script>
 </body>

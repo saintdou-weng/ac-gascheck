@@ -200,6 +200,14 @@ table tr:last-child td { border-bottom: none; }
 ::-webkit-scrollbar-track { background: var(--bg3); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
+  <!-- AC_GASCHECK Shared System -->
+  <link rel="stylesheet" href="./shared/ac_nav.css">
+  <script src="./shared/ac_config.js"></script>
+  <script src="./shared/ac_i18n.js"></script>
+  <script src="./shared/ac_date_engine.js"></script>
+  <script src="./shared/ac_cloud.js"></script>
+  <script src="./shared/ac_telegram.js"></script>
+  <script src="./shared/ac_nav.js"></script>
 </head>
 <body>
 
@@ -1452,6 +1460,33 @@ window.addEventListener('DOMContentLoaded', () => {
   renderAll();
   renderAnomalyBadge();
 });
+</script>
+<script>
+(function(){
+  var INIT_NAV = function(){
+    try {
+      if(typeof AC_NAV==='undefined') return;
+      AC_NAV.inject('keymovement',{
+        getRecords: function(){
+          try{
+            var mods = (typeof AC_CFG!=='undefined') ? AC_CFG.MODULES : [];
+            var mod  = mods.find(function(m){return m.id==='keymovement';}) || {};
+            var raw  = localStorage.getItem(mod.lsKey||'');
+            if(!raw) return [];
+            var d = JSON.parse(raw);
+            if(Array.isArray(d)) return d;
+            if(d.records) return d.records;
+            return Object.values(d).filter(Array.isArray).reduce(function(a,b){return a.concat(b);}, []);
+          }catch(e){return [];}
+        },
+        onPull: function(recs){ console.log('Pulled keymovement:', recs.length); }
+      });
+      if(typeof AC_CLOUD!=='undefined') setTimeout(function(){AC_CLOUD.updateBar();}, 500);
+    } catch(e) { console.warn('AC_NAV init failed:', e); }
+  };
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', INIT_NAV);
+  else INIT_NAV();
+})();
 </script>
 </body>
 </html>
