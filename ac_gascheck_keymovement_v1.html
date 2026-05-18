@@ -1,0 +1,1457 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VRT-R-GA-07 鑰匙管理系統</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;600;700&family=Noto+Sans+KM:wght@400;700&family=DM+Serif+Display&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  --primary: #1a3a5c;
+  --accent: #e8640a;
+  --accent2: #2e8b6e;
+  --bg: #f4f1ea;
+  --bg2: #ffffff;
+  --bg3: #eae6dc;
+  --border: #d0c9bb;
+  --text: #1c1c1c;
+  --text2: #5a5550;
+  --danger: #c0392b;
+  --warn: #d4820a;
+  --success: #2e8b6e;
+  --shadow: 0 2px 12px rgba(26,58,92,0.10);
+  --radius: 10px;
+  --dept-warehouse: #3498db;
+  --dept-cutting: #e67e22;
+  --dept-workshop: #9b59b6;
+  --dept-finished: #27ae60;
+  --dept-marking: #e91e63;
+  --dept-qc: #00bcd4;
+  --dept-dorm-foreign: #ff5722;
+  --dept-dorm-local: #795548;
+  --dept-office: #607d8b;
+  --dept-admin: #f44336;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+
+/* TOP BAR */
+.topbar {
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  height: 60px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.2);
+  position: sticky; top: 0; z-index: 999;
+}
+.topbar-title { display: flex; align-items: center; gap: 12px; }
+.topbar-logo { font-family: 'DM Serif Display', serif; font-size: 1.4rem; letter-spacing: 1px; }
+.topbar-sub { font-size: 0.75rem; opacity: 0.7; }
+.topbar-right { display: flex; align-items: center; gap: 10px; }
+.lang-btn { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; border-radius: 6px; padding: 4px 10px; font-size: 0.8rem; cursor: pointer; transition: all .2s; }
+.lang-btn.active, .lang-btn:hover { background: var(--accent); border-color: var(--accent); }
+.topbar-docno { font-family: 'Space Mono', monospace; font-size: 0.72rem; opacity: 0.6; }
+
+/* NAV */
+.nav { display: flex; gap: 2px; background: var(--bg3); padding: 8px 24px; border-bottom: 1px solid var(--border); overflow-x: auto; }
+.nav-btn { background: transparent; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-family: inherit; color: var(--text2); font-weight: 500; transition: all .2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.nav-btn.active, .nav-btn:hover { background: var(--primary); color: #fff; }
+.nav-btn .icon { font-size: 1rem; }
+
+/* MAIN */
+.main { max-width: 1400px; margin: 0 auto; padding: 20px 20px 60px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* CARDS */
+.card { background: var(--bg2); border-radius: var(--radius); box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 16px; }
+.card-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.card-title { font-weight: 600; font-size: 1rem; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+.card-body { padding: 20px; }
+
+/* STAT GRID */
+.stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.stat-card { background: var(--bg2); border-radius: var(--radius); border: 1px solid var(--border); padding: 16px; box-shadow: var(--shadow); text-align: center; position: relative; overflow: hidden; }
+.stat-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px; background: var(--accent); }
+.stat-card.green::before { background: var(--accent2); }
+.stat-card.red::before { background: var(--danger); }
+.stat-card.blue::before { background: var(--primary); }
+.stat-card.warn::before { background: var(--warn); }
+.stat-num { font-family: 'DM Serif Display', serif; font-size: 2rem; color: var(--primary); }
+.stat-label { font-size: 0.78rem; color: var(--text2); margin-top: 4px; }
+
+/* FORM */
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 4px; }
+.form-group label { font-size: 0.8rem; font-weight: 600; color: var(--text2); }
+.form-group input, .form-group select, .form-group textarea {
+  border: 1.5px solid var(--border); border-radius: 7px; padding: 8px 12px; font-family: inherit; font-size: 0.9rem; background: var(--bg); color: var(--text); transition: border .2s;
+}
+.form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); background: #fff; }
+.form-group.full { grid-column: 1/-1; }
+.form-group textarea { resize: vertical; min-height: 60px; }
+
+/* BUTTONS */
+.btn { border: none; border-radius: 8px; padding: 9px 18px; font-family: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: #224d79; }
+.btn-accent { background: var(--accent); color: #fff; }
+.btn-accent:hover { background: #c9540a; }
+.btn-success { background: var(--accent2); color: #fff; }
+.btn-success:hover { background: #237358; }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { background: #a93226; }
+.btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text2); }
+.btn-outline:hover { border-color: var(--primary); color: var(--primary); }
+.btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+.btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+/* TABLE */
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+table th { background: var(--primary); color: #fff; padding: 10px 12px; text-align: left; font-weight: 600; white-space: nowrap; position: sticky; top: 0; }
+table td { padding: 9px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; white-space: nowrap; }
+table tr:hover td { background: #f0ede5; }
+table tr:last-child td { border-bottom: none; }
+.badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
+.badge-out { background: #fde8d8; color: #c0560a; }
+.badge-in { background: #d5f0e8; color: #1e7a55; }
+.badge-late { background: #fde8e8; color: #c0392b; }
+.badge-warn { background: #fef3e0; color: #b8700a; }
+
+/* DEPT BADGE */
+.dept-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; color: #fff; }
+
+/* KEY SHAPE ICONS */
+.key-type { display: inline-flex; align-items: center; gap: 5px; font-size: 0.82rem; }
+.key-icon { font-size: 1.1rem; }
+
+/* ANOMALY */
+.anomaly-list { display: flex; flex-direction: column; gap: 8px; }
+.anomaly-item { border-left: 4px solid var(--warn); background: #fffbf0; border-radius: 6px; padding: 10px 14px; font-size: 0.85rem; }
+.anomaly-item.critical { border-color: var(--danger); background: #fff5f5; }
+
+/* FILTER BAR */
+.filter-bar { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 12px 20px; background: var(--bg3); border-bottom: 1px solid var(--border); border-radius: var(--radius) var(--radius) 0 0; }
+.filter-bar label { font-size: 0.8rem; font-weight: 600; color: var(--text2); }
+.filter-bar input, .filter-bar select { border: 1.5px solid var(--border); border-radius: 6px; padding: 6px 10px; font-family: inherit; font-size: 0.85rem; background: var(--bg2); }
+
+/* DEPT COLORS */
+.dept-倉庫 { background: var(--dept-warehouse); }
+.dept-裁剪 { background: var(--dept-cutting); }
+.dept-車間 { background: var(--dept-workshop); }
+.dept-成品 { background: var(--dept-finished); }
+.dept-馬克 { background: var(--dept-marking); }
+.dept-品管 { background: var(--dept-qc); }
+.dept-外籍宿舍 { background: var(--dept-dorm-foreign); }
+.dept-當地宿舍 { background: var(--dept-dorm-local); }
+.dept-辦公室 { background: var(--dept-office); }
+.dept-行政中心 { background: var(--dept-admin); }
+
+/* CHART SECTION */
+.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media(max-width:768px){ .chart-grid { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; } }
+
+/* IMPORT SECTION */
+.import-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all .2s; }
+.import-zone:hover, .import-zone.dragover { border-color: var(--accent); background: #fff8f3; }
+.import-icon { font-size: 3rem; margin-bottom: 12px; }
+
+/* TELEGRAM CONFIG */
+.tg-config { background: #f0f8ff; border: 1.5px solid #b3d4f0; border-radius: 10px; padding: 16px; }
+
+/* TOAST */
+.toast { position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 0.9rem; z-index: 9999; box-shadow: 0 4px 20px rgba(0,0,0,0.25); transform: translateY(100px); opacity: 0; transition: all .3s; max-width: 320px; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.success { background: var(--accent2); }
+.toast.error { background: var(--danger); }
+.toast.warn { background: var(--warn); }
+
+/* MODAL */
+.modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 1000; align-items: center; justify-content: center; }
+.modal-bg.open { display: flex; }
+.modal { background: #fff; border-radius: 14px; padding: 24px; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+.modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
+.modal-title { font-weight: 700; font-size: 1.1rem; color: var(--primary); }
+.modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text2); }
+
+/* SUMMARY ROW */
+.summary-row td { font-weight: 700; background: #eef3f9; color: var(--primary); }
+.divider { height: 1px; background: var(--border); margin: 16px 0; }
+.section-title { font-size: 1.1rem; font-weight: 700; color: var(--primary); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+
+/* PERIOD TABS */
+.period-tabs { display: flex; gap: 4px; background: var(--bg3); border-radius: 8px; padding: 4px; }
+.period-tab { background: transparent; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem; font-weight: 500; transition: all .2s; }
+.period-tab.active { background: var(--primary); color: #fff; }
+
+/* PRINT HIDE */
+@media print { .topbar, .nav, .btn, .filter-bar .btn { display: none !important; } }
+
+/* SCROLLBAR */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg3); }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-title">
+    <div>
+      <div class="topbar-logo">🔑 VRT Key Management</div>
+      <div class="topbar-sub" id="topbar-sub">Vantage River Textiles | 鑰匙動態管理系統</div>
+    </div>
+  </div>
+  <div class="topbar-right">
+    <span class="topbar-docno">VRT-R-GA-07</span>
+    <button class="lang-btn active" onclick="setLang('zh')">中文</button>
+    <button class="lang-btn" onclick="setLang('en')">English</button>
+    <button class="lang-btn" onclick="setLang('km')">ខ្មែរ</button>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <button class="nav-btn active" onclick="showSection('dashboard')" id="nav-dashboard">
+    <span class="icon">📊</span><span data-i18n="nav_dashboard">儀表板</span>
+  </button>
+  <button class="nav-btn" onclick="showSection('record')" id="nav-record">
+    <span class="icon">📝</span><span data-i18n="nav_record">新增記錄</span>
+  </button>
+  <button class="nav-btn" onclick="showSection('list')" id="nav-list">
+    <span class="icon">📋</span><span data-i18n="nav_list">記錄列表</span>
+  </button>
+  <button class="nav-btn" onclick="showSection('analytics')" id="nav-analytics">
+    <span class="icon">📈</span><span data-i18n="nav_analytics">數據分析</span>
+  </button>
+  <button class="nav-btn" onclick="showSection('import')" id="nav-import">
+    <span class="icon">📂</span><span data-i18n="nav_import">匯入歷史</span>
+  </button>
+  <button class="nav-btn" onclick="showSection('anomaly')" id="nav-anomaly">
+    <span class="icon">⚠️</span><span data-i18n="nav_anomaly">異常警報</span>
+    <span id="anomaly-badge" style="background:#c0392b;color:#fff;border-radius:10px;padding:0 6px;font-size:0.72rem;font-weight:700;display:none">0</span>
+  </button>
+  <button class="nav-btn" onclick="showSection('settings')" id="nav-settings">
+    <span class="icon">⚙️</span><span data-i18n="nav_settings">設置</span>
+  </button>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+
+<!-- ===== DASHBOARD ===== -->
+<div class="section active" id="section-dashboard">
+  <div class="stat-grid" id="stat-grid"></div>
+  
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="chart-grid">
+    <div class="card">
+      <div class="card-header">
+        <span class="card-title">🏭 <span data-i18n="dept_distribution">各部門鑰匙使用</span></span>
+        <div class="period-tabs">
+          <button class="period-tab active" onclick="setDashPeriod('day',this)" data-i18n="period_day">日</button>
+          <button class="period-tab" onclick="setDashPeriod('week',this)" data-i18n="period_week">週</button>
+          <button class="period-tab" onclick="setDashPeriod('month',this)" data-i18n="period_month">月</button>
+          <button class="period-tab" onclick="setDashPeriod('year',this)" data-i18n="period_year">年</button>
+        </div>
+      </div>
+      <div class="card-body"><canvas id="deptChart" height="200"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">📅 <span data-i18n="trend">鑰匙動態趨勢</span></span></div>
+      <div class="card-body"><canvas id="trendChart" height="200"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header"><span class="card-title">⚠️ <span data-i18n="recent_anomaly">最新異常</span></span></div>
+    <div class="card-body" id="dash-anomaly-list"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">🕐 <span data-i18n="outstanding_keys">未歸還鑰匙</span></span>
+    </div>
+    <div class="card-body table-wrap" id="outstanding-table-wrap"></div>
+  </div>
+</div>
+
+<!-- ===== RECORD FORM ===== -->
+<div class="section" id="section-record">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">📝 <span data-i18n="new_record_title">鑰匙動態記錄 / Key Movement Record</span></span>
+      <span style="font-size:0.78rem;color:var(--text2)">No.: VRT-R-GA-07</span>
+    </div>
+    <div class="card-body">
+      <!-- ISSUE SECTION -->
+      <div class="section-title">🔓 <span data-i18n="issue_section">鑰匙發出 / Key Issued</span></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label data-i18n="f_issue_date">鑰匙發出日 / Date of Key Issued</label>
+          <input type="date" id="f_issue_date">
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_issue_time">發出時間 / Time of Issued</label>
+          <input type="time" id="f_issue_time">
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_key_no">鑰匙號碼 / Key Number</label>
+          <input type="text" id="f_key_no" placeholder="e.g. K-001">
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_key_dept">部門 / Key Department</label>
+          <select id="f_key_dept">
+            <option value="">-- <span data-i18n="select">選擇</span> --</option>
+            <option value="倉庫">🏗️ 倉庫 / Warehouse</option>
+            <option value="裁剪">✂️ 裁剪 / Cutting</option>
+            <option value="車間">🏭 車間 / Workshop</option>
+            <option value="成品">📦 成品 / Finished Goods</option>
+            <option value="馬克">🖊️ 馬克 / Marking</option>
+            <option value="品管">🔍 品管 / QC</option>
+            <option value="外籍宿舍">🛏️ 外籍人員宿舍 / Foreign Staff Dorm</option>
+            <option value="當地宿舍">🛏️ 當地人員宿舍 / Local Staff Dorm</option>
+            <option value="辦公室">🖥️ 辦公室 / Office</option>
+            <option value="行政中心">🏢 行政中心 / Admin Center (AC)</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_recipient_id">收受人 ID / Recipient ID Number</label>
+          <input type="text" id="f_recipient_id" placeholder="Employee ID">
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_recipient_name">收受人姓名 / Recipient Name</label>
+          <input type="text" id="f_recipient_name">
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_key_type">鑰匙類型 / Key Type</label>
+          <select id="f_key_type">
+            <option value="一般鑰匙">🗝️ 一般鑰匙 / Standard Key</option>
+            <option value="卡片鑰匙">💳 卡片鑰匙 / Card Key</option>
+            <option value="摩托車鑰匙">🏍️ 摩托車鑰匙 / Motorcycle Key</option>
+            <option value="汽車鑰匙">🚗 汽車鑰匙 / Car Key</option>
+            <option value="捲簾門鑰匙">🔄 捲簾門 / Roller Shutter</option>
+            <option value="掛鎖鑰匙">🔒 掛鎖 / Padlock</option>
+            <option value="密碼鎖">🔢 密碼鎖 / Combination Lock</option>
+            <option value="設備鑰匙">⚙️ 設備鑰匙 / Equipment Key</option>
+            <option value="宿舍門鑰匙">🚪 宿舍門 / Dorm Door</option>
+            <option value="辦公室門鑰匙">🚪 辦公室門 / Office Door</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_key_condition">鑰匙狀態 / Key Condition</label>
+          <select id="f_key_condition">
+            <option value="良好">✅ 良好 / Good</option>
+            <option value="輕微損耗">⚡ 輕微損耗 / Minor Wear</option>
+            <option value="損壞">❌ 損壞 / Damaged</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <!-- RETURN SECTION -->
+      <div class="section-title">🔐 <span data-i18n="return_section">鑰匙歸還 / Key Return (可稍後填寫)</span></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label data-i18n="f_return_date">收回日期 / Date of Return</label>
+          <input type="date" id="f_return_date">
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_return_time">收回時間 / Time of Return</label>
+          <input type="time" id="f_return_time">
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_receiver_name">收受人姓名 / Receiver Name</label>
+          <input type="text" id="f_receiver_name">
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_receiver_id">收受人 ID / Receiver ID</label>
+          <input type="text" id="f_receiver_id">
+        </div>
+        <div class="form-group">
+          <label data-i18n="f_return_condition">歸還狀態 / Return Condition</label>
+          <select id="f_return_condition">
+            <option value="">-- 未歸還 / Not Returned --</option>
+            <option value="良好">✅ 良好 / Good</option>
+            <option value="輕微損耗">⚡ 輕微損耗 / Minor Wear</option>
+            <option value="損壞">❌ 損壞 / Damaged</option>
+            <option value="遺失">🚨 遺失 / Lost</option>
+          </select>
+        </div>
+        <div class="form-group full">
+          <label data-i18n="f_remarks">備注 / Remarks</label>
+          <textarea id="f_remarks" placeholder="備注 / Remarks / ចំណាំ"></textarea>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="btn-group">
+        <button class="btn btn-primary" onclick="saveRecord()">💾 <span data-i18n="save_record">儲存記錄</span></button>
+        <button class="btn btn-outline" onclick="clearForm()">🗑️ <span data-i18n="clear_form">清除</span></button>
+        <button class="btn btn-success" id="btn-edit-save" style="display:none" onclick="updateRecord()">✏️ <span data-i18n="update_record">更新記錄</span></button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== RECORD LIST ===== -->
+<div class="section" id="section-list">
+  <div class="card">
+    <div class="filter-bar">
+      <label data-i18n="f_filter_period">篩選:</label>
+      <div class="period-tabs">
+        <button class="period-tab active" onclick="setListPeriod('all',this)" data-i18n="all">全部</button>
+        <button class="period-tab" onclick="setListPeriod('day',this)" data-i18n="period_day">日</button>
+        <button class="period-tab" onclick="setListPeriod('week',this)" data-i18n="period_week">週</button>
+        <button class="period-tab" onclick="setListPeriod('month',this)" data-i18n="period_month">月</button>
+        <button class="period-tab" onclick="setListPeriod('year',this)" data-i18n="period_year">年</button>
+      </div>
+      <input type="month" id="filter-month" onchange="renderList()" style="display:none">
+      <input type="text" id="filter-search" placeholder="🔍 搜索..." oninput="renderList()" style="width:160px">
+      <select id="filter-dept" onchange="renderList()">
+        <option value="">全部部門</option>
+        <option value="倉庫">倉庫</option>
+        <option value="裁剪">裁剪</option>
+        <option value="車間">車間</option>
+        <option value="成品">成品</option>
+        <option value="馬克">馬克</option>
+        <option value="品管">品管</option>
+        <option value="外籍宿舍">外籍宿舍</option>
+        <option value="當地宿舍">當地宿舍</option>
+        <option value="辦公室">辦公室</option>
+        <option value="行政中心">行政中心</option>
+      </select>
+      <select id="filter-status" onchange="renderList()">
+        <option value="">全部狀態</option>
+        <option value="outstanding">未歸還</option>
+        <option value="returned">已歸還</option>
+        <option value="lost">遺失</option>
+      </select>
+      <div class="btn-group" style="margin-left:auto">
+        <button class="btn btn-outline btn-sm" onclick="exportExcel()">⬇️ <span data-i18n="export_excel">匯出 Excel</span></button>
+        <button class="btn btn-success btn-sm" onclick="sendToTelegram()">✈️ <span data-i18n="send_tg">發送 Telegram</span></button>
+        <button class="btn btn-danger btn-sm" onclick="deleteSelected()">🗑️ <span data-i18n="delete_selected">刪除所選</span></button>
+      </div>
+    </div>
+    <div class="table-wrap" id="record-table-wrap"></div>
+    <div style="padding:14px 20px; border-top:1px solid var(--border); display:flex; gap:24px; flex-wrap:wrap; font-size:0.85rem;" id="list-summary"></div>
+  </div>
+</div>
+
+<!-- ===== ANALYTICS ===== -->
+<div class="section" id="section-analytics">
+  <div style="display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap">
+    <div class="period-tabs">
+      <button class="period-tab active" onclick="setAnalyticsPeriod('day',this)" data-i18n="period_day">日</button>
+      <button class="period-tab" onclick="setAnalyticsPeriod('week',this)" data-i18n="period_week">週</button>
+      <button class="period-tab" onclick="setAnalyticsPeriod('month',this)" data-i18n="period_month">月</button>
+      <button class="period-tab" onclick="setAnalyticsPeriod('year',this)" data-i18n="period_year">年</button>
+    </div>
+    <input type="month" id="analytics-month" onchange="renderAnalytics()">
+    <button class="btn btn-success btn-sm" onclick="sendAnalyticsTelegram()">✈️ <span data-i18n="send_report_tg">發送報告到 Telegram</span></button>
+  </div>
+
+  <div class="stat-grid" id="analytics-stats"></div>
+
+  <div class="chart-grid">
+    <div class="card">
+      <div class="card-header"><span class="card-title">🏭 <span data-i18n="dept_chart">部門分佈</span></span></div>
+      <div class="card-body"><canvas id="analyticsDeptChart" height="220"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">🗝️ <span data-i18n="keytype_chart">鑰匙類型</span></span></div>
+      <div class="card-body"><canvas id="analyticsTypeChart" height="220"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">📅 <span data-i18n="monthly_trend">月度趨勢</span></span></div>
+      <div class="card-body"><canvas id="analyticsMonthChart" height="220"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header"><span class="card-title">⏱️ <span data-i18n="return_duration">平均借用時長</span></span></div>
+      <div class="card-body"><canvas id="analyticsDurationChart" height="220"></canvas></div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <div class="card-header"><span class="card-title">📊 <span data-i18n="dept_summary_table">部門彙總表</span></span></div>
+    <div class="card-body table-wrap" id="analytics-dept-table"></div>
+  </div>
+</div>
+
+<!-- ===== IMPORT ===== -->
+<div class="section" id="section-import">
+  <div class="card">
+    <div class="card-header"><span class="card-title">📂 <span data-i18n="import_title">匯入歷史數據 (Excel/CSV)</span></span></div>
+    <div class="card-body">
+      <p style="font-size:0.88rem;color:var(--text2);margin-bottom:16px" data-i18n="import_desc">
+        支持匯入與本系統相同格式的 Excel (.xls/.xlsx) 或 CSV 檔案。系統將自動按月份分類儲存歷史記錄。
+      </p>
+      <div class="import-zone" id="import-zone" onclick="document.getElementById('import-file').click()" 
+           ondragover="event.preventDefault();this.classList.add('dragover')" 
+           ondragleave="this.classList.remove('dragover')"
+           ondrop="handleImportDrop(event)">
+        <div class="import-icon">📁</div>
+        <div style="font-weight:600;margin-bottom:6px" data-i18n="import_click">點擊或拖放 Excel/CSV 文件</div>
+        <div style="font-size:0.82rem;color:var(--text2)">VRT-R-GA-07 格式 | .xls .xlsx .csv</div>
+      </div>
+      <input type="file" id="import-file" accept=".xls,.xlsx,.csv" style="display:none" onchange="handleImportFile(event)">
+
+      <div class="divider"></div>
+      <div class="section-title">📅 <span data-i18n="import_history">已匯入月份記錄</span></div>
+      <div id="import-month-list"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== ANOMALY ===== -->
+<div class="section" id="section-anomaly">
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">⚠️ <span data-i18n="anomaly_title">異常警報系統</span></span>
+      <button class="btn btn-outline btn-sm" onclick="renderAnomalies()">🔄 <span data-i18n="refresh">刷新</span></button>
+    </div>
+    <div class="card-body">
+      <div class="form-group" style="max-width:200px;margin-bottom:16px">
+        <label data-i18n="overdue_threshold">超時未歸還閾值 (小時)</label>
+        <input type="number" id="overdue-hours" value="8" min="1" max="72" onchange="renderAnomalies()">
+      </div>
+      <div id="anomaly-list-full"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== SETTINGS ===== -->
+<div class="section" id="section-settings">
+  <div class="card">
+    <div class="card-header"><span class="card-title">⚙️ <span data-i18n="settings_title">系統設置</span></span></div>
+    <div class="card-body">
+      <div class="tg-config">
+        <div class="section-title">✈️ <span data-i18n="tg_config">Telegram 群組設置</span></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label data-i18n="tg_token">Bot Token</label>
+            <input type="text" id="tg-token" placeholder="123456:ABC-DEF...">
+          </div>
+          <div class="form-group">
+            <label data-i18n="tg_chat">Chat ID (群組)</label>
+            <input type="text" id="tg-chat" placeholder="-100123456789">
+          </div>
+        </div>
+        <div class="btn-group" style="margin-top:12px">
+          <button class="btn btn-primary" onclick="saveTgSettings()">💾 <span data-i18n="save">儲存</span></button>
+          <button class="btn btn-outline" onclick="testTelegram()">🧪 <span data-i18n="test_tg">測試連接</span></button>
+        </div>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title">🗃️ <span data-i18n="data_mgmt">數據管理</span></div>
+      <div class="btn-group">
+        <button class="btn btn-outline" onclick="exportAllData()">⬇️ <span data-i18n="export_all">匯出全部數據</span></button>
+        <button class="btn btn-danger" onclick="clearAllData()">🗑️ <span data-i18n="clear_all">清除所有數據</span></button>
+      </div>
+
+      <div class="divider"></div>
+      <div class="section-title">🌐 <span data-i18n="system_info">系統資訊</span></div>
+      <div style="font-size:0.85rem;color:var(--text2);line-height:1.8">
+        <div>系統: VRT Key Movement Management System</div>
+        <div>文件編號: VRT-R-GA-07</div>
+        <div>公司: Vantage River Textiles</div>
+        <div id="record-count-info"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- CONFIRM MODAL -->
+<div class="modal-bg" id="confirm-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title" id="confirm-title">確認</span>
+      <button class="modal-close" onclick="closeModal('confirm-modal')">✕</button>
+    </div>
+    <p id="confirm-msg" style="margin-bottom:20px;color:var(--text2)"></p>
+    <div class="btn-group">
+      <button class="btn btn-danger" onclick="confirmAction()">確認</button>
+      <button class="btn btn-outline" onclick="closeModal('confirm-modal')">取消</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== I18N ====================
+const I18N = {
+  zh: {
+    nav_dashboard:'儀表板', nav_record:'新增記錄', nav_list:'記錄列表', nav_analytics:'數據分析', nav_import:'匯入歷史', nav_anomaly:'異常警報', nav_settings:'設置',
+    dept_distribution:'各部門鑰匙使用', trend:'鑰匙動態趨勢', recent_anomaly:'最新異常', outstanding_keys:'未歸還鑰匙',
+    new_record_title:'鑰匙動態記錄 / Key Movement Record',
+    issue_section:'鑰匙發出 / Key Issued', return_section:'鑰匙歸還 / Key Return (可稍後填寫)',
+    f_issue_date:'鑰匙發出日', f_issue_time:'發出時間', f_key_no:'鑰匙號碼', f_key_dept:'部門', f_recipient_id:'收受人 ID', f_recipient_name:'收受人姓名', f_key_type:'鑰匙類型', f_key_condition:'鑰匙狀態',
+    f_return_date:'收回日期', f_return_time:'收回時間', f_receiver_name:'收受人姓名', f_receiver_id:'收受人 ID', f_return_condition:'歸還狀態', f_remarks:'備注',
+    save_record:'儲存記錄', clear_form:'清除', update_record:'更新記錄',
+    f_filter_period:'篩選:', all:'全部', period_day:'日', period_week:'週', period_month:'月', period_year:'年',
+    export_excel:'匯出 Excel', send_tg:'發送 Telegram', delete_selected:'刪除所選',
+    import_title:'匯入歷史數據 (Excel/CSV)', import_desc:'支持匯入與本系統相同格式的 Excel (.xls/.xlsx) 或 CSV 檔案。', import_click:'點擊或拖放 Excel/CSV 文件', import_history:'已匯入月份記錄',
+    anomaly_title:'異常警報系統', refresh:'刷新', overdue_threshold:'超時未歸還閾值 (小時)',
+    settings_title:'系統設置', tg_config:'Telegram 群組設置', tg_token:'Bot Token', tg_chat:'Chat ID (群組)', save:'儲存', test_tg:'測試連接',
+    data_mgmt:'數據管理', export_all:'匯出全部數據', clear_all:'清除所有數據', system_info:'系統資訊',
+    dept_chart:'部門分佈', keytype_chart:'鑰匙類型', monthly_trend:'月度趨勢', return_duration:'平均借用時長', dept_summary_table:'部門彙總表',
+    send_report_tg:'發送報告到 Telegram', select:'選擇',
+    stat_total:'總記錄數', stat_outstanding:'未歸還', stat_returned:'已歸還', stat_lost:'遺失', stat_depts:'使用部門', stat_overdue:'超時未歸還',
+    col_no:'#', col_issue_date:'發出日期', col_issue_time:'發出時間', col_key_no:'鑰匙號碼', col_dept:'部門', col_type:'類型', col_recipient:'收受人', col_recipient_id:'員工ID', col_return_date:'歸還日期', col_return_time:'歸還時間', col_status:'狀態', col_remarks:'備注', col_actions:'操作',
+    status_outstanding:'未歸還', status_returned:'已歸還', status_lost:'遺失',
+    total_records:'總記錄', outstanding:'未歸還', returned:'已歸還',
+  },
+  en: {
+    nav_dashboard:'Dashboard', nav_record:'New Record', nav_list:'Record List', nav_analytics:'Analytics', nav_import:'Import History', nav_anomaly:'Anomalies', nav_settings:'Settings',
+    dept_distribution:'Key Usage by Dept.', trend:'Key Movement Trend', recent_anomaly:'Recent Anomalies', outstanding_keys:'Outstanding Keys',
+    new_record_title:'Key Movement Record',
+    issue_section:'Key Issued', return_section:'Key Return (can fill later)',
+    f_issue_date:'Date of Key Issued', f_issue_time:'Time of Issued', f_key_no:'Key Number', f_key_dept:'Key Department', f_recipient_id:'Recipient ID', f_recipient_name:'Recipient Name', f_key_type:'Key Type', f_key_condition:'Key Condition',
+    f_return_date:'Date of Return', f_return_time:'Time of Return', f_receiver_name:'Receiver Name', f_receiver_id:'Receiver ID', f_return_condition:'Return Condition', f_remarks:'Remarks',
+    save_record:'Save Record', clear_form:'Clear', update_record:'Update Record',
+    f_filter_period:'Filter:', all:'All', period_day:'Day', period_week:'Week', period_month:'Month', period_year:'Year',
+    export_excel:'Export Excel', send_tg:'Send Telegram', delete_selected:'Delete Selected',
+    import_title:'Import Historical Data (Excel/CSV)', import_desc:'Import Excel (.xls/.xlsx) or CSV files in the same format.', import_click:'Click or drag & drop Excel/CSV file', import_history:'Imported Monthly Records',
+    anomaly_title:'Anomaly Alert System', refresh:'Refresh', overdue_threshold:'Overdue Threshold (hours)',
+    settings_title:'System Settings', tg_config:'Telegram Group Settings', tg_token:'Bot Token', tg_chat:'Chat ID (Group)', save:'Save', test_tg:'Test Connection',
+    data_mgmt:'Data Management', export_all:'Export All Data', clear_all:'Clear All Data', system_info:'System Info',
+    dept_chart:'Dept. Distribution', keytype_chart:'Key Types', monthly_trend:'Monthly Trend', return_duration:'Avg. Loan Duration', dept_summary_table:'Department Summary',
+    send_report_tg:'Send Report to Telegram', select:'Select',
+    stat_total:'Total Records', stat_outstanding:'Outstanding', stat_returned:'Returned', stat_lost:'Lost', stat_depts:'Depts. Active', stat_overdue:'Overdue',
+    col_no:'#', col_issue_date:'Issue Date', col_issue_time:'Issue Time', col_key_no:'Key No.', col_dept:'Dept.', col_type:'Type', col_recipient:'Recipient', col_recipient_id:'Emp ID', col_return_date:'Return Date', col_return_time:'Return Time', col_status:'Status', col_remarks:'Remarks', col_actions:'Actions',
+    status_outstanding:'Outstanding', status_returned:'Returned', status_lost:'Lost',
+    total_records:'Total Records', outstanding:'Outstanding', returned:'Returned',
+  },
+  km: {
+    nav_dashboard:'ផ្ទាំងគ្រប់គ្រង', nav_record:'កត់ត្រាថ្មី', nav_list:'បញ្ជីកត់ត្រា', nav_analytics:'វិភាគ', nav_import:'នាំចូលប្រវត្តិ', nav_anomaly:'ការព្រមាន', nav_settings:'ការកំណត់',
+    dept_distribution:'ការប្រើប្រាស់គ្រាប់ចុច', trend:'និន្នាការចលនា', recent_anomaly:'ការព្រមានថ្មី', outstanding_keys:'គ្រាប់ចុចមិនទាន់ប្រគល់',
+    new_record_title:'កំណត់ត្រាចលនាគ្រាប់ចុច',
+    issue_section:'ចេញគ្រាប់ចុច', return_section:'ប្រគល់គ្រាប់ចុច',
+    f_issue_date:'ថ្ងៃចេញ', f_issue_time:'ម៉ោងចេញ', f_key_no:'លេខគ្រាប់ចុច', f_key_dept:'នាយកដ្ឋាន', f_recipient_id:'លេខ ID', f_recipient_name:'ឈ្មោះអ្នកទទួល', f_key_type:'ប្រភេទ', f_key_condition:'ស្ថានភាព',
+    f_return_date:'ថ្ងៃប្រគល់', f_return_time:'ម៉ោងប្រគល់', f_receiver_name:'ឈ្មោះអ្នកទទួល', f_receiver_id:'លេខ ID', f_return_condition:'ស្ថានភាពប្រគល់', f_remarks:'ចំណាំ',
+    save_record:'រក្សាទុក', clear_form:'លុប', update_record:'ធ្វើបច្ចុប្បន្នភាព',
+    f_filter_period:'ត្រង:', all:'ទាំងអស់', period_day:'ថ្ងៃ', period_week:'សប្តាហ៍', period_month:'ខែ', period_year:'ឆ្នាំ',
+    export_excel:'នាំចេញ Excel', send_tg:'ផ្ញើ Telegram', delete_selected:'លុបដែលបានជ្រើស',
+    import_title:'នាំចូលទិន្នន័យប្រវត្តិ', import_desc:'គាំទ្រការនាំចូល Excel ឬ CSV', import_click:'ចុចឬអូស Excel/CSV', import_history:'កំណត់ត្រាខែដែលបាននាំចូល',
+    anomaly_title:'ប្រព័ន្ធព្រមានភាពមិនធម្មតា', refresh:'ធ្វើឱ្យស្រស់', overdue_threshold:'ដែនកំណត់យឺតយ៉ាវ (ម៉ោង)',
+    settings_title:'ការកំណត់ប្រព័ន្ធ', tg_config:'ការកំណត់ Telegram', tg_token:'Bot Token', tg_chat:'Chat ID', save:'រក្សាទុក', test_tg:'សាកល្បង',
+    data_mgmt:'ការគ្រប់គ្រងទិន្នន័យ', export_all:'នាំចេញទិន្នន័យទាំងអស់', clear_all:'លុបទិន្នន័យទាំងអស់', system_info:'ព័ត៌មានប្រព័ន្ធ',
+    dept_chart:'ការចែកចាយនាយកដ្ឋាន', keytype_chart:'ប្រភេទគ្រាប់ចុច', monthly_trend:'និន្នាការប្រចាំខែ', return_duration:'រយៈពេលខ្ចីជាមធ្យម', dept_summary_table:'តារាងសង្ខេបនាយកដ្ឋាន',
+    send_report_tg:'ផ្ញើរបាយការណ៍ Telegram', select:'ជ្រើស',
+    stat_total:'កំណត់ត្រាសរុប', stat_outstanding:'មិនទាន់ប្រគល់', stat_returned:'ប្រគល់ហើយ', stat_lost:'បាត់', stat_depts:'នាយកដ្ឋាន', stat_overdue:'យឺតយ៉ាវ',
+    col_no:'#', col_issue_date:'ថ្ងៃចេញ', col_issue_time:'ម៉ោងចេញ', col_key_no:'លេខ', col_dept:'នាយកដ្ឋាន', col_type:'ប្រភេទ', col_recipient:'អ្នកទទួល', col_recipient_id:'ID', col_return_date:'ថ្ងៃប្រគល់', col_return_time:'ម៉ោង', col_status:'ស្ថានភាព', col_remarks:'ចំណាំ', col_actions:'សកម្មភាព',
+    status_outstanding:'មិនទាន់ប្រគល់', status_returned:'ប្រគល់ហើយ', status_lost:'បាត់',
+    total_records:'កំណត់ត្រាសរុប', outstanding:'មិនទាន់ប្រគល់', returned:'ប្រគល់ហើយ',
+  }
+};
+let lang = 'zh';
+function setLang(l) {
+  lang = l;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.lang-btn').forEach(b => { if(b.textContent.trim() === (l==='zh'?'中文':l==='en'?'English':'ខ្មែរ')) b.classList.add('active'); });
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const k = el.getAttribute('data-i18n');
+    if(I18N[l][k]) el.textContent = I18N[l][k];
+  });
+  renderAll();
+}
+function t(k) { return I18N[lang][k] || I18N['zh'][k] || k; }
+
+// ==================== DATA ====================
+let records = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
+let listPeriod = 'all', dashPeriod = 'month', analyticsPeriod = 'month';
+let confirmCb = null;
+let editId = null;
+const DEPTS = ['倉庫','裁剪','車間','成品','馬克','品管','外籍宿舍','當地宿舍','辦公室','行政中心'];
+const DEPT_COLORS = {'倉庫':'#3498db','裁剪':'#e67e22','車間':'#9b59b6','成品':'#27ae60','馬克':'#e91e63','品管':'#00bcd4','外籍宿舍':'#ff5722','當地宿舍':'#795548','辦公室':'#607d8b','行政中心':'#f44336'};
+const KEY_ICONS = {'一般鑰匙':'🗝️','卡片鑰匙':'💳','摩托車鑰匙':'🏍️','汽車鑰匙':'🚗','捲簾門鑰匙':'🔄','掛鎖鑰匙':'🔒','密碼鎖':'🔢','設備鑰匙':'⚙️','宿舍門鑰匙':'🚪','辦公室門鑰匙':'🚪'};
+
+function saveData() { localStorage.setItem('vrt_keys', JSON.stringify(records)); }
+
+// ==================== SECTION NAV ====================
+function showSection(s) {
+  document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+  document.getElementById('section-' + s).classList.add('active');
+  document.getElementById('nav-' + s).classList.add('active');
+  if(s==='dashboard') renderDashboard();
+  if(s==='list') renderList();
+  if(s==='analytics') renderAnalytics();
+  if(s==='anomaly') renderAnomalies();
+  if(s==='import') renderImportHistory();
+  if(s==='settings') renderSettings();
+}
+
+// ==================== FORM ====================
+function saveRecord() {
+  const r = collectForm();
+  if(!r) return;
+  r.id = Date.now().toString();
+  r.createdAt = new Date().toISOString();
+  records.unshift(r);
+  saveData();
+  clearForm();
+  showToast(t('save_record') + ' ✓', 'success');
+  renderAnomalyBadge();
+  showSection('list');
+}
+
+function collectForm() {
+  const issueDate = document.getElementById('f_issue_date').value;
+  const keyNo = document.getElementById('f_key_no').value;
+  const dept = document.getElementById('f_key_dept').value;
+  if(!issueDate || !keyNo || !dept) {
+    showToast('請填寫必填欄位 (發出日期, 鑰匙號碼, 部門)', 'error'); return null;
+  }
+  return {
+    issue_date: issueDate,
+    issue_time: document.getElementById('f_issue_time').value,
+    key_no: keyNo,
+    dept: dept,
+    recipient_id: document.getElementById('f_recipient_id').value,
+    recipient_name: document.getElementById('f_recipient_name').value,
+    key_type: document.getElementById('f_key_type').value,
+    key_condition: document.getElementById('f_key_condition').value,
+    return_date: document.getElementById('f_return_date').value,
+    return_time: document.getElementById('f_return_time').value,
+    receiver_name: document.getElementById('f_receiver_name').value,
+    receiver_id: document.getElementById('f_receiver_id').value,
+    return_condition: document.getElementById('f_return_condition').value,
+    remarks: document.getElementById('f_remarks').value,
+  };
+}
+
+function clearForm() {
+  ['f_issue_date','f_issue_time','f_key_no','f_recipient_id','f_recipient_name','f_return_date','f_return_time','f_receiver_name','f_receiver_id','f_remarks'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('f_key_dept').value = '';
+  document.getElementById('f_key_type').value = '一般鑰匙';
+  document.getElementById('f_key_condition').value = '良好';
+  document.getElementById('f_return_condition').value = '';
+  document.getElementById('btn-edit-save').style.display = 'none';
+  editId = null;
+}
+
+function editRecord(id) {
+  const r = records.find(x => x.id === id); if(!r) return;
+  editId = id;
+  document.getElementById('f_issue_date').value = r.issue_date || '';
+  document.getElementById('f_issue_time').value = r.issue_time || '';
+  document.getElementById('f_key_no').value = r.key_no || '';
+  document.getElementById('f_key_dept').value = r.dept || '';
+  document.getElementById('f_recipient_id').value = r.recipient_id || '';
+  document.getElementById('f_recipient_name').value = r.recipient_name || '';
+  document.getElementById('f_key_type').value = r.key_type || '一般鑰匙';
+  document.getElementById('f_key_condition').value = r.key_condition || '良好';
+  document.getElementById('f_return_date').value = r.return_date || '';
+  document.getElementById('f_return_time').value = r.return_time || '';
+  document.getElementById('f_receiver_name').value = r.receiver_name || '';
+  document.getElementById('f_receiver_id').value = r.receiver_id || '';
+  document.getElementById('f_return_condition').value = r.return_condition || '';
+  document.getElementById('f_remarks').value = r.remarks || '';
+  document.getElementById('btn-edit-save').style.display = 'inline-flex';
+  showSection('record');
+}
+
+function updateRecord() {
+  if(!editId) return;
+  const r = collectForm(); if(!r) return;
+  const idx = records.findIndex(x => x.id === editId);
+  if(idx === -1) return;
+  records[idx] = { ...records[idx], ...r };
+  saveData(); clearForm();
+  showToast(t('update_record') + ' ✓', 'success');
+  renderAnomalyBadge();
+  showSection('list');
+}
+
+function setReturnNow(id) {
+  const r = records.find(x => x.id === id); if(!r) return;
+  const now = new Date();
+  r.return_date = now.toISOString().split('T')[0];
+  r.return_time = now.toTimeString().slice(0,5);
+  r.return_condition = '良好';
+  saveData(); renderList(); renderAnomalyBadge();
+  showToast('已記錄歸還 ✓', 'success');
+}
+
+// ==================== LIST ====================
+function filterRecords() {
+  let rs = [...records];
+  const now = new Date();
+  if(listPeriod !== 'all') {
+    rs = rs.filter(r => {
+      const d = new Date(r.issue_date);
+      if(listPeriod === 'day') return d.toDateString() === now.toDateString();
+      if(listPeriod === 'week') { const w = new Date(now); w.setDate(now.getDate()-7); return d >= w; }
+      if(listPeriod === 'month') {
+        const fm = document.getElementById('filter-month').value;
+        if(fm) return r.issue_date && r.issue_date.startsWith(fm);
+        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+      }
+      if(listPeriod === 'year') return d.getFullYear() === now.getFullYear();
+      return true;
+    });
+  }
+  const dept = document.getElementById('filter-dept').value;
+  if(dept) rs = rs.filter(r => r.dept === dept);
+  const status = document.getElementById('filter-status').value;
+  if(status === 'outstanding') rs = rs.filter(r => !r.return_date && r.return_condition !== '遺失');
+  if(status === 'returned') rs = rs.filter(r => r.return_date && r.return_condition !== '遺失');
+  if(status === 'lost') rs = rs.filter(r => r.return_condition === '遺失');
+  const q = document.getElementById('filter-search').value.toLowerCase();
+  if(q) rs = rs.filter(r => Object.values(r).join(' ').toLowerCase().includes(q));
+  return rs;
+}
+
+function getStatus(r) {
+  if(r.return_condition === '遺失') return 'lost';
+  if(r.return_date) return 'returned';
+  return 'outstanding';
+}
+
+function renderList() {
+  const rs = filterRecords();
+  const wrap = document.getElementById('record-table-wrap');
+  if(!rs.length) { wrap.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text2)">📭 無記錄</div>'; document.getElementById('list-summary').innerHTML = ''; return; }
+
+  let html = `<table>
+    <thead><tr>
+      <th><input type="checkbox" id="chk-all" onclick="toggleAllCheck()"></th>
+      <th>${t('col_no')}</th>
+      <th>${t('col_issue_date')}</th>
+      <th>${t('col_issue_time')}</th>
+      <th>${t('col_key_no')}</th>
+      <th>${t('col_dept')}</th>
+      <th>${t('col_type')}</th>
+      <th>${t('col_recipient')}</th>
+      <th>${t('col_recipient_id')}</th>
+      <th>${t('col_return_date')}</th>
+      <th>${t('col_return_time')}</th>
+      <th>${t('col_status')}</th>
+      <th>${t('col_remarks')}</th>
+      <th>${t('col_actions')}</th>
+    </tr></thead><tbody>`;
+
+  rs.forEach((r, i) => {
+    const st = getStatus(r);
+    const stBadge = st === 'returned' ? `<span class="badge badge-in">✓ ${t('status_returned')}</span>`
+      : st === 'lost' ? `<span class="badge badge-late">🚨 ${t('status_lost')}</span>`
+      : `<span class="badge badge-out">⏳ ${t('status_outstanding')}</span>`;
+    const deptColor = DEPT_COLORS[r.dept] || '#888';
+    const icon = KEY_ICONS[r.key_type] || '🗝️';
+    html += `<tr>
+      <td><input type="checkbox" class="row-chk" value="${r.id}"></td>
+      <td>${i+1}</td>
+      <td>${r.issue_date||''}</td>
+      <td>${r.issue_time||''}</td>
+      <td><b>${r.key_no||''}</b></td>
+      <td><span class="dept-badge dept-${r.dept}" style="background:${deptColor}">${r.dept||''}</span></td>
+      <td>${icon} ${r.key_type||''}</td>
+      <td>${r.recipient_name||''}</td>
+      <td>${r.recipient_id||''}</td>
+      <td>${r.return_date||''}</td>
+      <td>${r.return_time||''}</td>
+      <td>${stBadge}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${r.remarks||''}</td>
+      <td>
+        <div class="btn-group">
+          <button class="btn btn-outline btn-sm" onclick="editRecord('${r.id}')">✏️</button>
+          ${st === 'outstanding' ? `<button class="btn btn-success btn-sm" onclick="setReturnNow('${r.id}')">↩️</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="promptDelete('${r.id}')">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+
+  // Summary
+  const total = rs.length;
+  const outstanding = rs.filter(r => getStatus(r) === 'outstanding').length;
+  const returned = rs.filter(r => getStatus(r) === 'returned').length;
+  const lost = rs.filter(r => getStatus(r) === 'lost').length;
+  document.getElementById('list-summary').innerHTML = `
+    <span>📊 ${t('total_records')}: <b>${total}</b></span>
+    <span>⏳ ${t('outstanding')}: <b style="color:var(--warn)">${outstanding}</b></span>
+    <span>✅ ${t('returned')}: <b style="color:var(--accent2)">${returned}</b></span>
+    <span>🚨 ${t('status_lost')}: <b style="color:var(--danger)">${lost}</b></span>
+  `;
+}
+
+function setListPeriod(p, btn) {
+  listPeriod = p;
+  document.querySelectorAll('#section-list .period-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('filter-month').style.display = p === 'month' ? 'block' : 'none';
+  renderList();
+}
+
+function toggleAllCheck() {
+  const allChk = document.getElementById('chk-all');
+  document.querySelectorAll('.row-chk').forEach(c => c.checked = allChk.checked);
+}
+
+function deleteSelected() {
+  const selected = [...document.querySelectorAll('.row-chk:checked')].map(c => c.value);
+  if(!selected.length) { showToast('請選擇要刪除的記錄', 'warn'); return; }
+  openConfirm(`確認刪除 ${selected.length} 筆記錄?`, () => {
+    records = records.filter(r => !selected.includes(r.id));
+    saveData(); renderList(); renderAnomalyBadge();
+    showToast('已刪除 ' + selected.length + ' 筆', 'success');
+  });
+}
+
+function promptDelete(id) {
+  openConfirm('確認刪除此記錄?', () => {
+    records = records.filter(r => r.id !== id);
+    saveData(); renderList(); renderAnomalyBadge();
+    showToast('已刪除', 'success');
+  });
+}
+
+// ==================== DASHBOARD ====================
+let deptChart = null, trendChart = null;
+
+function renderDashboard() {
+  const now = new Date();
+  const total = records.length;
+  const outstanding = records.filter(r => getStatus(r) === 'outstanding').length;
+  const returned = records.filter(r => getStatus(r) === 'returned').length;
+  const lost = records.filter(r => getStatus(r) === 'lost').length;
+  const depts = new Set(records.map(r => r.dept)).size;
+  const overdue = getOverdueRecords().length;
+
+  document.getElementById('stat-grid').innerHTML = `
+    <div class="stat-card blue"><div class="stat-num">${total}</div><div class="stat-label">📊 ${t('stat_total')}</div></div>
+    <div class="stat-card warn"><div class="stat-num" style="color:var(--warn)">${outstanding}</div><div class="stat-label">⏳ ${t('stat_outstanding')}</div></div>
+    <div class="stat-card green"><div class="stat-num" style="color:var(--accent2)">${returned}</div><div class="stat-label">✅ ${t('stat_returned')}</div></div>
+    <div class="stat-card red"><div class="stat-num" style="color:var(--danger)">${lost}</div><div class="stat-label">🚨 ${t('stat_lost')}</div></div>
+    <div class="stat-card"><div class="stat-num">${depts}</div><div class="stat-label">🏭 ${t('stat_depts')}</div></div>
+    <div class="stat-card red"><div class="stat-num" style="color:var(--danger)">${overdue}</div><div class="stat-label">🔴 ${t('stat_overdue')}</div></div>
+  `;
+
+  renderDeptChart();
+  renderTrendChart();
+  renderDashAnomalies();
+  renderOutstandingTable();
+}
+
+function filterByPeriod(rs, period) {
+  const now = new Date();
+  return rs.filter(r => {
+    const d = new Date(r.issue_date);
+    if(period === 'day') return d.toDateString() === now.toDateString();
+    if(period === 'week') { const w = new Date(now); w.setDate(now.getDate()-7); return d >= w; }
+    if(period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    if(period === 'year') return d.getFullYear() === now.getFullYear();
+    return true;
+  });
+}
+
+function setDashPeriod(p, btn) {
+  dashPeriod = p;
+  document.querySelectorAll('#section-dashboard .period-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderDeptChart();
+}
+
+function renderDeptChart() {
+  const rs = filterByPeriod(records, dashPeriod);
+  const counts = {};
+  DEPTS.forEach(d => counts[d] = 0);
+  rs.forEach(r => { if(counts[r.dept] !== undefined) counts[r.dept]++; });
+  const labels = DEPTS.filter(d => counts[d] > 0);
+  const data = labels.map(d => counts[d]);
+  const colors = labels.map(d => DEPT_COLORS[d]);
+  if(deptChart) deptChart.destroy();
+  const ctx = document.getElementById('deptChart').getContext('2d');
+  deptChart = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:2, borderColor:'#fff' }] }, options:{ plugins:{ legend:{ position:'right', labels:{ font:{ size:11 } } } }, cutout:'60%' } });
+}
+
+function renderTrendChart() {
+  const months = [];
+  const now = new Date();
+  for(let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    months.push({ label: `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}`, year: d.getFullYear(), month: d.getMonth() });
+  }
+  const issued = months.map(m => records.filter(r => { const d = new Date(r.issue_date); return d.getFullYear()===m.year && d.getMonth()===m.month; }).length);
+  const ret = months.map(m => records.filter(r => r.return_date && (() => { const d = new Date(r.return_date); return d.getFullYear()===m.year && d.getMonth()===m.month; })()).length);
+  if(trendChart) trendChart.destroy();
+  const ctx = document.getElementById('trendChart').getContext('2d');
+  trendChart = new Chart(ctx, { type:'line', data:{ labels: months.map(m=>m.label), datasets:[
+    { label:'發出', data:issued, borderColor:'#e8640a', backgroundColor:'rgba(232,100,10,0.1)', tension:0.4, fill:true },
+    { label:'歸還', data:ret, borderColor:'#2e8b6e', backgroundColor:'rgba(46,139,110,0.1)', tension:0.4, fill:true }
+  ]}, options:{ plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } } });
+}
+
+function renderDashAnomalies() {
+  const anomalies = getAnomalies();
+  const el = document.getElementById('dash-anomaly-list');
+  if(!anomalies.length) { el.innerHTML = '<div style="color:var(--accent2)">✅ 暫無異常</div>'; return; }
+  el.innerHTML = '<div class="anomaly-list">' + anomalies.slice(0,5).map(a => `<div class="anomaly-item ${a.critical?'critical':''}">${a.icon} ${a.msg}</div>`).join('') + '</div>';
+}
+
+function renderOutstandingTable() {
+  const rs = records.filter(r => getStatus(r) === 'outstanding');
+  const wrap = document.getElementById('outstanding-table-wrap');
+  if(!rs.length) { wrap.innerHTML = '<div style="padding:16px;color:var(--accent2)">✅ 全部鑰匙已歸還</div>'; return; }
+  wrap.innerHTML = `<table>
+    <thead><tr><th>${t('col_key_no')}</th><th>${t('col_dept')}</th><th>${t('col_recipient')}</th><th>${t('col_issue_date')}</th><th>時長</th><th>操作</th></tr></thead>
+    <tbody>${rs.slice(0,10).map(r => {
+      const hrs = getHoursOutstanding(r);
+      return `<tr>
+        <td><b>${r.key_no}</b></td>
+        <td><span class="dept-badge" style="background:${DEPT_COLORS[r.dept]||'#888'}">${r.dept}</span></td>
+        <td>${r.recipient_name||''}</td>
+        <td>${r.issue_date}</td>
+        <td style="color:${hrs>8?'var(--danger)':hrs>4?'var(--warn)':'inherit'}">${hrs.toFixed(1)}h</td>
+        <td><button class="btn btn-success btn-sm" onclick="setReturnNow('${r.id}')">↩️ 歸還</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table>`;
+}
+
+function getHoursOutstanding(r) {
+  const issued = new Date(r.issue_date + 'T' + (r.issue_time || '08:00'));
+  return (Date.now() - issued.getTime()) / 3600000;
+}
+
+// ==================== ANALYTICS ====================
+let aCharts = {};
+function renderAnalytics() {
+  const now = new Date();
+  const mVal = document.getElementById('analytics-month').value;
+  let rs = [...records];
+  if(analyticsPeriod === 'month' && mVal) {
+    rs = rs.filter(r => r.issue_date && r.issue_date.startsWith(mVal));
+  } else {
+    rs = filterByPeriod(rs, analyticsPeriod);
+  }
+
+  const total = rs.length;
+  const outstanding = rs.filter(r => getStatus(r) === 'outstanding').length;
+  const returned = rs.filter(r => getStatus(r) === 'returned').length;
+  const lost = rs.filter(r => getStatus(r) === 'lost').length;
+  document.getElementById('analytics-stats').innerHTML = `
+    <div class="stat-card blue"><div class="stat-num">${total}</div><div class="stat-label">${t('stat_total')}</div></div>
+    <div class="stat-card warn"><div class="stat-num" style="color:var(--warn)">${outstanding}</div><div class="stat-label">${t('stat_outstanding')}</div></div>
+    <div class="stat-card green"><div class="stat-num" style="color:var(--accent2)">${returned}</div><div class="stat-label">${t('stat_returned')}</div></div>
+    <div class="stat-card red"><div class="stat-num" style="color:var(--danger)">${lost}</div><div class="stat-label">${t('stat_lost')}</div></div>
+  `;
+
+  // Dept chart
+  const deptCounts = {}; DEPTS.forEach(d => deptCounts[d]=0);
+  rs.forEach(r => { if(deptCounts[r.dept]!==undefined) deptCounts[r.dept]++; });
+  const dLabels = DEPTS.filter(d => deptCounts[d]>0);
+  if(aCharts.dept) aCharts.dept.destroy();
+  aCharts.dept = new Chart(document.getElementById('analyticsDeptChart').getContext('2d'), {
+    type:'bar', data:{ labels:dLabels, datasets:[{ data:dLabels.map(d=>deptCounts[d]), backgroundColor:dLabels.map(d=>DEPT_COLORS[d]), borderRadius:6 }] },
+    options:{ plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,ticks:{stepSize:1}} } }
+  });
+
+  // Key type chart
+  const typeCounts = {};
+  rs.forEach(r => { typeCounts[r.key_type] = (typeCounts[r.key_type]||0)+1; });
+  const tLabels = Object.keys(typeCounts);
+  if(aCharts.type) aCharts.type.destroy();
+  aCharts.type = new Chart(document.getElementById('analyticsTypeChart').getContext('2d'), {
+    type:'pie', data:{ labels:tLabels, datasets:[{ data:tLabels.map(k=>typeCounts[k]), backgroundColor:['#3498db','#e67e22','#9b59b6','#27ae60','#e91e63','#f39c12','#1abc9c','#e74c3c','#95a5a6','#2c3e50'], borderWidth:2, borderColor:'#fff' }] },
+    options:{ plugins:{ legend:{ position:'right', labels:{ font:{size:10} } } } }
+  });
+
+  // Monthly trend
+  const months6 = [];
+  for(let i=5;i>=0;i--) { const d=new Date(now.getFullYear(),now.getMonth()-i,1); months6.push({label:`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}`,year:d.getFullYear(),month:d.getMonth()}); }
+  const monthIssued = months6.map(m => records.filter(r=>{const d=new Date(r.issue_date);return d.getFullYear()===m.year&&d.getMonth()===m.month}).length);
+  if(aCharts.month) aCharts.month.destroy();
+  aCharts.month = new Chart(document.getElementById('analyticsMonthChart').getContext('2d'), {
+    type:'line', data:{ labels:months6.map(m=>m.label), datasets:[{ label:'發出', data:monthIssued, borderColor:'#1a3a5c', backgroundColor:'rgba(26,58,92,0.1)', fill:true, tension:0.4 }] },
+    options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
+  });
+
+  // Duration chart
+  const deptDuration = {};
+  DEPTS.forEach(d => deptDuration[d] = []);
+  rs.filter(r => r.return_date && r.issue_date).forEach(r => {
+    const issued = new Date(r.issue_date+'T'+(r.issue_time||'08:00'));
+    const ret = new Date(r.return_date+'T'+(r.return_time||'17:00'));
+    const hrs = (ret-issued)/3600000;
+    if(hrs > 0 && hrs < 720) deptDuration[r.dept].push(hrs);
+  });
+  const durLabels = DEPTS.filter(d => deptDuration[d].length>0);
+  const durData = durLabels.map(d => { const a=deptDuration[d]; return a.reduce((s,v)=>s+v,0)/a.length; });
+  if(aCharts.duration) aCharts.duration.destroy();
+  aCharts.duration = new Chart(document.getElementById('analyticsDurationChart').getContext('2d'), {
+    type:'bar', data:{ labels:durLabels, datasets:[{ label:'平均時長(h)', data:durData.map(v=>+v.toFixed(1)), backgroundColor:'rgba(46,139,110,0.7)', borderRadius:6 }] },
+    options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+  });
+
+  // Dept summary table
+  let tbl = `<table><thead><tr><th>部門</th><th>發出次數</th><th>已歸還</th><th>未歸還</th><th>遺失</th><th>歸還率</th></tr></thead><tbody>`;
+  let totIssued=0,totRet=0,totOut=0,totLost=0;
+  DEPTS.forEach(dept => {
+    const drs = rs.filter(r => r.dept===dept);
+    if(!drs.length) return;
+    const di=drs.length, dr=drs.filter(r=>getStatus(r)==='returned').length, do_=drs.filter(r=>getStatus(r)==='outstanding').length, dl=drs.filter(r=>getStatus(r)==='lost').length;
+    totIssued+=di; totRet+=dr; totOut+=do_; totLost+=dl;
+    const rate = di>0 ? ((dr/di)*100).toFixed(0) : 0;
+    tbl += `<tr><td><span class="dept-badge" style="background:${DEPT_COLORS[dept]}">${dept}</span></td><td>${di}</td><td style="color:var(--accent2)">${dr}</td><td style="color:var(--warn)">${do_}</td><td style="color:var(--danger)">${dl}</td><td>${rate}%</td></tr>`;
+  });
+  tbl += `<tr class="summary-row"><td>合計</td><td>${totIssued}</td><td>${totRet}</td><td>${totOut}</td><td>${totLost}</td><td>${totIssued>0?((totRet/totIssued)*100).toFixed(0):0}%</td></tr>`;
+  tbl += '</tbody></table>';
+  document.getElementById('analytics-dept-table').innerHTML = tbl;
+}
+
+function setAnalyticsPeriod(p, btn) {
+  analyticsPeriod = p;
+  document.querySelectorAll('#section-analytics .period-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAnalytics();
+}
+
+// ==================== ANOMALY ====================
+function getOverdueRecords() {
+  const hours = parseInt(document.getElementById('overdue-hours')?.value || 8);
+  return records.filter(r => getStatus(r)==='outstanding' && getHoursOutstanding(r) > hours);
+}
+
+function getAnomalies() {
+  const anomalies = [];
+  const hours = parseInt(document.getElementById('overdue-hours')?.value || 8);
+  
+  // Overdue
+  records.filter(r => getStatus(r)==='outstanding' && getHoursOutstanding(r) > hours).forEach(r => {
+    anomalies.push({ icon:'🔴', critical:true, msg:`超時未歸還: 鑰匙 ${r.key_no} (${r.dept}) - ${r.recipient_name||r.recipient_id||'未知'} - 已借出 ${getHoursOutstanding(r).toFixed(1)} 小時` });
+  });
+
+  // Missing ID
+  records.filter(r => !r.recipient_id && !r.return_date).forEach(r => {
+    anomalies.push({ icon:'⚠️', critical:false, msg:`記錄缺少員工ID: 鑰匙 ${r.key_no} (${r.dept}) 發出日期 ${r.issue_date}` });
+  });
+
+  // Lost keys
+  records.filter(r => r.return_condition==='遺失').forEach(r => {
+    anomalies.push({ icon:'🚨', critical:true, msg:`鑰匙遺失: ${r.key_no} (${r.dept}) - ${r.recipient_name||''} ${r.issue_date}` });
+  });
+
+  // Damaged
+  records.filter(r => r.return_condition==='損壞').forEach(r => {
+    anomalies.push({ icon:'❌', critical:false, msg:`鑰匙損壞歸還: ${r.key_no} (${r.dept}) - ${r.issue_date}` });
+  });
+
+  // Duplicate key outstanding
+  const outstanding = records.filter(r => getStatus(r)==='outstanding');
+  const keyMap = {};
+  outstanding.forEach(r => { keyMap[r.key_no] = (keyMap[r.key_no]||0)+1; });
+  Object.entries(keyMap).filter(([k,v]) => v>1).forEach(([k,v]) => {
+    anomalies.push({ icon:'⚠️', critical:true, msg:`重複借出: 鑰匙 ${k} 同時有 ${v} 筆未歸還記錄` });
+  });
+
+  return anomalies;
+}
+
+function renderAnomalies() {
+  const anomalies = getAnomalies();
+  const el = document.getElementById('anomaly-list-full');
+  if(!anomalies.length) { el.innerHTML = '<div style="color:var(--accent2);padding:20px">✅ 暫無異常警報</div>'; renderAnomalyBadge(); return; }
+  el.innerHTML = '<div class="anomaly-list">' + anomalies.map(a => `<div class="anomaly-item ${a.critical?'critical':''}">${a.icon} ${a.msg}</div>`).join('') + '</div>';
+  renderAnomalyBadge();
+}
+
+function renderAnomalyBadge() {
+  const n = getAnomalies().length;
+  const badge = document.getElementById('anomaly-badge');
+  badge.textContent = n;
+  badge.style.display = n ? 'inline' : 'none';
+}
+
+// ==================== IMPORT ====================
+function handleImportDrop(e) {
+  e.preventDefault();
+  document.getElementById('import-zone').classList.remove('dragover');
+  const file = e.dataTransfer.files[0];
+  if(file) processImportFile(file);
+}
+function handleImportFile(e) { processImportFile(e.target.files[0]); e.target.value=''; }
+
+function processImportFile(file) {
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, { type:'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+      // Find header row (row with 'Date' or '發出' or 'issued')
+      let headerRow = -1;
+      for(let i=0;i<Math.min(10,raw.length);i++) {
+        const r = raw[i].join(' ').toLowerCase();
+        if(r.includes('issued') || r.includes('發出') || r.includes('key')) { headerRow = i; break; }
+      }
+      const dataRows = raw.slice(headerRow+1).filter(r => r.some(c => c !== ''));
+      let imported = 0;
+      dataRows.forEach(row => {
+        const issue_date = parseDate(row[0]);
+        const key_no = String(row[2]||'').trim();
+        if(!issue_date && !key_no) return;
+        const rec = {
+          id: 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2),
+          createdAt: new Date().toISOString(),
+          issue_date: issue_date || '',
+          issue_time: String(row[1]||'').trim(),
+          key_no: key_no,
+          dept: String(row[3]||'').trim(),
+          recipient_id: String(row[4]||'').trim(),
+          recipient_name: String(row[6]||'').trim() || String(row[8]||'').trim(),
+          key_type: '一般鑰匙',
+          key_condition: '良好',
+          return_date: parseDate(row[6]),
+          return_time: String(row[7]||'').trim(),
+          receiver_name: String(row[8]||'').trim(),
+          receiver_id: String(row[9]||'').trim(),
+          remarks: String(row[11]||'').trim(),
+          imported: true,
+        };
+        records.push(rec);
+        imported++;
+      });
+      saveData();
+      renderImportHistory();
+      renderAnomalyBadge();
+      showToast(`匯入成功: ${imported} 筆記錄`, 'success');
+    } catch(err) {
+      showToast('匯入失敗: ' + err.message, 'error');
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function parseDate(v) {
+  if(!v) return '';
+  if(typeof v === 'number') {
+    const d = XLSX.SSF.parse_date_code(v);
+    if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
+  }
+  const s = String(v).trim();
+  if(/^\d{4}[-/]\d{2}[-/]\d{2}/.test(s)) return s.replace(/\//g,'-').slice(0,10);
+  return '';
+}
+
+function renderImportHistory() {
+  const months = {};
+  records.filter(r => r.imported).forEach(r => {
+    const m = (r.issue_date||'').slice(0,7) || '未知';
+    months[m] = (months[m]||0)+1;
+  });
+  const el = document.getElementById('import-month-list');
+  if(!Object.keys(months).length) { el.innerHTML = '<div style="color:var(--text2)">尚無匯入記錄</div>'; return; }
+  el.innerHTML = Object.entries(months).sort((a,b)=>b[0].localeCompare(a[0])).map(([m,c]) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg2)">
+      <span>📅 <b>${m}</b> — ${c} 筆記錄</span>
+      <button class="btn btn-danger btn-sm" onclick="deleteImportMonth('${m}')">🗑️ 刪除此月</button>
+    </div>`).join('');
+}
+
+function deleteImportMonth(m) {
+  openConfirm(`確認刪除 ${m} 的所有匯入記錄?`, () => {
+    records = records.filter(r => !(r.imported && (r.issue_date||'').startsWith(m)));
+    saveData(); renderImportHistory(); renderAnomalyBadge();
+    showToast('已刪除', 'success');
+  });
+}
+
+// ==================== EXPORT ====================
+function exportExcel() {
+  const rs = filterRecords();
+  const headers = ['#','發出日期','發出時間','鑰匙號碼','部門','類型','收受人姓名','收受人ID','鑰匙狀態','歸還日期','歸還時間','收受人','收受人ID','歸還狀態','備注'];
+  const data = [headers, ...rs.map((r,i) => [i+1,r.issue_date,r.issue_time,r.key_no,r.dept,r.key_type,r.recipient_name,r.recipient_id,r.key_condition,r.return_date,r.return_time,r.receiver_name,r.receiver_id,r.return_condition,r.remarks])];
+  const ws = XLSX.utils.aoa_to_sheet(data);
+  ws['!cols'] = headers.map((_,i) => ({ wch: i===0?4:i<4?15:20 }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Key Movement');
+  XLSX.writeFile(wb, `VRT-R-GA-07_${new Date().toISOString().slice(0,10)}.xlsx`);
+  showToast('已匯出 Excel ✓', 'success');
+}
+
+function exportAllData() {
+  const data = JSON.stringify(records, null, 2);
+  const a = document.createElement('a');
+  a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
+  a.download = `VRT-KeyData-${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  showToast('已匯出全部數據 ✓', 'success');
+}
+
+// ==================== TELEGRAM ====================
+function getTgSettings() {
+  return { token: localStorage.getItem('tg_token')||'', chat: localStorage.getItem('tg_chat')||'' };
+}
+function saveTgSettings() {
+  localStorage.setItem('tg_token', document.getElementById('tg-token').value.trim());
+  localStorage.setItem('tg_chat', document.getElementById('tg-chat').value.trim());
+  showToast('Telegram 設置已儲存 ✓', 'success');
+}
+
+async function sendToTelegram() {
+  const { token, chat } = getTgSettings();
+  if(!token || !chat) { showToast('請先在設置中填寫 Telegram Bot Token 和 Chat ID', 'warn'); return; }
+  const rs = filterRecords().slice(0,20);
+  const outstanding = rs.filter(r => getStatus(r)==='outstanding').length;
+  let msg = `🔑 *VRT 鑰匙動態報告*\n📅 ${new Date().toLocaleString('zh-TW')}\n\n`;
+  msg += `📊 記錄數: ${rs.length} | ⏳ 未歸還: ${outstanding}\n\n`;
+  rs.slice(0,15).forEach(r => {
+    const st = getStatus(r);
+    const icon = st==='returned'?'✅':st==='lost'?'🚨':'⏳';
+    msg += `${icon} *${r.key_no}* [${r.dept}] ${r.recipient_name||''} ${r.issue_date}\n`;
+  });
+  if(rs.length > 15) msg += `...及 ${rs.length-15} 筆更多記錄\n`;
+  await sendTgMessage(token, chat, msg);
+}
+
+async function sendAnalyticsTelegram() {
+  const { token, chat } = getTgSettings();
+  if(!token || !chat) { showToast('請先設置 Telegram', 'warn'); return; }
+  const anomalies = getAnomalies();
+  let msg = `📈 *VRT 鑰匙管理分析報告*\n📅 ${new Date().toLocaleString('zh-TW')}\n\n`;
+  msg += `📊 總記錄: ${records.length}\n`;
+  msg += `⏳ 未歸還: ${records.filter(r=>getStatus(r)==='outstanding').length}\n`;
+  msg += `✅ 已歸還: ${records.filter(r=>getStatus(r)==='returned').length}\n`;
+  msg += `🚨 遺失: ${records.filter(r=>getStatus(r)==='lost').length}\n\n`;
+  if(anomalies.length) {
+    msg += `⚠️ *異常事項 (${anomalies.length})*\n`;
+    anomalies.slice(0,5).forEach(a => { msg += `${a.icon} ${a.msg}\n`; });
+  }
+  await sendTgMessage(token, chat, msg);
+}
+
+async function testTelegram() {
+  const token = document.getElementById('tg-token').value.trim();
+  const chat = document.getElementById('tg-chat').value.trim();
+  if(!token || !chat) { showToast('請填寫 Token 和 Chat ID', 'warn'); return; }
+  await sendTgMessage(token, chat, '✅ VRT 鑰匙管理系統 - 連接測試成功！');
+}
+
+async function sendTgMessage(token, chat, text) {
+  try {
+    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ chat_id:chat, text, parse_mode:'Markdown' })
+    });
+    const d = await r.json();
+    if(d.ok) showToast('Telegram 發送成功 ✓', 'success');
+    else showToast('發送失敗: ' + d.description, 'error');
+  } catch(e) {
+    showToast('網絡錯誤: ' + e.message, 'error');
+  }
+}
+
+// ==================== SETTINGS ====================
+function renderSettings() {
+  const { token, chat } = getTgSettings();
+  document.getElementById('tg-token').value = token;
+  document.getElementById('tg-chat').value = chat;
+  document.getElementById('record-count-info').textContent = `數據庫: ${records.length} 筆記錄`;
+}
+
+function clearAllData() {
+  openConfirm('⚠️ 確認清除所有數據? 此操作不可恢復！', () => {
+    records = []; saveData(); renderAnomalyBadge();
+    showToast('已清除所有數據', 'warn');
+  });
+}
+
+// ==================== MODAL ====================
+function openConfirm(msg, cb) {
+  document.getElementById('confirm-msg').textContent = msg;
+  confirmCb = cb;
+  document.getElementById('confirm-modal').classList.add('open');
+}
+function confirmAction() { if(confirmCb) confirmCb(); closeModal('confirm-modal'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ==================== TOAST ====================
+let toastTimer;
+function showToast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' '+type : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// ==================== INIT ====================
+function renderAll() {
+  renderDashboard();
+  renderList();
+  renderAnomalyBadge();
+}
+
+// Set today's date on form
+function initForm() {
+  const today = new Date().toISOString().split('T')[0];
+  const now = new Date().toTimeString().slice(0,5);
+  document.getElementById('f_issue_date').value = today;
+  document.getElementById('f_issue_time').value = now;
+  const ym = today.slice(0,7);
+  document.getElementById('filter-month').value = ym;
+  document.getElementById('analytics-month').value = ym;
+}
+
+// Load demo data if empty
+function loadDemoData() {
+  if(records.length > 0) return;
+  const depts = ['倉庫','裁剪','車間','成品','馬克','品管','外籍宿舍','辦公室','行政中心'];
+  const types = ['一般鑰匙','卡片鑰匙','掛鎖鑰匙','宿舍門鑰匙','設備鑰匙'];
+  const names = ['陳大明','Sok Vichea','Phal Dara','李小花','Thy Bunna','王建國','Rith Sothy','黃美麗'];
+  const now = new Date();
+  for(let i=0; i<20; i++) {
+    const d = new Date(now); d.setDate(d.getDate() - Math.floor(Math.random()*30));
+    const dept = depts[Math.floor(Math.random()*depts.length)];
+    const returned = Math.random() > 0.35;
+    const lost = !returned && Math.random() > 0.9;
+    const rd = returned ? new Date(d.getTime() + Math.random()*8*3600000) : null;
+    records.push({
+      id: 'demo_' + i,
+      createdAt: d.toISOString(),
+      issue_date: d.toISOString().split('T')[0],
+      issue_time: `0${7+Math.floor(Math.random()*10)}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`,
+      key_no: `K-${String(i+1).padStart(3,'0')}`,
+      dept,
+      recipient_id: `EMP${String(Math.floor(Math.random()*999)+1).padStart(3,'0')}`,
+      recipient_name: names[Math.floor(Math.random()*names.length)],
+      key_type: types[Math.floor(Math.random()*types.length)],
+      key_condition: '良好',
+      return_date: rd ? rd.toISOString().split('T')[0] : '',
+      return_time: rd ? rd.toTimeString().slice(0,5) : '',
+      receiver_name: returned ? '保安員' : '',
+      receiver_id: returned ? 'SEC001' : '',
+      return_condition: lost ? '遺失' : returned ? '良好' : '',
+      remarks: '',
+    });
+  }
+  saveData();
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadDemoData();
+  initForm();
+  renderAll();
+  renderAnomalyBadge();
+});
+</script>
+</body>
+</html>

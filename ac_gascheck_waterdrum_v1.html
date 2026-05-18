@@ -1,0 +1,1500 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Water Drum Record 水鼓記錄 កំណត់ត្រាធុងទឹក</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --blue-50: #eff6ff;
+    --blue-100: #dbeafe;
+    --blue-200: #bfdbfe;
+    --blue-400: #60a5fa;
+    --blue-500: #3b82f6;
+    --blue-600: #2563eb;
+    --blue-700: #1d4ed8;
+    --teal-400: #2dd4bf;
+    --teal-500: #14b8a6;
+    --teal-600: #0d9488;
+    --slate-50: #f8fafc;
+    --slate-100: #f1f5f9;
+    --slate-200: #e2e8f0;
+    --slate-300: #cbd5e1;
+    --slate-400: #94a3b8;
+    --slate-500: #64748b;
+    --slate-600: #475569;
+    --slate-700: #334155;
+    --slate-800: #1e293b;
+    --amber-50: #fffbeb;
+    --amber-100: #fef3c7;
+    --amber-400: #fbbf24;
+    --amber-500: #f59e0b;
+    --red-50: #fef2f2;
+    --red-100: #fee2e2;
+    --red-400: #f87171;
+    --red-500: #ef4444;
+    --red-600: #dc2626;
+    --green-50: #f0fdf4;
+    --green-100: #dcfce7;
+    --green-500: #22c55e;
+    --green-600: #16a34a;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow: 0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 6px rgba(0,0,0,0.07), 0 2px 4px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px rgba(0,0,0,0.1), 0 4px 6px rgba(0,0,0,0.05);
+    --radius: 10px;
+    --radius-lg: 14px;
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: 'DM Sans', 'Noto Sans SC', 'Noto Sans Khmer', sans-serif;
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 30%, #f0fdf4 100%);
+    min-height: 100vh;
+    color: var(--slate-700);
+    font-size: 14px;
+  }
+  /* HEADER */
+  .header {
+    background: white;
+    border-bottom: 1px solid var(--slate-200);
+    box-shadow: var(--shadow-md);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .header-inner {
+    max-width: 1400px; margin: 0 auto;
+    padding: 12px 20px;
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+  }
+  .app-logo {
+    display: flex; align-items: center; gap: 10px;
+  }
+  .app-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--blue-500), var(--teal-500));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; color: white; flex-shrink: 0;
+  }
+  .app-title { font-size: 16px; font-weight: 700; color: var(--slate-800); line-height: 1.2; }
+  .app-subtitle { font-size: 11px; color: var(--slate-400); }
+  .header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .lang-switcher { display: flex; background: var(--slate-100); border-radius: 8px; padding: 2px; gap: 2px; }
+  .lang-btn {
+    padding: 5px 10px; border: none; background: transparent;
+    border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500;
+    color: var(--slate-500); transition: all .2s;
+  }
+  .lang-btn.active { background: white; color: var(--blue-600); box-shadow: var(--shadow-sm); font-weight: 600; }
+  /* NAV TABS */
+  .nav-tabs {
+    background: white; border-bottom: 1px solid var(--slate-200);
+    display: flex; gap: 0; overflow-x: auto;
+  }
+  .nav-tabs::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    padding: 12px 20px; border: none; background: transparent; cursor: pointer;
+    font-size: 13px; font-weight: 500; color: var(--slate-500);
+    border-bottom: 3px solid transparent; transition: all .2s; white-space: nowrap;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .tab-btn.active { color: var(--blue-600); border-bottom-color: var(--blue-600); background: var(--blue-50); }
+  .tab-btn:hover:not(.active) { color: var(--slate-700); background: var(--slate-50); }
+  /* MAIN */
+  .main { max-width: 1400px; margin: 0 auto; padding: 20px; }
+  /* CONTROLS BAR */
+  .controls-bar {
+    background: white; border-radius: var(--radius-lg); padding: 16px 20px;
+    margin-bottom: 20px; box-shadow: var(--shadow-md);
+    display: flex; flex-wrap: wrap; gap: 12px; align-items: center;
+  }
+  .ctrl-group { display: flex; align-items: center; gap: 8px; }
+  .ctrl-label { font-size: 12px; font-weight: 600; color: var(--slate-500); text-transform: uppercase; letter-spacing: .5px; }
+  select, input[type="text"], input[type="number"], input[type="time"], input[type="date"] {
+    border: 1.5px solid var(--slate-200); border-radius: 8px; padding: 7px 12px;
+    font-size: 13px; color: var(--slate-700); background: var(--slate-50);
+    outline: none; transition: border-color .2s;
+    font-family: inherit;
+  }
+  select:focus, input:focus { border-color: var(--blue-400); background: white; }
+  .btn {
+    padding: 8px 16px; border: none; border-radius: 8px; cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: all .2s;
+    display: inline-flex; align-items: center; gap: 6px; font-family: inherit;
+  }
+  .btn-primary { background: var(--blue-600); color: white; }
+  .btn-primary:hover { background: var(--blue-700); transform: translateY(-1px); box-shadow: var(--shadow-md); }
+  .btn-teal { background: var(--teal-500); color: white; }
+  .btn-teal:hover { background: var(--teal-600); }
+  .btn-amber { background: var(--amber-500); color: white; }
+  .btn-amber:hover { background: #d97706; }
+  .btn-red { background: var(--red-500); color: white; }
+  .btn-red:hover { background: var(--red-600); }
+  .btn-green { background: var(--green-500); color: white; }
+  .btn-green:hover { background: var(--green-600); }
+  .btn-ghost {
+    background: transparent; color: var(--slate-600); border: 1.5px solid var(--slate-200);
+  }
+  .btn-ghost:hover { background: var(--slate-50); border-color: var(--slate-300); }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+  /* SUMMARY CARDS */
+  .summary-grid {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px; margin-bottom: 20px;
+  }
+  .summary-card {
+    background: white; border-radius: var(--radius-lg); padding: 16px;
+    box-shadow: var(--shadow-md); border-left: 4px solid transparent;
+  }
+  .summary-card.blue { border-left-color: var(--blue-500); }
+  .summary-card.teal { border-left-color: var(--teal-500); }
+  .summary-card.amber { border-left-color: var(--amber-500); }
+  .summary-card.green { border-left-color: var(--green-500); }
+  .summary-card.red { border-left-color: var(--red-500); }
+  .card-label { font-size: 11px; font-weight: 600; color: var(--slate-400); text-transform: uppercase; letter-spacing: .5px; margin-bottom: 4px; }
+  .card-value { font-size: 22px; font-weight: 700; color: var(--slate-800); }
+  .card-sub { font-size: 11px; color: var(--slate-400); margin-top: 2px; }
+  /* TABLE */
+  .table-wrap {
+    background: white; border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-md); overflow: hidden;
+  }
+  .table-header-bar {
+    padding: 14px 20px; border-bottom: 1px solid var(--slate-100);
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+  }
+  .table-title { font-size: 15px; font-weight: 700; color: var(--slate-800); }
+  .section-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+  }
+  .badge-factory { background: var(--blue-100); color: var(--blue-700); }
+  .badge-staff { background: var(--teal-100); color: var(--teal-700); }
+  table { width: 100%; border-collapse: collapse; }
+  thead tr { background: var(--slate-50); }
+  thead th {
+    padding: 10px 12px; text-align: center; font-size: 11px; font-weight: 700;
+    color: var(--slate-500); text-transform: uppercase; letter-spacing: .4px;
+    border-bottom: 2px solid var(--slate-200);
+  }
+  thead th.section-factory { background: #eff6ff; color: var(--blue-700); }
+  thead th.section-staff { background: #f0fdfa; color: var(--teal-700); }
+  tbody tr { border-bottom: 1px solid var(--slate-100); transition: background .15s; }
+  tbody tr:hover { background: var(--slate-50); }
+  tbody td { padding: 8px 12px; text-align: center; font-size: 13px; }
+  tbody td.date-cell { font-weight: 700; color: var(--slate-800); background: var(--slate-50); width: 50px; }
+  tbody td input[type="time"], tbody td input[type="number"] {
+    width: 100%; padding: 5px 8px; border: 1.5px solid transparent; border-radius: 6px;
+    font-size: 13px; text-align: center; background: transparent;
+  }
+  tbody td input:focus { border-color: var(--blue-300); background: white; }
+  tbody td .ttl-value { font-weight: 600; color: var(--slate-700); }
+  .total-row { background: linear-gradient(135deg, var(--blue-50), var(--teal-50)) !important; font-weight: 700; }
+  .total-row td { color: var(--slate-800) !important; font-weight: 700 !important; border-top: 2px solid var(--slate-300); }
+  .anomaly-row { background: var(--amber-50) !important; }
+  .anomaly-row td { color: var(--amber-700) !important; }
+  .anomaly-flag { display: inline-block; background: var(--amber-400); color: white; border-radius: 4px; padding: 1px 5px; font-size: 10px; margin-left: 4px; }
+  /* ANALYSIS */
+  .analysis-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-top: 0; }
+  @media(max-width: 768px) { .analysis-grid { grid-template-columns: 1fr; } }
+  .chart-card {
+    background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
+    padding: 20px;
+  }
+  .chart-title { font-size: 14px; font-weight: 700; color: var(--slate-700); margin-bottom: 16px; }
+  .bar-chart { display: flex; flex-direction: column; gap: 8px; }
+  .bar-row { display: flex; align-items: center; gap: 10px; }
+  .bar-label { width: 60px; font-size: 12px; color: var(--slate-500); text-align: right; flex-shrink: 0; }
+  .bar-track { flex: 1; background: var(--slate-100); border-radius: 4px; height: 22px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 600; color: white; transition: width .5s ease; }
+  .bar-factory { background: linear-gradient(90deg, var(--blue-400), var(--blue-600)); }
+  .bar-staff { background: linear-gradient(90deg, var(--teal-400), var(--teal-600)); }
+  .bar-val { width: 80px; font-size: 12px; font-weight: 600; color: var(--slate-700); flex-shrink: 0; }
+  /* HISTORY */
+  .history-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+  .history-card {
+    background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 14px; cursor: pointer; transition: all .2s; border: 2px solid transparent;
+  }
+  .history-card:hover { box-shadow: var(--shadow-lg); border-color: var(--blue-200); transform: translateY(-2px); }
+  .history-card .hc-month { font-size: 16px; font-weight: 700; color: var(--slate-800); }
+  .history-card .hc-year { font-size: 12px; color: var(--slate-400); }
+  .history-card .hc-stats { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
+  .hc-stat { background: var(--slate-50); border-radius: 6px; padding: 4px 8px; font-size: 11px; color: var(--slate-600); }
+  .hc-stat span { font-weight: 700; color: var(--blue-600); }
+  /* ALERTS */
+  .anomaly-list { display: flex; flex-direction: column; gap: 8px; }
+  .anomaly-item {
+    background: var(--amber-50); border: 1px solid var(--amber-200); border-radius: 8px;
+    padding: 10px 14px; display: flex; align-items: flex-start; gap: 10px;
+  }
+  .anomaly-item.critical { background: var(--red-50); border-color: var(--red-200); }
+  .anomaly-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
+  .anomaly-text { font-size: 13px; color: var(--slate-700); }
+  .anomaly-text strong { color: var(--amber-700); }
+  .anomaly-item.critical .anomaly-text strong { color: var(--red-600); }
+  /* MODAL */
+  .modal-overlay {
+    display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    z-index: 200; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-lg);
+    padding: 28px; width: 90%; max-width: 480px; animation: slideUp .2s ease;
+  }
+  @keyframes slideUp { from { opacity:0; transform: translateY(20px); } to { opacity:1; transform: translateY(0); } }
+  .modal-title { font-size: 18px; font-weight: 700; color: var(--slate-800); margin-bottom: 18px; }
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--slate-500); margin-bottom: 5px; display: block; }
+  .form-input { width: 100%; padding: 9px 12px; border: 1.5px solid var(--slate-200); border-radius: 8px; font-size: 14px; font-family: inherit; }
+  .form-input:focus { outline: none; border-color: var(--blue-400); }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .modal-actions { display: flex; gap: 8px; margin-top: 20px; justify-content: flex-end; }
+  /* TELEGRAM */
+  .telegram-section { background: white; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); padding: 20px; margin-top: 20px; }
+  .tg-info { background: var(--blue-50); border: 1px solid var(--blue-100); border-radius: 8px; padding: 12px; font-size: 12px; color: var(--slate-600); margin-bottom: 14px; line-height: 1.6; }
+  /* EMPTY STATE */
+  .empty-state { text-align: center; padding: 60px 20px; color: var(--slate-400); }
+  .empty-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-text { font-size: 15px; font-weight: 600; color: var(--slate-500); }
+  .empty-sub { font-size: 13px; margin-top: 4px; }
+  /* TOAST */
+  #toast-container { position: fixed; bottom: 24px; right: 24px; z-index: 999; display: flex; flex-direction: column; gap: 8px; }
+  .toast {
+    background: var(--slate-800); color: white; border-radius: 10px;
+    padding: 12px 18px; font-size: 13px; font-weight: 500;
+    box-shadow: var(--shadow-lg); animation: toastIn .3s ease;
+    display: flex; align-items: center; gap: 8px; max-width: 320px;
+  }
+  .toast.success { background: var(--green-600); }
+  .toast.error { background: var(--red-600); }
+  .toast.warning { background: var(--amber-500); }
+  @keyframes toastIn { from { opacity:0; transform: translateX(40px); } to { opacity:1; transform: translateX(0); } }
+  /* PERIOD TOGGLE */
+  .period-toggle { display: flex; background: var(--slate-100); border-radius: 8px; padding: 2px; }
+  .period-btn { padding: 5px 12px; border: none; background: transparent; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--slate-500); transition: all .2s; }
+  .period-btn.active { background: white; color: var(--blue-600); box-shadow: var(--shadow-sm); font-weight: 600; }
+  /* RESPONSIVE */
+  @media(max-width: 600px) {
+    .header-inner { padding: 10px 14px; }
+    .main { padding: 14px; }
+    .tab-btn { padding: 10px 14px; font-size: 12px; }
+    table { font-size: 12px; }
+    thead th { padding: 8px 6px; font-size: 10px; }
+    tbody td { padding: 6px 6px; }
+    .analysis-grid { grid-template-columns: 1fr; }
+  }
+  .upload-zone {
+    border: 2.5px dashed var(--slate-300); border-radius: var(--radius-lg);
+    padding: 40px 20px; text-align: center; cursor: pointer; transition: all .2s;
+    background: var(--slate-50);
+  }
+  .upload-zone:hover { border-color: var(--blue-400); background: var(--blue-50); }
+  .upload-zone.drag-over { border-color: var(--blue-500); background: var(--blue-50); }
+  .upload-icon { font-size: 36px; margin-bottom: 10px; }
+  .upload-text { font-size: 14px; font-weight: 600; color: var(--slate-600); }
+  .upload-sub { font-size: 12px; color: var(--slate-400); margin-top: 4px; }
+  .hidden-file { display: none; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+  .section-divider {
+    display: flex; align-items: center; gap: 12px; margin: 8px 0 4px;
+  }
+  .section-divider span { font-size: 11px; font-weight: 700; color: var(--slate-400); white-space: nowrap; }
+  .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--slate-200); }
+  .filter-period-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-inner">
+    <div class="app-logo">
+      <div class="app-icon">💧</div>
+      <div>
+        <div class="app-title" id="app-title">Water Drum Record</div>
+        <div class="app-subtitle" id="app-subtitle">Factory & Staff House Tracking</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <div class="lang-switcher">
+        <button class="lang-btn" onclick="setLang('zh')">中文</button>
+        <button class="lang-btn active" onclick="setLang('en')">EN</button>
+        <button class="lang-btn" onclick="setLang('km')">ខ្មែរ</button>
+      </div>
+      <button class="btn btn-primary btn-sm" onclick="openAddModal()">＋ <span data-key="add_record">Add Record</span></button>
+      <button class="btn btn-teal btn-sm" onclick="exportExcel()">⬇ <span data-key="export">Export</span></button>
+    </div>
+  </div>
+</header>
+
+<!-- NAV TABS -->
+<nav class="nav-tabs">
+  <button class="tab-btn active" onclick="showTab('entry')" id="tab-entry">📋 <span data-key="tab_entry">Data Entry</span></button>
+  <button class="tab-btn" onclick="showTab('analysis')" id="tab-analysis">📊 <span data-key="tab_analysis">Analysis</span></button>
+  <button class="tab-btn" onclick="showTab('history')" id="tab-history">🗂 <span data-key="tab_history">History</span></button>
+  <button class="tab-btn" onclick="showTab('import')" id="tab-import">📥 <span data-key="tab_import">Import Excel</span></button>
+  <button class="tab-btn" onclick="showTab('alerts')" id="tab-alerts">⚠️ <span data-key="tab_alerts">Alerts</span> <span id="alert-badge" style="display:none;background:var(--red-500);color:white;border-radius:10px;padding:1px 6px;font-size:10px;"></span></button>
+  <button class="tab-btn" onclick="showTab('telegram')" id="tab-telegram">✈️ <span data-key="tab_telegram">Telegram</span></button>
+</nav>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ===== ENTRY TAB ===== -->
+  <div class="tab-panel active" id="panel-entry">
+    <div class="controls-bar">
+      <div class="ctrl-group">
+        <span class="ctrl-label" data-key="year">Year</span>
+        <select id="sel-year" onchange="loadMonthData()"></select>
+      </div>
+      <div class="ctrl-group">
+        <span class="ctrl-label" data-key="month">Month</span>
+        <select id="sel-month" onchange="loadMonthData()"></select>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="goToday()">📅 <span data-key="today">Today</span></button>
+      <button class="btn btn-ghost btn-sm" onclick="if(confirm(T('confirm_clear')))clearMonth()">🗑 <span data-key="clear_month">Clear Month</span></button>
+      <div style="margin-left:auto;font-size:12px;color:var(--slate-400)" id="last-saved-label"></div>
+    </div>
+
+    <div class="summary-grid" id="summary-cards"></div>
+
+    <div class="table-wrap">
+      <div class="table-header-bar">
+        <div style="display:flex;align-items:center;gap:10px">
+          <span class="table-title" data-key="monthly_record">Monthly Record</span>
+          <span class="section-badge badge-factory" data-key="factory">🏭 Factory</span>
+          <span class="section-badge badge-staff" data-key="staff_house">🏠 Staff House</span>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-ghost btn-sm" onclick="saveData()">💾 <span data-key="save">Save</span></button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table id="main-table">
+          <thead>
+            <tr>
+              <th rowspan="2" style="background:var(--slate-100);color:var(--slate-600)" data-key="date">Date</th>
+              <th colspan="4" class="section-factory">🏭 <span data-key="factory">Factory</span></th>
+              <th colspan="4" class="section-staff">🏠 <span data-key="staff_house">Staff House</span></th>
+              <th rowspan="2" style="background:var(--slate-100);width:60px;" data-key="action">Action</th>
+            </tr>
+            <tr>
+              <th class="section-factory" data-key="time">Time</th>
+              <th class="section-factory" data-key="qty">Qty</th>
+              <th class="section-factory" data-key="price">Price (Riels)</th>
+              <th class="section-factory" data-key="ttl">TTL (Riels)</th>
+              <th class="section-staff" data-key="time">Time</th>
+              <th class="section-staff" data-key="qty">Qty</th>
+              <th class="section-staff" data-key="price">Price (Riels)</th>
+              <th class="section-staff" data-key="ttl">TTL (Riels)</th>
+            </tr>
+          </thead>
+          <tbody id="table-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== ANALYSIS TAB ===== -->
+  <div class="tab-panel" id="panel-analysis">
+    <div class="controls-bar">
+      <div class="ctrl-group">
+        <span class="ctrl-label" data-key="view_by">View By</span>
+        <div class="period-toggle">
+          <button class="period-btn active" onclick="setAnalysisPeriod('month')" data-key="month" id="ap-month">Month</button>
+          <button class="period-btn" onclick="setAnalysisPeriod('quarter')" id="ap-quarter" data-key="quarter">Quarter</button>
+          <button class="period-btn" onclick="setAnalysisPeriod('year')" id="ap-year" data-key="year_period">Year</button>
+        </div>
+      </div>
+      <div class="ctrl-group">
+        <select id="an-year" onchange="renderAnalysis()"></select>
+        <select id="an-month" onchange="renderAnalysis()" id="an-month-sel"></select>
+      </div>
+    </div>
+    <div id="analysis-content"></div>
+  </div>
+
+  <!-- ===== HISTORY TAB ===== -->
+  <div class="tab-panel" id="panel-history">
+    <div class="controls-bar">
+      <span data-key="history_desc" style="font-size:13px;color:var(--slate-500)">All saved monthly records. Click a card to view details.</span>
+    </div>
+    <div class="history-grid" id="history-grid"></div>
+  </div>
+
+  <!-- ===== IMPORT TAB ===== -->
+  <div class="tab-panel" id="panel-import">
+    <div class="controls-bar">
+      <span style="font-size:13px;color:var(--slate-500)" data-key="import_desc">Import Excel files matching the water drum record format. Data will be saved by month.</span>
+    </div>
+    <div style="margin-bottom:20px">
+      <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondragleave="this.classList.remove('drag-over')"
+           ondrop="handleFileDrop(event)">
+        <div class="upload-icon">📂</div>
+        <div class="upload-text" data-key="click_upload">Click or drag Excel file here</div>
+        <div class="upload-sub" data-key="supports_format">Supports .xlsx format matching the water drum record template</div>
+      </div>
+      <input type="file" id="file-input" class="hidden-file" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+    </div>
+    <div id="import-preview"></div>
+  </div>
+
+  <!-- ===== ALERTS TAB ===== -->
+  <div class="tab-panel" id="panel-alerts">
+    <div class="controls-bar">
+      <div class="ctrl-group">
+        <span class="ctrl-label" data-key="check_scope">Check Scope</span>
+        <select id="alert-year" onchange="renderAlerts()"></select>
+        <select id="alert-month" onchange="renderAlerts()">
+          <option value="all" data-key="all_months">All Months</option>
+        </select>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="renderAlerts()">🔄 <span data-key="refresh">Refresh</span></button>
+    </div>
+    <div id="alerts-content"></div>
+  </div>
+
+  <!-- ===== TELEGRAM TAB ===== -->
+  <div class="tab-panel" id="panel-telegram">
+    <div class="telegram-section">
+      <div class="chart-title">✈️ <span data-key="telegram_send">Send to Telegram Group</span></div>
+      <div class="tg-info" data-key="tg_info">
+        To send reports to Telegram, you need a Bot Token and Chat ID.<br>
+        1. Create a bot via @BotFather and copy the token.<br>
+        2. Add the bot to your group. Send a message, then use getUpdates to find the chat_id.<br>
+        3. Enter both below and click Send.
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-key="bot_token">Bot Token</label>
+        <input class="form-input" id="tg-token" type="text" placeholder="123456789:AAxxxxxx..." oninput="saveTgConfig()">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-key="chat_id">Chat ID</label>
+        <input class="form-input" id="tg-chat" type="text" placeholder="-100xxxxxxxxxx" oninput="saveTgConfig()">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-key="report_type">Report Type</label>
+        <select class="form-input" id="tg-report-type">
+          <option value="summary" data-key="tg_monthly_summary">Monthly Summary</option>
+          <option value="daily" data-key="tg_daily_report">Today's Report</option>
+          <option value="anomaly" data-key="tg_anomaly_report">Anomaly Report</option>
+          <option value="full" data-key="tg_full_month">Full Month Data</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-key="select_period">Select Period</label>
+        <div style="display:flex;gap:8px">
+          <select class="form-input" id="tg-year"></select>
+          <select class="form-input" id="tg-month"></select>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary" onclick="sendToTelegram()">✈️ <span data-key="send_telegram">Send to Telegram</span></button>
+        <button class="btn btn-ghost" onclick="previewTelegramMessage()">👁 <span data-key="preview_msg">Preview Message</span></button>
+      </div>
+      <div id="tg-preview" style="margin-top:14px;background:var(--slate-50);border:1px solid var(--slate-200);border-radius:8px;padding:14px;font-size:12px;font-family:monospace;white-space:pre-wrap;display:none;max-height:300px;overflow-y:auto;"></div>
+    </div>
+  </div>
+</main>
+
+<!-- ADD RECORD MODAL -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-title" data-key="add_record">➕ Add Record</div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" data-key="year">Year</label>
+        <select class="form-input" id="modal-year"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-key="month">Month</label>
+        <select class="form-input" id="modal-month"></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-key="date">Date (Day)</label>
+      <input class="form-input" id="modal-date" type="number" min="1" max="31" placeholder="1-31">
+    </div>
+    <div class="section-divider"><span>🏭 <span data-key="factory">Factory</span></span></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" data-key="time">Time</label>
+        <input class="form-input" id="modal-fac-time" type="time">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-key="qty">Qty</label>
+        <input class="form-input" id="modal-fac-qty" type="number" min="0" placeholder="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-key="price">Price (Riels)</label>
+      <input class="form-input" id="modal-fac-price" type="number" min="0" placeholder="0">
+    </div>
+    <div class="section-divider"><span>🏠 <span data-key="staff_house">Staff House</span></span></div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label" data-key="time">Time</label>
+        <input class="form-input" id="modal-sta-time" type="time">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-key="qty">Qty</label>
+        <input class="form-input" id="modal-sta-qty" type="number" min="0" placeholder="0">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label" data-key="price">Price (Riels)</label>
+      <input class="form-input" id="modal-sta-price" type="number" min="0" placeholder="0">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal('add-modal')" data-key="cancel">Cancel</button>
+      <button class="btn btn-primary" onclick="saveModalRecord()" data-key="save">Save Record</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script>
+// ==================== TRANSLATIONS ====================
+const LANGS = {
+  en: {
+    app_title: 'Water Drum Record',
+    app_subtitle: 'Factory & Staff House Tracking',
+    tab_entry: 'Data Entry', tab_analysis: 'Analysis', tab_history: 'History',
+    tab_import: 'Import Excel', tab_alerts: 'Alerts', tab_telegram: 'Telegram',
+    add_record: 'Add Record', export: 'Export', save: 'Save', cancel: 'Cancel',
+    year: 'Year', month: 'Month', date: 'Date', time: 'Time', qty: 'Qty',
+    price: 'Price (Riels)', ttl: 'TTL (Riels)', action: 'Action',
+    factory: 'Factory', staff_house: 'Staff House',
+    today: 'Today', clear_month: 'Clear Month',
+    monthly_record: 'Monthly Record',
+    total_factory_qty: 'Factory Qty', total_factory_ttl: 'Factory Total',
+    total_staff_qty: 'Staff Qty', total_staff_ttl: 'Staff Total', grand_total: 'Grand Total',
+    view_by: 'View By', month_period: 'Month', quarter: 'Quarter', year_period: 'Year',
+    history_desc: 'All saved monthly records. Click a card to view details.',
+    import_desc: 'Import Excel files matching the water drum record format.',
+    click_upload: 'Click or drag Excel file here',
+    supports_format: 'Supports .xlsx format matching water drum record template',
+    check_scope: 'Check Scope', all_months: 'All Months', refresh: 'Refresh',
+    bot_token: 'Bot Token', chat_id: 'Chat ID', report_type: 'Report Type',
+    tg_monthly_summary: 'Monthly Summary', tg_daily_report: "Today's Report",
+    tg_anomaly_report: 'Anomaly Report', tg_full_month: 'Full Month Data',
+    select_period: 'Select Period', send_telegram: 'Send to Telegram',
+    preview_msg: 'Preview Message', telegram_send: 'Send to Telegram Group',
+    tg_info: 'To send reports to Telegram, you need a Bot Token and Chat ID.\n1. Create a bot via @BotFather and copy the token.\n2. Add the bot to your group. Send a message, then use getUpdates to find the chat_id.\n3. Enter both below and click Send.',
+    confirm_clear: 'Clear all data for this month?',
+    saved_ok: 'Data saved successfully!', sent_ok: 'Sent to Telegram!',
+    no_token: 'Please enter Bot Token and Chat ID first.',
+    no_data: 'No data for this period.',
+    anomaly_high_price: 'Unusually high price', anomaly_missing: 'Missing data days',
+    anomaly_qty_spike: 'Quantity spike', anomaly_price_inconsist: 'Price inconsistency',
+    rows_per_page: 'Rows', total_row: 'Total',
+    month_names: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    import_success: 'Imported successfully!', import_error: 'Import failed.',
+    delete: 'Delete', clear: 'Clear Row',
+    records: 'Records', days_data: 'Days with data',
+    no_alerts: '✅ No anomalies detected for selected period.',
+    preview_title: 'Message Preview',
+    all_good: 'All data looks normal.'
+  },
+  zh: {
+    app_title: '水鼓記錄', app_subtitle: '工廠及職員宿舍追蹤',
+    tab_entry: '數據輸入', tab_analysis: '分析', tab_history: '歷史記錄',
+    tab_import: '匯入Excel', tab_alerts: '異常提醒', tab_telegram: 'Telegram',
+    add_record: '新增記錄', export: '匯出', save: '儲存', cancel: '取消',
+    year: '年', month: '月', date: '日期', time: '時間', qty: '數量',
+    price: '單價 (瑞爾)', ttl: '合計 (瑞爾)', action: '操作',
+    factory: '工廠', staff_house: '員工宿舍',
+    today: '今天', clear_month: '清除本月',
+    monthly_record: '月度記錄',
+    total_factory_qty: '工廠數量', total_factory_ttl: '工廠合計',
+    total_staff_qty: '宿舍數量', total_staff_ttl: '宿舍合計', grand_total: '總計',
+    view_by: '查看方式', month_period: '月', quarter: '季', year_period: '年',
+    history_desc: '所有已儲存的月度記錄。點擊卡片查看詳情。',
+    import_desc: '匯入符合水鼓記錄格式的Excel文件，按月份儲存。',
+    click_upload: '點擊或拖曳Excel文件到此處',
+    supports_format: '支援符合水鼓記錄模板的.xlsx格式',
+    check_scope: '檢查範圍', all_months: '所有月份', refresh: '刷新',
+    bot_token: 'Bot Token', chat_id: 'Chat ID', report_type: '報告類型',
+    tg_monthly_summary: '月度摘要', tg_daily_report: '今日報告',
+    tg_anomaly_report: '異常報告', tg_full_month: '完整月度數據',
+    select_period: '選擇時期', send_telegram: '發送至Telegram',
+    preview_msg: '預覽訊息', telegram_send: '發送至Telegram群組',
+    tg_info: '發送報告至Telegram需要Bot Token和Chat ID。\n1. 通過@BotFather創建機器人並複製Token。\n2. 將機器人加入群組，發送一條訊息，然後使用getUpdates找到chat_id。\n3. 填入以下欄位並點擊發送。',
+    confirm_clear: '清除本月所有數據？',
+    saved_ok: '數據儲存成功！', sent_ok: '已發送至Telegram！',
+    no_token: '請先輸入Bot Token和Chat ID。',
+    no_data: '此時段無數據。',
+    anomaly_high_price: '單價異常偏高', anomaly_missing: '數據缺失天數',
+    anomaly_qty_spike: '數量異常', anomaly_price_inconsist: '單價不一致',
+    rows_per_page: '行數', total_row: '合計',
+    month_names: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+    import_success: '匯入成功！', import_error: '匯入失敗。',
+    delete: '刪除', clear: '清除行',
+    records: '記錄', days_data: '有數據天數',
+    no_alerts: '✅ 選定時期內未發現異常。',
+    preview_title: '訊息預覽',
+    all_good: '所有數據正常。'
+  },
+  km: {
+    app_title: 'កំណត់ត្រាធុងទឹក', app_subtitle: 'តាមដានរោងចក្រ និងផ្ទះបុគ្គលិក',
+    tab_entry: 'បញ្ចូលទិន្នន័យ', tab_analysis: 'វិភាគ', tab_history: 'ប្រវត្តិ',
+    tab_import: 'នាំចូល Excel', tab_alerts: 'ការព្រមាន', tab_telegram: 'Telegram',
+    add_record: 'បន្ថែមកំណត់ត្រា', export: 'នាំចេញ', save: 'រក្សាទុក', cancel: 'បោះបង់',
+    year: 'ឆ្នាំ', month: 'ខែ', date: 'កាលបរិច្ឆេទ', time: 'ម៉ោង', qty: 'បរិមាណ',
+    price: 'តម្លៃ (រៀល)', ttl: 'សរុប (រៀល)', action: 'សកម្មភាព',
+    factory: 'រោងចក្រ', staff_house: 'ផ្ទះបុគ្គលិក',
+    today: 'ថ្ងៃនេះ', clear_month: 'លុបខែ',
+    monthly_record: 'កំណត់ត្រាប្រចាំខែ',
+    total_factory_qty: 'បរិមាណរោងចក្រ', total_factory_ttl: 'សរុបរោងចក្រ',
+    total_staff_qty: 'បរិមាណផ្ទះ', total_staff_ttl: 'សរុបផ្ទះ', grand_total: 'សរុបរួម',
+    view_by: 'មើលតាម', month_period: 'ខែ', quarter: 'ត្រីមាស', year_period: 'ឆ្នាំ',
+    history_desc: 'កំណត់ត្រាប្រចាំខែទាំងអស់ដែលបានរក្សាទុក។ ចុចដើម្បីមើលលម្អិត។',
+    import_desc: 'នាំចូលឯកសារ Excel ដែលត្រូវនឹងទម្រង់កំណត់ត្រាធុងទឹក។',
+    click_upload: 'ចុចឬអូសឯកសារ Excel មកទីនេះ',
+    supports_format: 'គាំទ្រទម្រង់ .xlsx ដែលត្រូវនឹងគំរូកំណត់ត្រាធុងទឹក',
+    check_scope: 'ពិនិត្យវិសាល', all_months: 'គ្រប់ខែ', refresh: 'ធ្វើឱ្យស្រស់',
+    bot_token: 'Bot Token', chat_id: 'Chat ID', report_type: 'ប្រភេទរបាយការណ៍',
+    tg_monthly_summary: 'សង្ខេបប្រចាំខែ', tg_daily_report: 'របាយការណ៍ថ្ងៃនេះ',
+    tg_anomaly_report: 'របាយការណ៍អសාធារណ', tg_full_month: 'ទិន្នន័យខែពេញ',
+    select_period: 'ជ្រើសរើសរយៈពេល', send_telegram: 'ផ្ញើទៅ Telegram',
+    preview_msg: 'មើលសារ', telegram_send: 'ផ្ញើទៅក្រុម Telegram',
+    tg_info: 'ដើម្បីផ្ញើរបាយការណ៍ទៅ Telegram ត្រូវការ Bot Token និង Chat ID។\n១. បង្កើត bot តាម @BotFather ហើយចម្លង token។\n២. បន្ថែម bot ទៅក្រុម ផ្ញើសារ រួចប្រើ getUpdates ដើម្បីរក chat_id។\n៣. បញ្ចូលទាំងពីរខាងក្រោម ហើយចុចផ្ញើ។',
+    confirm_clear: 'លុបទិន្នន័យទាំងអស់ក្នុងខែនេះ?',
+    saved_ok: 'រក្សាទុកទិន្នន័យដោយជោគជ័យ!', sent_ok: 'ផ្ញើទៅ Telegram ដោយជោគជ័យ!',
+    no_token: 'សូមបញ្ចូល Bot Token និង Chat ID ជាមុន។',
+    no_data: 'គ្មានទិន្នន័យសម្រាប់រយៈពេលនេះ។',
+    anomaly_high_price: 'តម្លៃខ្ពស់ជាងធម្មតា', anomaly_missing: 'ថ្ងៃខ្វះទិន្នន័យ',
+    anomaly_qty_spike: 'បរិមាណខ្ពស់ខ្លាំង', anomaly_price_inconsist: 'តម្លៃមិនស្រប',
+    rows_per_page: 'ជួរ', total_row: 'សរុប',
+    month_names: ['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'],
+    import_success: 'នាំចូលដោយជោគជ័យ!', import_error: 'នាំចូលបរាជ័យ។',
+    delete: 'លុប', clear: 'សម្អាតជួរ',
+    records: 'កំណត់ត្រា', days_data: 'ថ្ងៃដែលមានទិន្នន័យ',
+    no_alerts: '✅ គ្មានភាពខុសប្រក្រតីត្រូវបានរកឃើញ។',
+    preview_title: 'មើលសារជាមុន',
+    all_good: 'ទិន្នន័យទាំងអស់ធម្មតា។'
+  }
+};
+
+let currentLang = 'en';
+let analysisPeriod = 'month';
+
+function T(key) { return (LANGS[currentLang] || LANGS.en)[key] || key; }
+
+function setLang(lang) {
+  currentLang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('.lang-btn').forEach(b => { if(b.textContent.trim() === {en:'EN',zh:'中文',km:'ខ្មែរ'}[lang]) b.classList.add('active'); });
+  applyTranslations();
+  loadMonthData();
+  if(document.getElementById('panel-analysis').classList.contains('active')) renderAnalysis();
+  if(document.getElementById('panel-history').classList.contains('active')) renderHistory();
+  if(document.getElementById('panel-alerts').classList.contains('active')) renderAlerts();
+}
+
+function applyTranslations() {
+  document.querySelectorAll('[data-key]').forEach(el => {
+    const k = el.getAttribute('data-key');
+    const t = T(k);
+    if(t) el.textContent = t;
+  });
+  document.getElementById('app-title').textContent = T('app_title');
+  document.getElementById('app-subtitle').textContent = T('app_subtitle');
+  populateSelects();
+}
+
+// ==================== DATA STORAGE ====================
+function storageKey(year, month) { return `wdr_${year}_${String(month).padStart(2,'0')}`; }
+function saveMonthData(year, month, rows) {
+  localStorage.setItem(storageKey(year, month), JSON.stringify(rows));
+  localStorage.setItem('wdr_last_saved', new Date().toISOString());
+}
+function loadMonthDataRaw(year, month) {
+  const s = localStorage.getItem(storageKey(year, month));
+  return s ? JSON.parse(s) : null;
+}
+function getAllKeys() {
+  return Object.keys(localStorage).filter(k => k.startsWith('wdr_') && k !== 'wdr_last_saved' && k !== 'wdr_tg_config').sort();
+}
+function emptyRow(day) {
+  return { day, fTime:'', fQty:'', fPrice:'', fTtl:0, sTime:'', sQty:'', sPrice:'', sTtl:0, anomaly:[] };
+}
+function getDaysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
+
+// ==================== SELECTS ====================
+function populateSelects() {
+  const now = new Date();
+  const years = [];
+  for(let y = now.getFullYear()-3; y <= now.getFullYear()+1; y++) years.push(y);
+  const months = T('month_names');
+
+  ['sel-year','modal-year','an-year','alert-year','tg-year'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const cur = el.value;
+    el.innerHTML = years.map(y => `<option value="${y}">${y}</option>`).join('');
+    if(cur) el.value = cur; else el.value = now.getFullYear();
+  });
+  ['sel-month','modal-month','tg-month'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const cur = el.value;
+    el.innerHTML = months.map((m,i) => `<option value="${i+1}">${m}</option>`).join('');
+    if(cur) el.value = cur; else el.value = now.getMonth()+1;
+  });
+  // Analysis month
+  const anMonthEl = document.getElementById('an-month');
+  if(anMonthEl) {
+    const cur = anMonthEl.value;
+    anMonthEl.innerHTML = months.map((m,i) => `<option value="${i+1}">${m}</option>`).join('');
+    if(cur) anMonthEl.value = cur; else anMonthEl.value = now.getMonth()+1;
+  }
+  // Alert month
+  const alertMonthEl = document.getElementById('alert-month');
+  if(alertMonthEl) {
+    const cur = alertMonthEl.value;
+    alertMonthEl.innerHTML = `<option value="all">${T('all_months')}</option>` + months.map((m,i) => `<option value="${i+1}">${m}</option>`).join('');
+    if(cur) alertMonthEl.value = cur;
+  }
+}
+
+// ==================== ENTRY TAB ====================
+let currentRows = [];
+let currentYear = new Date().getFullYear();
+let currentMonth = new Date().getMonth() + 1;
+
+function goToday() {
+  const now = new Date();
+  document.getElementById('sel-year').value = now.getFullYear();
+  document.getElementById('sel-month').value = now.getMonth()+1;
+  loadMonthData();
+}
+
+function loadMonthData() {
+  currentYear = parseInt(document.getElementById('sel-year').value);
+  currentMonth = parseInt(document.getElementById('sel-month').value);
+  const days = getDaysInMonth(currentYear, currentMonth);
+  const saved = loadMonthDataRaw(currentYear, currentMonth);
+  currentRows = [];
+  for(let d = 1; d <= days; d++) {
+    const found = saved ? saved.find(r => r.day === d) : null;
+    currentRows.push(found ? {...emptyRow(d), ...found} : emptyRow(d));
+  }
+  renderTable();
+  renderSummaryCards();
+  updateLastSaved();
+}
+
+function updateLastSaved() {
+  const ls = localStorage.getItem('wdr_last_saved');
+  const el = document.getElementById('last-saved-label');
+  if(ls && el) el.textContent = `Last saved: ${new Date(ls).toLocaleString()}`;
+}
+
+function calcTtl(qty, price) {
+  const q = parseFloat(qty)||0, p = parseFloat(price)||0;
+  return q * p;
+}
+
+function renderTable() {
+  const tbody = document.getElementById('table-body');
+  const months = T('month_names');
+  const now = new Date();
+  const todayDay = (now.getFullYear()===currentYear && now.getMonth()+1===currentMonth) ? now.getDate() : -1;
+
+  // Compute averages for anomaly detection
+  const fPrices = currentRows.filter(r => r.fPrice).map(r => parseFloat(r.fPrice));
+  const sPrices = currentRows.filter(r => r.sPrice).map(r => parseFloat(r.sPrice));
+  const avgFP = fPrices.length ? fPrices.reduce((a,b)=>a+b,0)/fPrices.length : 0;
+  const avgSP = sPrices.length ? sPrices.reduce((a,b)=>a+b,0)/sPrices.length : 0;
+
+  let rows = '';
+  currentRows.forEach((row, idx) => {
+    row.fTtl = calcTtl(row.fQty, row.fPrice);
+    row.sTtl = calcTtl(row.sQty, row.sPrice);
+    // Detect anomalies
+    row.anomaly = [];
+    if(row.fPrice && avgFP && parseFloat(row.fPrice) > avgFP * 1.5) row.anomaly.push('price');
+    if(row.sPrice && avgSP && parseFloat(row.sPrice) > avgSP * 1.5) row.anomaly.push('price');
+    const fmtTtl = n => n ? n.toLocaleString() : '-';
+    const isToday = row.day === todayDay;
+    const isAnomaly = row.anomaly.length > 0;
+    rows += `<tr class="${isAnomaly?'anomaly-row':''}" id="row-${row.day}" style="${isToday?'background:var(--blue-50) !important;':''}" >
+      <td class="date-cell">${row.day}${isToday?'<br><span style="font-size:9px;color:var(--blue-500)">▶</span>':''}${isAnomaly?'<span class="anomaly-flag">!</span>':''}</td>
+      <td><input type="time" value="${row.fTime||''}" onchange="updateRow(${idx},'fTime',this.value)" ></td>
+      <td><input type="number" min="0" value="${row.fQty||''}" placeholder="0" onchange="updateRow(${idx},'fQty',this.value)" style="width:60px"></td>
+      <td><input type="number" min="0" value="${row.fPrice||''}" placeholder="0" onchange="updateRow(${idx},'fPrice',this.value)" style="width:80px"></td>
+      <td><span class="ttl-value" id="fttl-${idx}">${fmtTtl(row.fTtl)}</span></td>
+      <td><input type="time" value="${row.sTime||''}" onchange="updateRow(${idx},'sTime',this.value)"></td>
+      <td><input type="number" min="0" value="${row.sQty||''}" placeholder="0" onchange="updateRow(${idx},'sQty',this.value)" style="width:60px"></td>
+      <td><input type="number" min="0" value="${row.sPrice||''}" placeholder="0" onchange="updateRow(${idx},'sPrice',this.value)" style="width:80px"></td>
+      <td><span class="ttl-value" id="sttl-${idx}">${fmtTtl(row.sTtl)}</span></td>
+      <td><button class="btn btn-ghost btn-sm" onclick="clearRow(${idx})" title="${T('clear')}">✕</button></td>
+    </tr>`;
+  });
+
+  // Totals
+  const totalFQty = currentRows.reduce((a,r)=>a+(parseFloat(r.fQty)||0),0);
+  const totalFTtl = currentRows.reduce((a,r)=>a+r.fTtl,0);
+  const totalSQty = currentRows.reduce((a,r)=>a+(parseFloat(r.sQty)||0),0);
+  const totalSTtl = currentRows.reduce((a,r)=>a+r.sTtl,0);
+  rows += `<tr class="total-row">
+    <td class="date-cell" data-key="total_row" style="font-weight:700">${T('total_row')}</td>
+    <td></td>
+    <td style="font-weight:700;color:var(--blue-700)">${totalFQty}</td>
+    <td></td>
+    <td style="font-weight:700;color:var(--blue-700)">${totalFTtl.toLocaleString()}</td>
+    <td></td>
+    <td style="font-weight:700;color:var(--teal-700)">${totalSQty}</td>
+    <td></td>
+    <td style="font-weight:700;color:var(--teal-700)">${totalSTtl.toLocaleString()}</td>
+    <td></td>
+  </tr>`;
+  tbody.innerHTML = rows;
+}
+
+function updateRow(idx, field, value) {
+  currentRows[idx][field] = value;
+  currentRows[idx].fTtl = calcTtl(currentRows[idx].fQty, currentRows[idx].fPrice);
+  currentRows[idx].sTtl = calcTtl(currentRows[idx].sQty, currentRows[idx].sPrice);
+  const fttl = document.getElementById(`fttl-${idx}`);
+  const sttl = document.getElementById(`sttl-${idx}`);
+  if(fttl) fttl.textContent = currentRows[idx].fTtl ? currentRows[idx].fTtl.toLocaleString() : '-';
+  if(sttl) sttl.textContent = currentRows[idx].sTtl ? currentRows[idx].sTtl.toLocaleString() : '-';
+  renderSummaryCards();
+  autoSave();
+}
+
+function clearRow(idx) {
+  currentRows[idx] = emptyRow(currentRows[idx].day);
+  renderTable();
+  renderSummaryCards();
+  autoSave();
+}
+
+function clearMonth() {
+  currentRows = currentRows.map(r => emptyRow(r.day));
+  saveMonthData(currentYear, currentMonth, currentRows);
+  renderTable();
+  renderSummaryCards();
+  showToast(T('saved_ok'), 'success');
+}
+
+let autoSaveTimer = null;
+function autoSave() {
+  clearTimeout(autoSaveTimer);
+  autoSaveTimer = setTimeout(() => saveData(true), 1200);
+}
+
+function saveData(silent=false) {
+  saveMonthData(currentYear, currentMonth, currentRows);
+  updateLastSaved();
+  if(!silent) showToast(T('saved_ok'), 'success');
+}
+
+function renderSummaryCards() {
+  const totalFQty = currentRows.reduce((a,r)=>a+(parseFloat(r.fQty)||0),0);
+  const totalFTtl = currentRows.reduce((a,r)=>a+r.fTtl,0);
+  const totalSQty = currentRows.reduce((a,r)=>a+(parseFloat(r.sQty)||0),0);
+  const totalSTtl = currentRows.reduce((a,r)=>a+r.sTtl,0);
+  const grand = totalFTtl + totalSTtl;
+  document.getElementById('summary-cards').innerHTML = `
+    <div class="summary-card blue">
+      <div class="card-label">${T('total_factory_qty')}</div>
+      <div class="card-value">${totalFQty}</div>
+      <div class="card-sub">${T('factory')}</div>
+    </div>
+    <div class="summary-card blue">
+      <div class="card-label">${T('total_factory_ttl')}</div>
+      <div class="card-value">${(totalFTtl/1000).toFixed(1)}K</div>
+      <div class="card-sub">Riels</div>
+    </div>
+    <div class="summary-card teal">
+      <div class="card-label">${T('total_staff_qty')}</div>
+      <div class="card-value">${totalSQty}</div>
+      <div class="card-sub">${T('staff_house')}</div>
+    </div>
+    <div class="summary-card teal">
+      <div class="card-label">${T('total_staff_ttl')}</div>
+      <div class="card-value">${(totalSTtl/1000).toFixed(1)}K</div>
+      <div class="card-sub">Riels</div>
+    </div>
+    <div class="summary-card amber">
+      <div class="card-label">${T('grand_total')}</div>
+      <div class="card-value">${(grand/1000).toFixed(1)}K</div>
+      <div class="card-sub">Riels</div>
+    </div>
+  `;
+}
+
+// ==================== EXPORT ====================
+function exportExcel() {
+  if(typeof XLSX === 'undefined') { showToast('XLSX library not loaded', 'error'); return; }
+  const months = T('month_names');
+  const wb = XLSX.utils.book_new();
+  const wsData = [
+    ['Water Drum Record'],
+    [`Month: ${months[currentMonth-1]}`, `Year: ${currentYear}`],
+    [],
+    ['Date','Time (Factory)','Qty (Factory)','Price (Factory)','TTL (Factory)',
+     'Time (Staff)','Qty (Staff)','Price (Staff)','TTL (Staff)'],
+    ...currentRows.map(r => [
+      r.day, r.fTime||'', parseFloat(r.fQty)||0, parseFloat(r.fPrice)||0, r.fTtl||0,
+      r.sTime||'', parseFloat(r.sQty)||0, parseFloat(r.sPrice)||0, r.sTtl||0
+    ]),
+    [],
+    ['Total','',
+     currentRows.reduce((a,r)=>a+(parseFloat(r.fQty)||0),0),'',
+     currentRows.reduce((a,r)=>a+r.fTtl,0),'',
+     currentRows.reduce((a,r)=>a+(parseFloat(r.sQty)||0),0),'',
+     currentRows.reduce((a,r)=>a+r.sTtl,0)]
+  ];
+  const ws = XLSX.utils.aoa_to_sheet(wsData);
+  XLSX.utils.book_append_sheet(wb, ws, `${currentYear}-${String(currentMonth).padStart(2,'0')}`);
+  XLSX.writeFile(wb, `water_drum_${currentYear}_${String(currentMonth).padStart(2,'0')}.xlsx`);
+  showToast(T('export') + ' OK', 'success');
+}
+
+// ==================== MODAL ====================
+function openAddModal() {
+  const now = new Date();
+  document.getElementById('modal-year').value = now.getFullYear();
+  document.getElementById('modal-month').value = now.getMonth()+1;
+  document.getElementById('modal-date').value = now.getDate();
+  document.getElementById('modal-fac-time').value = '';
+  document.getElementById('modal-fac-qty').value = '';
+  document.getElementById('modal-fac-price').value = '';
+  document.getElementById('modal-sta-time').value = '';
+  document.getElementById('modal-sta-qty').value = '';
+  document.getElementById('modal-sta-price').value = '';
+  document.getElementById('add-modal').classList.add('open');
+}
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function saveModalRecord() {
+  const y = parseInt(document.getElementById('modal-year').value);
+  const m = parseInt(document.getElementById('modal-month').value);
+  const d = parseInt(document.getElementById('modal-date').value);
+  if(!d || d<1 || d>31) { showToast('Invalid date', 'error'); return; }
+  const days = getDaysInMonth(y, m);
+  if(d > days) { showToast('Day out of range for this month', 'error'); return; }
+  let saved = loadMonthDataRaw(y, m) || [];
+  const idx = saved.findIndex(r => r.day === d);
+  const newRow = {
+    day: d,
+    fTime: document.getElementById('modal-fac-time').value,
+    fQty: document.getElementById('modal-fac-qty').value,
+    fPrice: document.getElementById('modal-fac-price').value,
+    fTtl: calcTtl(document.getElementById('modal-fac-qty').value, document.getElementById('modal-fac-price').value),
+    sTime: document.getElementById('modal-sta-time').value,
+    sQty: document.getElementById('modal-sta-qty').value,
+    sPrice: document.getElementById('modal-sta-price').value,
+    sTtl: calcTtl(document.getElementById('modal-sta-qty').value, document.getElementById('modal-sta-price').value),
+    anomaly: []
+  };
+  if(idx >= 0) saved[idx] = newRow; else saved.push(newRow);
+  saveMonthData(y, m, saved);
+  closeModal('add-modal');
+  if(y === currentYear && m === currentMonth) loadMonthData();
+  showToast(T('saved_ok'), 'success');
+  renderHistory();
+}
+
+// ==================== ANALYSIS ====================
+function setAnalysisPeriod(p) {
+  analysisPeriod = p;
+  document.querySelectorAll('.period-btn').forEach(b => b.classList.remove('active'));
+  const el = document.getElementById(`ap-${p}`);
+  if(el) el.classList.add('active');
+  const anMonthEl = document.getElementById('an-month');
+  if(anMonthEl) anMonthEl.style.display = (p === 'month') ? 'inline-block' : 'none';
+  renderAnalysis();
+}
+
+function renderAnalysis() {
+  const year = parseInt(document.getElementById('an-year').value);
+  const month = parseInt(document.getElementById('an-month').value);
+  const months = T('month_names');
+  let data = [];
+
+  if(analysisPeriod === 'month') {
+    const rows = loadMonthDataRaw(year, month) || [];
+    const byWeek = {};
+    rows.forEach(r => {
+      const w = Math.ceil(r.day / 7);
+      if(!byWeek[w]) byWeek[w] = {fQty:0,fTtl:0,sQty:0,sTtl:0};
+      byWeek[w].fQty += parseFloat(r.fQty)||0;
+      byWeek[w].fTtl += r.fTtl||0;
+      byWeek[w].sQty += parseFloat(r.sQty)||0;
+      byWeek[w].sTtl += r.sTtl||0;
+    });
+    for(let w=1;w<=5;w++) {
+      const d = byWeek[w] || {fQty:0,fTtl:0,sQty:0,sTtl:0};
+      data.push({label: `Wk${w}`, ...d});
+    }
+  } else if(analysisPeriod === 'quarter') {
+    const q = Math.ceil(month/3);
+    for(let qm=(q-1)*3+1; qm<=(q-1)*3+3; qm++) {
+      const rows = loadMonthDataRaw(year, qm) || [];
+      data.push({
+        label: months[qm-1] || '',
+        fQty: rows.reduce((a,r)=>a+(parseFloat(r.fQty)||0),0),
+        fTtl: rows.reduce((a,r)=>a+(r.fTtl||0),0),
+        sQty: rows.reduce((a,r)=>a+(parseFloat(r.sQty)||0),0),
+        sTtl: rows.reduce((a,r)=>a+(r.sTtl||0),0)
+      });
+    }
+  } else {
+    for(let m=1;m<=12;m++) {
+      const rows = loadMonthDataRaw(year, m) || [];
+      data.push({
+        label: months[m-1],
+        fQty: rows.reduce((a,r)=>a+(parseFloat(r.fQty)||0),0),
+        fTtl: rows.reduce((a,r)=>a+(r.fTtl||0),0),
+        sQty: rows.reduce((a,r)=>a+(parseFloat(r.sQty)||0),0),
+        sTtl: rows.reduce((a,r)=>a+(r.sTtl||0),0)
+      });
+    }
+  }
+
+  const maxQty = Math.max(1, ...data.map(d=>d.fQty+d.sQty));
+  const maxTtl = Math.max(1, ...data.map(d=>d.fTtl+d.sTtl));
+  const totalFQ = data.reduce((a,d)=>a+d.fQty,0);
+  const totalSQ = data.reduce((a,d)=>a+d.sQty,0);
+  const totalFT = data.reduce((a,d)=>a+d.fTtl,0);
+  const totalST = data.reduce((a,d)=>a+d.sTtl,0);
+
+  document.getElementById('analysis-content').innerHTML = `
+    <div class="summary-grid" style="margin-bottom:16px">
+      <div class="summary-card blue"><div class="card-label">${T('total_factory_qty')}</div><div class="card-value">${totalFQ}</div></div>
+      <div class="summary-card teal"><div class="card-label">${T('total_staff_qty')}</div><div class="card-value">${totalSQ}</div></div>
+      <div class="summary-card blue"><div class="card-label">${T('total_factory_ttl')}</div><div class="card-value">${(totalFT/1000).toFixed(1)}K</div></div>
+      <div class="summary-card teal"><div class="card-label">${T('total_staff_ttl')}</div><div class="card-value">${(totalST/1000).toFixed(1)}K</div></div>
+      <div class="summary-card amber"><div class="card-label">${T('grand_total')}</div><div class="card-value">${((totalFT+totalST)/1000).toFixed(1)}K</div></div>
+    </div>
+    <div class="analysis-grid">
+      <div class="chart-card">
+        <div class="chart-title">📊 ${T('total_factory_qty')} vs ${T('total_staff_qty')}</div>
+        <div class="bar-chart">${data.map(d=>`
+          <div class="bar-row">
+            <div class="bar-label">${d.label}</div>
+            <div class="bar-track">
+              <div class="bar-fill bar-factory" style="width:${(d.fQty/maxQty*100).toFixed(1)}%;display:inline-flex">${d.fQty||''}</div>
+            </div>
+            <div class="bar-val" style="color:var(--blue-600)">${d.fQty}</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label" style="font-size:10px;color:var(--slate-300)"></div>
+            <div class="bar-track">
+              <div class="bar-fill bar-staff" style="width:${(d.sQty/maxQty*100).toFixed(1)}%">${d.sQty||''}</div>
+            </div>
+            <div class="bar-val" style="color:var(--teal-600)">${d.sQty}</div>
+          </div>
+        `).join('<div style="height:4px"></div>')}</div>
+        <div style="display:flex;gap:16px;margin-top:12px;font-size:11px">
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--blue-500);border-radius:2px;margin-right:4px"></span>${T('factory')}</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--teal-500);border-radius:2px;margin-right:4px"></span>${T('staff_house')}</span>
+        </div>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">💰 ${T('total_factory_ttl')} vs ${T('total_staff_ttl')} (Riels)</div>
+        <div class="bar-chart">${data.map(d=>`
+          <div class="bar-row">
+            <div class="bar-label">${d.label}</div>
+            <div class="bar-track">
+              <div class="bar-fill bar-factory" style="width:${(d.fTtl/maxTtl*100).toFixed(1)}%"></div>
+            </div>
+            <div class="bar-val" style="color:var(--blue-600)">${(d.fTtl/1000).toFixed(1)}K</div>
+          </div>
+          <div class="bar-row">
+            <div class="bar-label"></div>
+            <div class="bar-track">
+              <div class="bar-fill bar-staff" style="width:${(d.sTtl/maxTtl*100).toFixed(1)}%"></div>
+            </div>
+            <div class="bar-val" style="color:var(--teal-600)">${(d.sTtl/1000).toFixed(1)}K</div>
+          </div>
+        `).join('<div style="height:4px"></div>')}</div>
+        <div style="display:flex;gap:16px;margin-top:12px;font-size:11px">
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--blue-500);border-radius:2px;margin-right:4px"></span>${T('factory')}</span>
+          <span><span style="display:inline-block;width:10px;height:10px;background:var(--teal-500);border-radius:2px;margin-right:4px"></span>${T('staff_house')}</span>
+        </div>
+      </div>
+      <div class="chart-card" style="grid-column:1/-1">
+        <div class="chart-title">📋 ${T('monthly_record')} — ${T('total_row')}</div>
+        <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead><tr style="background:var(--slate-50)">
+            <th style="padding:8px;text-align:left;border-bottom:1px solid var(--slate-200)">${T('date')}</th>
+            <th style="padding:8px;text-align:right;border-bottom:1px solid var(--slate-200);color:var(--blue-700)">${T('total_factory_qty')}</th>
+            <th style="padding:8px;text-align:right;border-bottom:1px solid var(--slate-200);color:var(--blue-700)">${T('total_factory_ttl')}</th>
+            <th style="padding:8px;text-align:right;border-bottom:1px solid var(--slate-200);color:var(--teal-700)">${T('total_staff_qty')}</th>
+            <th style="padding:8px;text-align:right;border-bottom:1px solid var(--slate-200);color:var(--teal-700)">${T('total_staff_ttl')}</th>
+            <th style="padding:8px;text-align:right;border-bottom:1px solid var(--slate-200)">${T('grand_total')}</th>
+          </tr></thead>
+          <tbody>${data.map(d=>`<tr style="border-bottom:1px solid var(--slate-100)">
+            <td style="padding:7px 8px;font-weight:600">${d.label}</td>
+            <td style="padding:7px 8px;text-align:right;color:var(--blue-700)">${d.fQty}</td>
+            <td style="padding:7px 8px;text-align:right;color:var(--blue-600)">${d.fTtl.toLocaleString()}</td>
+            <td style="padding:7px 8px;text-align:right;color:var(--teal-700)">${d.sQty}</td>
+            <td style="padding:7px 8px;text-align:right;color:var(--teal-600)">${d.sTtl.toLocaleString()}</td>
+            <td style="padding:7px 8px;text-align:right;font-weight:700">${(d.fTtl+d.sTtl).toLocaleString()}</td>
+          </tr>`).join('')}
+          <tr style="background:var(--slate-50);font-weight:700">
+            <td style="padding:8px">${T('total_row')}</td>
+            <td style="padding:8px;text-align:right;color:var(--blue-700)">${totalFQ}</td>
+            <td style="padding:8px;text-align:right;color:var(--blue-600)">${totalFT.toLocaleString()}</td>
+            <td style="padding:8px;text-align:right;color:var(--teal-700)">${totalSQ}</td>
+            <td style="padding:8px;text-align:right;color:var(--teal-600)">${totalST.toLocaleString()}</td>
+            <td style="padding:8px;text-align:right">${(totalFT+totalST).toLocaleString()}</td>
+          </tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+  `;
+}
+
+// ==================== HISTORY ====================
+function renderHistory() {
+  const keys = getAllKeys();
+  const months = T('month_names');
+  const grid = document.getElementById('history-grid');
+  if(!keys.length) {
+    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1"><div class="empty-icon">📂</div><div class="empty-text">${T('no_data')}</div><div class="empty-sub">${T('import_desc')}</div></div>`;
+    return;
+  }
+  grid.innerHTML = keys.reverse().map(k => {
+    const [,y,m] = k.split('_');
+    const rows = JSON.parse(localStorage.getItem(k)) || [];
+    const fQty = rows.reduce((a,r)=>a+(parseFloat(r.fQty)||0),0);
+    const sQty = rows.reduce((a,r)=>a+(parseFloat(r.sQty)||0),0);
+    const fTtl = rows.reduce((a,r)=>a+(r.fTtl||0),0);
+    const sTtl = rows.reduce((a,r)=>a+(r.sTtl||0),0);
+    const daysWithData = rows.filter(r=>r.fQty||r.sQty).length;
+    return `<div class="history-card" onclick="viewHistoryMonth('${y}','${m}')">
+      <div style="display:flex;justify-content:space-between;align-items:start">
+        <div>
+          <div class="hc-month">${months[parseInt(m)-1]}</div>
+          <div class="hc-year">${y}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="event.stopPropagation();deleteHistoryMonth('${y}','${m}')" style="font-size:16px;padding:2px 6px" title="${T('delete')}">🗑</button>
+      </div>
+      <div class="hc-stats">
+        <div class="hc-stat">🏭 <span>${fQty}</span> drums</div>
+        <div class="hc-stat">🏠 <span>${sQty}</span> drums</div>
+        <div class="hc-stat">💰 <span>${((fTtl+sTtl)/1000).toFixed(1)}K</span> R</div>
+        <div class="hc-stat">📅 <span>${daysWithData}</span> ${T('days_data')}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function viewHistoryMonth(y, m) {
+  document.getElementById('sel-year').value = y;
+  document.getElementById('sel-month').value = parseInt(m);
+  showTab('entry');
+  loadMonthData();
+}
+
+function deleteHistoryMonth(y, m) {
+  if(!confirm(`Delete ${y}-${m}?`)) return;
+  localStorage.removeItem(`wdr_${y}_${m}`);
+  renderHistory();
+  showToast('Deleted', 'success');
+}
+
+// ==================== IMPORT ====================
+function handleFileDrop(e) {
+  e.preventDefault();
+  document.getElementById('upload-zone').classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if(file) processExcelImport(file);
+}
+function handleFileSelect(e) {
+  const file = e.target.files[0];
+  if(file) processExcelImport(file);
+  e.target.value = '';
+}
+
+function processExcelImport(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const raw = XLSX.utils.sheet_to_json(ws, {header:1});
+      // Try to detect year/month from row 2
+      let year = new Date().getFullYear(), month = new Date().getMonth()+1;
+      if(raw[1]) {
+        const r1str = raw[1].join(' ');
+        const ym = r1str.match(/(\d{4})/);
+        if(ym) year = parseInt(ym[1]);
+        const monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+        const mn = r1str.toLowerCase();
+        const mi = monthNames.findIndex(m => mn.includes(m));
+        if(mi >= 0) month = mi+1;
+        // Also try numeric month
+        const mm = r1str.match(/month[:\s]*(\d+)/i);
+        if(mm) month = parseInt(mm[1]);
+      }
+      // Find data rows (rows where first cell is a number 1-31)
+      const dataRows = [];
+      for(let i=0; i<raw.length; i++) {
+        const row = raw[i];
+        const day = parseInt(row[0]);
+        if(day >= 1 && day <= 31) {
+          dataRows.push({
+            day,
+            fTime: row[1]||'', fQty: row[2]||'', fPrice: row[3]||'',
+            fTtl: calcTtl(row[2], row[3]),
+            sTime: row[5]||'', sQty: row[6]||'', sPrice: row[7]||'',
+            sTtl: calcTtl(row[6], row[7]),
+            anomaly: []
+          });
+        }
+      }
+      if(!dataRows.length) { showToast(T('import_error')+' No data rows found.', 'error'); return; }
+      // Show preview
+      const months = T('month_names');
+      document.getElementById('import-preview').innerHTML = `
+        <div class="table-wrap">
+          <div class="table-header-bar">
+            <div class="table-title">📥 Preview: ${months[month-1]} ${year} — ${dataRows.length} rows</div>
+            <div style="display:flex;gap:8px">
+              <button class="btn btn-primary" onclick="confirmImport(${year},${month},${JSON.stringify(dataRows).replace(/"/g,'&quot;')})">
+                ✅ ${T('import_success').replace('!','')} ${months[month-1]} ${year}
+              </button>
+            </div>
+          </div>
+          <div style="overflow-x:auto">
+            <table>
+              <thead><tr>
+                <th>${T('date')}</th>
+                <th>${T('time')} 🏭</th><th>${T('qty')} 🏭</th><th>${T('price')} 🏭</th><th>${T('ttl')} 🏭</th>
+                <th>${T('time')} 🏠</th><th>${T('qty')} 🏠</th><th>${T('price')} 🏠</th><th>${T('ttl')} 🏠</th>
+              </tr></thead>
+              <tbody>${dataRows.slice(0,15).map(r=>`<tr>
+                <td class="date-cell">${r.day}</td>
+                <td>${r.fTime}</td><td>${r.fQty}</td><td>${r.fPrice}</td><td>${(r.fTtl||0).toLocaleString()}</td>
+                <td>${r.sTime}</td><td>${r.sQty}</td><td>${r.sPrice}</td><td>${(r.sTtl||0).toLocaleString()}</td>
+              </tr>`).join('')}
+              ${dataRows.length>15?`<tr><td colspan="9" style="text-align:center;color:var(--slate-400);font-size:12px">...and ${dataRows.length-15} more rows</td></tr>`:''}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    } catch(err) {
+      showToast(T('import_error') + ' ' + err.message, 'error');
+    }
+  };
+  reader.readAsBinaryString(file);
+}
+
+function confirmImport(year, month, rows) {
+  if(typeof rows === 'string') rows = JSON.parse(rows);
+  saveMonthData(year, month, rows);
+  document.getElementById('import-preview').innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">${T('import_success')}</div></div>`;
+  showToast(T('import_success'), 'success');
+  renderHistory();
+}
+
+// ==================== ALERTS ====================
+function detectAnomalies(year, month) {
+  const rows = loadMonthDataRaw(year, month);
+  if(!rows || !rows.length) return [];
+  const anomalies = [];
+  const months = T('month_names');
+  const fPrices = rows.filter(r=>r.fPrice).map(r=>parseFloat(r.fPrice));
+  const sPrices = rows.filter(r=>r.sPrice).map(r=>parseFloat(r.sPrice));
+  const fQtys = rows.filter(r=>r.fQty).map(r=>parseFloat(r.fQty));
+  const sQtys = rows.filter(r=>r.sQty).map(r=>parseFloat(r.sQty));
+  const avg = arr => arr.length ? arr.reduce((a,b)=>a+b,0)/arr.length : 0;
+  const std = arr => { if(!arr.length) return 0; const a=avg(arr); return Math.sqrt(arr.map(x=>(x-a)**2).reduce((a,b)=>a+b,0)/arr.length); };
+  const avgFP=avg(fPrices),stdFP=std(fPrices),avgSP=avg(sPrices),stdSP=std(sPrices);
+  const avgFQ=avg(fQtys),stdFQ=std(fQtys),avgSQ=avg(sQtys),stdSQ=std(sQtys);
+
+  // Price spikes
+  rows.forEach(r => {
+    if(r.fPrice && avgFP > 0 && parseFloat(r.fPrice) > avgFP + 2*stdFP) {
+      anomalies.push({severity:'warning', day:r.day, month, year,
+        msg: `${months[month-1]} ${r.day}: ${T('anomaly_high_price')} [${T('factory')}] — ${parseFloat(r.fPrice).toLocaleString()} vs avg ${Math.round(avgFP).toLocaleString()} Riels`});
+    }
+    if(r.sPrice && avgSP > 0 && parseFloat(r.sPrice) > avgSP + 2*stdSP) {
+      anomalies.push({severity:'warning', day:r.day, month, year,
+        msg: `${months[month-1]} ${r.day}: ${T('anomaly_high_price')} [${T('staff_house')}] — ${parseFloat(r.sPrice).toLocaleString()} vs avg ${Math.round(avgSP).toLocaleString()} Riels`});
+    }
+    if(r.fQty && avgFQ > 0 && parseFloat(r.fQty) > avgFQ + 2*stdFQ) {
+      anomalies.push({severity:'critical', day:r.day, month, year,
+        msg: `${months[month-1]} ${r.day}: ${T('anomaly_qty_spike')} [${T('factory')}] — Qty ${r.fQty} vs avg ${avgFQ.toFixed(1)}`});
+    }
+    if(r.sQty && avgSQ > 0 && parseFloat(r.sQty) > avgSQ + 2*stdSQ) {
+      anomalies.push({severity:'critical', day:r.day, month, year,
+        msg: `${months[month-1]} ${r.day}: ${T('anomaly_qty_spike')} [${T('staff_house')}] — Qty ${r.sQty} vs avg ${avgSQ.toFixed(1)}`});
+    }
+  });
+  // Missing days
+  const days = getDaysInMonth(year, month);
+  const daysWithData = rows.filter(r=>r.fQty||r.sQty).length;
+  if(daysWithData < days * 0.5 && daysWithData > 0) {
+    anomalies.push({severity:'warning', day:null, month, year,
+      msg: `${months[month-1]} ${year}: ${T('anomaly_missing')} — only ${daysWithData}/${days} days have data`});
+  }
+  // Price inconsistency: if more than 2 distinct prices
+  const uniqueFP = [...new Set(fPrices.map(p=>Math.round(p/100)*100))];
+  if(uniqueFP.length > 3) {
+    anomalies.push({severity:'warning', day:null, month, year,
+      msg: `${months[month-1]} ${year}: ${T('anomaly_price_inconsist')} [${T('factory')}] — ${uniqueFP.length} different price points`});
+  }
+  return anomalies;
+}
+
+function renderAlerts() {
+  const year = parseInt(document.getElementById('alert-year').value);
+  const monthVal = document.getElementById('alert-month').value;
+  let allAnomalies = [];
+
+  if(monthVal === 'all') {
+    for(let m=1;m<=12;m++) allAnomalies.push(...detectAnomalies(year, m));
+  } else {
+    allAnomalies = detectAnomalies(year, parseInt(monthVal));
+  }
+
+  const badge = document.getElementById('alert-badge');
+  if(allAnomalies.length) { badge.textContent = allAnomalies.length; badge.style.display='inline'; }
+  else badge.style.display='none';
+
+  const content = document.getElementById('alerts-content');
+  if(!allAnomalies.length) {
+    content.innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">${T('no_alerts')}</div></div>`;
+    return;
+  }
+  content.innerHTML = `<div class="anomaly-list">${allAnomalies.map(a=>`
+    <div class="anomaly-item ${a.severity==='critical'?'critical':''}">
+      <div class="anomaly-icon">${a.severity==='critical'?'🔴':'⚠️'}</div>
+      <div class="anomaly-text"><strong>${a.severity==='critical'?'CRITICAL':'WARNING'}</strong>: ${a.msg}</div>
+    </div>`).join('')}</div>`;
+}
+
+// ==================== TELEGRAM ====================
+function saveTgConfig() {
+  localStorage.setItem('wdr_tg_config', JSON.stringify({
+    token: document.getElementById('tg-token').value,
+    chat: document.getElementById('tg-chat').value
+  }));
+}
+function loadTgConfig() {
+  const s = localStorage.getItem('wdr_tg_config');
+  if(!s) return;
+  const c = JSON.parse(s);
+  document.getElementById('tg-token').value = c.token||'';
+  document.getElementById('tg-chat').value = c.chat||'';
+}
+
+function buildTelegramMessage(type, year, month) {
+  const months = T('month_names');
+  const rows = loadMonthDataRaw(year, month) || [];
+  const fQty = rows.reduce((a,r)=>a+(parseFloat(r.fQty)||0),0);
+  const sQty = rows.reduce((a,r)=>a+(parseFloat(r.sQty)||0),0);
+  const fTtl = rows.reduce((a,r)=>a+(r.fTtl||0),0);
+  const sTtl = rows.reduce((a,r)=>a+(r.sTtl||0),0);
+  const daysWithData = rows.filter(r=>r.fQty||r.sQty).length;
+  const now = new Date();
+
+  if(type === 'summary') {
+    return `💧 *Water Drum Record — ${months[month-1]} ${year}*\n\n🏭 *Factory*\n  Qty: ${fQty} drums\n  Total: ${fTtl.toLocaleString()} Riels\n\n🏠 *Staff House*\n  Qty: ${sQty} drums\n  Total: ${sTtl.toLocaleString()} Riels\n\n💰 *Grand Total: ${(fTtl+sTtl).toLocaleString()} Riels*\n📅 Days with data: ${daysWithData}\n\n_Sent: ${now.toLocaleString()}_`;
+  } else if(type === 'daily') {
+    const d = now.getDate();
+    const row = rows.find(r=>r.day===d) || {};
+    return `💧 *Water Drum — Daily Report (${d} ${months[month-1]} ${year})*\n\n🏭 Factory: Qty ${row.fQty||0}, Price ${row.fPrice||0}, Total ${(row.fTtl||0).toLocaleString()} Riels\n🏠 Staff House: Qty ${row.sQty||0}, Price ${row.sPrice||0}, Total ${(row.sTtl||0).toLocaleString()} Riels\n\n_Sent: ${now.toLocaleString()}_`;
+  } else if(type === 'anomaly') {
+    const anomalies = detectAnomalies(year, month);
+    if(!anomalies.length) return `💧 *Anomaly Report — ${months[month-1]} ${year}*\n\n✅ ${T('all_good')}\n\n_Sent: ${now.toLocaleString()}_`;
+    return `💧 *Anomaly Report — ${months[month-1]} ${year}*\n\n⚠️ *${anomalies.length} issues found:*\n\n${anomalies.map(a=>`${a.severity==='critical'?'🔴':'⚠️'} ${a.msg}`).join('\n')}\n\n_Sent: ${now.toLocaleString()}_`;
+  } else { // full
+    let msg = `💧 *Water Drum Full Report — ${months[month-1]} ${year}*\n\n`;
+    msg += `Date | 🏭Qty | 🏭Riels | 🏠Qty | 🏠Riels\n`;
+    msg += `${'─'.repeat(40)}\n`;
+    rows.filter(r=>r.fQty||r.sQty).forEach(r => {
+      msg += `${String(r.day).padStart(2,'0')} | ${(r.fQty||0)} | ${(r.fTtl||0).toLocaleString()} | ${(r.sQty||0)} | ${(r.sTtl||0).toLocaleString()}\n`;
+    });
+    msg += `${'─'.repeat(40)}\n*Total | ${fQty} | ${fTtl.toLocaleString()} | ${sQty} | ${sTtl.toLocaleString()}*\n\n_Sent: ${now.toLocaleString()}_`;
+    return msg;
+  }
+}
+
+function previewTelegramMessage() {
+  const type = document.getElementById('tg-report-type').value;
+  const year = parseInt(document.getElementById('tg-year').value);
+  const month = parseInt(document.getElementById('tg-month').value);
+  const msg = buildTelegramMessage(type, year, month);
+  const prev = document.getElementById('tg-preview');
+  prev.textContent = msg;
+  prev.style.display = 'block';
+}
+
+async function sendToTelegram() {
+  const token = document.getElementById('tg-token').value.trim();
+  const chat = document.getElementById('tg-chat').value.trim();
+  if(!token || !chat) { showToast(T('no_token'), 'error'); return; }
+  const type = document.getElementById('tg-report-type').value;
+  const year = parseInt(document.getElementById('tg-year').value);
+  const month = parseInt(document.getElementById('tg-month').value);
+  const msg = buildTelegramMessage(type, year, month);
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ chat_id: chat, text: msg, parse_mode: 'Markdown' })
+    });
+    const data = await res.json();
+    if(data.ok) showToast(T('sent_ok'), 'success');
+    else showToast('Telegram error: ' + (data.description||'Unknown'), 'error');
+  } catch(e) {
+    showToast('Network error: ' + e.message, 'error');
+  }
+}
+
+// ==================== TABS ====================
+function showTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  document.getElementById('tab-'+name).classList.add('active');
+  if(name === 'analysis') renderAnalysis();
+  if(name === 'history') renderHistory();
+  if(name === 'alerts') renderAlerts();
+}
+
+// ==================== TOAST ====================
+function showToast(msg, type='info') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.innerHTML = `${type==='success'?'✅':type==='error'?'❌':'ℹ️'} ${msg}`;
+  c.appendChild(t);
+  setTimeout(() => { t.style.opacity='0'; t.style.transition='opacity .3s'; setTimeout(()=>t.remove(),300); }, 3000);
+}
+
+// ==================== INIT ====================
+function init() {
+  populateSelects();
+  loadMonthData();
+  loadTgConfig();
+  applyTranslations();
+  setAnalysisPeriod('month');
+  renderAlerts();
+  // Close modal on overlay click
+  document.getElementById('add-modal').addEventListener('click', function(e) {
+    if(e.target === this) closeModal('add-modal');
+  });
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

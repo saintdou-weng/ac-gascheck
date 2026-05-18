@@ -1,0 +1,1969 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VRT 資產管理 Asset Management</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<style>
+:root{
+  --p:#2563eb;--ph:#1d4ed8;--pl:#eff6ff;--pll:#dbeafe;
+  --s:#16a34a;--sl:#f0fdf4;--sd:#14532d;
+  --w:#d97706;--wl:#fffbeb;
+  --r:#dc2626;--rl:#fef2f2;
+  --bg:#f0f4f8;--white:#fff;
+  --bdr:#d0dce8;--bdd:#b0c4d8;
+  --tx:#1a2a3a;--tx2:#4a6a7a;--tx3:#8aaabb;
+  --gbg:#f8fafc;
+  --sh:0 1px 3px rgba(0,0,0,.10);
+  --shm:0 4px 14px rgba(0,0,0,.12);
+  --shx:0 20px 50px rgba(0,0,0,.18);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI','Microsoft JhengHei',sans-serif;min-height:100vh;font-size:14px}
+
+/* LOGIN */
+.login-wrap{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px;background:linear-gradient(135deg,#1e3a5f,#2563eb)}
+.login-card{background:#fff;border-radius:20px;padding:36px 32px;width:100%;max-width:400px;box-shadow:var(--shx);text-align:center}
+.login-logo{font-size:32px;margin-bottom:8px}
+.login-t1{font-size:17px;font-weight:800;margin-bottom:2px;color:var(--tx)}
+.login-t2{font-size:11px;color:var(--tx3);margin-bottom:24px}
+.role-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;text-align:left}
+.role-btn{padding:10px 12px;border:1.5px solid var(--bdr);border-radius:10px;cursor:pointer;background:var(--gbg);transition:all .2s;display:flex;align-items:center;gap:8px}
+.role-btn:hover{border-color:var(--p);background:var(--pl)}
+.rb-icon{font-size:18px}
+.rb-name{font-weight:700;font-size:13px}
+.rb-role{font-size:10px;color:var(--tx3)}
+.pin-area{display:none;text-align:center}
+.who-box{background:var(--gbg);border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:14px;text-align:left;display:flex;align-items:center;gap:10px}
+.pin-inp{width:100%;border:1.5px solid var(--bdr);border-radius:10px;padding:11px;font-size:18px;text-align:center;letter-spacing:8px;outline:none;background:var(--gbg);margin-bottom:12px;font-family:inherit}
+.pin-inp:focus{border-color:var(--p);background:#fff}
+.btn-lg{width:100%;background:linear-gradient(135deg,#1e3a5f,#2563eb);border:none;border-radius:10px;padding:12px;color:#fff;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit}
+.login-err{color:var(--r);font-size:12px;margin-top:6px;min-height:16px}
+.btn-back-sm{background:none;border:none;color:var(--tx3);font-size:12px;cursor:pointer;margin-top:8px;text-decoration:underline}
+
+/* TOP BAR */
+.topbar{background:#fff;border-bottom:2px solid var(--p);height:50px;padding:0 16px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;box-shadow:var(--sh)}
+.tb-left{display:flex;align-items:center;gap:10px}
+.tb-badge{background:var(--p);color:#fff;font-weight:900;font-size:12px;padding:3px 9px;border-radius:6px;letter-spacing:1px}
+.tb-title{font-weight:700;font-size:13px;color:var(--tx)}
+.tb-right{display:flex;align-items:center;gap:7px}
+.user-pill{display:flex;align-items:center;gap:5px;background:var(--gbg);border:1px solid var(--bdr);border-radius:20px;padding:3px 10px;font-size:12px;font-weight:600}
+.udot{width:8px;height:8px;border-radius:50%}
+.ude{background:#3b82f6}.udv{background:#f59e0b}.uda{background:#dc2626}
+.sync-badge{font-size:10px;color:var(--tx3);display:flex;align-items:center;gap:3px}
+.sdot{width:7px;height:7px;border-radius:50%;background:#94a3b8}
+.sdot.ok{background:#22c55e}.sdot.err{background:#ef4444}.sdot.spin{background:#f59e0b;animation:spin 1s infinite}
+@keyframes spin{0%,100%{opacity:1}50%{opacity:.3}}
+.btn-sm{background:var(--gbg);border:1px solid var(--bdr);border-radius:7px;padding:4px 9px;cursor:pointer;font-size:11px;color:var(--tx2);font-weight:500;white-space:nowrap}
+.btn-sm:hover{background:var(--pl);color:var(--p);border-color:var(--p)}
+.lang-sw{display:flex;background:#e8eef5;border-radius:16px;padding:2px;gap:2px}
+.lsw-btn{padding:3px 10px;border-radius:14px;border:none;cursor:pointer;font-size:11px;font-weight:700;background:transparent;color:var(--tx3)}
+.lsw-btn.on{background:var(--p);color:#fff}
+
+/* ZONE TABS */
+.znav{background:#fff;border-bottom:1px solid var(--bdr);padding:0 16px;display:flex;overflow-x:auto;box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.ztab{padding:9px 14px;border:none;background:none;font-size:13px;font-weight:600;color:var(--tx3);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.ztab.on{color:var(--p);border-bottom-color:var(--p)}
+.zcnt{background:#e8eef5;color:var(--tx2);font-size:10px;font-weight:700;padding:1px 6px;border-radius:10px;margin-left:4px}
+.ztab.on .zcnt{background:var(--pl);color:var(--p)}
+
+/* BANNERS */
+.banner{margin:12px 16px 0;border-radius:10px;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;border:1.5px solid}
+.bv{background:#fef9c3;border-color:#fde047}.bv:hover{background:#fef08a}
+.ba{background:#fee2e2;border-color:#fca5a5;margin-top:6px}.ba:hover{background:#fecaca}
+
+/* MAIN */
+.main{padding:14px 16px;max-width:1200px;margin:0 auto}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-bottom:14px}
+.sc{background:#fff;border:1px solid var(--bdr);border-radius:10px;padding:11px 13px;display:flex;align-items:center;gap:10px;box-shadow:var(--sh)}
+.sc-i{font-size:22px}.sc-l{font-size:10px;color:var(--tx3);font-weight:600;text-transform:uppercase;letter-spacing:.5px}.sc-v{font-size:19px;font-weight:800;line-height:1.1}
+
+/* TOOLBAR */
+.toolbar{background:#fff;border:1px solid var(--bdr);border-radius:10px;padding:10px 14px;margin-bottom:12px;display:flex;gap:7px;flex-wrap:wrap;align-items:center;box-shadow:var(--sh)}
+.srch{flex:1;min-width:160px;background:var(--gbg);border:1.5px solid var(--bdr);border-radius:8px;padding:7px 11px;font-size:13px;color:var(--tx);outline:none;font-family:inherit}
+.srch:focus{border-color:var(--p);background:#fff}
+.fsel{background:#fff;border:1.5px solid var(--bdd);border-radius:8px;padding:7px 9px;font-size:12px;color:var(--tx2);outline:none;cursor:pointer;font-family:inherit}
+.cnt{font-size:12px;color:var(--tx3);white-space:nowrap}.cnt b{color:var(--p);font-weight:700}
+.btn-add{background:var(--p);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:13px;white-space:nowrap}
+.btn-add:hover{background:var(--ph)}
+
+/* TABLE */
+.twrap{background:#fff;border:1px solid var(--bdr);border-radius:10px;overflow:hidden;box-shadow:var(--sh)}
+.tbl{width:100%;border-collapse:collapse}
+.tbl th{padding:8px 10px;background:var(--gbg);text-align:left;font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.7px;border-bottom:1.5px solid var(--bdr);white-space:nowrap;cursor:pointer;user-select:none}
+.tbl th:hover{background:var(--pl);color:var(--p)}
+.tbl td{padding:7px 10px;border-bottom:1px solid var(--bdr);font-size:12px;vertical-align:middle}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:#f0f5fb}
+.tc{font-family:'IBM Plex Mono','Courier New',monospace;font-weight:700;font-size:12px;color:var(--p)}
+.tn{font-weight:600;color:var(--tx)}.tm{color:var(--tx2)}.ts{font-size:10px;color:var(--tx3)}
+.pcell{width:38px;height:38px;border-radius:7px;object-fit:cover;border:1px solid var(--bdr);cursor:zoom-in}
+.pcell-e{width:38px;height:38px;border-radius:7px;background:var(--gbg);border:1.5px dashed var(--bdd);display:flex;align-items:center;justify-content:center;color:var(--tx3);font-size:14px}
+
+/* BADGES */
+.bdg{display:inline-block;padding:2px 8px;border-radius:12px;font-size:10px;font-weight:700;white-space:nowrap}
+.b-act{background:#dcfce7;color:#15803d}.b-std{background:#dbeafe;color:#1d4ed8}
+.b-rep{background:#fef9c3;color:#a16207}.b-dis{background:#fee2e2;color:#991b1b}
+.b-len{background:#f3e8ff;color:#6d28d9}
+.b-fac{background:#e0f2fe;color:#0369a1}.b-exp{background:#f3e8ff;color:#5b21b6}.b-loc{background:#dcfce7;color:#065f46}
+
+/* TABLE ACTION BUTTONS */
+.tactn{display:flex;gap:3px}
+.bx{padding:3px 7px;border-radius:5px;border:1px solid;font-size:10px;cursor:pointer;font-weight:600;white-space:nowrap}
+.bx-v{background:var(--gbg);border-color:var(--bdr);color:var(--tx2)}.bx-v:hover{background:var(--pl);border-color:var(--p);color:var(--p)}
+.bx-e{background:#f0fdf4;border-color:#86efac;color:#15803d}
+.bx-t{background:#fffbeb;border-color:#fcd34d;color:#b45309}
+.bx-d{background:#fef2f2;border-color:#fca5a5;color:#dc2626}
+
+/* MOBILE CARDS */
+.cgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:10px}
+.acard{background:#fff;border:1px solid var(--bdr);border-radius:12px;overflow:hidden;box-shadow:var(--sh)}
+.cp{height:110px;background:var(--gbg);display:flex;align-items:center;justify-content:center;font-size:34px;color:var(--tx3);overflow:hidden}
+.cp img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.cbody{padding:10px 12px}
+.ccr{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px}
+.ccode{font-family:monospace;font-weight:800;color:var(--p);font-size:12px}
+.cname{font-weight:700;font-size:13px;margin-bottom:6px}
+.cmeta{display:grid;grid-template-columns:1fr 1fr;gap:2px 7px;font-size:11px;color:var(--tx2);margin-bottom:8px}
+.cact{display:flex;gap:5px;padding:7px 12px;border-top:1px solid var(--bdr);background:var(--gbg)}
+.cact .bx{flex:1;text-align:center;padding:5px 4px}
+
+/* OVERLAY / MODAL */
+.ovl{position:fixed;inset:0;background:rgba(15,23,42,.5);backdrop-filter:blur(4px);z-index:999;display:flex;align-items:center;justify-content:center;padding:14px}
+.mdl{background:#fff;border-radius:16px;width:100%;max-width:720px;max-height:95vh;overflow:auto;box-shadow:var(--shx)}
+.mdl-sm{max-width:500px}
+.mhead{padding:14px 20px;border-bottom:1px solid var(--bdr);display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:1;border-radius:16px 16px 0 0}
+.mtitle{font-weight:700;font-size:15px}.msub{font-size:11px;color:var(--tx3);margin-top:1px}
+.mcls{width:27px;height:27px;background:var(--gbg);border:none;border-radius:50%;cursor:pointer;font-size:13px;color:var(--tx2);display:flex;align-items:center;justify-content:center}
+.mcls:hover{background:var(--bdr)}
+.mbody{padding:18px 20px}
+.mfoot{padding:12px 20px;border-top:1px solid var(--bdr);display:flex;justify-content:flex-end;gap:8px;background:var(--gbg);border-radius:0 0 16px 16px;flex-wrap:wrap}
+
+/* FORM */
+.fsect{margin-bottom:16px}
+.fsect-t{font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:1px;margin-bottom:9px;padding-bottom:4px;border-bottom:1px solid var(--bdr)}
+.fg2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.fg4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:0 10px}
+.fld{margin-bottom:11px}
+.fld label{display:block;font-size:10px;font-weight:700;color:var(--tx2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.req{color:var(--r)}
+.fld input,.fld select,.fld textarea{width:100%;background:var(--gbg);border:1.5px solid var(--bdr);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;font-family:inherit;transition:border .15s}
+.fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--p);background:#fff}
+.fld textarea{resize:vertical;min-height:58px}
+.dup-warn{background:#fef9c3;border:1px solid #fde047;border-radius:6px;padding:6px 10px;font-size:11px;color:#713f12;margin-top:4px;display:none}
+
+/* CODE PREVIEW */
+.cprev{background:var(--pl);border:2px solid var(--p);border-radius:10px;padding:9px 16px;text-align:center;margin-bottom:16px}
+.cprev-lbl{font-size:10px;color:var(--tx3);font-weight:700;text-transform:uppercase;margin-bottom:3px}
+.cprev-val{font-family:'IBM Plex Mono','Courier New',monospace;font-size:22px;font-weight:900;color:var(--p);letter-spacing:3px}
+
+/* PHOTO UPLOAD */
+.pup{border:2px dashed var(--bdd);border-radius:10px;cursor:pointer;background:var(--gbg);overflow:hidden;min-height:80px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:5px;text-align:center;padding:10px;transition:all .2s}
+.pup:hover{border-color:var(--p);background:var(--pl)}
+.pup.has{border-style:solid;border-color:var(--p);padding:0}
+.pup img{width:100%;max-height:170px;object-fit:contain}
+
+/* DETAIL */
+.dcode{font-family:monospace;font-size:22px;font-weight:900;color:var(--p);text-align:center;letter-spacing:3px;background:var(--pl);border-radius:10px;padding:11px;margin-bottom:13px;border:2px solid var(--p)}
+.dphoto{width:100%;max-height:200px;object-fit:contain;border-radius:10px;margin-bottom:13px;border:1px solid var(--bdr);background:var(--gbg);cursor:zoom-in}
+.dgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:13px}
+.di{background:var(--gbg);border-radius:8px;padding:8px 10px}.di.full{grid-column:span 2}
+.di-l{font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:2px}
+.di-v{font-size:13px;color:var(--tx);font-weight:500}
+.sts-chips{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:13px}
+.sts-chip{padding:5px 13px;border-radius:16px;border:1.5px solid;font-size:11px;font-weight:700;cursor:pointer}
+
+/* HISTORY LOG */
+.hlog{display:flex;flex-direction:column;gap:5px;max-height:190px;overflow-y:auto}
+.hitem{border-left:3px solid;padding:5px 9px;background:var(--gbg);border-radius:0 7px 7px 0}
+.hitem.created{border-color:#22c55e}.hitem.edit{border-color:#3b82f6}
+.hitem.pending{border-color:#eab308}.hitem.verified{border-color:#f97316}
+.hitem.approved{border-color:#22c55e}.hitem.rejected{border-color:#ef4444}
+.h-d{font-size:10px;color:var(--tx3);margin-bottom:1px}.h-t{font-size:11px;color:var(--tx2)}
+
+/* APPROVAL FLOW */
+.flow{display:flex;align-items:center;background:var(--gbg);border-radius:10px;padding:10px 13px;margin-bottom:13px}
+.fstep{display:flex;align-items:center;gap:5px;flex:1}
+.fdot{width:26px;height:26px;border-radius:50%;border:2px solid;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;flex-shrink:0}
+.fd-done{background:#22c55e;border-color:#22c55e;color:#fff}
+.fd-act{background:#f59e0b;border-color:#f59e0b;color:#fff;animation:spin 1.5s infinite}
+.fd-idle{background:#e2e8f0;border-color:#e2e8f0;color:#94a3b8}
+.fline{height:2px;flex:1;background:var(--bdr)}.fline.done{background:#22c55e}
+.finfo{font-size:11px;color:var(--tx2)}.fname{font-size:9px;color:var(--tx3)}
+
+/* PEOPLE ROW in request modal */
+.people-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:13px}
+.pcard{background:var(--gbg);border-radius:8px;padding:8px 10px;border:1px solid var(--bdr)}
+.pcard-role{font-size:9px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
+.pcard-name{font-size:12px;font-weight:700}
+.pcard-date{font-size:10px;color:var(--tx3)}
+
+/* REQ CARD */
+.rcard{background:#fff;border:1.5px solid var(--bdr);border-radius:10px;padding:12px;margin-bottom:9px}
+.rcard.rt{border-left:4px solid var(--w)}.rcard.rd{border-left:4px solid var(--r)}
+.rhead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:7px}
+.rmeta{font-size:11px;color:var(--tx2);margin-bottom:9px;line-height:1.7}
+.rbtns{display:flex;gap:7px}
+
+/* BUTTONS */
+.btn-pri{background:var(--p);color:#fff;border:none;border-radius:8px;padding:8px 18px;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit}
+.btn-pri:hover{background:var(--ph)}
+.btn-sec{background:#fff;border:1.5px solid var(--bdd);color:var(--tx2);border-radius:8px;padding:8px 14px;cursor:pointer;font-size:13px;font-family:inherit}
+.btn-sec:hover{border-color:var(--p);color:var(--p)}
+.btn-ok{background:var(--s);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit}
+.btn-ok:hover{background:var(--sd)}
+.btn-rej{background:var(--r);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:13px;font-family:inherit}
+.btn-del{background:#fff;border:1.5px solid #fca5a5;color:var(--r);border-radius:8px;padding:7px 12px;cursor:pointer;font-weight:600;font-size:12px;margin-right:auto;font-family:inherit}
+
+/* LOADING */
+.loading-wrap{display:flex;align-items:center;justify-content:center;padding:60px 20px;color:var(--tx3)}
+.spinner{width:24px;height:24px;border:3px solid var(--bdr);border-top-color:var(--p);border-radius:50%;animation:rot .8s linear infinite;margin-right:10px}
+@keyframes rot{to{transform:rotate(360deg)}}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--tx);color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:500;box-shadow:var(--shm);z-index:9999;transition:all .3s;opacity:0;transform:translateY(8px);pointer-events:none;font-family:inherit}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.ok{background:#15803d}.toast.err{background:#dc2626}.toast.info{background:#1d4ed8}
+
+/* INFO/WARN BOXES */
+.info-box{background:var(--pl);border:1px solid var(--pll);border-radius:8px;padding:9px 12px;font-size:12px;color:#1e40af;margin-bottom:12px;line-height:1.7}
+.warn-box{background:#fffbeb;border:1px solid #fde047;border-radius:8px;padding:9px 12px;font-size:12px;color:#713f12;margin-bottom:12px;line-height:1.7}
+
+@media(max-width:768px){
+  .twrap{display:none}.stats{grid-template-columns:repeat(2,1fr)}
+  .fg2,.fg4{grid-template-columns:1fr}.role-grid{grid-template-columns:1fr}
+}
+@media(min-width:769px){.cgrid{display:none}}
+.hidden{display:none!important}
+.nodata{text-align:center;padding:50px 20px;color:var(--tx3)}
+
+/* LABEL PRINT */
+.lbl-opts{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.lbl-opt{padding:7px 16px;border:2px solid var(--bdr);border-radius:20px;cursor:pointer;font-size:13px;font-weight:700;background:var(--gbg);transition:all .2s}
+.lbl-opt.on{border-color:var(--p);background:var(--pl);color:var(--p)}
+.lbl-preview-area{background:var(--gbg);border:1.5px solid var(--bdr);border-radius:10px;padding:16px;display:flex;flex-wrap:wrap;gap:14px;justify-content:center;min-height:80px;max-height:420px;overflow-y:auto}
+.lbl-img-wrap{background:#fff;border:1.5px solid var(--bdr);border-radius:8px;padding:6px;text-align:center;box-shadow:var(--sh)}
+.lbl-img-wrap canvas{display:block;max-width:220px;height:auto;border:1px solid #e2e8f0}
+.lbl-img-btns{display:flex;gap:4px;margin-top:5px;justify-content:center}
+.lbl-img-btns button{font-size:10px;padding:2px 8px;border:1px solid var(--bdr);border-radius:5px;background:var(--gbg);cursor:pointer;color:var(--tx2)}
+.lbl-img-btns button:hover{background:var(--pl);border-color:var(--p);color:var(--p)}
+.lbl-batch-list{max-height:260px;overflow-y:auto;margin-bottom:12px;border:1px solid var(--bdr);border-radius:8px}
+.lbl-batch-item{display:flex;align-items:center;gap:8px;padding:6px 10px;border-bottom:1px solid var(--bdr);font-size:12px}
+.lbl-batch-item:last-child{border-bottom:none}
+.lbl-batch-item:hover{background:var(--pl)}
+.lbl-batch-item input[type=checkbox]{width:16px;height:16px;cursor:pointer;accent-color:var(--p)}
+.lbl-batch-item .tc{min-width:65px}
+.btn-print{background:linear-gradient(135deg,#1e3a5f,#2563eb);color:#fff;border:none;border-radius:8px;padding:9px 20px;cursor:pointer;font-weight:800;font-size:14px;font-family:inherit;display:flex;align-items:center;gap:6px}
+.btn-print:hover{opacity:.9}
+.btn-lbl{background:#7c3aed;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:13px;white-space:nowrap;font-family:inherit}
+.btn-lbl:hover{background:#6d28d9}
+.btn-imp{background:var(--s);color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:13px;white-space:nowrap;font-family:inherit}
+.btn-imp:hover{background:var(--sd)}
+.btn-dl{background:#0369a1;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:13px;white-space:nowrap;font-family:inherit}
+.btn-dl:hover{background:#075985}
+.btn-share{background:#ea580c;color:#fff;border:none;border-radius:8px;padding:8px 14px;cursor:pointer;font-weight:700;font-size:13px;white-space:nowrap;font-family:inherit}
+.btn-share:hover{background:#c2410c}
+.imp-drop{border:2.5px dashed var(--bdd);border-radius:12px;padding:30px 20px;text-align:center;cursor:pointer;background:var(--gbg);transition:all .2s;margin-bottom:14px}
+.imp-drop:hover,.imp-drop.drag{border-color:var(--p);background:var(--pl)}
+.imp-tbl{width:100%;border-collapse:collapse;font-size:11px;margin-top:10px}
+.imp-tbl th{background:var(--gbg);padding:5px 7px;text-align:left;font-size:10px;font-weight:700;color:var(--tx3);border:1px solid var(--bdr)}
+.imp-tbl td{padding:4px 7px;border:1px solid var(--bdr)}
+
+/* PRINT MEDIA */
+@media print{
+  body *{visibility:hidden}
+  #print-zone,#print-zone *{visibility:visible}
+  #print-zone{position:fixed;top:0;left:0;width:100%;z-index:99999}
+  .print-label{page-break-inside:avoid;margin:1mm;display:inline-block}
+  .print-label img{height:12mm;width:auto}
+  @page{size:auto;margin:2mm}
+}
+</style>
+</head>
+<body>
+
+<!-- ════ LOGIN ════ -->
+<div id="login-screen">
+<div class="login-wrap">
+  <div class="login-card">
+    <div class="login-logo">📦</div>
+    <div class="login-t1">資產管理系統</div>
+    <div class="login-t2">VRT Asset Management ｜ D-AM-050</div>
+
+    <div id="ls1">
+      <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:9px;text-align:left">選擇身份登入 Select Role</div>
+      <div class="role-grid" id="roles-list"></div>
+    </div>
+
+    <div id="ls2" class="pin-area">
+      <div class="who-box">
+        <span id="ls2-icon" style="font-size:22px"></span>
+        <div><div style="font-weight:700;font-size:13px" id="ls2-name"></div><div style="font-size:11px;color:var(--tx3)" id="ls2-role"></div></div>
+      </div>
+      <input class="pin-inp" type="password" id="pin-inp" placeholder="• • • •" maxlength="10" onkeydown="if(event.key==='Enter')doLogin()">
+      <button class="btn-lg" onclick="doLogin()">登入 Login</button>
+      <div class="login-err" id="login-err"></div>
+      <button class="btn-back-sm" onclick="backSel()">← 重新選擇 Back</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ════ APP ════ -->
+<div id="app" class="hidden">
+
+<div class="topbar">
+  <div class="tb-left">
+    <div class="tb-badge">VRT</div>
+    <div class="tb-title">資產管理 Asset Mgmt</div>
+  </div>
+  <div class="tb-right">
+    <div class="lang-sw">
+      <button class="lsw-btn on" id="lt-zh" onclick="setLang('zh')">中文</button>
+      <button class="lsw-btn" id="lt-en" onclick="setLang('en')">EN</button>
+    </div>
+    <div class="user-pill">
+      <span class="udot" id="uhdr-dot"></span>
+      <span id="uhdr-name">—</span>
+      <span id="uhdr-role" class="bdg" style="font-size:9px;padding:1px 5px"></span>
+    </div>
+    <span class="sync-badge"><span class="sdot" id="sdot"></span><span id="sync-txt"></span></span>
+    <button class="btn-sm" onclick="doLogout()">🚪 <span id="h-out">登出</span></button>
+  </div>
+</div>
+
+<div class="znav">
+  <button class="ztab on" onclick="setZone('')" id="zt-all"><span id="zt-all-t">全部</span> <span class="zcnt" id="zc-all">0</span></button>
+  <button class="ztab" onclick="setZone('factory')" id="zt-fac">🏭 <span id="zt-fac-t">工廠</span> <span class="zcnt" id="zc-factory">0</span></button>
+  <button class="ztab" onclick="setZone('expat')" id="zt-exp">🏠 <span id="zt-exp-t">外藉宿舍</span> <span class="zcnt" id="zc-expat">0</span></button>
+  <button class="ztab" onclick="setZone('local')" id="zt-loc">🏡 <span id="zt-loc-t">當地宿舍</span> <span class="zcnt" id="zc-local">0</span></button>
+</div>
+
+<div id="banner-v" class="banner bv hidden" onclick="openPending('verify')">
+  <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#713f12">🔍 <span id="bv-t">待審查申請</span> <span style="background:#713f12;color:#fff;font-size:11px;font-weight:800;padding:1px 7px;border-radius:10px" id="bv-cnt">0</span></div>
+  <span style="font-size:12px;color:#92400e" id="bv-a">→ 點擊審查</span>
+</div>
+<div id="banner-a" class="banner ba hidden" onclick="openPending('approve')" style="margin-top:6px">
+  <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#991b1b">✅ <span id="ba-t">待核可申請</span> <span style="background:#991b1b;color:#fff;font-size:11px;font-weight:800;padding:1px 7px;border-radius:10px" id="ba-cnt">0</span></div>
+  <span style="font-size:12px;color:#991b1b" id="ba-a">→ 點擊核可</span>
+</div>
+
+<div class="main">
+  <div class="stats" id="stats-bar"></div>
+  <div class="toolbar">
+    <input class="srch" id="q" oninput="render()" placeholder="🔍 搜尋 Search…">
+    <select class="fsel" id="f-cat" onchange="render()"></select>
+    <select class="fsel" id="f-code" onchange="render()"></select>
+    <select class="fsel" id="f-st" onchange="render()"></select>
+    <span class="cnt"><span id="l-tot">共</span> <b id="cnt">0</b> <span id="l-items">筆</span></span>
+    <button class="btn-imp" onclick="openImport()">📥 <span id="l-imp">匯入</span></button>
+    <button class="btn-dl" onclick="exportExcel()">📤 <span id="l-exp">匯出</span></button>
+    <button class="btn-sm" onclick="openLog()" style="background:#fef3c7;border-color:#fde68a;color:#92400e" id="btn-log">📜 <span id="l-log">日誌</span></button>
+    <button class="btn-lbl" onclick="openBatchPrint()">🏷️ <span id="l-print">標簽</span></button>
+    <button class="btn-sm" onclick="clearAllData()" style="color:var(--r);border-color:#fca5a5" id="btn-clear">🗑 <span id="l-clr">清除</span></button>
+    <button class="btn-add" id="btn-add" onclick="openAdd()">＋ <span id="l-add">新增</span></button>
+  </div>
+
+  <div class="twrap">
+    <table class="tbl">
+      <thead><tr>
+        <th>📷</th>
+        <th onclick="srt('code')"><span id="th-code">編號</span><span id="sa-code"></span></th>
+        <th onclick="srt('name')"><span id="th-name">品名</span><span id="sa-name"></span></th>
+        <th><span id="th-spec">品牌/型號</span></th>
+        <th><span id="th-cs">顏色/尺寸</span></th>
+        <th onclick="srt('qty')"><span id="th-qty">數量</span><span id="sa-qty"></span></th>
+        <th onclick="srt('unitPrice')"><span id="th-price">單價</span><span id="sa-up"></span></th>
+        <th onclick="srt('zone')"><span id="th-zone">區域</span><span id="sa-zone"></span></th>
+        <th onclick="srt('location')"><span id="th-loc">位置</span><span id="sa-loc"></span></th>
+        <th onclick="srt('user')"><span id="th-user">使用人</span><span id="sa-user"></span></th>
+        <th onclick="srt('status')"><span id="th-st">狀態</span><span id="sa-st"></span></th>
+        <th><span id="th-act">操作</span></th>
+      </tr></thead>
+      <tbody id="tbod"></tbody>
+    </table>
+  </div>
+  <div class="cgrid" id="cgrid"></div>
+</div>
+</div><!-- end app -->
+
+<!-- ════ FORM MODAL ════ -->
+<div class="ovl hidden" id="m-form" onclick="if(event.target===this)closeM('m-form')">
+<div class="mdl">
+  <div class="mhead">
+    <div><div class="mtitle" id="m-form-t">新增資產</div><div class="msub">* 必填欄位</div></div>
+    <button class="mcls" onclick="closeM('m-form')">✕</button>
+  </div>
+  <div class="mbody">
+    <div class="cprev"><div class="cprev-lbl">自動編號 Auto Code</div><div class="cprev-val" id="cp-val">AOA001</div></div>
+    <div class="fsect"><div class="fsect-t">📋 基本資訊 Basic Info</div>
+      <div class="fg2">
+        <div class="fld"><label>編碼類型 Code Type <span class="req">*</span></label><select id="f-ct" onchange="upCP()"><option value="AOA">AOA – 辦公資產 Office</option><option value="AHA">AHA – 宿舍/車輛 Dorm</option></select></div>
+        <div class="fld"><label>區域 Zone <span class="req">*</span></label><select id="f-zn" onchange="syncZoneCodeType()"><option value="factory">🏭 工廠 Factory</option><option value="expat">🏠 外藉宿舍 Expat</option><option value="local">🏡 當地宿舍 Local</option></select></div>
+      </div>
+      <div class="fld"><label>品名 Description <span class="req">*</span></label><input id="f-nm" oninput="checkDup()"><div class="dup-warn" id="dup-w"></div></div>
+      <div class="fg2">
+        <div class="fld"><label>類別 Category <span class="req">*</span></label><select id="f-c2"></select></div>
+        <div class="fld"><label>狀態 Status</label><select id="f-st2"></select></div>
+      </div>
+    </div>
+    <div class="fsect"><div class="fsect-t">📐 規格 Specifications</div>
+      <div class="fg2">
+        <div class="fld"><label>品牌 Brand</label><input id="f-br" placeholder="e.g. Posco, Samsung"></div>
+        <div class="fld"><label>型號/規格 Model</label><input id="f-md" placeholder="e.g. 4-drawer"></div>
+      </div>
+      <div class="fg4">
+        <div class="fld"><label>顏色 Color</label><input id="f-cl" placeholder="Black"></div>
+        <div class="fld"><label>尺寸 Size</label><input id="f-sz" placeholder="120×60cm"></div>
+        <div class="fld"><label>數量 Qty <span class="req">*</span></label><input type="number" id="f-qt" value="1" min="1" oninput="calcTV()"></div>
+        <div class="fld"><label>單位 Unit</label><input id="f-un" placeholder="pcs/台"></div>
+      </div>
+      <div class="fg2">
+        <div class="fld"><label>單價 Unit Price (USD$)</label><input type="number" id="f-up" step="0.01" oninput="calcTV()"></div>
+        <div class="fld"><label>總值 Total (auto)</label><input id="f-tv" readonly style="background:#eff6ff;color:var(--p);font-weight:700"></div>
+      </div>
+    </div>
+    <div class="fsect"><div class="fsect-t">📍 位置與保管</div>
+      <div class="fg2">
+        <div class="fld"><label>存放位置 Location</label><input id="f-lc" placeholder="GA Office 2F"></div>
+        <div class="fld"><label>使用人 User</label><input id="f-us" placeholder="Name"></div>
+      </div>
+      <div class="fg2">
+        <div class="fld"><label>購入日期 Purchase Date</label><input type="date" id="f-dt"></div>
+        <div class="fld"><label>備註 Remark</label><input id="f-rm" placeholder="Notes"></div>
+      </div>
+    </div>
+    <div class="fsect"><div class="fsect-t">📷 物品照片 Photo</div>
+      <div class="pup" id="pup" onclick="document.getElementById('f-pi').click()">
+        <div style="font-size:26px">📷</div>
+        <div style="font-size:12px;color:var(--tx3)">點擊上傳 Click to upload (JPG/PNG)</div>
+      </div>
+      <input type="file" id="f-pi" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+      <div id="pup-rm" class="hidden" style="text-align:center;margin-top:5px">
+        <button onclick="removePhoto()" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:11px;font-family:inherit">✕ 移除照片</button>
+      </div>
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="btn-del hidden" id="btn-del" onclick="doDelete()">🗑 刪除 Delete</button>
+    <button class="btn-sec" onclick="closeM('m-form')">取消 Cancel</button>
+    <button class="btn-pri" onclick="saveAsset()">儲存 Save ✓</button>
+  </div>
+</div>
+</div>
+
+<!-- ════ DETAIL MODAL ════ -->
+<div class="ovl hidden" id="m-det" onclick="if(event.target===this)closeM('m-det')">
+<div class="mdl">
+  <div class="mhead">
+    <div><div class="mtitle">📋 資產詳情 Asset Detail</div></div>
+    <button class="mcls" onclick="closeM('m-det')">✕</button>
+  </div>
+  <div class="mbody" id="m-db"></div>
+  <div class="mfoot">
+    <button class="btn-del" id="d-del" onclick="delFD()">🗑 刪除</button>
+    <button class="btn-lbl" style="font-size:12px;padding:7px 12px" onclick="closeM('m-det');openPrintSingle(viewCode)">🏷️ 打印標簽</button>
+    <button class="btn-sec" onclick="closeM('m-det')">關閉 Close</button>
+    <button class="btn-pri" id="d-edit" onclick="editFD()">✏️ 編輯 Edit</button>
+  </div>
+</div>
+</div>
+
+<!-- ════ REQUEST MODAL ════ -->
+<div class="ovl hidden" id="m-req" onclick="if(event.target===this)closeM('m-req')">
+<div class="mdl mdl-sm">
+  <div class="mhead">
+    <div><div class="mtitle" id="req-title">申請</div><div class="msub" id="req-sub"></div></div>
+    <button class="mcls" onclick="closeM('m-req')">✕</button>
+  </div>
+  <div class="mbody">
+    <div class="people-row">
+      <div class="pcard"><div class="pcard-role">申請人 Requester</div><div class="pcard-name" id="req-p1"></div><div class="pcard-date" id="req-p1d"></div></div>
+      <div class="pcard" style="opacity:.5"><div class="pcard-role">審查人 Verifier</div><div class="pcard-name">⏳ 待審查</div><div class="pcard-date">Pending</div></div>
+      <div class="pcard" style="opacity:.5"><div class="pcard-role">核可人 Approver</div><div class="pcard-name">⏳ 待核可</div><div class="pcard-date">Pending</div></div>
+    </div>
+    <div id="req-warn" class="warn-box"></div>
+    <div id="req-fields"></div>
+    <div class="fld"><label>申請原因 Reason <span class="req">*</span></label><textarea id="req-reason" placeholder="詳細說明…"></textarea></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn-sec" onclick="closeM('m-req')">取消 Cancel</button>
+    <button class="btn-pri" onclick="submitReq()">提交申請 Submit</button>
+  </div>
+</div>
+</div>
+
+<!-- ════ PENDING MODAL ════ -->
+<div class="ovl hidden" id="m-pend" onclick="if(event.target===this)closeM('m-pend')">
+<div class="mdl mdl-sm">
+  <div class="mhead">
+    <div><div class="mtitle" id="pend-title">待處理申請</div><div class="msub" id="pend-sub"></div></div>
+    <button class="mcls" onclick="closeM('m-pend')">✕</button>
+  </div>
+  <div class="mbody">
+    <div id="pend-list"></div>
+    <div id="pend-empty" class="nodata hidden">✅ 目前無待處理項目 No pending requests</div>
+  </div>
+  <div class="mfoot"><button class="btn-sec" onclick="closeM('m-pend')">關閉 Close</button></div>
+</div>
+</div>
+
+<!-- ════ PRINT LABEL MODAL ════ -->
+<div class="ovl hidden" id="m-print" onclick="if(event.target===this)closeM('m-print')">
+<div class="mdl">
+  <div class="mhead">
+    <div><div class="mtitle" id="m-print-t">🏷️ 打印標簽 Print Labels</div><div class="msub" id="print-sub"></div></div>
+    <button class="mcls" onclick="closeM('m-print')">✕</button>
+  </div>
+  <div class="mbody">
+    <div class="lbl-opts">
+      <span style="font-size:12px;font-weight:700;color:var(--tx3)" id="lbl-type-label">標簽類型 Type：</span>
+      <button class="lbl-opt on" id="lo-qr" onclick="setLblType('qr')">◻ QR Code</button>
+      <button class="lbl-opt" id="lo-bc" onclick="setLblType('barcode')">║ Barcode</button>
+    </div>
+    <div id="batch-area" class="hidden">
+      <div style="display:flex;gap:8px;margin-bottom:8px;align-items:center;flex-wrap:wrap">
+        <input class="srch" id="batch-q" oninput="renderBatchList()" style="flex:1;min-width:120px;padding:6px 10px;font-size:12px">
+        <button class="btn-sm" onclick="batchAll(true)" id="ba-sel">全選</button>
+        <button class="btn-sm" onclick="batchAll(false)" id="ba-clr">清除</button>
+        <span style="font-size:11px;color:var(--tx3)" id="ba-lbl">已選 <b id="batch-cnt" style="color:var(--p)">0</b> 筆</span>
+      </div>
+      <div class="lbl-batch-list" id="batch-list"></div>
+    </div>
+    <div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;margin-bottom:8px;letter-spacing:.5px" id="prev-lbl">預覽 PREVIEW</div>
+    <div class="lbl-preview-area" id="lbl-preview"></div>
+    <div class="info-box" style="margin-top:12px" id="lbl-tip">
+      💡 標簽只印 <b>編號 + QR/條碼圖形</b>，品名等資訊存在 QR/條碼內部（掃描時顯示）。<br>
+      📲 <b>手機</b>：下載 PNG → SUPVAN App (Print_Editor) 開啟 → 藍芽打印<br>
+      💻 <b>電腦</b>：下載 PNG → 碩方 PC 通用軟件 → USB 打印
+    </div>
+  </div>
+  <div class="mfoot" style="flex-wrap:wrap;gap:8px">
+    <button class="btn-sec" onclick="closeM('m-print')">取消 Cancel</button>
+    <button class="btn-dl" onclick="downloadAllLabels()">📥 下載 PNG Download</button>
+    <button class="btn-share" onclick="shareLabels()" id="btn-share-lbl">📲 分享 Share</button>
+  </div>
+</div>
+</div>
+
+<!-- ════ EXCEL IMPORT MODAL ════ -->
+<div class="ovl hidden" id="m-import" onclick="if(event.target===this)closeM('m-import')">
+<div class="mdl">
+  <div class="mhead">
+    <div><div class="mtitle">📥 Excel 匯入 Import</div><div class="msub" id="imp-sub">匯入資產清單</div></div>
+    <button class="mcls" onclick="closeM('m-import')">✕</button>
+  </div>
+  <div class="mbody">
+    <div class="imp-drop" id="imp-drop" onclick="document.getElementById('imp-file').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="event.preventDefault();this.classList.remove('drag');handleImportDrop(event)">
+      <div style="font-size:36px;margin-bottom:8px">📄</div>
+      <div style="font-size:14px;font-weight:700;color:var(--tx)" id="imp-cta">點擊或拖拽 Excel 檔案</div>
+      <div style="font-size:11px;color:var(--tx3);margin-top:4px">.xlsx / .xls / .csv</div>
+    </div>
+    <input type="file" id="imp-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(event)">
+    <div class="info-box" id="imp-info">
+      📋 <b>只匯入有資產編號 (AOA/AHA) 的列</b>，無編號的列會被跳過。<br>
+      支援欄位：資產編號, 資產名稱/Item, 品牌, 規格/型號, 取得日期, 保管人, 存放位置, 狀態, 備註<br>
+      ※ AHA 編號自動歸類為宿舍 (Expat Dorm)，AOA 歸類為工廠 (Factory)。
+    </div>
+    <div id="imp-preview" class="hidden">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+        <span style="font-size:13px;font-weight:700" id="imp-prev-t">預覽 Preview <b id="imp-cnt" style="color:var(--p)">0</b></span>
+        <button class="btn-sm" onclick="clearImport()">✕ 清除 Clear</button>
+      </div>
+      <div style="max-height:300px;overflow:auto;border:1px solid var(--bdr);border-radius:8px">
+        <table class="imp-tbl" id="imp-tbl"></table>
+      </div>
+    </div>
+  </div>
+  <div class="mfoot">
+    <button class="btn-sec" onclick="closeM('m-import')">取消 Cancel</button>
+    <button class="btn-pri" id="btn-do-import" onclick="doImport()" disabled>匯入 Import</button>
+  </div>
+</div>
+</div>
+
+<!-- PRINT ZONE (hidden, for USB print) -->
+<div id="print-zone" style="display:none"></div>
+
+<!-- ════ OPERATION LOG MODAL ════ -->
+<div class="ovl hidden" id="m-log" onclick="if(event.target===this)closeM('m-log')">
+<div class="mdl">
+  <div class="mhead">
+    <div><div class="mtitle">📜 操作日誌 Operation Log</div><div class="msub" id="log-sub">所有資產異動記錄</div></div>
+    <button class="mcls" onclick="closeM('m-log')">✕</button>
+  </div>
+  <div class="mbody">
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:center">
+      <input class="srch" id="log-q" oninput="renderLog()" placeholder="🔍 搜尋編號/品名/操作人…" style="flex:1;min-width:140px;padding:7px 11px;font-size:12px">
+      <select class="fsel" id="log-type" onchange="renderLog()" style="font-size:12px">
+        <option value="">全部類型 All Types</option>
+        <option value="created">✨ 新增 Created</option>
+        <option value="edit">✏️ 編輯 Edit</option>
+        <option value="pending">⏳ 申請 Request</option>
+        <option value="verified">🔍 審查 Verify</option>
+        <option value="approved">✅ 核可 Approved</option>
+        <option value="rejected">✕ 退回 Rejected</option>
+        <option value="deleted">🗑 刪除 Deleted</option>
+      </select>
+      <button class="btn-sm" onclick="exportLog()" style="background:#0369a1;color:#fff;border-color:#0369a1">📤 匯出 Export</button>
+    </div>
+    <div style="font-size:11px;color:var(--tx3);margin-bottom:8px">共 <b id="log-cnt" style="color:var(--p)">0</b> 筆記錄</div>
+    <div id="log-list" style="max-height:500px;overflow-y:auto;border:1px solid var(--bdr);border-radius:8px"></div>
+  </div>
+  <div class="mfoot">
+    <button class="btn-sec" onclick="closeM('m-log')">關閉 Close</button>
+  </div>
+</div>
+</div>
+
+<!-- Lightbox -->
+<div class="ovl hidden" id="m-lb" onclick="closeM('m-lb')" style="cursor:zoom-out">
+  <img id="lb-img" style="max-width:95%;max-height:90%;border-radius:12px;box-shadow:0 0 60px rgba(0,0,0,.6);object-fit:contain">
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════
+// CONFIG — 連接現有 GAS
+// ════════════════════════════════
+// ⚠️ 部署 Asset GAS 後，將下方 URL 替換為新的部署 URL
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbwmg4lR3Ksng1g6zSkJHd2QNTgN_kC_bnkKrIn85VYPYfrGlhmuibuDaPdM0HOvgyml/exec';
+
+// ════════════════════════════════
+// USERS (同 PO 系統角色，另加 GA 同仁)
+// ════════════════════════════════
+const RICONS={applicant:'🔵',verifier:'🟡',approver:'🔴'};
+const RDOT={applicant:'ude',verifier:'udv',approver:'uda'};
+const RLABELS={applicant:{zh:'申請人',en:'Applicant'},verifier:{zh:'審查人',en:'Verifier'},approver:{zh:'核可人',en:'Approver'}};
+
+let users=[
+  {id:'u1',name:'Jenny',role:'applicant',pin:'1111'},
+  {id:'u2',name:'Nin',role:'applicant',pin:'2222'},
+  {id:'u3',name:'Sry Oun',role:'applicant',pin:'3333'},
+  {id:'u4',name:'Phea',role:'verifier',pin:'8888'},
+  {id:'u5',name:'Paul',role:'approver',pin:'2026'},
+];
+
+// ════════════════════════════════
+// CONSTANTS
+// ════════════════════════════════
+const CATS=['辦公家具 Office Furniture','鐵櫃/文件櫃 Metal Cabinet','辦公家電 Office Appliance','宿舍家具 Dorm Furniture','宿舍家電 Dorm Appliance','車輛 Vehicle','其他 Others'];
+const ST_KEYS=['active','standby','repair','disposed','lent'];
+const ST_ZH={active:'使用中',standby:'備用',repair:'維修中',disposed:'報廢',lent:'外借'};
+const ST_EN={active:'In Use',standby:'Standby',repair:'Repair',disposed:'Disposed',lent:'Lent Out'};
+const ST_CLS={active:'b-act',standby:'b-std',repair:'b-rep',disposed:'b-dis',lent:'b-len'};
+const ZN_ZH={factory:'工廠',expat:'外藉宿舍',local:'當地宿舍'};
+const ZN_EN={factory:'Factory',expat:'Expat Dorm',local:'Local Dorm'};
+const ZN_CLS={factory:'b-fac',expat:'b-exp',local:'b-loc'};
+
+// ════════════════════════════════
+// STATE
+// ════════════════════════════════
+let assets=[],photos={},cnts={AOA:1,AHA:1},pending=[];
+let currentUser=null,editCode=null,viewCode=null,reqType=null,formPhoto=null;
+let lang='zh',curZone='',sc='code',sd=1;
+let selUId=null,editUId=null;
+
+// ════════════════════════════════
+// GAS CALLS
+// ════════════════════════════════
+async function gasCall(params){
+  try{
+    setSdot('spin');
+    // If data is large (> 2000 chars), use POST to avoid URL length limit
+    const dataLen=(params.data||'').length;
+    let r;
+    if(dataLen>2000){
+      // POST with form-encoded body (avoids CORS preflight)
+      const body=new URLSearchParams({...params,_t:Date.now()});
+      r=await fetch(GAS_URL,{method:'POST',body,headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+    }else{
+      const url=GAS_URL+'?'+new URLSearchParams({...params,_t:Date.now()});
+      r=await fetch(url);
+    }
+    const d=await r.json();
+    setSdot(d&&d.ok?'ok':'err');
+    return d;
+  }catch(e){setSdot('err');console.error('GAS error:',e);return null}
+}
+
+async function loadFromGAS(){
+  setSdot('spin');
+  toast(lang==='zh'?'讀取資料中…':'Loading…','info');
+  const d=await gasCall({action:'getAssets'});
+  if(d&&d.ok){
+    assets=d.assets||[];
+    cnts=d.counters||{AOA:1,AHA:1};
+    pending=d.pending||[];
+    // Ensure counters are ahead of existing codes
+    assets.forEach(a=>{
+      if(a.code){
+        const t=a.code.startsWith('AOA')?'AOA':'AHA';
+        const n=parseInt(a.code.slice(3))+1;
+        if(n>cnts[t])cnts[t]=n;
+      }
+    });
+    render();
+    toast(lang==='zh'?`已載入 ${assets.length} 筆資產`:`Loaded ${assets.length} assets`,'ok');
+  }else{
+    // If GAS doesn't have asset handler yet, use localStorage
+    loadLocal();
+    toast(lang==='zh'?'使用本地資料（GAS 尚未設定）':'Using local data (GAS not configured yet)','info');
+    render();
+  }
+}
+
+async function saveToGAS(){
+  const d=await gasCall({action:'saveAssets',data:JSON.stringify({assets,counters:cnts,pending})});
+  if(!d||!d.ok) saveLocal(); // fallback to localStorage
+  else saveLocal(); // also save locally as cache
+}
+
+// ════════════════════════════════
+// UTILS
+// ════════════════════════════════
+function genCode(t){const n=cnts[t];cnts[t]++;return t+String(n).padStart(3,'0')}
+function sbadge(k){return`<span class="bdg ${ST_CLS[k]||'b-std'}">${lang==='zh'?(ST_ZH[k]||k):(ST_EN[k]||k)}</span>`}
+function zbadge(z){return`<span class="bdg ${ZN_CLS[z]||'b-fac'}">${lang==='zh'?(ZN_ZH[z]||z):(ZN_EN[z]||z)}</span>`}
+function today(){return new Date().toISOString().slice(0,10)}
+function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show '+type;setTimeout(()=>el.className='toast',3200)}
+function closeM(id){document.getElementById(id).classList.add('hidden')}
+function openM(id){document.getElementById(id).classList.remove('hidden')}
+function canEdit(){return currentUser&&['applicant','verifier','approver'].includes(currentUser.role)}
+function canVerify(){return currentUser&&['verifier','approver'].includes(currentUser.role)}
+function canApprove(){return currentUser&&currentUser.role==='approver'}
+function setSdot(s){const el=document.getElementById('sdot');if(el)el.className='sdot '+(s==='ok'?'ok':s==='err'?'err':s==='spin'?'spin':'')}
+
+// ════════════════════════════════
+// LANGUAGE
+// ════════════════════════════════
+function setLang(l){
+  lang=l;
+  document.getElementById('lt-zh').classList.toggle('on',l==='zh');
+  document.getElementById('lt-en').classList.toggle('on',l==='en');
+  // Zone labels
+  const zl=l==='zh'?ZN_ZH:ZN_EN;
+  document.getElementById('zt-all-t').textContent=l==='zh'?'全部':'All';
+  document.getElementById('zt-fac-t').textContent=zl.factory;
+  document.getElementById('zt-exp-t').textContent=zl.expat;
+  document.getElementById('zt-loc-t').textContent=zl.local;
+  // Header
+  document.getElementById('h-out').textContent=l==='zh'?'登出':'Logout';
+  document.getElementById('l-tot').textContent=l==='zh'?'共':'Total';
+  document.getElementById('l-items').textContent=l==='zh'?'筆':'records';
+  document.getElementById('l-add').textContent=l==='zh'?'新增':'Add';
+  document.getElementById('l-imp').textContent=l==='zh'?'匯入':'Import';
+  document.getElementById('l-exp').textContent=l==='zh'?'匯出':'Export';
+  document.getElementById('l-log').textContent=l==='zh'?'日誌':'Log';
+  document.getElementById('l-print').textContent=l==='zh'?'標簽':'Labels';
+  document.getElementById('l-clr').textContent=l==='zh'?'清除':'Clear';
+  // Print modal
+  const mpt=document.getElementById('m-print-t');if(mpt)mpt.textContent=l==='zh'?'🏷️ 打印標簽 Print Labels':'🏷️ Print Labels';
+  const ltl=document.getElementById('lbl-type-label');if(ltl)ltl.textContent=l==='zh'?'標簽類型 Type：':'Label Type:';
+  const bas=document.getElementById('ba-sel');if(bas)bas.textContent=l==='zh'?'全選':'Select All';
+  const bac=document.getElementById('ba-clr');if(bac)bac.textContent=l==='zh'?'清除':'Clear';
+  const pvl=document.getElementById('prev-lbl');if(pvl)pvl.textContent=l==='zh'?'預覽 PREVIEW':'PREVIEW';
+  const lti=document.getElementById('lbl-tip');if(lti)lti.innerHTML=l==='zh'?'💡 標簽只印 <b>編號 + QR/條碼圖形</b>，品名等資訊存在 QR/條碼內部（掃描時顯示）。<br>📲 <b>手機</b>：下載 PNG → SUPVAN App (Print_Editor) 開啟 → 藍芽打印<br>💻 <b>電腦</b>：下載 PNG → 碩方 PC 通用軟件 → USB 打印':'💡 Labels print <b>code + QR/barcode graphic only</b>. Details encoded inside (visible when scanned).<br>📲 <b>Phone</b>: Download PNG → SUPVAN App → Bluetooth print<br>💻 <b>PC</b>: Download PNG → SUPVAN PC software → USB print';
+  // Import modal
+  const ims=document.getElementById('imp-sub');if(ims)ims.textContent=l==='zh'?'匯入資產清單':'Import asset list';
+  const imc=document.getElementById('imp-cta');if(imc)imc.textContent=l==='zh'?'點擊或拖拽 Excel 檔案':'Click or drag Excel file';
+  const imi=document.getElementById('imp-info');if(imi)imi.innerHTML=l==='zh'?'📋 <b>只匯入有資產編號 (AOA/AHA) 的列</b>，無編號的列會被跳過。<br>支援欄位：資產編號, 資產名稱/Item, 品牌, 規格/型號, 取得日期, 保管人, 存放位置, 狀態, 備註<br>※ AHA → 宿舍 (Expat Dorm)，AOA → 工廠 (Factory)':'📋 <b>Only rows with valid asset codes (AOA/AHA) will be imported</b>. Rows without codes are skipped.<br>Supported columns: Asset Code, Item, Brand, Model, Date, Custodian, Location, Status, Note<br>※ AHA → Expat Dorm, AOA → Factory';
+  document.getElementById('th-code').textContent=l==='zh'?'編號':'Code';
+  document.getElementById('th-name').textContent=l==='zh'?'品名':'Name';
+  document.getElementById('th-spec').textContent=l==='zh'?'品牌/型號':'Brand/Model';
+  document.getElementById('th-cs').textContent=l==='zh'?'顏色/尺寸':'Color/Size';
+  document.getElementById('th-qty').textContent=l==='zh'?'數量':'Qty';
+  document.getElementById('th-price').textContent=l==='zh'?'單價':'Price';
+  document.getElementById('th-zone').textContent=l==='zh'?'區域':'Zone';
+  document.getElementById('th-loc').textContent=l==='zh'?'位置':'Location';
+  document.getElementById('th-user').textContent=l==='zh'?'使用人':'User';
+  document.getElementById('th-st').textContent=l==='zh'?'狀態':'Status';
+  document.getElementById('th-act').textContent=l==='zh'?'操作':'Action';
+  document.getElementById('bv-t').textContent=l==='zh'?'待審查申請':'Pending Review';
+  document.getElementById('ba-t').textContent=l==='zh'?'待核可申請':'Pending Approval';
+  document.getElementById('bv-a').textContent=l==='zh'?'→ 點擊審查':'→ Review';
+  document.getElementById('ba-a').textContent=l==='zh'?'→ 點擊核可':'→ Approve';
+  // Rebuild filter selects
+  rebuildSelects();
+  localStorage.setItem('vrt_lang',l);
+  render();
+}
+
+function rebuildSelects(){
+  const sl=lang==='zh'?ST_ZH:ST_EN;
+  const fc=document.getElementById('f-cat'),fc2=document.getElementById('f-c2');
+  if(fc){const v=fc.value;fc.innerHTML=`<option value="">${lang==='zh'?'全部類別':'All Categories'}</option>`;CATS.forEach(c=>fc.add(new Option(c,c)));fc.value=v}
+  if(fc2){const v=fc2.value;fc2.innerHTML='';CATS.forEach(c=>fc2.add(new Option(c,c)));fc2.value=v||CATS[0]}
+  const fco=document.getElementById('f-code');
+  if(fco){const v=fco.value;fco.innerHTML=`<option value="">${lang==='zh'?'全部編碼':'All Codes'}</option><option value="AOA">AOA – ${lang==='zh'?'辦公':'Office'}</option><option value="AHA">AHA – ${lang==='zh'?'宿舍':'Dorm'}</option>`;fco.value=v}
+  const fst=document.getElementById('f-st'),fst2=document.getElementById('f-st2');
+  if(fst){const v=fst.value;fst.innerHTML=`<option value="">${lang==='zh'?'全部狀態':'All Status'}</option>`;ST_KEYS.forEach(k=>fst.add(new Option(sl[k],k)));fst.value=v}
+  if(fst2){const v=fst2.value;fst2.innerHTML='';ST_KEYS.forEach(k=>fst2.add(new Option(sl[k],k)));fst2.value=v||'active'}
+}
+
+// ════════════════════════════════
+// LOGIN
+// ════════════════════════════════
+function buildLoginList(){
+  const zh=lang==='zh';
+  const groups=[
+    {role:'applicant',icon:'🔵',label:zh?'申請人 Applicant':'Applicant',users:users.filter(u=>u.role==='applicant')},
+    {role:'verifier',icon:'🟡',label:zh?'審查人 Verifier':'Verifier',users:users.filter(u=>u.role==='verifier')},
+    {role:'approver',icon:'🔴',label:zh?'核可人 Approver':'Approver',users:users.filter(u=>u.role==='approver')},
+  ];
+  document.getElementById('roles-list').innerHTML=groups.map(g=>{
+    if(g.users.length===1){
+      const u=g.users[0];
+      return`<div class="role-btn" onclick="selUser('${u.id}')">
+        <span class="rb-icon">${g.icon}</span>
+        <div><div class="rb-name">${u.name}</div><div class="rb-role">${g.label}</div></div>
+      </div>`;
+    }
+    return g.users.map(u=>`<div class="role-btn" onclick="selUser('${u.id}')">
+      <span class="rb-icon">${g.icon}</span>
+      <div><div class="rb-name">${u.name}</div><div class="rb-role">${g.label}</div></div>
+    </div>`).join('');
+  }).join('');
+}
+function selUser(id){
+  selUId=id;const u=users.find(x=>x.id===id);
+  document.getElementById('ls2-icon').textContent=RICONS[u.role];
+  document.getElementById('ls2-name').textContent=u.name;
+  document.getElementById('ls2-role').textContent=RLABELS[u.role][lang];
+  document.getElementById('ls1').classList.add('hidden');
+  document.getElementById('ls2').style.display='block';
+  document.getElementById('pin-inp').value='';
+  document.getElementById('login-err').textContent='';
+  document.getElementById('pin-inp').focus();
+}
+function backSel(){document.getElementById('ls1').classList.remove('hidden');document.getElementById('ls2').style.display='none';selUId=null}
+function doLogin(){
+  const u=users.find(x=>x.id===selUId);
+  if(!u||document.getElementById('pin-inp').value!==u.pin){
+    document.getElementById('login-err').textContent=lang==='zh'?'PIN 錯誤 Wrong PIN':'Wrong PIN';
+    document.getElementById('pin-inp').value='';document.getElementById('pin-inp').focus();return;
+  }
+  currentUser=u;
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  updateUHdr();loadFromGAS();
+}
+function doLogout(){
+  currentUser=null;
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('ls1').classList.remove('hidden');
+  document.getElementById('ls2').style.display='none';
+  buildLoginList();
+}
+function updateUHdr(){
+  if(!currentUser)return;
+  const dc={applicant:'ude',verifier:'udv',approver:'uda'};
+  document.getElementById('uhdr-dot').className='udot '+dc[currentUser.role];
+  document.getElementById('uhdr-name').textContent=currentUser.name;
+  const rb=document.getElementById('uhdr-role');
+  const rc={applicant:'b-std',verifier:'b-rep',approver:'b-dis'};
+  rb.className='bdg '+rc[currentUser.role];rb.textContent=RLABELS[currentUser.role][lang];
+  document.getElementById('btn-add').style.display=canEdit()?'':'none';
+}
+
+// ════════════════════════════════
+// ZONE
+// ════════════════════════════════
+function setZone(z){
+  curZone=z;document.querySelectorAll('.ztab').forEach(b=>b.classList.remove('on'));
+  const el=document.getElementById(z?'zt-'+(z==='factory'?'fac':z==='expat'?'exp':'loc'):'zt-all');
+  if(el)el.classList.add('on');render();
+}
+function updateZone(){
+  document.getElementById('zc-all').textContent=assets.length;
+  document.getElementById('zc-factory').textContent=assets.filter(a=>a.zone==='factory').length;
+  document.getElementById('zc-expat').textContent=assets.filter(a=>a.zone==='expat').length;
+  document.getElementById('zc-local').textContent=assets.filter(a=>a.zone==='local').length;
+}
+function updateBanners(){
+  const tv=pending.filter(p=>p.stage==='verify');
+  const ta=pending.filter(p=>p.stage==='approve');
+  const bv=document.getElementById('banner-v'),ba=document.getElementById('banner-a');
+  if(canVerify()&&tv.length){bv.classList.remove('hidden');document.getElementById('bv-cnt').textContent=tv.length}else bv.classList.add('hidden');
+  if(canApprove()&&ta.length){ba.classList.remove('hidden');document.getElementById('ba-cnt').textContent=ta.length}else ba.classList.add('hidden');
+}
+
+// ════════════════════════════════
+// FILTER & RENDER
+// ════════════════════════════════
+function getFiltered(){
+  const q=(document.getElementById('q')?.value||'').toLowerCase();
+  const fc=document.getElementById('f-cat')?.value||'';
+  const fco=document.getElementById('f-code')?.value||'';
+  const fs=document.getElementById('f-st')?.value||'';
+  return assets.filter(a=>{
+    const mq=!q||[a.code,a.name,a.brand,a.model,a.user,a.location,a.color,a.size,a.remark].some(v=>v&&v.toLowerCase().includes(q));
+    return mq&&(!curZone||a.zone===curZone)&&(!fc||a.category===fc)&&(!fco||a.code.startsWith(fco))&&(!fs||a.status===fs);
+  }).sort((a,b)=>{let va=a[sc]||'',vb=b[sc]||'';if(sc==='qty'||sc==='unitPrice'){va=+va;vb=+vb}return va<vb?-sd:va>vb?sd:0});
+}
+
+function render(){
+  const list=getFiltered();
+  const el=document.getElementById('cnt');if(el)el.textContent=list.length;
+  updateZone();updateBanners();renderStats();renderTable(list);renderCards(list);
+}
+
+function renderStats(){
+  const inU=assets.filter(x=>x.status==='active').length;
+  const rep=assets.filter(x=>x.status==='repair').length;
+  const dis=assets.filter(x=>x.status==='disposed').length;
+  const tv=assets.reduce((s,x)=>s+(+(x.unitPrice||0))*(+(x.qty||1)),0);
+  const pn=pending.length;
+  document.getElementById('stats-bar').innerHTML=[
+    ['🗂️',lang==='zh'?'總資產':'Total',assets.length,lang==='zh'?'件':'items','#2563eb'],
+    ['✅',lang==='zh'?'使用中':'In Use',inU,lang==='zh'?'件':'items','#16a34a'],
+    ['🔧',lang==='zh'?'維修中':'Repair',rep,lang==='zh'?'件':'items','#d97706'],
+    ['🗑️',lang==='zh'?'已報廢':'Disposed',dis,lang==='zh'?'件':'items','#dc2626'],
+    pn>0?['⏳',lang==='zh'?'待審核':'Pending',pn,lang==='zh'?'件':'items','#b45309']:['💰',lang==='zh'?'資產總值':'Total Value','$'+tv.toLocaleString(undefined,{maximumFractionDigits:0}),'USD','#7c3aed'],
+  ].map(([i,l,v,u,c])=>`<div class="sc"><div class="sc-i">${i}</div><div><div class="sc-l">${l}</div><div class="sc-v" style="color:${c}">${v}<span style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:3px">${u}</span></div></div></div>`).join('');
+}
+
+function pcell(code){const p=photos[code];if(p)return`<img src="${p}" class="pcell" onclick="lightbox('${p}')">`;return`<div class="pcell-e">📷</div>`}
+
+function renderTable(list){
+  const tb=document.getElementById('tbod');
+  if(!list.length){tb.innerHTML=`<tr><td colspan="12" class="nodata">📭 ${lang==='zh'?'查無資料':'No records'}</td></tr>`;return}
+  tb.innerHTML=list.map(a=>`<tr>
+    <td>${pcell(a.code)}</td>
+    <td class="tc">${a.code}</td>
+    <td><div class="tn">${a.name}</div><div class="ts">${a.category}</div></td>
+    <td class="tm">${a.brand||'—'}<div class="ts">${a.model||''}</div></td>
+    <td class="tm">${a.color||'—'}<div class="ts">${a.size||''}</div></td>
+    <td style="text-align:center">${a.qty||1}<div class="ts">${a.unit||'pcs'}</div></td>
+    <td class="tm">${a.unitPrice?'$'+Number(a.unitPrice).toLocaleString():'—'}</td>
+    <td>${zbadge(a.zone)}</td>
+    <td class="tm">${a.location||'—'}</td>
+    <td class="tm">${a.user||'—'}</td>
+    <td>${sbadge(a.status)}</td>
+    <td><div class="tactn">
+      <button class="bx bx-v" onclick="openDetail('${a.code}')">${lang==='zh'?'詳情':'Detail'}</button>
+      <button class="bx" style="background:#f3e8ff;border-color:#c4b5fd;color:#6d28d9" onclick="openPrintSingle('${a.code}')">🏷️</button>
+      ${canEdit()?`<button class="bx bx-e" onclick="openEdit('${a.code}')">${lang==='zh'?'編輯':'Edit'}</button>`:''}
+      ${canEdit()&&a.status!=='disposed'?`<button class="bx bx-t" onclick="openReq('transfer','${a.code}')">${lang==='zh'?'↔️轉移':'Transfer'}</button><button class="bx bx-d" onclick="openReq('disposal','${a.code}')">${lang==='zh'?'報廢':'Dispose'}</button>`:''}
+    </div></td>
+  </tr>`).join('');
+}
+
+function renderCards(list){
+  const el=document.getElementById('cgrid');
+  if(!list.length){el.innerHTML=`<div class="nodata" style="grid-column:1/-1">📭 ${lang==='zh'?'查無資料':'No records'}</div>`;return}
+  el.innerHTML=list.map(a=>`<div class="acard">
+    <div class="cp">${photos[a.code]?`<img src="${photos[a.code]}" onclick="lightbox('${photos[a.code]}')">`:'📦'}</div>
+    <div class="cbody">
+      <div class="ccr"><span class="ccode">${a.code}</span>${sbadge(a.status)}</div>
+      <div class="cname">${a.name}</div>
+      <div class="cmeta">
+        <span>${zbadge(a.zone)}</span><span>📍 ${a.location||'—'}</span>
+        <span>🏷 ${a.brand||'—'}</span><span>👤 ${a.user||'—'}</span>
+        <span>🎨 ${a.color||'—'} ${a.size||''}</span><span>📦 ${a.qty||1} ${a.unit||'pcs'}</span>
+        <span>💰 ${a.unitPrice?'$'+Number(a.unitPrice).toLocaleString():'—'}</span><span>📅 ${a.purchaseDate||'—'}</span>
+      </div>
+    </div>
+    <div class="cact">
+      <button class="bx bx-v" onclick="openDetail('${a.code}')">${lang==='zh'?'詳情':'Detail'}</button>
+      <button class="bx" style="background:#f3e8ff;border-color:#c4b5fd;color:#6d28d9" onclick="openPrintSingle('${a.code}')">🏷️</button>
+      ${canEdit()?`<button class="bx bx-e" onclick="openEdit('${a.code}')">${lang==='zh'?'編輯':'Edit'}</button>`:''}
+      ${canEdit()&&a.status!=='disposed'?`<button class="bx bx-t" onclick="openReq('transfer','${a.code}')">${lang==='zh'?'↔️':'↔️'}</button><button class="bx bx-d" onclick="openReq('disposal','${a.code}')">${lang==='zh'?'報廢':'Dispose'}</button>`:''}
+    </div>
+  </div>`).join('');
+}
+
+function srt(col){if(sc===col)sd*=-1;else{sc=col;sd=1};document.querySelectorAll('[id^="sa-"]').forEach(el=>el.textContent='');const el=document.getElementById('sa-'+{code:'code',name:'name',brand:'spec',qty:'qty',unitPrice:'up',zone:'zone',location:'loc',user:'user',status:'st'}[col]);if(el)el.textContent=sd===1?' ↑':' ↓';render()}
+
+// ════════════════════════════════
+// PHOTO
+// ════════════════════════════════
+function handlePhoto(e){
+  const f=e.target.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    const img=new Image();
+    img.onload=()=>{
+      const c=document.createElement('canvas'),M=800;let w=img.width,h=img.height;
+      if(w>M||h>M){if(w>h){h=Math.round(h*M/w);w=M}else{w=Math.round(w*M/h);h=M}}
+      c.width=w;c.height=h;c.getContext('2d').drawImage(img,0,0,w,h);
+      formPhoto=c.toDataURL('image/jpeg',.78);showPup(formPhoto);
+    };img.src=ev.target.result;
+  };r.readAsDataURL(f);
+}
+function showPup(data){
+  const el=document.getElementById('pup');
+  if(data){el.innerHTML=`<img src="${data}">`;el.classList.add('has');document.getElementById('pup-rm').classList.remove('hidden')}
+  else{el.innerHTML=`<div style="font-size:26px">📷</div><div style="font-size:12px;color:var(--tx3)">${lang==='zh'?'點擊上傳 Click to upload':'Click to upload'} (JPG/PNG)</div>`;el.classList.remove('has');document.getElementById('pup-rm').classList.add('hidden')}
+}
+function removePhoto(){formPhoto=null;showPup(null);document.getElementById('f-pi').value=''}
+function lightbox(src){document.getElementById('lb-img').src=src;openM('m-lb')}
+function calcTV(){const q=parseFloat(document.getElementById('f-qt').value)||0,u=parseFloat(document.getElementById('f-up').value)||0;document.getElementById('f-tv').value=q&&u?'$'+(q*u).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):''}
+function upCP(){if(editCode){document.getElementById('cp-val').textContent=editCode;return}const t=document.getElementById('f-ct').value;document.getElementById('cp-val').textContent=t+String(cnts[t]).padStart(3,'0')}
+// Auto-link zone to code type: Factory→AOA, Expat/Local→AHA
+function syncZoneCodeType(){
+  if(editCode)return; // don't change on edit
+  const zn=document.getElementById('f-zn').value;
+  const ct=document.getElementById('f-ct');
+  const newType=zn==='factory'?'AOA':'AHA';
+  if(ct.value!==newType){ct.value=newType;upCP()}
+}
+function checkDup(){
+  const nm=document.getElementById('f-nm').value.trim().toLowerCase();
+  const zn=document.getElementById('f-zn').value;
+  const w=document.getElementById('dup-w');if(!nm){w.style.display='none';return}
+  const dup=assets.filter(a=>(!editCode||a.code!==editCode)&&a.name.toLowerCase()===nm&&a.zone===zn);
+  if(dup.length){w.style.display='block';w.textContent=`⚠️ ${lang==='zh'?'相同品名已存在此區域':'Duplicate in same zone'}：${dup[0].code}`}else w.style.display='none';
+}
+
+// ════════════════════════════════
+// ADD / EDIT / DELETE
+// ════════════════════════════════
+function openAdd(){
+  if(!canEdit()){toast(lang==='zh'?'沒有新增權限':'No permission','err');return}
+  editCode=null;formPhoto=null;
+  document.getElementById('m-form-t').textContent=lang==='zh'?'＋ 新增資產 New Asset':'＋ New Asset';
+  document.getElementById('btn-del').classList.add('hidden');
+  ['f-nm','f-br','f-md','f-cl','f-sz','f-lc','f-us','f-rm'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''});
+  document.getElementById('f-ct').value='AOA';document.getElementById('f-zn').value='factory';
+  document.getElementById('f-c2').value=CATS[0];document.getElementById('f-st2').value='active';
+  document.getElementById('f-qt').value='1';document.getElementById('f-un').value='pcs';
+  document.getElementById('f-up').value='';document.getElementById('f-tv').value='';
+  document.getElementById('f-dt').value=today();document.getElementById('f-pi').value='';
+  document.getElementById('dup-w').style.display='none';showPup(null);upCP();openM('m-form');
+}
+function openEdit(code){
+  if(!canEdit())return;
+  const a=assets.find(x=>x.code===code);if(!a)return;
+  editCode=code;formPhoto=photos[code]||null;
+  document.getElementById('m-form-t').textContent=lang==='zh'?'✏️ 編輯資產':'✏️ Edit Asset';
+  document.getElementById('btn-del').classList.toggle('hidden',!canApprove());
+  document.getElementById('f-ct').value=code.startsWith('AOA')?'AOA':'AHA';
+  document.getElementById('f-zn').value=a.zone||'factory';document.getElementById('f-nm').value=a.name||'';
+  document.getElementById('f-c2').value=a.category||CATS[0];document.getElementById('f-st2').value=a.status||'active';
+  document.getElementById('f-br').value=a.brand||'';document.getElementById('f-md').value=a.model||'';
+  document.getElementById('f-cl').value=a.color||'';document.getElementById('f-sz').value=a.size||'';
+  document.getElementById('f-qt').value=a.qty||1;document.getElementById('f-un').value=a.unit||'pcs';
+  document.getElementById('f-up').value=a.unitPrice||'';calcTV();
+  document.getElementById('f-lc').value=a.location||'';document.getElementById('f-us').value=a.user||'';
+  document.getElementById('f-dt').value=a.purchaseDate||'';document.getElementById('f-rm').value=a.remark||'';
+  document.getElementById('f-pi').value='';document.getElementById('dup-w').style.display='none';
+  showPup(formPhoto);upCP();openM('m-form');
+}
+async function saveAsset(){
+  const nm=document.getElementById('f-nm').value.trim();if(!nm){toast(lang==='zh'?'請填寫品名':'Name required','err');return}
+  const qty=parseInt(document.getElementById('f-qt').value)||1,up=parseFloat(document.getElementById('f-up').value)||0;
+  const data={zone:document.getElementById('f-zn').value,name:nm,category:document.getElementById('f-c2').value,status:document.getElementById('f-st2').value,brand:document.getElementById('f-br').value.trim(),model:document.getElementById('f-md').value.trim(),color:document.getElementById('f-cl').value.trim(),size:document.getElementById('f-sz').value.trim(),qty,unit:document.getElementById('f-un').value.trim()||'pcs',unitPrice:up,location:document.getElementById('f-lc').value.trim(),user:document.getElementById('f-us').value.trim(),purchaseDate:document.getElementById('f-dt').value,remark:document.getElementById('f-rm').value.trim()};
+  const isNew=!editCode;
+  if(editCode){
+    const old=assets.find(x=>x.code===editCode);data.code=editCode;
+    data.history=[...(old.history||[]),{type:'edit',date:today(),desc:`${lang==='zh'?'編輯 by':'Edited by'} ${currentUser.name}`}];
+    assets=assets.map(a=>a.code===editCode?data:a);if(formPhoto!==undefined)photos[editCode]=formPhoto;
+  }else{
+    const t=document.getElementById('f-ct').value,nc=genCode(t);
+    data.code=nc;data.history=[{type:'created',date:today(),desc:`${lang==='zh'?'建檔 by':'Created by'} ${currentUser.name}`}];
+    assets=[data,...assets];if(formPhoto)photos[data.code]=formPhoto;
+  }
+  closeM('m-form');render();
+  toast(lang==='zh'?'儲存中…':'Saving…','info');
+  await saveToGAS();
+  // Trigger Telegram notification (addAsset=new / updateAsset=edit)
+  const notifyData={...data,createdBy:currentUser.name,editBy:currentUser.name};
+  if(isNew){
+    await gasCall({action:'addAsset',data:JSON.stringify(notifyData)});
+  }else{
+    await gasCall({action:'updateAsset',data:JSON.stringify(notifyData)});
+  }
+  toast(isNew?`${lang==='zh'?'新增完成':'Added'}: ${data.code} ✓`:`${lang==='zh'?'已更新':'Updated'} ✓`,'ok');
+}
+async function doDelete(){
+  if(!canApprove()){toast(lang==='zh'?'只有 Approver 可刪除':'Approver only','err');return}
+  if(!confirm(lang==='zh'?`確定刪除 ${editCode}？不可復原`:`Delete ${editCode}?`))return;
+  const delCode=editCode;
+  assets=assets.filter(a=>a.code!==delCode);delete photos[delCode];
+  closeM('m-form');render();
+  await saveToGAS();
+  await gasCall({action:'deleteAsset',code:delCode,by:currentUser.name});
+  toast(`${lang==='zh'?'已刪除':'Deleted'}: ${delCode}`);
+}
+
+// ════════════════════════════════
+// DETAIL
+// ════════════════════════════════
+function openDetail(code){
+  const a=assets.find(x=>x.code===code);if(!a)return;
+  viewCode=code;const p=photos[code];
+  let html=`<div class="dcode">${a.code}</div>`;
+  if(p)html+=`<img src="${p}" class="dphoto" onclick="lightbox('${p}')">`;
+  if(canEdit()&&a.status!=='disposed'){
+    html+=`<div style="margin-bottom:13px"><div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;margin-bottom:6px">⚡ ${lang==='zh'?'快速狀態':'Quick Status'}</div><div class="sts-chips">`;
+    ST_KEYS.forEach(k=>{const sl=lang==='zh'?ST_ZH:ST_EN;const on=k===a.status;html+=`<button class="sts-chip" onclick="quickSt('${code}','${k}')" style="${on?'background:#1d4ed8;color:#fff;border-color:#1d4ed8':'background:#f8fafc;border-color:#cbd5e1;color:#475569'}">${sl[k]}</button>`});
+    html+=`</div></div>`;
+  }
+  const rows=[
+    [lang==='zh'?'品名':'Name',a.name,true],[lang==='zh'?'區域':'Zone',lang==='zh'?ZN_ZH[a.zone]:ZN_EN[a.zone],false],
+    [lang==='zh'?'類別':'Category',a.category,false],[lang==='zh'?'狀態':'Status',sbadge(a.status),false],
+    [lang==='zh'?'品牌':'Brand',a.brand||'—',false],[lang==='zh'?'型號':'Model',a.model||'—',false],
+    [lang==='zh'?'顏色':'Color',a.color||'—',false],[lang==='zh'?'尺寸':'Size',a.size||'—',false],
+    [lang==='zh'?'數量':'Qty',`${a.qty||1} ${a.unit||'pcs'}`,false],[lang==='zh'?'單價':'Price',a.unitPrice?'USD$ '+Number(a.unitPrice).toLocaleString():'—',false],
+    [lang==='zh'?'總值':'Total',a.unitPrice&&a.qty?'USD$ '+(Number(a.unitPrice)*Number(a.qty)).toLocaleString(undefined,{minimumFractionDigits:2}):'—',false],
+    [lang==='zh'?'位置':'Location',a.location||'—',false],[lang==='zh'?'使用人':'User',a.user||'—',false],
+    [lang==='zh'?'購入日期':'Date',a.purchaseDate||'—',false],[lang==='zh'?'備註':'Remark',a.remark||'—',true],
+  ];
+  html+=`<div class="dgrid">`;rows.forEach(([l,v,f])=>html+=`<div class="di${f?' full':''}"><div class="di-l">${l}</div><div class="di-v">${v}</div></div>`);html+=`</div>`;
+  if(a.history?.length){
+    html+=`<div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;margin-bottom:6px">📜 ${lang==='zh'?'異動記錄':'History'}</div><div class="hlog">`;
+    [...a.history].reverse().forEach(h=>html+=`<div class="hitem ${h.type}"><div class="h-d">${h.date}</div><div class="h-t">${h.desc}</div></div>`);html+=`</div>`;
+  }
+  document.getElementById('m-db').innerHTML=html;
+  document.getElementById('d-del').style.display=canApprove()?'':'none';
+  document.getElementById('d-edit').style.display=canEdit()?'':'none';
+  openM('m-det');
+}
+async function quickSt(code,k){
+  if(!canEdit())return;
+  const sl=lang==='zh'?ST_ZH:ST_EN;
+  assets=assets.map(a=>{if(a.code!==code)return a;return{...a,status:k,history:[...(a.history||[]),{type:'edit',date:today(),desc:`${lang==='zh'?'狀態':'Status'} → ${sl[k]} by ${currentUser.name}`}]}});
+  render();openDetail(code);toast(`→ ${sl[k]}`,'ok');await saveToGAS();
+}
+function delFD(){closeM('m-det');editCode=viewCode;doDelete()}
+function editFD(){closeM('m-det');openEdit(viewCode)}
+
+// ════════════════════════════════
+// REQUEST (Transfer / Disposal)
+// ════════════════════════════════
+function openReq(type,code){
+  if(!canEdit())return;
+  const a=assets.find(x=>x.code===code);if(!a)return;
+  reqType=type;viewCode=code;
+  const isT=type==='transfer';
+  document.getElementById('req-title').textContent=isT?(lang==='zh'?'↔️ 轉移申請':'↔️ Transfer Request'):(lang==='zh'?'🗑️ 報廢申請':'🗑️ Disposal Request');
+  document.getElementById('req-sub').textContent=`${code} — ${a.name}`;
+  document.getElementById('req-warn').textContent=isT?
+    (lang==='zh'?'⚠️ 申請提交後須經審查人審查，再由核可人核可執行。實體標籤請勿更換。':'⚠️ Request must be verified then approved. DO NOT change physical label.'):
+    (lang==='zh'?'⚠️ 報廢須經審查人審查及核可人核可。核可後請撕除實體 6 碼標籤並從清冊除帳。':'⚠️ Disposal requires verification and approval. Remove 6-char label after approval.');
+  document.getElementById('req-p1').textContent=currentUser.name;
+  document.getElementById('req-p1d').textContent=today();
+  if(isT){
+    document.getElementById('req-fields').innerHTML=`
+      <div class="fg2"><div class="fld"><label>${lang==='zh'?'轉移至位置 New Location':'New Location'} <span class="req">*</span></label><input id="req-loc"></div>
+      <div class="fld"><label>${lang==='zh'?'新使用人 New User':'New User'}</label><input id="req-usr"></div></div>
+      <div class="fld"><label>${lang==='zh'?'轉移日期':'Transfer Date'}</label><input type="date" id="req-dt" value="${today()}"></div>`;
+  }else{
+    document.getElementById('req-fields').innerHTML=`
+      <div class="fld"><label>${lang==='zh'?'報廢原因類型':'Disposal Type'} <span class="req">*</span></label>
+        <select id="req-distype" style="width:100%;background:var(--gbg);border:1.5px solid var(--bdr);border-radius:7px;padding:7px 10px;color:var(--tx);font-size:13px;outline:none;font-family:inherit">
+          <option value="">${lang==='zh'?'-- 選擇 --':'-- Select --'}</option>
+          <option>${lang==='zh'?'損壞無法修復':'Unrepairable damage'}</option>
+          <option>${lang==='zh'?'老舊淘汰':'End of life'}</option>
+          <option>${lang==='zh'?'遺失':'Lost / Missing'}</option>
+          <option>${lang==='zh'?'其他':'Other'}</option>
+        </select>
+      </div>
+      <div class="fld"><label>${lang==='zh'?'報廢日期':'Disposal Date'}</label><input type="date" id="req-dt" value="${today()}"></div>`;
+  }
+  document.getElementById('req-reason').value='';
+  openM('m-req');
+}
+
+async function submitReq(){
+  const reason=document.getElementById('req-reason').value.trim();
+  if(!reason){toast(lang==='zh'?'請填寫原因':'Reason required','err');return}
+  const a=assets.find(x=>x.code===viewCode);
+  let extraData={};
+  if(reqType==='transfer'){
+    const loc=document.getElementById('req-loc')?.value.trim();
+    if(!loc){toast(lang==='zh'?'請填寫轉移位置':'Location required','err');return}
+    extraData={newLocation:loc,newUser:document.getElementById('req-usr')?.value.trim()||'',date:document.getElementById('req-dt')?.value};
+  }else{
+    const dt=document.getElementById('req-distype')?.value;
+    if(!dt){toast(lang==='zh'?'請選擇原因類型':'Select type','err');return}
+    extraData={disposalType:dt,date:document.getElementById('req-dt')?.value};
+  }
+  const req={id:Date.now().toString(),type:reqType,assetCode:viewCode,assetName:a?.name||'',data:extraData,reason,by:currentUser.name,byId:currentUser.id,stage:'verify',verifiedBy:null,date:today()};
+  pending.push(req);
+  assets=assets.map(a=>{
+    if(a.code!==viewCode)return a;
+    const desc=reqType==='transfer'?`${lang==='zh'?'轉移申請待審':'Transfer pending'} → ${extraData.newLocation}`:`${lang==='zh'?'報廢申請待審':'Disposal pending'} — ${extraData.disposalType}`;
+    return{...a,history:[...(a.history||[]),{type:'pending',date:today(),desc:`${desc}，${lang==='zh'?'申請人':'by'}: ${currentUser.name}`}]};
+  });
+  closeM('m-req');render();
+  toast(lang==='zh'?'申請已提交 ✓':'Submitted ✓','info');
+  // Send to GAS which will also notify Telegram
+  await gasCall({action:'submitAssetRequest',data:JSON.stringify(req)});
+  await saveToGAS();
+}
+
+// ════════════════════════════════
+// PENDING APPROVALS
+// ════════════════════════════════
+function openPending(mode){
+  const isV=mode==='verify';
+  const list=isV?pending.filter(p=>p.stage==='verify'):pending.filter(p=>p.stage==='approve');
+  document.getElementById('pend-title').textContent=isV?(lang==='zh'?'🔍 審查申請':'🔍 Verify Requests'):(lang==='zh'?'✅ 核可申請':'✅ Approve Requests');
+  document.getElementById('pend-sub').textContent=`${currentUser.name}`;
+  const el=document.getElementById('pend-list'),empty=document.getElementById('pend-empty');
+  if(!list.length){el.innerHTML='';empty.classList.remove('hidden');openM('m-pend');return}
+  empty.classList.add('hidden');
+  el.innerHTML=list.map(req=>{
+    const isT=req.type==='transfer';
+    // Flow indicator
+    const flow=`<div class="flow">
+      <div class="fstep"><div class="fdot fd-done">✓</div><div style="margin-left:5px"><div class="finfo">${lang==='zh'?'申請':'Request'}</div><div class="fname">${req.by}</div></div></div>
+      <div class="fline${!isV?' done':''}"></div>
+      <div class="fstep"><div class="fdot ${isV?'fd-act':req.verifiedBy?'fd-done':'fd-idle'}">${req.verifiedBy?'✓':isV?'…':'2'}</div><div style="margin-left:5px"><div class="finfo">${lang==='zh'?'審查':'Verify'}</div><div class="fname">${req.verifiedBy||'—'}</div></div></div>
+      <div class="fline"></div>
+      <div class="fstep"><div class="fdot ${!isV?'fd-act':'fd-idle'}">${!isV?'…':'3'}</div><div style="margin-left:5px"><div class="finfo">${lang==='zh'?'核可':'Approve'}</div><div class="fname">—</div></div></div>
+    </div>`;
+    const det=isT?`${lang==='zh'?'轉移至':'To'}: <b>${req.data.newLocation}</b>`:  `${lang==='zh'?'報廢原因':'Type'}: <b>${req.data.disposalType}</b>`;
+    return`<div class="rcard ${isT?'rt':'rd'}">
+      <div class="rhead">
+        <div><span class="bdg ${isT?'b-rep':'b-dis'}">${isT?'↔️':'🗑️'} ${isT?(lang==='zh'?'轉移':'Transfer'):(lang==='zh'?'報廢':'Disposal')}</span><span class="tc" style="margin-left:7px">${req.assetCode}</span><b style="margin-left:6px;font-size:12px">${req.assetName}</b></div>
+        <span style="font-size:11px;color:var(--tx3)">${req.date}</span>
+      </div>
+      ${flow}
+      <div class="rmeta">${det}<br>${lang==='zh'?'原因':'Reason'}: ${req.reason}<br>${lang==='zh'?'申請人':'By'}: <b>${req.by}</b>${req.verifiedBy?`<br>${lang==='zh'?'審查人':'Verified by'}: <b>${req.verifiedBy}</b>`:''}</div>
+      <div class="rbtns">
+        <button class="btn-ok" onclick="${isV?`verifyReq('${req.id}')`:`approveReq('${req.id}')`}">✅ ${isV?(lang==='zh'?'審查通過':'Verify ✓'):(lang==='zh'?'核可':'Approve')}</button>
+        <button class="btn-rej" onclick="rejectReq('${req.id}')">✕ ${lang==='zh'?'退回':'Reject'}</button>
+      </div>
+    </div>`;
+  }).join('');
+  openM('m-pend');
+}
+
+async function verifyReq(id){
+  if(!canVerify())return;
+  pending=pending.map(p=>p.id!==id?p:{...p,stage:'approve',verifiedBy:currentUser.name});
+  assets=assets.map(a=>{const req=pending.find(p=>p.id===id);if(!req||a.code!==req.assetCode)return a;return{...a,history:[...(a.history||[]),{type:'verified',date:today(),desc:`${lang==='zh'?'審查通過 by':'Verified by'} ${currentUser.name}`}]}});
+  closeM('m-pend');render();toast(lang==='zh'?'審查通過 ✓，已送核可人':'Verified ✓','ok');
+  await gasCall({action:'verifyAssetRequest',id});await saveToGAS();
+}
+async function approveReq(id){
+  if(!canApprove())return;
+  const req=pending.find(p=>p.id===id);if(!req)return;
+  if(req.type==='transfer'){
+    assets=assets.map(a=>{if(a.code!==req.assetCode)return a;return{...a,location:req.data.newLocation,user:req.data.newUser||a.user,history:[...(a.history||[]),{type:'approved',date:today(),desc:`${lang==='zh'?'轉移核可 ✅ →':'Transfer approved ✅ →'} ${req.data.newLocation} by ${currentUser.name}`}]}});
+  }else{
+    assets=assets.map(a=>{if(a.code!==req.assetCode)return a;return{...a,status:'disposed',history:[...(a.history||[]),{type:'approved',date:today(),desc:`${lang==='zh'?'報廢核可 ✅':'Disposal approved ✅'} ${req.data.disposalType} by ${currentUser.name} — ${lang==='zh'?'請撕除標籤':'Remove label'}`}]}});
+  }
+  pending=pending.filter(p=>p.id!==id);
+  closeM('m-pend');render();toast(lang==='zh'?'已核可 ✅':'Approved ✅','ok');
+  await gasCall({action:'approveAssetRequest',id});await saveToGAS();
+}
+async function rejectReq(id){
+  const reason=prompt(lang==='zh'?'退回原因（選填）:':'Rejection reason (optional):');
+  const req=pending.find(p=>p.id===id);if(!req)return;
+  assets=assets.map(a=>{if(a.code!==req.assetCode)return a;return{...a,history:[...(a.history||[]),{type:'rejected',date:today(),desc:`${lang==='zh'?'申請退回 ✕ by':'Rejected ✕ by'} ${currentUser.name}${reason?'：'+reason:''}`}]}});
+  pending=pending.filter(p=>p.id!==id);
+  closeM('m-pend');render();
+  await gasCall({action:'rejectAssetRequest',id,reason:reason||''});await saveToGAS();
+  toast(lang==='zh'?'已退回申請':'Rejected','info');
+}
+
+// ════════════════════════════════
+// LABEL PRINTING (QR / Barcode → Canvas Image)
+// ════════════════════════════════
+let lblType='qr';
+let printCodes=[];
+let batchSelected=new Set();
+
+function setLblType(t){
+  lblType=t;
+  document.getElementById('lo-qr').classList.toggle('on',t==='qr');
+  document.getElementById('lo-bc').classList.toggle('on',t==='barcode');
+  renderLabelPreview();
+}
+
+function openPrintSingle(code){
+  printCodes=[code];
+  batchSelected=new Set([code]);
+  document.getElementById('batch-area').classList.add('hidden');
+  const a=assets.find(x=>x.code===code);
+  document.getElementById('print-sub').textContent=`${code} — ${a?.name||''}`;
+  openM('m-print');
+  setTimeout(()=>renderLabelPreview(),150);
+}
+
+function openBatchPrint(){
+  printCodes=[];
+  batchSelected=new Set();
+  document.getElementById('batch-area').classList.remove('hidden');
+  document.getElementById('print-sub').textContent=lang==='zh'?'選擇要打印的資產':'Select assets to print';
+  document.getElementById('batch-q').value='';
+  document.getElementById('batch-q').placeholder=lang==='zh'?'🔍 搜尋…':'🔍 Search…';
+  renderBatchList();
+  openM('m-print');
+  setTimeout(()=>renderLabelPreview(),150);
+}
+
+function renderBatchList(){
+  const q=(document.getElementById('batch-q')?.value||'').toLowerCase();
+  const list=assets.filter(a=>!q||[a.code,a.name,a.brand,a.location,a.user].some(v=>v&&v.toLowerCase().includes(q)));
+  const el=document.getElementById('batch-list');
+  el.innerHTML=list.map(a=>`<div class="lbl-batch-item">
+    <input type="checkbox" ${batchSelected.has(a.code)?'checked':''} onchange="toggleBatchItem('${a.code}',this.checked)">
+    <span class="tc">${a.code}</span>
+    <span style="flex:1;font-weight:600">${a.name}</span>
+    <span style="color:var(--tx3);font-size:11px">${a.location||'—'}</span>
+  </div>`).join('');
+  document.getElementById('batch-cnt').textContent=batchSelected.size;
+}
+
+function toggleBatchItem(code,chk){
+  if(chk)batchSelected.add(code);else batchSelected.delete(code);
+  document.getElementById('batch-cnt').textContent=batchSelected.size;
+  renderLabelPreview();
+}
+
+function batchAll(on){
+  const q=(document.getElementById('batch-q')?.value||'').toLowerCase();
+  const list=assets.filter(a=>!q||[a.code,a.name,a.brand,a.location,a.user].some(v=>v&&v.toLowerCase().includes(q)));
+  if(on)list.forEach(a=>batchSelected.add(a.code));else batchSelected.clear();
+  renderBatchList();renderLabelPreview();
+}
+
+// Generate QR code as data URL using qrcode-generator library
+function makeQR(data){
+  try{
+    var qr=qrcode(0,'L');
+    qr.addData(data);
+    qr.make();
+    return qr.createDataURL(4,1);
+  }catch(e){console.error('QR gen error:',e);return null}
+}
+
+// Render a label element for preview (DOM-based)
+function createLabelElement(code,type){
+  const a=assets.find(x=>x.code===code);
+  const name=a?.name||'';
+  const brand=a?.brand||'';
+  const loc=a?.location||'';
+  const user=a?.user||'';
+
+  const wrap=document.createElement('div');
+  wrap.className='lbl-img-wrap';
+
+  // Label container — sized for 12mm tape preview (bigger than before)
+  const lbl=document.createElement('div');
+
+  if(type==='qr'){
+    lbl.style.cssText='background:#fff;border:2px solid #000;display:inline-flex;align-items:center;padding:8px 12px;gap:12px;height:90px';
+    // QR encodes full JSON (visible when scanned)
+    const qrData=JSON.stringify({code,name,brand,location:loc,user,org:'VRT'});
+    const dataUrl=makeQR(qrData);
+    if(dataUrl){
+      const img=document.createElement('img');
+      img.src=dataUrl;
+      img.style.cssText='width:74px;height:74px;flex-shrink:0;image-rendering:pixelated';
+      lbl.appendChild(img);
+    }
+    const txt=document.createElement('div');
+    txt.style.cssText='font-family:"Courier New",monospace;font-weight:900;font-size:26px;letter-spacing:2px;white-space:nowrap;color:#000';
+    txt.textContent=code;
+    lbl.appendChild(txt);
+  }else{
+    lbl.style.cssText='background:#fff;border:2px solid #000;display:flex;flex-direction:column;align-items:center;padding:6px 14px;gap:3px;height:90px;justify-content:center';
+    // Barcode encodes pipe-delimited info (scannable with any barcode reader)
+    const bcData=code+'|'+name.slice(0,20);
+    const bcCanvas=document.createElement('canvas');
+    try{
+      JsBarcode(bcCanvas,bcData,{format:'CODE128',width:1.6,height:42,displayValue:false,margin:0,background:'#ffffff',lineColor:'#000000'});
+      const img=document.createElement('img');
+      img.src=bcCanvas.toDataURL();
+      img.style.cssText='height:42px;width:auto;display:block;max-width:240px';
+      lbl.appendChild(img);
+    }catch(e){
+      // Fallback: encode just the code
+      try{
+        JsBarcode(bcCanvas,code,{format:'CODE128',width:1.8,height:42,displayValue:false,margin:0,background:'#ffffff',lineColor:'#000000'});
+        const img=document.createElement('img');img.src=bcCanvas.toDataURL();
+        img.style.cssText='height:42px;width:auto;display:block';lbl.appendChild(img);
+      }catch(e2){}
+    }
+    const txt=document.createElement('div');
+    txt.style.cssText='font-family:"Courier New",monospace;font-weight:900;font-size:18px;letter-spacing:1px;white-space:nowrap;color:#000';
+    txt.textContent=code;
+    lbl.appendChild(txt);
+  }
+
+  wrap.appendChild(lbl);
+  const btns=document.createElement('div');
+  btns.className='lbl-img-btns';
+  btns.innerHTML=`<button onclick="downloadOneLabel('${code}')">📥 ${lang==='zh'?'下載 PNG':'Download'}</button><button onclick="shareOneLabel('${code}')">📲 ${lang==='zh'?'分享':'Share'}</button>`;
+  wrap.appendChild(btns);
+  return wrap;
+}
+
+async function renderLabelPreview(){
+  const area=document.getElementById('lbl-preview');
+  area.innerHTML='';
+  const codes=[...batchSelected];
+  if(!codes.length){
+    area.innerHTML=`<div style="color:var(--tx3);font-size:13px;padding:20px">${lang==='zh'?'請選擇要打印的資產':'Select assets to print'}</div>`;
+    return;
+  }
+  codes.slice(0,20).forEach(code=>area.appendChild(createLabelElement(code,lblType)));
+  if(codes.length>20){
+    const m=document.createElement('div');
+    m.style.cssText='font-size:12px;color:var(--tx3);width:100%;text-align:center;padding:8px';
+    m.textContent=`… ${codes.length-20} more`;area.appendChild(m);
+  }
+}
+
+// Generate download canvas (300dpi, 12mm tape = 142px height, ~60mm width = 709px)
+function labelToCanvas(code,type){
+  const a=assets.find(x=>x.code===code);
+  const name=a?.name||'';const brand=a?.brand||'';
+  const loc=a?.location||'';const user=a?.user||'';
+  const H=142,W=709;
+  const canvas=document.createElement('canvas');
+  canvas.width=W;canvas.height=H;
+  const ctx=canvas.getContext('2d');
+  ctx.fillStyle='#fff';ctx.fillRect(0,0,W,H);
+  ctx.strokeStyle='#000';ctx.lineWidth=2;ctx.strokeRect(1,1,W-2,H-2);
+
+  if(type==='qr'){
+    const qrData=JSON.stringify({code,name,brand,location:loc,user,org:'VRT'});
+    const dataUrl=makeQR(qrData);
+    if(dataUrl){
+      return new Promise(resolve=>{
+        const img=new Image();
+        img.onload=()=>{
+          const sz=H-12;
+          ctx.drawImage(img,6,6,sz,sz);
+          ctx.fillStyle='#000';ctx.font='bold 56px "Courier New",monospace';
+          ctx.textBaseline='middle';ctx.fillText(code,sz+18,H/2);
+          ctx.textBaseline='alphabetic';resolve(canvas);
+        };
+        img.onerror=()=>{
+          ctx.fillStyle='#000';ctx.font='bold 56px "Courier New",monospace';
+          ctx.textBaseline='middle';ctx.fillText(code,20,H/2);ctx.textBaseline='alphabetic';
+          resolve(canvas);
+        };
+        img.src=dataUrl;
+      });
+    }
+    ctx.fillStyle='#000';ctx.font='bold 56px "Courier New",monospace';
+    ctx.textBaseline='middle';ctx.fillText(code,20,H/2);ctx.textBaseline='alphabetic';
+    return Promise.resolve(canvas);
+  }else{
+    // Barcode with code+name
+    const bcData=code+'|'+name.slice(0,20);
+    const bcCanvas=document.createElement('canvas');
+    try{
+      JsBarcode(bcCanvas,bcData,{format:'CODE128',width:2,height:80,displayValue:false,margin:0,background:'#ffffff',lineColor:'#000000'});
+      const bw=Math.min(bcCanvas.width,W-20),bh=Math.min(80,H-40);
+      ctx.drawImage(bcCanvas,0,0,bcCanvas.width,bcCanvas.height,(W-bw)/2,4,bw,bh);
+    }catch(e){
+      try{
+        JsBarcode(bcCanvas,code,{format:'CODE128',width:2,height:80,displayValue:false,margin:0,background:'#ffffff',lineColor:'#000000'});
+        const bw=Math.min(bcCanvas.width,W-20),bh=Math.min(80,H-40);
+        ctx.drawImage(bcCanvas,0,0,bcCanvas.width,bcCanvas.height,(W-bw)/2,4,bw,bh);
+      }catch(e2){}
+    }
+    ctx.fillStyle='#000';ctx.font='bold 34px "Courier New",monospace';
+    ctx.textAlign='center';ctx.fillText(code,W/2,H-12);ctx.textAlign='left';
+    return Promise.resolve(canvas);
+  }
+}
+
+async function downloadOneLabel(code){
+  const c=await labelToCanvas(code,lblType);
+  const a=document.createElement('a');a.href=c.toDataURL('image/png');
+  a.download=`label_${code}.png`;a.click();
+}
+
+async function downloadAllLabels(){
+  const codes=[...batchSelected];
+  if(!codes.length){toast(lang==='zh'?'請選擇至少一筆':'Select at least one','err');return}
+  for(let i=0;i<codes.length;i++){
+    const c=await labelToCanvas(codes[i],lblType);
+    const a=document.createElement('a');a.href=c.toDataURL('image/png');
+    a.download=`label_${codes[i]}.png`;
+    setTimeout(()=>a.click(),i*200);
+  }
+  toast(`📥 ${codes.length} ${lang==='zh'?'個標簽已下載':'labels downloaded'}`,'ok');
+}
+
+async function shareOneLabel(code){
+  try{
+    const c=await labelToCanvas(code,lblType);
+    const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+    const file=new File([blob],`label_${code}.png`,{type:'image/png'});
+    if(navigator.canShare?.({files:[file]}))await navigator.share({files:[file],title:`VRT ${code}`});
+    else downloadOneLabel(code);
+  }catch(e){if(e.name!=='AbortError')downloadOneLabel(code)}
+}
+
+async function shareLabels(){
+  const codes=[...batchSelected];
+  if(!codes.length)return;
+  const files=[];
+  for(const code of codes){
+    const c=await labelToCanvas(code,lblType);
+    const blob=await new Promise(r=>c.toBlob(r,'image/png'));
+    files.push(new File([blob],`label_${code}.png`,{type:'image/png'}));
+  }
+  try{
+    if(navigator.canShare?.({files}))await navigator.share({files,title:'VRT Labels'});
+    else downloadAllLabels();
+  }catch(e){if(e.name!=='AbortError')downloadAllLabels()}
+}
+
+function doPrintLabels(){
+  const codes=[...batchSelected];
+  if(!codes.length){toast(lang==='zh'?'請選擇至少一筆':'Select at least one','err');return}
+  const zone=document.getElementById('print-zone');
+  zone.innerHTML='';zone.style.display='block';
+  codes.forEach(code=>{
+    const div=document.createElement('div');
+    div.className='print-label';div.style.cssText='display:inline-block;margin:2mm;page-break-inside:avoid';
+    const el=createLabelElement(code,lblType);
+    const lbl=el.querySelector('div');
+    if(lbl)div.appendChild(lbl.cloneNode(true));
+    zone.appendChild(div);
+  });
+  setTimeout(()=>{window.print();zone.style.display='none';
+    toast(`🖨️ ${codes.length} ${lang==='zh'?'個標簽已送印':'labels sent'}`,'ok');
+  },600);
+}
+
+// ════════════════════════════════
+// EXCEL IMPORT
+// ════════════════════════════════
+let importData=[];
+
+function openImport(){
+  importData=[];
+  document.getElementById('imp-preview').classList.add('hidden');
+  document.getElementById('btn-do-import').disabled=true;
+  document.getElementById('imp-file').value='';
+  openM('m-import');
+}
+
+function handleImportDrop(e){const f=e.dataTransfer.files[0];if(f)parseImportFile(f)}
+function handleImportFile(e){const f=e.target.files[0];if(f)parseImportFile(f)}
+
+function parseImportFile(file){
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      const data=new Uint8Array(e.target.result);
+      const wb=XLSX.read(data,{type:'array',cellDates:true});
+      importData=[];
+      const parsedSheets=[];
+
+      for(const sn of wb.SheetNames){
+        const ws=wb.Sheets[sn];
+        const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+        if(!aoa||aoa.length<3)continue;
+
+        // Find header row by looking for '資產名稱' or 'Item' (NOT '資產編號')
+        let headerIdx=-1;
+        for(let r=0;r<Math.min(aoa.length,10);r++){
+          const row=aoa[r];
+          if(!row)continue;
+          const joined=row.map(c=>(c||'').toString()).join('|');
+          // Must have item/name column keyword
+          if(/資產名稱|物品名稱|品名|Item(?! Inventory)/i.test(joined)){headerIdx=r;break;}
+        }
+        if(headerIdx<0)continue;
+
+        const headers=aoa[headerIdx].map(h=>(h||'').toString().trim());
+        const headersL=headers.map(h=>h.toLowerCase());
+
+        // Precise column mapping — order matters, check specific first
+        function findCol(exactPatterns,partialPatterns){
+          // Try exact match first
+          for(const p of exactPatterns){
+            const idx=headersL.findIndex(h=>h===p.toLowerCase());
+            if(idx>=0)return idx;
+          }
+          // Then partial
+          for(const p of partialPatterns||[]){
+            const idx=headersL.findIndex(h=>h.includes(p.toLowerCase()));
+            if(idx>=0)return idx;
+          }
+          return -1;
+        }
+
+        const ci={
+          code:    findCol(['資產編號','asset code'],['編號']),
+          name:    findCol(['資產名稱','物品名稱','品名'],['item']),
+          brand:   findCol(['品牌','brand'],[]),
+          model:   findCol(['規格/型號','規格','型號','model'],[]),
+          date:    findCol(['取得日期'],['date']),
+          dept:    findCol(['保管部門'],['dept']),
+          user:    findCol(['保管人','custodian'],['使用人']),
+          location:findCol(['存放位置','放置位置'],['location']),
+          status:  findCol(['狀態','status'],[]),
+          remark:  findCol(['備註'],['note','remark']),
+          color:   findCol(['顏色','color'],[]),
+          size:    findCol(['尺寸'],['size','dimensions']),
+          qty:     findCol(['數量'],['qty']),
+        };
+
+        if(ci.name<0)continue; // Must have item name
+
+        // Detect sheet type from sheet name
+        const snLower=sn.toLowerCase();
+
+        for(let r=headerIdx+1;r<aoa.length;r++){
+          const row=aoa[r];
+          if(!row)continue;
+
+          const nm=(ci.name>=0?row[ci.name]:'').toString().trim();
+          if(!nm)continue;
+          // Skip sub-header rows
+          if(/^(item|name|description|\(.*\))$/i.test(nm))continue;
+          if(nm==='Category'||nm==='Asset Code')continue;
+
+          // Get asset code — ONLY import if valid code exists
+          let code='';
+          if(ci.code>=0){
+            code=(row[ci.code]||'').toString().trim();
+          }
+          // Validate: must be AHA### or AOA### format
+          if(!code||!/^(AOA|AHA)\d{3,}$/i.test(code))continue; // ← SKIP rows without valid code
+
+          code=code.toUpperCase();
+          const ct=code.startsWith('AHA')?'AHA':'AOA';
+          const zone=ct==='AHA'?'expat':'factory';
+
+          // Status
+          let status='active';
+          if(ci.status>=0){
+            const sv=(row[ci.status]||'').toString().trim().toLowerCase();
+            if(sv.includes('使用')||sv.includes('use'))status='active';
+            else if(sv.includes('備用')||sv.includes('standby'))status='standby';
+            else if(sv.includes('維修')||sv.includes('repair'))status='repair';
+            else if(sv.includes('報廢')||sv.includes('dispos'))status='disposed';
+            else if(sv)status='active';
+          }
+
+          // Read date AS-IS from Excel, don't fabricate
+          let dateVal='';
+          if(ci.date>=0&&row[ci.date]){
+            const dv=row[ci.date].toString().trim();
+            // Only use if it looks like a real date, not empty or placeholder
+            if(dv&&dv!=='0'&&dv.length>4)dateVal=dv;
+          }
+
+          // Color from remark or color column
+          let color='';
+          let remark='';
+          if(ci.color>=0)color=(row[ci.color]||'').toString().trim();
+          if(ci.remark>=0)remark=(row[ci.remark]||'').toString().trim();
+          if(!color&&remark){
+            // Extract color from remark like "灰色 (Grey)"
+            const cm=remark.match(/^([\u9ed1\u767d\u7070\u7d05\u85cd\u7da0\u7c89\u68d5\u8c61\u7259\u9ec3][\u8272].*|black|white|grey|gray|red|blue|green|pink|brown|silver|ivory)$/i);
+            if(cm){color=remark;remark=''}
+          }
+
+          importData.push({
+            existingCode:code,
+            name:nm,
+            codeType:ct,
+            brand:ci.brand>=0?(row[ci.brand]||'').toString().trim():'',
+            model:ci.model>=0?(row[ci.model]||'').toString().trim():'',
+            color,
+            size:'',
+            qty:ci.qty>=0?(parseInt(row[ci.qty])||1):1,
+            unit:'pcs',
+            unitPrice:0,
+            zone,
+            location:ci.location>=0?(row[ci.location]||'').toString().trim():'',
+            user:ci.user>=0?(row[ci.user]||'').toString().trim():'',
+            purchaseDate:dateVal,
+            remark,
+            status,
+            category:CATS[0],
+            _sheet:sn
+          });
+        }
+        if(importData.length)parsedSheets.push(sn);
+      }
+
+      if(!importData.length){
+        toast(lang==='zh'?'未找到有編號(AOA/AHA)的資料':'No rows with valid asset codes found','err');
+        return;
+      }
+
+      // Auto-categorize
+      importData.forEach(r=>{
+        const nl=r.name.toLowerCase();
+        const isDorm=r.codeType==='AHA';
+        if(nl.match(/chair|椅|table|桌|desk|bed|床|cabinet|櫃|rack|shelf/i))
+          r.category=isDorm?CATS[3]:CATS[0];
+        else if(nl.match(/fridge|冰箱|tv|電視|washer|洗衣|dryer|烘衣|stove|爐|generator|motor|pump|microwave|微波/i))
+          r.category=isDorm?CATS[4]:CATS[2];
+        else if(nl.match(/vehicle|車/i))r.category=CATS[5];
+      });
+
+      toast(`${lang==='zh'?'解析完成':'Parsed'}: ${parsedSheets.join(', ')} → ${importData.length} ${lang==='zh'?'筆(僅含有效編號)':'rows (valid codes only)'}`,'ok');
+      renderImportPreview();
+    }catch(err){
+      console.error(err);
+      toast((lang==='zh'?'解析失敗：':'Parse error: ')+err.message,'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function renderImportPreview(){
+  if(!importData.length)return;
+  document.getElementById('imp-preview').classList.remove('hidden');
+  document.getElementById('imp-cnt').textContent=importData.length;
+  document.getElementById('btn-do-import').disabled=false;
+  const tbl=document.getElementById('imp-tbl');
+  const zh=lang==='zh';
+  tbl.innerHTML=`<thead><tr><th>#</th><th>${zh?'編碼':'Code'}</th><th>${zh?'品名':'Item'}</th><th>${zh?'品牌':'Brand'}</th><th>${zh?'型號':'Model'}</th><th>${zh?'區域':'Zone'}</th><th>${zh?'位置':'Location'}</th><th>${zh?'狀態':'Status'}</th><th>${zh?'來源':'Sheet'}</th></tr></thead><tbody>`+
+    importData.slice(0,50).map((r,i)=>`<tr>
+      <td>${i+1}</td>
+      <td><span class="tc">${r.existingCode}</span></td>
+      <td><b>${r.name}</b></td><td>${r.brand}</td><td>${r.model}</td>
+      <td><span class="bdg ${r.zone==='expat'?'b-exp':r.zone==='local'?'b-loc':'b-fac'}">${r.zone}</span></td>
+      <td>${r.location}</td>
+      <td>${sbadge(r.status)}</td>
+      <td style="font-size:10px;color:var(--tx3)">${r._sheet||''}</td>
+    </tr>`).join('')+
+    (importData.length>50?`<tr><td colspan="9" style="text-align:center;color:var(--tx3)">… ${importData.length-50} more</td></tr>`:'')+
+    `</tbody>`;
+}
+
+function clearImport(){
+  importData=[];
+  document.getElementById('imp-preview').classList.add('hidden');
+  document.getElementById('btn-do-import').disabled=true;
+  document.getElementById('imp-file').value='';
+}
+
+async function doImport(){
+  if(!importData.length)return;
+  if(!canEdit()){toast(lang==='zh'?'沒有新增權限':'No permission','err');return}
+  const zh=lang==='zh';
+
+  const existingCodes=new Set(assets.map(a=>a.code));
+  const dupes=importData.filter(r=>existingCodes.has(r.existingCode));
+  if(dupes.length){
+    const skipDupes=confirm(zh
+      ?`有 ${dupes.length} 筆編號已存在系統中（如 ${dupes[0].existingCode}）。\n\n確定 → 跳過重複，只匯入新的\n取消 → 不匯入`
+      :`${dupes.length} codes already exist (e.g. ${dupes[0].existingCode}).\n\nOK → Skip duplicates\nCancel → Abort`);
+    if(!skipDupes)return;
+  }
+
+  const toImport=importData.filter(r=>!existingCodes.has(r.existingCode));
+  if(!toImport.length){toast(zh?'所有編號已存在':'All codes already exist','info');return}
+
+  // Ask about Telegram notifications
+  const silentImport=toImport.length>10
+    ? confirm(zh?`即將匯入 ${toImport.length} 筆資產。\n\n確定 → 靜默匯入（不發 Telegram 通知，只發一則總結）\n取消 → 中止匯入`:`Import ${toImport.length} assets silently? (one summary message only)`)
+    : confirm(zh?`確定匯入 ${toImport.length} 筆資產？`:`Import ${toImport.length}?`);
+  if(!silentImport)return;
+
+  const newAssets=toImport.map(r=>{
+    const code=r.existingCode;
+    const prefix=code.startsWith('AHA')?'AHA':'AOA';
+    const num=parseInt(code.slice(3))+1;
+    if(num>cnts[prefix])cnts[prefix]=num;
+    return{
+      code,zone:r.zone,name:r.name,category:r.category,status:r.status||'active',
+      brand:r.brand,model:r.model,color:r.color,size:r.size,
+      qty:r.qty,unit:r.unit,unitPrice:r.unitPrice,
+      location:r.location,user:r.user,purchaseDate:r.purchaseDate,remark:r.remark,
+      history:[{type:'created',date:today(),desc:`Excel import by ${currentUser.name}`}]
+    };
+  });
+  assets=[...newAssets,...assets];
+  closeM('m-import');render();
+  saveLocal(); // immediate local backup
+  toast(zh?`正在寫入雲端 ${newAssets.length} 筆…`:`Writing ${newAssets.length} to cloud…`,'info');
+
+  // Use bulk importAssets action to avoid URL length limit
+  let success=0, failed=0;
+  try{
+    const res=await gasCall({action:'importAssets',data:JSON.stringify({assets:newAssets,by:currentUser.name})});
+    if(res&&res.ok){
+      success=res.count||newAssets.length;
+    }else{
+      // Fallback: save-all batch
+      const r2=await saveToGAS();
+      success=newAssets.length;
+    }
+  }catch(e){
+    console.error('Import error:',e);
+    failed=newAssets.length;
+    await saveToGAS(); // fallback attempt
+  }
+
+  toast(zh?`✓ 匯入完成：${success} 筆${failed?`，${failed} 筆失敗`:''}`:`✓ Imported: ${success}${failed?`, ${failed} failed`:''}`,failed?'err':'ok');
+  importData=[];
+
+  if(success>0&&confirm(zh?'是否要打印匯入資產的標簽？':'Print labels for imported assets?')){
+    batchSelected=new Set(newAssets.map(a=>a.code));
+    document.getElementById('batch-area').classList.remove('hidden');
+    document.getElementById('print-sub').textContent=zh?`匯入 ${newAssets.length} 筆`:`${newAssets.length} imported`;
+    renderBatchList();
+    openM('m-print');
+    setTimeout(()=>renderLabelPreview(),200);
+  }
+}
+
+// ════════════════════════════════
+// OPERATION LOG (aggregated from all asset histories)
+// ════════════════════════════════
+function getAllLogs(){
+  const logs=[];
+  assets.forEach(a=>{
+    (a.history||[]).forEach(h=>{
+      logs.push({
+        date:h.date||'',
+        type:h.type||'edit',
+        code:a.code,
+        name:a.name,
+        desc:h.desc||'',
+        zone:a.zone
+      });
+    });
+  });
+  // Sort newest first
+  logs.sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+  return logs;
+}
+
+function openLog(){
+  document.getElementById('log-q').value='';
+  document.getElementById('log-type').value='';
+  renderLog();
+  openM('m-log');
+}
+
+function renderLog(){
+  const q=(document.getElementById('log-q').value||'').toLowerCase();
+  const ft=document.getElementById('log-type').value;
+  let logs=getAllLogs();
+  if(ft)logs=logs.filter(l=>l.type===ft);
+  if(q)logs=logs.filter(l=>[l.code,l.name,l.desc].some(v=>v&&v.toLowerCase().includes(q)));
+  document.getElementById('log-cnt').textContent=logs.length;
+  const el=document.getElementById('log-list');
+  if(!logs.length){el.innerHTML=`<div class="nodata" style="padding:30px">📭 ${lang==='zh'?'無日誌記錄':'No logs'}</div>`;return}
+  const typeIcons={created:'✨',edit:'✏️',pending:'⏳',verified:'🔍',approved:'✅',rejected:'✕',deleted:'🗑'};
+  const typeCls={created:'#dcfce7/#15803d',edit:'#dbeafe/#1d4ed8',pending:'#fef9c3/#a16207',verified:'#fed7aa/#c2410c',approved:'#dcfce7/#15803d',rejected:'#fee2e2/#991b1b',deleted:'#fee2e2/#991b1b'};
+  el.innerHTML=logs.slice(0,500).map(l=>{
+    const cls=(typeCls[l.type]||'#f1f5f9/#475569').split('/');
+    return`<div style="display:flex;gap:10px;padding:9px 12px;border-bottom:1px solid var(--bdr);font-size:12px;align-items:flex-start">
+      <span style="background:${cls[0]};color:${cls[1]};padding:2px 7px;border-radius:10px;font-size:10px;font-weight:700;white-space:nowrap;flex-shrink:0">${typeIcons[l.type]||'•'} ${l.type}</span>
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;gap:6px;align-items:baseline;flex-wrap:wrap">
+          <span class="tc" style="font-size:11px">${l.code}</span>
+          <span style="font-weight:600;font-size:12px">${l.name}</span>
+          <span style="color:var(--tx3);font-size:10px;margin-left:auto">${l.date}</span>
+        </div>
+        <div style="color:var(--tx2);font-size:11px;margin-top:2px">${l.desc}</div>
+      </div>
+    </div>`;
+  }).join('')+(logs.length>500?`<div style="padding:10px;text-align:center;color:var(--tx3);font-size:11px">… ${logs.length-500} more</div>`:'');
+}
+
+function exportLog(){
+  const logs=getAllLogs();
+  if(!logs.length){toast(lang==='zh'?'無日誌可匯出':'No logs','err');return}
+  const rows=logs.map(l=>({
+    '日期 Date':l.date,
+    '類型 Type':l.type,
+    '編號 Code':l.code,
+    '品名 Name':l.name,
+    '區域 Zone':l.zone,
+    '說明 Description':l.desc
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  ws['!cols']=[{wch:12},{wch:12},{wch:12},{wch:25},{wch:10},{wch:50}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Log');
+  XLSX.writeFile(wb,`VRT_Asset_Log_${today()}.xlsx`);
+  toast(lang==='zh'?'日誌已匯出 ✓':'Log exported ✓','ok');
+}
+
+// ════════════════════════════════
+// EXPORT EXCEL
+// ════════════════════════════════
+function exportExcel(){
+  if(!assets.length){toast(lang==='zh'?'無資料可匯出':'No data to export','err');return}
+  const rows=assets.map(a=>({
+    '資產編號 Code':a.code,
+    '資產名稱 Item':a.name,
+    '類別 Category':a.category,
+    '品牌 Brand':a.brand||'',
+    '型號 Model':a.model||'',
+    '顏色 Color':a.color||'',
+    '尺寸 Size':a.size||'',
+    '數量 Qty':a.qty||1,
+    '單位 Unit':a.unit||'pcs',
+    '單價 Price':a.unitPrice||'',
+    '區域 Zone':a.zone,
+    '位置 Location':a.location||'',
+    '使用人 User':a.user||'',
+    '狀態 Status':lang==='zh'?(ST_ZH[a.status]||a.status):(ST_EN[a.status]||a.status),
+    '購入日期 Date':a.purchaseDate||'',
+    '備註 Remark':a.remark||'',
+    '異動記錄 History':(a.history||[]).map(h=>`${h.date}: ${h.desc}`).join(' | ')
+  }));
+  const ws=XLSX.utils.json_to_sheet(rows);
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'Assets');
+  // Auto column widths
+  ws['!cols']=[{wch:12},{wch:25},{wch:20},{wch:12},{wch:15},{wch:10},{wch:12},{wch:6},{wch:6},{wch:10},{wch:10},{wch:18},{wch:12},{wch:10},{wch:12},{wch:20},{wch:50}];
+  XLSX.writeFile(wb,`VRT_Assets_${today()}.xlsx`);
+  toast(lang==='zh'?'匯出完成 ✓':'Exported ✓','ok');
+}
+
+// ════════════════════════════════
+// CLEAR ALL DATA
+// ════════════════════════════════
+async function clearAllData(){
+  if(!canApprove()){toast(lang==='zh'?'只有核可人可清除資料':'Approver only','err');return}
+  const zh=lang==='zh';
+  const msg=zh
+    ?`⚠️ 確定要清除所有 ${assets.length} 筆資產資料嗎？\n\n此操作不可復原！\n建議先用「📤 匯出」備份。\n\n輸入 "CLEAR" 確認：`
+    :`⚠️ Delete all ${assets.length} assets?\n\nThis cannot be undone!\nExport backup first.\n\nType "CLEAR" to confirm:`;
+  const confirm=prompt(msg);
+  if(confirm!=='CLEAR'){toast(zh?'已取消':'Cancelled','info');return}
+  assets=[];cnts={AOA:1,AHA:1};pending=[];photos={};
+  render();
+  await saveToGAS();
+  saveLocal();
+  toast(zh?'所有資料已清除 ✓':'All data cleared ✓','ok');
+}
+
+// ════════════════════════════════
+// LOCAL STORAGE (cache / fallback)
+// ════════════════════════════════
+function saveLocal(){
+  try{localStorage.setItem('vrt_a7',JSON.stringify(assets));localStorage.setItem('vrt_c7',JSON.stringify(cnts));localStorage.setItem('vrt_p7',JSON.stringify(pending));localStorage.setItem('vrt_lang',lang)}catch(e){}
+}
+function loadLocal(){
+  try{
+    const a=localStorage.getItem('vrt_a7'),c=localStorage.getItem('vrt_c7'),p=localStorage.getItem('vrt_p7'),l=localStorage.getItem('vrt_lang');
+    if(a)assets=JSON.parse(a);if(c)cnts=JSON.parse(c);if(p)pending=JSON.parse(p);if(l)lang=l;
+  }catch(e){}
+}
+
+// ════════════════════════════════
+// BOOT
+// ════════════════════════════════
+const _lang=localStorage.getItem('vrt_lang')||'zh';lang=_lang;
+rebuildSelects();setLang(lang);buildLoginList();
+</script>
+</body>
+</html>

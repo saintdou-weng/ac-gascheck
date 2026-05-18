@@ -1,0 +1,1785 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VRT 溫濕度管理 | Temp & Humidity Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@300;400;600;700&family=Noto+Sans+TC:wght@300;400;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#f4f6fb;--card:#fff;--border:#e4e8f0;--text:#1a2035;--text2:#556080;--text3:#9aa3bc;
+  --shadow-sm:0 1px 3px rgba(20,30,60,.06);--shadow:0 2px 8px rgba(20,30,60,.09);--shadow-lg:0 8px 28px rgba(20,30,60,.13);
+  --r:12px;--r-lg:16px;
+  --cold:#3b82f6;--cold-bg:#eff6ff;--cool:#06b6d4;--cool-bg:#ecfeff;
+  --ok:#22c55e;--ok-bg:#f0fdf4;--warm:#f59e0b;--warm-bg:#fffbeb;
+  --hot:#ef4444;--hot-bg:#fef2f2;--dry:#d97706;--dry-bg:#fef3c7;
+  --humid:#f97316;--humid-bg:#fff7ed;--vhum:#dc2626;--vhum-bg:#fee2e2;
+  --pri:#4f6ef7;--pri-d:#3451d1;--pri-bg:#eef1fe;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+body{font-family:'DM Sans','Noto Sans TC','Noto Sans Khmer',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh;}
+/* HEADER */
+.hd{background:var(--card);border-bottom:1px solid var(--border);box-shadow:var(--shadow-sm);position:sticky;top:0;z-index:200;}
+.hd-in{max-width:1440px;margin:0 auto;padding:10px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap;}
+.hd-ico{width:38px;height:38px;background:linear-gradient(135deg,#ef4444,#f97316,#4f6ef7);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;}
+.hd-t{font-size:15px;font-weight:700;line-height:1.2;}
+.hd-s{font-size:11px;color:var(--text3);}
+.hd-r{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.clk{font-size:12px;color:var(--text2);font-variant-numeric:tabular-nums;}
+.lsw{display:flex;background:var(--bg);border-radius:8px;padding:2px;gap:2px;}
+.lbtn{padding:4px 10px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-size:12px;font-weight:500;color:var(--text2);transition:.2s;font-family:inherit;}
+.lbtn.on{background:var(--card);color:var(--pri);box-shadow:var(--shadow-sm);font-weight:700;}
+/* TABS */
+.tabs{background:var(--card);border-bottom:1px solid var(--border);display:flex;overflow-x:auto;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{padding:11px 18px;border:none;background:transparent;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);border-bottom:3px solid transparent;transition:.2s;white-space:nowrap;display:flex;align-items:center;gap:5px;font-family:inherit;}
+.tab.on{color:var(--pri);border-bottom-color:var(--pri);background:var(--pri-bg);}
+.tab:hover:not(.on){background:var(--bg);}
+.tbadge{background:var(--hot);color:#fff;border-radius:10px;font-size:10px;padding:1px 6px;font-weight:700;}
+/* MAIN */
+.main{max-width:1440px;margin:0 auto;padding:20px;}
+.pnl{display:none;animation:fadeIn .22s ease;}
+.pnl.on{display:block;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+/* BUTTONS */
+.btn{padding:8px 16px;border:none;border-radius:9px;cursor:pointer;font-size:13px;font-weight:600;transition:.2s;display:inline-flex;align-items:center;gap:6px;font-family:inherit;line-height:1;}
+.btn:hover:not(:disabled){transform:translateY(-1px);box-shadow:var(--shadow);}
+.btn:disabled{opacity:.45;cursor:default;}
+.bp{background:var(--pri);color:#fff;}.bp:hover{background:var(--pri-d);}
+.bg{background:transparent;color:var(--text2);border:1.5px solid var(--border);}.bg:hover{background:var(--bg);}
+.bd{background:#fee2e2;color:#dc2626;border:1.5px solid #fecaca;}.bd:hover{background:#dc2626;color:#fff;}
+.bs{background:#dcfce7;color:#16a34a;border:1.5px solid #bbf7d0;}
+.sm{padding:5px 10px;font-size:12px;border-radius:7px;}
+.xs{padding:3px 8px;font-size:11px;border-radius:6px;}
+/* INPUTS */
+label{font-size:12px;font-weight:600;color:var(--text2);display:block;margin-bottom:4px;}
+input,select,textarea{border:1.5px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--text);background:var(--bg);outline:none;transition:.2s;font-family:inherit;width:100%;}
+input:focus,select:focus{border-color:var(--pri);background:#fff;box-shadow:0 0 0 3px var(--pri-bg);}
+input[type=range]{padding:4px 0;border:none;background:transparent;cursor:pointer;box-shadow:none;}
+input[type=color]{padding:2px;height:40px;cursor:pointer;}
+input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--pri);}
+/* GRID */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+/* CARD */
+.card{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;}
+.chd{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;}
+.ct{font-size:14px;font-weight:700;}
+.cb{padding:18px;}
+/* CTRL BAR */
+.cbar{background:var(--card);border-radius:var(--r);padding:13px 18px;margin-bottom:16px;box-shadow:var(--shadow-sm);border:1px solid var(--border);display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.clbl{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
+/* STAT CARDS */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;}
+.scard{background:var(--card);border-radius:var(--r);padding:14px 16px;box-shadow:var(--shadow-sm);border:1px solid var(--border);border-left:4px solid var(--pri);}
+.sl{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;margin-bottom:4px;}
+.sv{font-size:22px;font-weight:700;line-height:1.1;}
+.ss{font-size:11px;color:var(--text3);margin-top:3px;}
+/* ZONE CARDS */
+.zgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:16px;margin-bottom:18px;}
+.zcard{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow);border:1px solid var(--border);overflow:hidden;transition:.2s;}
+.zcard:hover{box-shadow:var(--shadow-lg);transform:translateY(-2px);}
+.zchd{padding:12px 16px;display:flex;align-items:center;gap:9px;}
+.zdot{width:11px;height:11px;border-radius:50%;flex-shrink:0;}
+.znm{font-size:14px;font-weight:700;}
+.zper{display:grid;grid-template-columns:1fr 1fr;border-top:1px solid var(--border);}
+.zp{padding:13px 15px;display:flex;flex-direction:column;gap:7px;}
+.zp:first-child{border-right:1px solid var(--border);}
+.zplbl{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.4px;}
+.zmet{display:flex;gap:14px;}
+.zval{font-size:20px;font-weight:700;line-height:1;}
+.zunit{font-size:10px;color:var(--text3);margin-top:1px;}
+/* THERM BAR */
+.tbar{position:relative;height:6px;border-radius:3px;background:linear-gradient(to right,#3b82f6 0%,#06b6d4 22%,#22c55e 45%,#f59e0b 72%,#ef4444 100%);margin:4px 0;}
+.hbar{position:relative;height:6px;border-radius:3px;background:linear-gradient(to right,#d97706 0%,#22c55e 28%,#22c55e 68%,#f97316 80%,#dc2626 100%);margin:4px 0;}
+.needle{position:absolute;top:-4px;width:3px;height:14px;background:#1a2035;border-radius:2px;transform:translateX(-50%);transition:.4s;}
+/* BADGES */
+.bdg{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:700;}
+.b-ok{background:var(--ok-bg);color:#15803d;}
+.b-cold{background:var(--cold-bg);color:#1d4ed8;}
+.b-cool{background:var(--cool-bg);color:#0e7490;}
+.b-warm{background:var(--warm-bg);color:#b45309;}
+.b-hot{background:var(--hot-bg);color:#dc2626;}
+.b-dry{background:var(--dry-bg);color:#92400e;}
+.b-humid{background:var(--humid-bg);color:#c2410c;}
+.b-vhum{background:var(--vhum-bg);color:#991b1b;}
+/* TABLE COLORS */
+.tc-cold{color:#1d4ed8;font-weight:700;}.tc-cool{color:#0e7490;font-weight:700;}
+.tc-ok{color:#15803d;font-weight:700;}.tc-warm{color:#b45309;font-weight:700;}
+.tc-hot{color:#dc2626;font-weight:700;}.tc-dry{color:#92400e;font-weight:700;}
+.tc-humid{color:#c2410c;font-weight:700;}.tc-vhum{color:#991b1b;font-weight:700;}
+/* TABLE */
+.twrap{overflow-x:auto;border-radius:var(--r-lg);box-shadow:var(--shadow);border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;background:var(--card);}
+thead th{padding:9px 13px;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px;border-bottom:2px solid var(--border);background:var(--bg);text-align:left;white-space:nowrap;}
+tbody td{padding:8px 13px;border-bottom:1px solid var(--border);font-size:13px;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--bg);}
+/* PERIOD TOGGLE */
+.ptog{display:flex;background:var(--bg);border-radius:8px;padding:2px;gap:2px;}
+.pbtn{padding:5px 13px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:.2s;font-family:inherit;}
+.pbtn.on{background:var(--card);color:var(--pri);box-shadow:var(--shadow-sm);}
+/* REC GRID */
+.rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:13px;margin-bottom:14px;}
+.rzcard{background:var(--card);border-radius:var(--r);border:1.5px solid var(--border);padding:13px;transition:.2s;}
+.rzcard:hover{border-color:var(--pri);}
+.rzlbl{display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+.riw{position:relative;}
+.riw span{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3);pointer-events:none;}
+.riw input{padding-right:32px;}
+/* CHARTS */
+.chc{position:relative;height:270px;}
+.cgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
+/* ANOMALY */
+.aitm{display:flex;gap:11px;align-items:flex-start;padding:11px 15px;border-radius:var(--r);margin-bottom:8px;border-left:4px solid var(--border);}
+.aitm.crit{background:var(--hot-bg);border-left-color:var(--hot);}
+.aitm.warn{background:var(--warm-bg);border-left-color:var(--warm);}
+.aico{font-size:17px;flex-shrink:0;}
+.atxt{flex:1;font-size:13px;line-height:1.5;}
+.atxt strong{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.3px;margin-bottom:2px;}
+/* MODAL */
+.mover{position:fixed;inset:0;background:rgba(10,15,35,.45);z-index:500;display:none;align-items:center;justify-content:center;padding:20px;}
+.mover.on{display:flex;}
+.mdl{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow-lg);padding:24px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;}
+.mtit{font-size:15px;font-weight:700;margin-bottom:16px;}
+.mact{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+/* TOAST */
+#tbox{position:fixed;bottom:22px;right:22px;z-index:900;display:flex;flex-direction:column;gap:7px;}
+.toast{padding:9px 15px;border-radius:9px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);animation:slideUp .22s ease;display:flex;align-items:center;gap:7px;}
+@keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.t-ok{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;}
+.t-err{background:#fee2e2;color:#dc2626;border:1px solid #fecaca;}
+.t-inf{background:var(--pri-bg);color:var(--pri);border:1px solid #c7d2fe;}
+/* SETTINGS */
+.stsec{margin-bottom:22px;}
+.sttit{font-size:12px;font-weight:700;color:var(--text2);border-bottom:1px solid var(--border);padding-bottom:7px;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px;}
+.throw{display:flex;align-items:center;gap:11px;margin-bottom:9px;}
+.thlbl{font-size:12px;color:var(--text2);width:110px;flex-shrink:0;}
+.thval{font-size:13px;font-weight:700;width:48px;text-align:right;}
+/* ZONE LIST */
+.zli{display:flex;align-items:center;gap:11px;padding:11px 15px;border-radius:var(--r);border:1.5px solid var(--border);margin-bottom:8px;background:var(--card);transition:.2s;}
+.zli:hover{border-color:var(--pri);}
+.zcdot{width:15px;height:15px;border-radius:50%;border:2px solid #fff;box-shadow:var(--shadow-sm);flex-shrink:0;cursor:pointer;}
+/* EMPTY */
+.emp{text-align:center;padding:44px 20px;color:var(--text3);}
+.empi{font-size:38px;margin-bottom:10px;}
+/* PAGINATION */
+.pagi{display:flex;gap:4px;align-items:center;justify-content:flex-end;margin-top:11px;flex-wrap:wrap;}
+.pgbtn{padding:4px 9px;border:1.5px solid var(--border);border-radius:6px;background:var(--card);cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:.15s;font-family:inherit;}
+.pgbtn.on{background:var(--pri);color:#fff;border-color:var(--pri);}
+.pgbtn:hover:not(.on):not(:disabled){background:var(--pri-bg);border-color:var(--pri);}
+.pgbtn:disabled{opacity:.4;cursor:default;}
+/* MISC */
+.sep{border:none;border-top:1px solid var(--border);margin:14px 0;}
+.muted{color:var(--text3);}
+.sm-t{font-size:12px;}
+.fw7{font-weight:700;}
+.mt8{margin-top:8px;}
+.fl{display:flex;align-items:center;gap:8px;}
+.flw{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.ml{margin-left:auto;}
+.syncdt{width:8px;height:8px;border-radius:50%;display:inline-block;}
+.sd-ok{background:#22c55e;}.sd-err{background:#ef4444;}.sd-idle{background:#94a3b8;}
+@media(max-width:640px){
+  .hd-in{padding:8px 12px;}.main{padding:12px;}
+  .g2,.g3,.g4{grid-template-columns:1fr;}
+  .cgrid{grid-template-columns:1fr;}
+  .zper{grid-template-columns:1fr;}
+  .zp:first-child{border-right:none;border-bottom:1px solid var(--border);}
+  .sgrid{grid-template-columns:1fr 1fr;}
+}
+.nodata-row td{text-align:center;padding:32px;color:var(--text3);}
+</style>
+</head>
+<body>
+<!-- HEADER -->
+<div class="hd"><div class="hd-in">
+  <div class="fl"><div class="hd-ico">🌡️</div><div><div class="hd-t" id="i-app-title">VRT 溫濕度管理系統</div><div class="hd-s" id="i-app-sub">VRT · RSK · v3 ☁️ Cloud</div></div></div>
+  <div class="hd-r">
+    <div class="clk" id="clock">--</div>
+    <div class="lsw">
+      <button class="lbtn on" onclick="setLang('zh')">中文</button>
+      <button class="lbtn" onclick="setLang('en')">EN</button>
+      <button class="lbtn" onclick="setLang('km')">ខ្មែរ</button>
+    </div>
+  </div>
+</div></div>
+<!-- TABS -->
+<div class="tabs">
+  <button class="tab on" id="tab-dash" onclick="showTab('dash')">📊 <span id="i-tab-dash">儀表板</span></button>
+  <button class="tab" id="tab-rec" onclick="showTab('rec')">✏️ <span id="i-tab-rec">記錄</span></button>
+  <button class="tab" id="tab-hist" onclick="showTab('hist')">📋 <span id="i-tab-hist">歷史</span></button>
+  <button class="tab" id="tab-anal" onclick="showTab('anal')">📈 <span id="i-tab-anal">分析</span></button>
+  <button class="tab" id="tab-zones" onclick="showTab('zones')">🏭 <span id="i-tab-zones">區域</span></button>
+  <button class="tab" id="tab-alert" onclick="showTab('alert')">⚠️ <span id="i-tab-alert">異常</span> <span class="tbadge" id="abadge" style="display:none">0</span></button>
+  <button class="tab" id="tab-set" onclick="showTab('set')">⚙️ <span id="i-tab-set">設定</span></button>
+</div>
+<div class="main">
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="pnl on" id="pnl-dash">
+  <div class="sgrid" id="dash-stats"></div>
+  <div class="cbar">
+    <span class="clbl" id="i-date">日期</span>
+    <input type="date" id="dash-date" style="width:155px" onchange="renderDash()">
+    <div class="ptog">
+      <button class="pbtn on" id="dbam" onclick="setDP('morning')" id="i-am">早上</button>
+      <button class="pbtn" id="dbpm" onclick="setDP('afternoon')" id="i-pm">下午</button>
+      <button class="pbtn" id="dball" onclick="setDP('all')" id="i-all">全天</button>
+    </div>
+    <button class="btn bp sm ml" onclick="showTab('rec')" id="i-addrec">＋ 新增記錄</button>
+  </div>
+  <div class="zgrid" id="dash-zones"></div>
+  <div id="dash-anom"></div>
+</div>
+
+<!-- ═══ RECORD ═══ -->
+<div class="pnl" id="pnl-rec">
+  <div class="cbar">
+    <span class="clbl" id="i-date2">日期</span>
+    <input type="date" id="rec-date" style="width:155px">
+    <div class="ptog">
+      <button class="pbtn on" id="rbam" onclick="setRP('morning')">早上</button>
+      <button class="pbtn" id="rbpm" onclick="setRP('afternoon')">下午</button>
+    </div>
+    <input type="text" id="rec-note" style="width:180px" placeholder="備註（可選）" id="i-note-ph">
+    <button class="btn bp ml" onclick="saveAllRec()" id="i-saveall">💾 全部儲存</button>
+    <button class="btn bg" onclick="clearRI()" id="i-clear">清除</button>
+  </div>
+  <div class="sm-t muted mb8" id="rec-plbl" style="margin-bottom:10px;"></div>
+  <div class="rgrid" id="rec-zgrid"></div>
+  <div class="card mt8" id="rec-today" style="display:none">
+    <div class="chd"><span class="ct" id="i-today-recs">今日已記錄</span><button class="btn bg sm" onclick="clearTodayRecs()" id="i-clrtoday">清除今日</button></div>
+    <div class="cb" id="rec-today-body"></div>
+  </div>
+</div>
+
+<!-- ═══ HISTORY ═══ -->
+<div class="pnl" id="pnl-hist">
+  <div class="cbar">
+    <span class="clbl" id="i-filter">篩選</span>
+    <select id="hzone" onchange="renderHist()" style="width:155px"><option value="all" id="i-allz">全部區域</option></select>
+    <select id="hperiod" onchange="renderHist()" style="width:120px">
+      <option value="all" id="i-allp">全部時段</option>
+      <option value="morning" id="i-am2">早上</option>
+      <option value="afternoon" id="i-pm2">下午</option>
+    </select>
+    <select id="hview" onchange="setHV(this.value)" style="width:110px">
+      <option value="day" id="i-hvd">日 Day</option>
+      <option value="week" id="i-hvw">週 Week</option>
+      <option value="month" id="i-hvm" selected>月 Month</option>
+      <option value="year" id="i-hvy">年 Year</option>
+    </select>
+    <button class="btn bg sm" onclick="exportXL()" id="i-expxl">📥 Excel</button>
+  </div>
+  <!-- Navigation bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--r);padding:10px 16px;margin-bottom:12px;box-shadow:var(--shadow-sm);border:1px solid var(--border);">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span class="clbl" id="i-filter-lbl">篩選</span>
+      <select id="hzone2" onchange="syncZoneFilter();renderHist()" style="width:150px"><option value="all">全部區域</option></select>
+      <select id="hperiod2" onchange="syncPeriodFilter();renderHist()" style="width:115px">
+        <option value="all">全部時段</option>
+        <option value="morning">早上</option>
+        <option value="afternoon">下午</option>
+      </select>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;">
+      <button class="btn bg sm" onclick="navHist(-1)" style="padding:6px 14px;font-size:16px;font-weight:700">‹</button>
+      <div id="h-nav-label" style="font-size:14px;font-weight:700;color:var(--text);min-width:140px;text-align:center;">--</div>
+      <button class="btn bg sm" onclick="navHist(1)" style="padding:6px 14px;font-size:16px;font-weight:700">›</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <input type="date" id="hfrom" onchange="renderHist()" style="width:130px">
+      <span class="muted">→</span>
+      <input type="date" id="hto" onchange="renderHist()" style="width:130px">
+    </div>
+  </div>
+  <div class="twrap"><table><thead id="h-thead"></thead><tbody id="h-tbody"></tbody></table></div>
+  <div class="pagi" id="h-pagi"></div>
+</div>
+
+<!-- ═══ ANALYSIS ═══ -->
+<div class="pnl" id="pnl-anal">
+  <div class="cbar">
+    <span class="clbl" id="i-filter2">篩選</span>
+    <select id="azone" onchange="renderAnal()" style="width:155px"><option value="all">全部區域</option></select>
+    <div class="ptog">
+      <button class="pbtn on" id="avd" onclick="setAV('day')">日</button>
+      <button class="pbtn" id="avw" onclick="setAV('week')">週</button>
+      <button class="pbtn" id="avm" onclick="setAV('month')">月</button>
+      <button class="pbtn" id="avy" onclick="setAV('year')">年</button>
+    </div>
+    <input type="date" id="afrom" onchange="renderAnal()" style="width:135px">
+    <span class="muted">→</span>
+    <input type="date" id="ato" onchange="renderAnal()" style="width:135px">
+  </div>
+  <div class="sgrid" id="anal-stats" style="margin-bottom:16px"></div>
+  <div class="cgrid">
+    <div class="card"><div class="chd"><span class="ct" id="i-cht">🌡️ 溫度趨勢</span></div><div class="cb"><div class="chc"><canvas id="ctmp"></canvas></div></div></div>
+    <div class="card"><div class="chd"><span class="ct" id="i-chh">💧 濕度趨勢</span></div><div class="cb"><div class="chc"><canvas id="chum"></canvas></div></div></div>
+  </div>
+  <div class="card" style="margin-bottom:16px"><div class="chd"><span class="ct" id="i-cha">⚠️ 異常統計</span></div><div class="cb"><div class="chc" style="height:200px"><canvas id="canom"></canvas></div></div></div>
+  <div class="card"><div class="chd"><span class="ct" id="i-chs">📊 統計表</span></div><div class="cb" style="padding:0"><div class="twrap"><table><thead id="at-head"></thead><tbody id="at-body"></tbody></table></div></div></div>
+</div>
+
+<!-- ═══ ZONES ═══ -->
+<div class="pnl" id="pnl-zones">
+  <div class="flw" style="margin-bottom:14px">
+    <h2 style="font-size:15px;font-weight:700" id="i-zmgr">區域管理</h2>
+    <button class="btn bp ml" onclick="openZM(null)" id="i-addzone">＋ 新增區域</button>
+  </div>
+  <div id="zone-list"></div>
+  <p class="sm-t muted mt8" id="i-zhint">💡 最多 10 個監測區域。點擊顏色點可編輯。</p>
+</div>
+
+<!-- ═══ ALERTS ═══ -->
+<div class="pnl" id="pnl-alert">
+  <div class="cbar">
+    <span class="clbl" id="i-filter3">篩選</span>
+    <select id="alzone" onchange="renderAlert()" style="width:155px"><option value="all">全部區域</option></select>
+    <input type="date" id="alfrom" onchange="renderAlert()" style="width:135px">
+    <span class="muted">→</span>
+    <input type="date" id="alto" onchange="renderAlert()" style="width:135px">
+    <select id="alsev" onchange="renderAlert()" style="width:120px">
+      <option value="all" id="i-allsev">全部等級</option>
+      <option value="crit" id="i-crit">嚴重</option>
+      <option value="warn" id="i-warn">警告</option>
+    </select>
+  </div>
+  <div id="alert-list"></div>
+</div>
+
+<!-- ═══ SETTINGS ═══ -->
+<div class="pnl" id="pnl-set">
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+    <div>
+      <!-- Thresholds -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="chd"><span class="ct" id="i-thresh">📏 閾值設定</span></div>
+        <div class="cb">
+          <div class="stsec">
+            <div class="sttit" id="i-ttit">🌡️ 溫度 Temperature (°C)</div>
+            <div class="throw"><div class="thlbl"><span class="bdg b-cold" id="i-tcold">🔵 過冷</span></div><input type="range" id="th-tc" min="5" max="25" step="1" oninput="updateThV('th-tc-v',this.value,'°C');saveTH()"><span class="thval" id="th-tc-v">--</span></div>
+            <div class="throw"><div class="thlbl"><span class="bdg b-cool" id="i-tcool">🔵 涼爽</span></div><input type="range" id="th-tl" min="15" max="30" step="1" oninput="updateThV('th-tl-v',this.value,'°C');saveTH()"><span class="thval" id="th-tl-v">--</span></div>
+            <div class="throw"><div class="thlbl"><span class="bdg b-warm" id="i-twarm">🟡 偏熱</span></div><input type="range" id="th-tw" min="28" max="38" step=".5" oninput="updateThV('th-tw-v',this.value,'°C');saveTH()"><span class="thval" id="th-tw-v">--</span></div>
+            <div class="throw"><div class="thlbl"><span class="bdg b-hot" id="i-thot">🔴 過熱</span></div><input type="range" id="th-th" min="30" max="45" step=".5" oninput="updateThV('th-th-v',this.value,'°C');saveTH()"><span class="thval" id="th-th-v">--</span></div>
+          </div>
+          <div class="stsec">
+            <div class="sttit" id="i-htit">💧 濕度 Humidity (%)</div>
+            <div class="throw"><div class="thlbl"><span class="bdg b-dry" id="i-hdry">🟡 過乾</span></div><input type="range" id="th-hd" min="10" max="60" step="1" oninput="updateThV('th-hd-v',this.value,'%');saveTH()"><span class="thval" id="th-hd-v">--</span></div>
+            <div class="throw"><div class="thlbl"><span class="bdg b-humid" id="i-hhumid">🟠 偏濕</span></div><input type="range" id="th-hh" min="60" max="90" step="1" oninput="updateThV('th-hh-v',this.value,'%');saveTH()"><span class="thval" id="th-hh-v">--</span></div>
+            <div class="throw"><div class="thlbl"><span class="bdg b-vhum" id="i-hvhum">🔴 過濕</span></div><input type="range" id="th-hv" min="75" max="100" step="1" oninput="updateThV('th-hv-v',this.value,'%');saveTH()"><span class="thval" id="th-hv-v">--</span></div>
+          </div>
+          <div style="background:var(--bg);border-radius:8px;padding:11px;font-size:12px"><div id="th-legend"></div></div>
+        </div>
+      </div>
+      <!-- Telegram -->
+      <div class="card">
+        <div class="chd"><span class="ct">📱 Telegram</span><span class="bdg b-ok" style="margin-left:auto">☁️ 由 GAS 自動發送</span></div>
+        <div class="cb">
+          <div style="background:var(--pri-bg);border-radius:8px;padding:10px 13px;font-size:12px;color:var(--pri);margin-bottom:12px;border-left:3px solid var(--pri)">
+            💡 儲存記錄後，GAS 後端會自動推送 Telegram 通知至群組，無需在此設定 Bot Token。<br>
+            如需從瀏覽器手動發送報告，可在下方填入 Token（選填）。
+          </div>
+          <div class="g2" style="margin-bottom:10px">
+            <div class="fg"><label>Bot Token（選填，手動發送用）</label><input type="password" id="tg-tok" placeholder="123456:ABC..." oninput="saveTGcfg()"></div>
+            <div class="fg"><label>Chat ID（選填）</label><input type="text" id="tg-chat" placeholder="-100..." oninput="saveTGcfg()"></div>
+          </div>
+          <div class="g2" style="margin-bottom:10px">
+            <div class="fg"><label id="i-tgtype">報告類型</label><select id="tg-type"><option value="daily" id="i-tgd">每日摘要</option><option value="anomaly" id="i-tga">異常報告</option><option value="full" id="i-tgf">完整報告</option></select></div>
+            <div class="fg"><label id="i-tgdate">日期</label><input type="date" id="tg-date"></div>
+          </div>
+          <div class="flw" style="gap:6px">
+            <button class="btn bg sm" onclick="prevTG()" id="i-prev">👁 預覽</button>
+            <button class="btn bp sm" onclick="sendTG()" id="i-send">📤 手動發送</button>
+          </div>
+          <pre id="tg-prev" style="display:none;background:var(--bg);border-radius:8px;padding:11px;font-size:11px;margin-top:9px;white-space:pre-wrap;word-break:break-all;max-height:180px;overflow-y:auto;color:var(--text2)"></pre>
+        </div>
+      </div>
+    </div>
+    <div>
+      <!-- GAS -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="chd"><span class="ct">☁️ Google Sheets 雲端同步</span></div>
+        <div class="cb">
+          <div class="fg" style="margin-bottom:10px"><label>GAS Web App URL</label><input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/..." oninput="saveGAScfg()"></div>
+          <div class="flw" style="gap:6px">
+            <div class="fl" style="gap:5px"><div class="syncdt sd-idle" id="sdot"></div><span class="sm-t muted" id="sstatus" id="i-idle">未連接</span></div>
+            <button class="btn bg sm" onclick="testGAS()" id="i-testcon">🔗 測試</button>
+            <button class="btn bp sm" onclick="syncUp()" id="i-syncup">⬆ 上傳</button>
+            <button class="btn bg sm" onclick="syncDown()" id="i-pull">⬇ 拉取</button>
+          </div>
+        </div>
+      </div>
+      <!-- Import/Export -->
+      <div class="card" style="margin-bottom:16px">
+        <div class="chd"><span class="ct" id="i-ie">📁 匯入 / 匯出</span></div>
+        <div class="cb">
+          <div class="sttit" id="i-imp">匯入 Import</div>
+          <div class="flw" style="gap:6px;margin-bottom:10px">
+            <label class="btn bg sm" style="cursor:pointer">📊 Excel (VRT格式)<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importXL(event)"></label>
+            <label class="btn bg sm" style="cursor:pointer">📄 JSON<input type="file" accept=".json" style="display:none" onchange="importJSON(event)"></label>
+          </div>
+          <div id="imp-log" style="display:none;background:var(--bg);border-radius:8px;padding:10px;font-size:12px;color:var(--text2);border:1px solid var(--border)"></div>
+          <div class="sep"></div>
+          <div class="sttit" id="i-exp">匯出 Export</div>
+          <div class="flw" style="gap:6px">
+            <button class="btn bg sm" onclick="exportXL()" id="i-exl">📊 Excel</button>
+            <button class="btn bg sm" onclick="exportJSON()" id="i-ejson">📄 JSON</button>
+          </div>
+        </div>
+      </div>
+      <!-- Danger -->
+      <div class="card" style="border:1.5px solid #fecaca">
+        <div class="chd" style="background:#fff5f5"><span class="ct" style="color:#dc2626" id="i-danger">⚠️ 危險操作</span></div>
+        <div class="cb">
+          <div class="flw" style="gap:6px">
+            <button class="btn bd sm" onclick="clearAll()" id="i-clrall">🗑 清除所有記錄</button>
+            <button class="btn bd sm" onclick="resetZones()" id="i-rstzone">🔄 重置區域</button>
+          </div>
+          <p class="sm-t muted mt8" id="i-danwarn">⚠️ 此操作不可還原，請先匯出備份。</p>
+        </div>
+      </div>
+      <!-- Info -->
+      <div class="card" style="margin-top:16px">
+        <div class="chd"><span class="ct" id="i-appinfo">ℹ️ 系統資訊</span></div>
+        <div class="cb">
+          <table style="width:100%;font-size:12px">
+            <tr><td class="muted" style="padding:3px 0" id="i-irc">記錄總數</td><td class="fw7" id="inf-rc">--</td></tr>
+            <tr><td class="muted" style="padding:3px 0" id="i-izn">監測區域</td><td class="fw7" id="inf-zn">--</td></tr>
+            <tr><td class="muted" style="padding:3px 0" id="i-ifc">最早記錄</td><td class="fw7" id="inf-fc">--</td></tr>
+            <tr><td class="muted" style="padding:3px 0" id="i-ilc">最近記錄</td><td class="fw7" id="inf-lc">--</td></tr>
+            <tr><td class="muted" style="padding:3px 0" id="i-ist">儲存大小</td><td class="fw7" id="inf-st">--</td></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ZONE MODAL -->
+<div class="mover" id="zm-over"><div class="mdl">
+  <div class="mtit" id="zm-tit">新增監測區域</div>
+  <div class="g2" style="margin-bottom:11px">
+    <div class="fg"><label id="i-znzh">中文名稱</label><input type="text" id="zm-zh" placeholder="例: A廠"></div>
+    <div class="fg"><label id="i-znen">English Name</label><input type="text" id="zm-en" placeholder="e.g. Building A"></div>
+  </div>
+  <div class="g2" style="margin-bottom:11px">
+    <div class="fg"><label id="i-znkm">ឈ្មោះខ្មែរ</label><input type="text" id="zm-km" placeholder="ឧ. អគារ A"></div>
+    <div class="fg"><label id="i-zncol">顏色</label><input type="color" id="zm-col" value="#4f6ef7"></div>
+  </div>
+  <div class="fg" style="margin-bottom:11px"><label id="i-zndesc">說明</label><input type="text" id="zm-desc" placeholder="可選說明"></div>
+  <div class="fl"><label style="font-size:13px" id="i-znact">啟用此區域</label><input type="checkbox" id="zm-act" checked style="width:auto;margin-left:8px"></div>
+  <div class="mact">
+    <button class="btn bg" onclick="closeMod('zm-over')" id="i-cancel">取消</button>
+    <button class="btn bp" onclick="saveZone()" id="i-save">儲存</button>
+  </div>
+</div></div>
+
+<!-- REC EDIT MODAL -->
+<div class="mover" id="re-over"><div class="mdl">
+  <div class="mtit" id="i-edittit">編輯記錄</div>
+  <input type="hidden" id="re-id">
+  <div class="g2" style="margin-bottom:11px">
+    <div class="fg"><label id="i-redate">日期</label><input type="date" id="re-date"></div>
+    <div class="fg"><label id="i-reper">時段</label><select id="re-per"><option value="morning">早上 (08:00)</option><option value="afternoon">下午 (15:30)</option></select></div>
+  </div>
+  <div class="g2" style="margin-bottom:11px">
+    <div class="fg"><label id="i-rezon">區域</label><select id="re-zon"></select></div>
+    <div class="fg"><label id="i-renote">備註</label><input type="text" id="re-note"></div>
+  </div>
+  <div class="g2" style="margin-bottom:11px">
+    <div class="fg"><label>🌡️ <span id="i-retmp">溫度 (°C)</span></label><input type="number" id="re-tmp" min="0" max="60" step=".5"></div>
+    <div class="fg"><label>💧 <span id="i-rehum">濕度 (%)</span></label><input type="number" id="re-hum" min="0" max="100" step="1"></div>
+  </div>
+  <div class="mact">
+    <button class="btn bg" onclick="closeMod('re-over')" id="i-cancel2">取消</button>
+    <button class="btn bp" onclick="saveREedit()" id="i-save2">儲存</button>
+  </div>
+</div></div>
+
+<!-- CONFIRM MODAL -->
+<div class="mover" id="cf-over"><div class="mdl" style="max-width:360px">
+  <div class="mtit" id="i-conftit">確認操作</div>
+  <p id="cf-msg" style="color:var(--text2);margin-bottom:8px"></p>
+  <div class="mact">
+    <button class="btn bg" onclick="closeMod('cf-over')" id="i-cancel3">取消</button>
+    <button class="btn bd" id="cf-ok" id="i-confirm">確認</button>
+  </div>
+</div></div>
+
+<div id="tbox"></div>
+<script>
+// ══════════════════════════════════════════
+// TRANSLATIONS
+// ══════════════════════════════════════════
+const D={
+zh:{
+  'app-title':'VRT 溫濕度管理系統','app-sub':'西港萬泰成衣有限公司',
+  'tab-dash':'儀表板','tab-rec':'記錄','tab-hist':'歷史','tab-anal':'分析','tab-zones':'區域','tab-alert':'異常','tab-set':'設定',
+  am:'早上 08:00~09:00',pm:'下午 15:30~16:30',all:'全天',
+  cold:'過冷',cool:'涼爽',ok:'正常',warm:'偏熱',hot:'過熱',dry:'偏乾',humid:'偏濕',vhum:'過濕',
+  date:'日期',zone:'區域',per:'時段',note:'備註',act:'操作',
+  allz:'全部區域',allp:'全部時段',allsev:'全部等級',crit:'嚴重',warn:'警告',
+  addrec:'＋ 新增記錄',saveall:'💾 全部儲存',clr:'清除',clrtoday:'清除今日',
+  cancel:'取消',save:'儲存',edit:'編輯',del:'刪除',prev:'👁 預覽',send:'📤 發送',
+  testcon:'🔗 測試',syncup:'⬆ 上傳',pull:'⬇ 拉取',
+  expxl:'📥 Excel',exl:'📊 Excel',ejson:'📄 JSON',
+  clrall:'🗑 清除所有記錄',rstzone:'🔄 重置區域',confirm:'確認',
+  filter:'篩選',zmgr:'區域管理',addzone:'＋ 新增區域',
+  zhint:'💡 最多 10 個監測區域',thresh:'📏 閾值設定',ttit:'🌡️ 溫度',htit:'💧 濕度',
+  tcold:'🔵 過冷',tcool:'🔵 涼爽',twarm:'🟡 偏熱',thot:'🔴 過熱',
+  hdry:'🟡 過乾',hhumid:'🟠 偏濕',hvhum:'🔴 過濕',
+  idle:'未連接',imp:'匯入',exp:'匯出',
+  danger:'⚠️ 危險操作',danwarn:'⚠️ 此操作不可還原，請先匯出備份。',
+  appinfo:'ℹ️ 系統資訊',irc:'記錄總數',izn:'監測區域',ifc:'最早記錄',ilc:'最近記錄',ist:'儲存大小',
+  znzh:'中文名稱',znen:'英文名稱',znkm:'柬文名稱',zncol:'顏色',znact:'啟用此區域',zndesc:'說明',
+  addztit:'新增監測區域',edittit:'編輯記錄',conftit:'確認操作',
+  cht:'🌡️ 溫度趨勢',chh:'💧 濕度趨勢',cha:'⚠️ 異常統計',chs:'📊 統計表',
+  tgtype:'報告類型',tgdate:'日期',tgd:'每日摘要',tga:'異常報告',tgf:'完整報告',
+  today:'今天',yesterday:'昨天',nodata:'暫無數據',saved:'已儲存',deleted:'已刪除',
+  impok:'匯入成功',expok:'匯出成功',noanom:'✅ 無異常',
+  cdelrec:'確認刪除此記錄？',cdelzone:'確認刪除此區域（及其所有記錄）？',
+  cclrall:'確認清除所有記錄？不可還原！',crstzone:'確認重置所有區域？',
+  ahigh:'溫度過高',alow:'溫度過低',ahhigh:'濕度過高',ahlow:'濕度過低',
+  clbl_date:'日期',clbl_zone:'區域',clbl_per:'時段',clbl_tmp:'溫度°C',clbl_hum:'濕度%',clbl_stat:'狀態',clbl_note:'備註',
+  an_cnt:'記錄',an_avgt:'均溫°C',an_maxt:'最高°C',an_mint:'最低°C',an_avgh:'均濕%',an_maxh:'最高%',an_minh:'最低%',an_anom:'異常',
+  rplbl_note_ph:'備註（可選）',today_recs:'今日已記錄',
+  view_day:'日',view_week:'週',view_month:'月',view_year:'年',
+  months:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+},
+en:{
+  'app-title':'VRT Temp & Humidity Monitor','app-sub':'Vantage River Textiles Co., Ltd.',
+  'tab-dash':'Dashboard','tab-rec':'Record','tab-hist':'History','tab-anal':'Analysis','tab-zones':'Zones','tab-alert':'Alerts','tab-set':'Settings',
+  am:'Morning 08:00~09:00',pm:'Afternoon 15:30~16:30',all:'All Day',
+  cold:'Cold',cool:'Cool',ok:'Normal',warm:'Warm',hot:'Hot',dry:'Dry',humid:'Humid',vhum:'Very Humid',
+  date:'Date',zone:'Zone',per:'Period',note:'Notes',act:'Actions',
+  allz:'All Zones',allp:'All Periods',allsev:'All Severity',crit:'Critical',warn:'Warning',
+  addrec:'＋ Add Record',saveall:'💾 Save All',clr:'Clear',clrtoday:'Clear Today',
+  cancel:'Cancel',save:'Save',edit:'Edit',del:'Delete',prev:'👁 Preview',send:'📤 Send',
+  testcon:'🔗 Test',syncup:'⬆ Upload',pull:'⬇ Pull',
+  expxl:'📥 Excel',exl:'📊 Excel',ejson:'📄 JSON',
+  clrall:'🗑 Clear All Records',rstzone:'🔄 Reset Zones',confirm:'Confirm',
+  filter:'Filter',zmgr:'Zone Management',addzone:'＋ Add Zone',
+  zhint:'💡 Up to 10 monitoring zones.',thresh:'📏 Threshold Settings',ttit:'🌡️ Temperature',htit:'💧 Humidity',
+  tcold:'🔵 Cold',tcool:'🔵 Cool',twarm:'🟡 Warm',thot:'🔴 Hot',
+  hdry:'🟡 Dry',hhumid:'🟠 Humid',hvhum:'🔴 Very Humid',
+  idle:'Not Connected',imp:'Import',exp:'Export',
+  danger:'⚠️ Danger Zone',danwarn:'⚠️ These actions cannot be undone. Export a backup first.',
+  appinfo:'ℹ️ App Info',irc:'Total Records',izn:'Zones Active',ifc:'Earliest Record',ilc:'Latest Record',ist:'Storage Used',
+  znzh:'Chinese Name',znen:'English Name',znkm:'Khmer Name',zncol:'Color',znact:'Active Zone',zndesc:'Description',
+  addztit:'Add Monitoring Zone',edittit:'Edit Record',conftit:'Confirm Action',
+  cht:'🌡️ Temperature Trend',chh:'💧 Humidity Trend',cha:'⚠️ Anomaly Count',chs:'📊 Statistics',
+  tgtype:'Report Type',tgdate:'Date',tgd:'Daily Summary',tga:'Anomaly Report',tgf:'Full Report',
+  today:'Today',yesterday:'Yesterday',nodata:'No data',saved:'Saved',deleted:'Deleted',
+  impok:'Import successful',expok:'Export successful',noanom:'✅ No Anomalies',
+  cdelrec:'Delete this record?',cdelzone:'Delete zone (and all its records)?',
+  cclrall:'Delete ALL records? Cannot be undone!',crstzone:'Reset all zone settings?',
+  ahigh:'Temp Too High',alow:'Temp Too Low',ahhigh:'Humidity Too High',ahlow:'Humidity Too Low',
+  clbl_date:'Date',clbl_zone:'Zone',clbl_per:'Period',clbl_tmp:'Temp°C',clbl_hum:'Hum%',clbl_stat:'Status',clbl_note:'Notes',
+  an_cnt:'Records',an_avgt:'Avg°C',an_maxt:'Max°C',an_mint:'Min°C',an_avgh:'Avg%',an_maxh:'Max%',an_minh:'Min%',an_anom:'Anomalies',
+  rplbl_note_ph:'Optional notes',today_recs:"Today's Records",
+  view_day:'Day',view_week:'Week',view_month:'Month',view_year:'Year',
+  months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+},
+km:{
+  'app-title':'VRT ប្រព័ន្ធតាមដានសីតុណ្ហភាព','app-sub':'ក្រុមហ៊ុន វ៉ានថាជ រីវ័រ ថេ',
+  'tab-dash':'ផ្ទាំងគ្រប់គ្រង','tab-rec':'កំណត់ត្រា','tab-hist':'ប្រវត្តិ','tab-anal':'វិភាគ','tab-zones':'តំបន់','tab-alert':'ព្រមាន','tab-set':'ការកំណត់',
+  am:'ព្រឹក 08:00~09:00',pm:'រសៀល 15:30~16:30',all:'ថ្ងៃទាំងមូល',
+  cold:'ត្រជាក់',cool:'ត្រជាក់ស្រួល',ok:'ធម្មតា',warm:'កក្តៅ',hot:'ក្តៅខ្លាំង',dry:'ស្ងួត',humid:'សើម',vhum:'សើមខ្លាំង',
+  date:'កាលបរិច្ឆេទ',zone:'តំបន់',per:'វេលា',note:'កំណត់ចំណាំ',act:'ប្រតិបត្តិការ',
+  allz:'គ្រប់តំបន់',allp:'គ្រប់វេលា',allsev:'គ្រប់កម្រិត',crit:'ធ្ងន់ធ្ងរ',warn:'ព្រមាន',
+  addrec:'＋ បន្ថែម',saveall:'💾 រក្សាទុក',clr:'លុបចោល',clrtoday:'លុបថ្ងៃនេះ',
+  cancel:'បោះបង់',save:'រក្សាទុក',edit:'កែ',del:'លុប',prev:'👁 មើល',send:'📤 ផ្ញើ',
+  testcon:'🔗 សាកល្បង',syncup:'⬆ ផ្ទុក',pull:'⬇ ទាញ',
+  expxl:'📥 Excel',exl:'📊 Excel',ejson:'📄 JSON',
+  clrall:'🗑 លុបទាំងអស់',rstzone:'🔄 កំណត់ឡើងវិញ',confirm:'បញ្ជាក់',
+  filter:'ត្រង',zmgr:'គ្រប់គ្រងតំបន់',addzone:'＋ បន្ថែមតំបន់',
+  zhint:'💡 អាចបន្ថែមបានរហូតដល់ 10 តំបន់',thresh:'📏 ការកំណត់កម្រិត',ttit:'🌡️ សីតុណ្ហភាព',htit:'💧 សំណើម',
+  tcold:'🔵 ត្រជាក់',tcool:'🔵 ត្រជាក់ស្រួល',twarm:'🟡 កក្តៅ',thot:'🔴 ក្តៅខ្លាំង',
+  hdry:'🟡 ស្ងួត',hhumid:'🟠 សើម',hvhum:'🔴 សើមខ្លាំង',
+  idle:'មិនបានតភ្ជាប់',imp:'នាំចូល',exp:'នាំចេញ',
+  danger:'⚠️ ប្រតិបត្តិការគ្រោះថ្នាក់',danwarn:'⚠️ ប្រតិបត្តិការទាំងនេះមិនអាចប្រឡែកបាន។',
+  appinfo:'ℹ️ ព័ត៌មានប្រព័ន្ធ',irc:'កំណត់ត្រាសរុប',izn:'តំបន់សកម្ម',ifc:'កំណត់ត្រាដំបូង',ilc:'កំណត់ត្រាថ្មី',ist:'ទំហំផ្ទុក',
+  znzh:'ឈ្មោះចិន',znen:'ឈ្មោះអង់គ្លេស',znkm:'ឈ្មោះខ្មែរ',zncol:'ពណ៌',znact:'តំបន់សកម្ម',zndesc:'ការពិពណ៌នា',
+  addztit:'បន្ថែមតំបន់ត្រួតពិនិត្យ',edittit:'កែប្រែកំណត់ត្រា',conftit:'បញ្ជាក់ប្រតិបត្តិការ',
+  cht:'🌡️ និន្នាការសីតុណ្ហភាព',chh:'💧 និន្នាការសំណើម',cha:'⚠️ ករណីខុសប្រក្រតី',chs:'📊 តារាងស្ថិតិ',
+  tgtype:'ប្រភេទ',tgdate:'កាលបរិច្ឆេទ',tgd:'សង្ខេបប្រចាំថ្ងៃ',tga:'ខុសប្រក្រតី',tgf:'ពេញ',
+  today:'ថ្ងៃនេះ',yesterday:'ម្សិលមិញ',nodata:'គ្មានទិន្នន័យ',saved:'បានរក្សាទុក',deleted:'បានលុប',
+  impok:'នាំចូលបានជោគជ័យ',expok:'នាំចេញបានជោគជ័យ',noanom:'✅ គ្មានភាពខុសប្រក្រតី',
+  cdelrec:'លុបកំណត់ត្រានេះ?',cdelzone:'លុបតំបន់ (និងកំណត់ត្រាទាំងអស់)?',
+  cclrall:'លុបកំណត់ត្រាទាំងអស់?',crstzone:'កំណត់ទ្សសន្ណ?',
+  ahigh:'សីតុណ្ហភាពខ្ពស់',alow:'សីតុណ្ហភាពទាប',ahhigh:'សំណើមខ្ពស់',ahlow:'សំណើមទាប',
+  clbl_date:'កាលបរិច្ឆេទ',clbl_zone:'តំបន់',clbl_per:'វេលា',clbl_tmp:'°C',clbl_hum:'%',clbl_stat:'ស្ថានភាព',clbl_note:'ចំណាំ',
+  an_cnt:'កំណត់ត្រា',an_avgt:'មធ្យម°C',an_maxt:'ខ្ពស់°C',an_mint:'ទាប°C',an_avgh:'មធ្យម%',an_maxh:'ខ្ពស់%',an_minh:'ទាប%',an_anom:'ខុសប្រក្រតី',
+  rplbl_note_ph:'កំណត់ចំណាំ',today_recs:'ការកត់ត្រាថ្ងៃនេះ',
+  view_day:'ថ្ងៃ',view_week:'សប្តាហ៍',view_month:'ខែ',view_year:'ឆ្នាំ',
+  months:['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'],
+}};
+
+// ══════════════════════════════════════════
+// STATE & STORAGE
+// ══════════════════════════════════════════
+let LANG='zh', DP='morning', RP='morning', HV='month', AV='month', HP=1;
+const PER_PAGE=30;
+let editZID=null, cfCB=null;
+const GAS_DEFAULT_URL='https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
+const LSZ='vrt_th_z', LSR='vrt_th_r', LSTH='vrt_th_th', LSTG='vrt_th_tg', LSGAS='vrt_th_gas';
+
+const DZ=[
+  {id:'za',zh:'A廠車間',en:'Building A Workshop',km:'អគារ A (រោងចក្រ)',col:'#4f6ef7',desc:'',on:true},
+  {id:'zb',zh:'B廠車間',en:'Building B Workshop',km:'អគារ B (រោងចក្រ)',col:'#8b5cf6',desc:'',on:true},
+  {id:'zc',zh:'B廠倉庫',en:'Building B Warehouse',km:'អគារ B (ឃ្លាំង)',col:'#f97316',desc:'',on:true},
+];
+const DTH={t:{cold:18,cool:23,warm:32,hot:35},h:{dry:40,humid:80,vhum:90}};
+
+const T=k=>(D[LANG]||D.zh)[k]||(D.zh[k]||k);
+const getZ=()=>{try{const d=localStorage.getItem(LSZ);return d?JSON.parse(d):JSON.parse(JSON.stringify(DZ));}catch{return JSON.parse(JSON.stringify(DZ));}};
+const setZ=z=>localStorage.setItem(LSZ,JSON.stringify(z));
+const getR=()=>{try{const d=localStorage.getItem(LSR);return d?JSON.parse(d):[];}catch{return [];}};
+const setR=r=>localStorage.setItem(LSR,JSON.stringify(r));
+const getTH=()=>{try{const d=localStorage.getItem(LSTH);return d?JSON.parse(d):JSON.parse(JSON.stringify(DTH));}catch{return JSON.parse(JSON.stringify(DTH));}};
+const setTH=t=>localStorage.setItem(LSTH,JSON.stringify(t));
+const getTG=()=>{try{const d=localStorage.getItem(LSTG);return d?JSON.parse(d):{tok:'',chat:''};}catch{return {tok:'',chat:''};}}
+const setTG=c=>localStorage.setItem(LSTG,JSON.stringify(c));
+const getGAS=()=>{try{const d=localStorage.getItem(LSGAS);const p=d?JSON.parse(d):{url:''};return (p&&p.url)?p:{url:GAS_DEFAULT_URL};}catch{return {url:GAS_DEFAULT_URL};}}
+const setGAS=c=>localStorage.setItem(LSGAS,JSON.stringify(c));
+
+// ══════════════════════════════════════════
+// STATUS HELPERS
+// ══════════════════════════════════════════
+function tSt(v){
+  const th=getTH().t; const n=parseFloat(v);
+  if(v===''||v===null||v===undefined||isNaN(n))return null;
+  if(n<th.cold) return {k:'cold',cls:'b-cold',tc:'tc-cold',col:'var(--cold)',bg:'var(--cold-bg)'};
+  if(n<th.cool) return {k:'cool',cls:'b-cool',tc:'tc-cool',col:'var(--cool)',bg:'var(--cool-bg)'};
+  if(n<th.warm) return {k:'ok',  cls:'b-ok',  tc:'tc-ok',  col:'var(--ok)', bg:'var(--ok-bg)'};
+  if(n<th.hot)  return {k:'warm',cls:'b-warm',tc:'tc-warm',col:'var(--warm)',bg:'var(--warm-bg)'};
+  return               {k:'hot', cls:'b-hot', tc:'tc-hot', col:'var(--hot)', bg:'var(--hot-bg)'};
+}
+function hSt(v){
+  const th=getTH().h; const n=parseFloat(v);
+  if(v===''||v===null||v===undefined||isNaN(n))return null;
+  if(n<th.dry)   return {k:'dry',  cls:'b-dry',  tc:'tc-dry',  col:'var(--dry)', bg:'var(--dry-bg)'};
+  if(n<=th.humid) return {k:'ok',  cls:'b-ok',   tc:'tc-ok',   col:'var(--ok)',  bg:'var(--ok-bg)'};
+  if(n<=th.vhum)  return {k:'humid',cls:'b-humid',tc:'tc-humid',col:'var(--humid)',bg:'var(--humid-bg)'};
+  return                 {k:'vhum',cls:'b-vhum', tc:'tc-vhum', col:'var(--vhum)',bg:'var(--vhum-bg)'};
+}
+const tPct=v=>Math.min(100,Math.max(0,((parseFloat(v)-10)/38)*100));
+const hPct=v=>Math.min(100,Math.max(0,parseFloat(v)));
+const isAnom=r=>{
+  const th=getTH(); const t=parseFloat(r.t),h=parseFloat(r.h);
+  return(!isNaN(t)&&(t<th.t.cold||t>=th.t.hot))||(!isNaN(h)&&(h<th.h.dry||h>th.h.vhum));
+};
+const isCrit=r=>{
+  const th=getTH(); const t=parseFloat(r.t),h=parseFloat(r.h);
+  return(!isNaN(t)&&t>=th.t.hot)||(!isNaN(h)&&h>th.h.vhum);
+};
+const znm=z=>LANG==='en'?z.en:LANG==='km'?z.km:z.zh;
+
+// ══════════════════════════════════════════
+// LANGUAGE
+// ══════════════════════════════════════════
+function setLang(l){
+  LANG=l;
+  document.querySelectorAll('.lbtn').forEach(b=>b.classList.toggle('on',b.textContent.trim()===(l==='zh'?'中文':l==='en'?'EN':'ខ្មែរ')));
+  applyI18n(); renderAll();
+}
+function applyI18n(){
+  // Map of elementId → translation key (or [key, isPH] for placeholders)
+  const MAP={
+    'i-app-title':'app-title','i-app-sub':'app-sub',
+    'i-tab-dash':'tab-dash','i-tab-rec':'tab-rec','i-tab-hist':'tab-hist',
+    'i-tab-anal':'tab-anal','i-tab-zones':'tab-zones','i-tab-alert':'tab-alert','i-tab-set':'tab-set',
+    // Dashboard
+    'i-addrec':'addrec',
+    // Record
+    'i-saveall':'saveall','i-clear':'clr','i-today-recs':'today_recs','i-clrtoday':'clrtoday',
+    // History
+    'i-filter':'filter','i-allz':'allz','i-allp':'allp','i-am2':'am','i-pm2':'pm','i-expxl':'expxl',
+    // Analysis
+    'i-filter2':'filter','i-cht':'cht','i-chh':'chh','i-cha':'cha','i-chs':'chs',
+    // Zones
+    'i-zmgr':'zmgr','i-addzone':'addzone','i-zhint':'zhint',
+    // Alerts
+    'i-filter3':'filter','i-allsev':'allsev','i-crit':'crit','i-warn':'warn',
+    // Settings - thresholds
+    'i-thresh':'thresh','i-ttit':'ttit','i-htit':'htit',
+    'i-tcold':'tcold','i-tcool':'tcool','i-twarm':'twarm','i-thot':'thot',
+    'i-hdry':'hdry','i-hhumid':'hhumid','i-hvhum':'hvhum',
+    // Telegram
+    'i-tgtype':'tgtype','i-tgdate':'tgdate','i-tgd':'tgd','i-tga':'tga','i-tgf':'tgf',
+    'i-prev':'prev','i-send':'send',
+    // GAS
+    'i-testcon':'testcon','i-syncup':'syncup','i-pull':'pull','i-idle':'idle',
+    // Import/export
+    'i-imp':'imp','i-exp':'exp','i-exl':'exl','i-ejson':'ejson',
+    // Danger
+    'i-clrall':'clrall','i-rstzone':'rstzone','i-danger':'danger','i-danwarn':'danwarn',
+    // Info
+    'i-appinfo':'appinfo','i-irc':'irc','i-izn':'izn','i-ifc':'ifc','i-ilc':'ilc','i-ist':'ist',
+    // Zone modal
+    'i-znzh':'znzh','i-znen':'znen','i-znkm':'znkm','i-zncol':'zncol','i-znact':'znact','i-zndesc':'zndesc',
+    'i-cancel':'cancel','i-cancel2':'cancel','i-cancel3':'cancel',
+    'i-save':'save','i-save2':'save',
+    // Record edit modal
+    'i-edittit':'edittit','i-redate':'date','i-reper':'per','i-rezon':'zone','i-renote':'note',
+    'i-retmp':'clbl_tmp','i-rehum':'clbl_hum',
+    // Confirm modal
+    'i-conftit':'conftit','i-confirm':'confirm',
+  };
+  Object.entries(MAP).forEach(([id,k])=>{
+    const el=document.getElementById(id);if(el&&T(k)!==k)el.textContent=T(k);
+  });
+  // Period/view toggle buttons (proper IDs, no duplicate)
+  const btn=(id,k)=>{const el=document.getElementById(id);if(el)el.textContent=T(k);};
+  btn('dbam','am');btn('dbpm','pm');btn('dball','all');
+  btn('rbam','am');btn('rbpm','pm');
+  btn('avd','view_day');btn('avw','view_week');btn('avm','view_month');btn('avy','view_year');
+  // Placeholder
+  const rn=document.getElementById('rec-note');if(rn)rn.placeholder=T('rplbl_note_ph');
+  // Select option texts
+  const hperiod=document.getElementById('hperiod');
+  if(hperiod){hperiod.options[0].text=T('allp');hperiod.options[1].text=T('am');hperiod.options[2].text=T('pm');}
+  const alsev=document.getElementById('alsev');
+  if(alsev){alsev.options[0].text=T('allsev');alsev.options[1].text=T('crit');alsev.options[2].text=T('warn');}
+  const tgtype=document.getElementById('tg-type');
+  if(tgtype){tgtype.options[0].text=T('tgd');tgtype.options[1].text=T('tga');tgtype.options[2].text=T('tgf');}
+  const reper=document.getElementById('re-per');
+  if(reper){reper.options[0].text=T('am');reper.options[1].text=T('pm');}
+  // Repopulate zone selects with new language
+  popSelects();
+}
+
+// ══════════════════════════════════════════
+// CLOCK
+// ══════════════════════════════════════════
+function tick(){
+  const now=new Date();
+  document.getElementById('clock').textContent=
+    now.toLocaleDateString(LANG==='en'?'en-US':LANG==='km'?'km-KH':'zh-TW',{year:'numeric',month:'short',day:'numeric',weekday:'short'})+
+    ' '+now.toTimeString().slice(0,8);
+}
+
+// ══════════════════════════════════════════
+// DATE UTILS
+// ══════════════════════════════════════════
+const today=()=>new Date().toISOString().slice(0,10);
+const wkKey=d=>{const dt=new Date(d),j1=new Date(dt.getFullYear(),0,1),w=Math.ceil(((dt-j1)/86400000+j1.getDay()+1)/7);return `${dt.getFullYear()}-W${String(w).padStart(2,'0')}`;};
+const moKey=d=>d.slice(0,7);
+const yrKey=d=>d.slice(0,4);
+
+// ══════════════════════════════════════════
+// TABS
+// ══════════════════════════════════════════
+function showTab(n){
+  document.querySelectorAll('.pnl').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
+  document.getElementById('pnl-'+n).classList.add('on');
+  document.getElementById('tab-'+n).classList.add('on');
+  if(n==='dash')renderDash();
+  if(n==='rec')renderRec();
+  if(n==='hist')renderHist();
+  if(n==='anal')renderAnal();
+  if(n==='zones')renderZones();
+  if(n==='alert')renderAlert();
+  if(n==='set')renderSet();
+}
+
+// ══════════════════════════════════════════
+// DASHBOARD
+// ══════════════════════════════════════════
+function setDP(p){
+  DP=p;
+  document.getElementById('dbam').classList.toggle('on',p==='morning');
+  document.getElementById('dbpm').classList.toggle('on',p==='afternoon');
+  document.getElementById('dball').classList.toggle('on',p==='all');
+  renderDash();
+}
+
+function renderDash(){
+  const dd=document.getElementById('dash-date');
+  if(!dd.value)dd.value=today();
+  const sel=dd.value;
+  const zones=getZ().filter(z=>z.on);
+  const recs=getR();
+  const dr=recs.filter(r=>r.d===sel);
+  const anom=dr.filter(r=>isAnom(r));
+  const crit=dr.filter(r=>isCrit(r));
+
+  document.getElementById('abadge').textContent=recs.filter(r=>isAnom(r)).length;
+  document.getElementById('abadge').style.display=recs.filter(r=>isAnom(r)).length?'inline':'none';
+
+  const at=dr.filter(r=>r.t!==''&&!isNaN(r.t)).map(r=>+r.t);
+  const ah=dr.filter(r=>r.h!==''&&!isNaN(r.h)).map(r=>+r.h);
+  const avg=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'--';
+
+  const tStat=at.length?tSt(avg(at)):null;
+  const hStat=ah.length?hSt(avg(ah)):null;
+
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="scard" style="border-left-color:#4f6ef7"><div class="sl">${T('zone')}</div><div class="sv">${zones.length}</div><div class="ss">${T('tab-zones')}</div></div>
+    <div class="scard" style="border-left-color:${tStat?tStat.col:'#94a3b8'}"><div class="sl">🌡️ ${T('clbl_tmp')}</div><div class="sv">${avg(at)}${at.length?'°C':''}</div><div class="ss">${at.length?'Max '+Math.max(...at).toFixed(1)+'° · Min '+Math.min(...at).toFixed(1)+'°':sel}</div></div>
+    <div class="scard" style="border-left-color:${hStat?hStat.col:'#94a3b8'}"><div class="sl">💧 ${T('clbl_hum')}</div><div class="sv">${avg(ah)}${ah.length?'%':''}</div><div class="ss">${ah.length?'Max '+Math.max(...ah).toFixed(1)+'% · Min '+Math.min(...ah).toFixed(1)+'%':sel}</div></div>
+    <div class="scard" style="border-left-color:${crit.length?'var(--hot)':anom.length?'var(--warm)':'var(--ok)'}"><div class="sl">⚠️ ${T('tab-alert')}</div><div class="sv">${anom.length}</div><div class="ss">${crit.length?'🔴 '+T('crit')+': '+crit.length:'✅ '+T('ok')}</div></div>
+  `;
+
+  const zhtml=zones.map(z=>{
+    const zr=dr.filter(r=>r.z===z.id);
+    const mr=zr.filter(r=>r.p==='morning');
+    const ar=zr.filter(r=>r.p==='afternoon');
+    const za=zr.filter(r=>isAnom(r)).length;
+
+    function perH(prs,lbl){
+      if(!prs.length)return `<div class="zp"><div class="zplbl">${lbl}</div><div style="color:var(--text3);font-size:12px;padding:8px 0">-- ${T('nodata')} --</div></div>`;
+      const r=prs[prs.length-1];
+      const ts=tSt(r.t), hs=hSt(r.h);
+      const tv=r.t!==''&&!isNaN(r.t), hv=r.h!==''&&!isNaN(r.h);
+      return `<div class="zp">
+        <div class="zplbl">${lbl}</div>
+        <div class="zmet">
+          ${tv?`<div><div class="zval ${ts?ts.tc:''}">${(+r.t).toFixed(1)}</div><div class="zunit">°C</div>${ts?`<span class="bdg ${ts.cls}" style="margin-top:3px">${T(ts.k)}</span>`:''}
+          <div class="tbar"><div class="needle" style="left:${tPct(r.t)}%"></div></div></div>`:''}
+          ${hv?`<div><div class="zval ${hs?hs.tc:''}">${(+r.h).toFixed(1)}</div><div class="zunit">%RH</div>${hs?`<span class="bdg ${hs.cls}" style="margin-top:3px">${T(hs.k)}</span>`:''}
+          <div class="hbar"><div class="needle" style="left:${hPct(r.h)}%"></div></div></div>`:''}
+        </div>
+      </div>`;
+    }
+
+    const sm=DP==='morning'||DP==='all', sa=DP==='afternoon'||DP==='all';
+    return `<div class="zcard" style="border-top:4px solid ${z.col}">
+      <div class="zchd">
+        <div class="zdot" style="background:${z.col}"></div>
+        <div class="znm">${znm(z)}</div>
+        ${za?`<span class="bdg b-hot" style="margin-left:auto">⚠️${za}</span>`:'<span class="bdg b-ok" style="margin-left:auto">✅</span>'}
+        <button class="btn bg xs" onclick="openREfromDash('${z.id}','${sel}')">＋</button>
+      </div>
+      <div class="zper">
+        ${sm?perH(mr,T('am')):''}${sa?perH(ar,T('pm')):''}
+      </div>
+    </div>`;
+  }).join('');
+  document.getElementById('dash-zones').innerHTML=zhtml||`<div class="emp"><div class="empi">🏭</div><div>${T('nodata')}</div></div>`;
+
+  // Anomaly summary
+  if(anom.length){
+    const zones2=getZ();
+    document.getElementById('dash-anom').innerHTML=`<div class="card"><div class="chd"><span class="ct">⚠️ ${sel} ${T('tab-alert')}</span><button class="btn bg sm" onclick="showTab('alert')">${T('tab-alert')} →</button></div><div class="cb">
+    ${anom.slice(0,6).map(r=>{const z=zones2.find(z=>z.id===r.z);const ts=tSt(r.t),hs=hSt(r.h);const c=isCrit(r);
+    return `<div class="aitm ${c?'crit':'warn'}"><div class="aico">${c?'🔴':'⚠️'}</div><div class="atxt"><strong>${z?znm(z):'?'} · ${r.p==='morning'?T('am'):T('pm')}</strong>
+    ${r.t!==''?`🌡️${r.t}°C <span class="bdg ${ts?ts.cls:''}">${ts?T(ts.k):''}</span>`:''} ${r.h!==''?`💧${r.h}% <span class="bdg ${hs?hs.cls:''}">${hs?T(hs.k):''}</span>`:''}</div></div>`;}).join('')}
+    </div></div>`;
+  } else document.getElementById('dash-anom').innerHTML='';
+}
+
+// ══════════════════════════════════════════
+// RECORD
+// ══════════════════════════════════════════
+function setRP(p){
+  RP=p;
+  document.getElementById('rbam').classList.toggle('on',p==='morning');
+  document.getElementById('rbpm').classList.toggle('on',p==='afternoon');
+  renderRec();
+}
+
+function renderRec(){
+  const rd=document.getElementById('rec-date');
+  if(!rd.value)rd.value=today();
+  const zones=getZ().filter(z=>z.on);
+  document.getElementById('rec-plbl').textContent=`📅 ${rd.value} · ${RP==='morning'?T('am'):T('pm')}`;
+
+  document.getElementById('rec-zgrid').innerHTML=zones.map(z=>`
+    <div class="rzcard">
+      <div class="rzlbl">
+        <div style="width:12px;height:12px;border-radius:50%;background:${z.col};flex-shrink:0"></div>
+        <span style="font-weight:700">${znm(z)}</span>
+        <span class="sm-t muted">${z.en}</span>
+      </div>
+      <div class="g2">
+        <div class="fg"><label>🌡️ ${T('clbl_tmp')}</label>
+          <div class="riw"><input type="number" id="ri-t-${z.id}" min="0" max="60" step=".5" placeholder="--" oninput="prvSt('${z.id}')"><span>°C</span></div>
+        </div>
+        <div class="fg"><label>💧 ${T('clbl_hum')}</label>
+          <div class="riw"><input type="number" id="ri-h-${z.id}" min="0" max="100" step="1" placeholder="--" oninput="prvSt('${z.id}')"><span>%</span></div>
+        </div>
+      </div>
+      <div id="ri-s-${z.id}" style="margin-top:6px;min-height:18px;display:flex;gap:5px;flex-wrap:wrap"></div>
+    </div>`).join('');
+
+  // Pre-fill existing
+  const recs=getR();const sel=rd.value;
+  zones.forEach(z=>{
+    const ex=recs.filter(r=>r.d===sel&&r.p===RP&&r.z===z.id);
+    if(ex.length){const r=ex[ex.length-1];
+      const ti=document.getElementById('ri-t-'+z.id),hi=document.getElementById('ri-h-'+z.id);
+      if(ti&&r.t!=='')ti.value=r.t;if(hi&&r.h!=='')hi.value=r.h;prvSt(z.id);}
+  });
+  renderTodayCard(sel);
+}
+
+function prvSt(zid){
+  const t=document.getElementById('ri-t-'+zid)?.value;
+  const h=document.getElementById('ri-h-'+zid)?.value;
+  const el=document.getElementById('ri-s-'+zid);if(!el)return;
+  let html='';
+  if(t!==''&&t!==undefined&&!isNaN(parseFloat(t))){const s=tSt(t);if(s)html+=`<span class="bdg ${s.cls}">🌡️ ${T(s.k)}</span>`;}
+  if(h!==''&&h!==undefined&&!isNaN(parseFloat(h))){const s=hSt(h);if(s)html+=`<span class="bdg ${s.cls}">💧 ${T(s.k)}</span>`;}
+  el.innerHTML=html;
+}
+
+function saveAllRec(){
+  const rd=document.getElementById('rec-date');
+  const sel=rd.value;if(!sel){toast('請選擇日期','err');return;}
+  const note=document.getElementById('rec-note').value;
+  const zones=getZ().filter(z=>z.on);
+  let recs=getR();const newRecs=[];
+  zones.forEach(z=>{
+    const t=document.getElementById('ri-t-'+z.id)?.value;
+    const h=document.getElementById('ri-h-'+z.id)?.value;
+    if((t===''||t===undefined)&&(h===''||h===undefined))return;
+    recs=recs.filter(r=>!(r.d===sel&&r.p===RP&&r.z===z.id));
+    const rec={id:'r'+Date.now()+Math.random().toString(36).slice(2,5),z:z.id,d:sel,p:RP,
+      t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',note,ts:new Date().toISOString()};
+    recs.push(rec);newRecs.push(rec);
+  });
+  setR(recs);toast(T('saved'),'ok');renderTodayCard(sel);updBadge();
+  // 自動同步到雲端（非阻塞，GAS 會自動發 Telegram 通知）
+  if(newRecs.length>0) gasAutoSync(newRecs);
+}
+
+function renderTodayCard(date){
+  const recs=getR().filter(r=>r.d===date);
+  const tc=document.getElementById('rec-today'),tb=document.getElementById('rec-today-body');
+  if(!recs.length){tc.style.display='none';return;}
+  tc.style.display='block';
+  const zones=getZ();
+  tb.innerHTML=`<div class="twrap"><table><thead><tr><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('clbl_stat')}</th></tr></thead>
+  <tbody>${recs.map(r=>{const z=zones.find(z=>z.id===r.z);const ts=tSt(r.t),hs=hSt(r.h);
+    return `<tr><td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${z?z.col:'#ccc'};display:inline-block"></span>${z?znm(z):'?'}</span></td>
+    <td>${r.p==='morning'?T('am'):T('pm')}</td>
+    <td class="${ts?ts.tc:''}">${r.t!==''?r.t+'°C':'--'}</td>
+    <td class="${hs?hs.tc:''}">${r.h!==''?r.h+'%':'--'}</td>
+    <td>${ts&&ts.k!=='ok'?`<span class="bdg ${ts.cls}">${T(ts.k)}</span>`:''} ${hs&&hs.k!=='ok'?`<span class="bdg ${hs.cls}">${T(hs.k)}</span>`:''}</td>
+    </tr>`;}).join('')}</tbody></table></div>`;
+}
+
+function clearRI(){const zones=getZ().filter(z=>z.on);zones.forEach(z=>{const ti=document.getElementById('ri-t-'+z.id),hi=document.getElementById('ri-h-'+z.id),si=document.getElementById('ri-s-'+z.id);if(ti)ti.value='';if(hi)hi.value='';if(si)si.innerHTML='';});}
+function clearTodayRecs(){const date=document.getElementById('rec-date').value;confirmAction(T('cdelrec')+' ('+date+')',()=>{setR(getR().filter(r=>r.d!==date));toast(T('deleted'),'inf');renderTodayCard(date);updBadge();});}
+function openREfromDash(zid,date){const r=getR().filter(r=>r.z===zid&&r.d===date);if(r.length)openREmod(r[r.length-1].id);else{popREmod(null);document.getElementById('re-zon').value=zid;document.getElementById('re-date').value=date;}}
+
+// ══════════════════════════════════════════
+// HISTORY
+// ══════════════════════════════════════════
+function setHV(v){
+  HV=v;HP=1;
+  const sel=document.getElementById('hview');if(sel)sel.value=v;
+  renderHNavLabel();renderHist();
+}
+
+function syncZoneFilter(){
+  const v=document.getElementById('hzone2').value;
+  const el=document.getElementById('hzone');if(el)el.value=v;
+}
+function syncPeriodFilter(){
+  const v=document.getElementById('hperiod2').value;
+  const el=document.getElementById('hperiod');if(el)el.value=v;
+}
+
+function navHist(dir){
+  // Shift hfrom/hto by one period in given direction (+1 forward, -1 back)
+  const f=document.getElementById('hfrom'),t=document.getElementById('hto');
+  if(!f.value||!t.value)return;
+  const shift=(d,n)=>{const dt=new Date(d);
+    if(HV==='day'){dt.setDate(dt.getDate()+n);}
+    else if(HV==='week'){dt.setDate(dt.getDate()+n*7);}
+    else if(HV==='month'){dt.setMonth(dt.getMonth()+n);}
+    else if(HV==='year'){dt.setFullYear(dt.getFullYear()+n);}
+    return dt.toISOString().slice(0,10);
+  };
+  f.value=shift(f.value,dir);
+  t.value=shift(t.value,dir);
+  HP=1;renderHNavLabel();renderHist();
+}
+
+function renderHNavLabel(){
+  const f=document.getElementById('hfrom')?.value;
+  const t=document.getElementById('hto')?.value;
+  const el=document.getElementById('h-nav-label');if(!el)return;
+  if(!f&&!t){el.textContent='--';return;}
+  const mns=T('months')||['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  if(HV==='day'){
+    el.textContent=f===t?f:(f+' → '+t);
+  } else if(HV==='week'){
+    el.textContent=(f?f.slice(0,7):'')+(t&&t!==f?' → '+t.slice(0,7):'');
+  } else if(HV==='month'){
+    // Show "Apr 2026" or "Jan → Apr 2026"
+    const fd=f?new Date(f):null,td=t?new Date(t):null;
+    if(fd&&td&&fd.getFullYear()===td.getFullYear()&&fd.getMonth()===td.getMonth()){
+      el.textContent=mns[fd.getMonth()]+' '+fd.getFullYear();
+    } else if(fd&&td){
+      el.textContent=mns[fd.getMonth()]+' '+fd.getFullYear()+' → '+mns[td.getMonth()]+' '+td.getFullYear();
+    } else {el.textContent=f||t||'--';}
+  } else if(HV==='year'){
+    const fy=f?f.slice(0,4):'',ty=t?t.slice(0,4):'';
+    el.textContent=fy===ty?fy:(fy+' → '+ty);
+  }
+}
+
+function renderHist(){
+  HP=Math.max(1,HP);
+  // Sync hzone2 → hzone and hperiod2 → hperiod (nav bar is the primary UI)
+  const z2=document.getElementById('hzone2'),p2=document.getElementById('hperiod2');
+  const zf=z2?z2.value:(document.getElementById('hzone')?.value||'all');
+  const pf=p2?p2.value:(document.getElementById('hperiod')?.value||'all');
+  const hf=document.getElementById('hfrom').value,ht=document.getElementById('hto').value;
+  renderHNavLabel();
+  let recs=getR();
+  if(zf!=='all')recs=recs.filter(r=>r.z===zf);
+  if(pf!=='all')recs=recs.filter(r=>r.p===pf);
+  if(hf)recs=recs.filter(r=>r.d>=hf);if(ht)recs=recs.filter(r=>r.d<=ht);
+  recs.sort((a,b)=>b.d.localeCompare(a.d)||(b.ts||'').localeCompare(a.ts||''));
+  const zones=getZ();
+  if(HV==='day'){renderHistTbl(recs,zones);}
+  else{
+    const kfn=HV==='week'?wkKey:HV==='month'?moKey:yrKey;
+    const groups={};recs.forEach(r=>{const k=kfn(r.d);if(!groups[k])groups[k]={k,recs:[]};groups[k].recs.push(r);});
+    renderHistAgg(Object.values(groups).sort((a,b)=>b.k.localeCompare(a.k)),zones);
+  }
+}
+
+function renderHistTbl(recs,zones){
+  const total=recs.length,start=(HP-1)*PER_PAGE,page=recs.slice(start,start+PER_PAGE);
+  document.getElementById('h-thead').innerHTML=`<tr><th>${T('clbl_date')}</th><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('clbl_stat')}</th><th>${T('clbl_note')}</th><th>${T('act')}</th></tr>`;
+  if(!page.length){document.getElementById('h-tbody').innerHTML=`<tr class="nodata-row"><td colspan="8">${T('nodata')}</td></tr>`;document.getElementById('h-pagi').innerHTML='';return;}
+  document.getElementById('h-tbody').innerHTML=page.map(r=>{
+    const z=zones.find(z=>z.id===r.z),ts=tSt(r.t),hs=hSt(r.h),an=isAnom(r),cr=isCrit(r);
+    return `<tr style="${cr?'background:var(--hot-bg)':an?'background:var(--warm-bg)':''}">
+      <td style="white-space:nowrap">${r.d}</td>
+      <td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:7px;height:7px;border-radius:50%;background:${z?z.col:'#ccc'};display:inline-block"></span>${z?znm(z):'?'}</span></td>
+      <td>${r.p==='morning'?T('am').slice(0,2):T('pm').slice(0,2)}</td>
+      <td class="${ts?ts.tc:''}">${r.t!==''?r.t+'°C':'--'}</td>
+      <td class="${hs?hs.tc:''}">${r.h!==''?r.h+'%':'--'}</td>
+      <td>${ts&&ts.k!=='ok'?`<span class="bdg ${ts.cls}">${T(ts.k)}</span>`:''} ${hs&&hs.k!=='ok'?`<span class="bdg ${hs.cls}">${T(hs.k)}</span>`:''} ${cr?'🔴':an?'⚠️':''}</td>
+      <td class="muted">${r.note||''}</td>
+      <td style="white-space:nowrap"><button class="btn bg xs" onclick="openREmod('${r.id}')">✏️</button> <button class="btn bd xs" onclick="delRec('${r.id}')">🗑</button></td>
+    </tr>`;
+  }).join('');
+  renderPagi(total,'h-pagi',p=>{HP=p;renderHist();});
+}
+
+function renderHistAgg(groups,zones){
+  const kLabel=HV==='week'?T('an_cnt')+'/W':HV==='month'?T('an_cnt')+'/M':T('an_cnt')+'/Y';
+  document.getElementById('h-thead').innerHTML=`<tr><th>${HV}</th><th>${T('an_cnt')}</th><th>${T('an_avgt')}</th><th>${T('an_maxt')}</th><th>${T('an_mint')}</th><th>${T('an_avgh')}</th><th>${T('an_maxh')}</th><th>${T('an_minh')}</th><th>${T('an_anom')}</th></tr>`;
+  if(!groups.length){document.getElementById('h-tbody').innerHTML=`<tr class="nodata-row"><td colspan="9">${T('nodata')}</td></tr>`;document.getElementById('h-pagi').innerHTML='';return;}
+  const av=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'--';
+  document.getElementById('h-tbody').innerHTML=groups.map(g=>{
+    const ts2=g.recs.filter(r=>r.t!==''&&!isNaN(r.t)).map(r=>+r.t);
+    const hs2=g.recs.filter(r=>r.h!==''&&!isNaN(r.h)).map(r=>+r.h);
+    const an=g.recs.filter(r=>isAnom(r)).length;
+    const tAvg=tSt(av(ts2)),hAvg=hSt(av(hs2));
+    return `<tr>
+      <td class="fw7">${g.k}</td><td>${g.recs.length}</td>
+      <td class="${tAvg?tAvg.tc:''}">${av(ts2)}${ts2.length?'°C':''}</td>
+      <td style="color:var(--hot)">${ts2.length?Math.max(...ts2).toFixed(1)+'°C':'--'}</td>
+      <td style="color:var(--cold)">${ts2.length?Math.min(...ts2).toFixed(1)+'°C':'--'}</td>
+      <td class="${hAvg?hAvg.tc:''}">${av(hs2)}${hs2.length?'%':''}</td>
+      <td style="color:var(--hot)">${hs2.length?Math.max(...hs2).toFixed(1)+'%':'--'}</td>
+      <td style="color:var(--cold)">${hs2.length?Math.min(...hs2).toFixed(1)+'%':'--'}</td>
+      <td>${an>0?`<span class="bdg ${an>3?'b-hot':'b-warm'}">${an}</span>`:'✅'}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('h-pagi').innerHTML='';
+}
+
+function renderPagi(total,elId,cb){
+  const pages=Math.ceil(total/PER_PAGE);
+  const el=document.getElementById(elId);if(!el||pages<=1){if(el)el.innerHTML='';return;}
+  let html=`<button class="pgbtn" onclick="(${cb.toString()})(${HP-1})" ${HP<=1?'disabled':''}>‹</button>`;
+  for(let i=1;i<=pages;i++){
+    if(i===1||i===pages||Math.abs(i-HP)<=2)html+=`<button class="pgbtn ${i===HP?'on':''}" onclick="(${cb.toString()})(${i})">${i}</button>`;
+    else if(Math.abs(i-HP)===3)html+='<span style="padding:0 4px;color:var(--text3)">…</span>';
+  }
+  html+=`<button class="pgbtn" onclick="(${cb.toString()})(${HP+1})" ${HP>=pages?'disabled':''}>›</button>`;
+  el.innerHTML=html;
+}
+
+// ══════════════════════════════════════════
+// ANALYSIS
+// ══════════════════════════════════════════
+let chT=null,chH=null,chA=null;
+function setAV(v){AV=v;['day','week','month','year'].forEach(x=>document.getElementById('av'+x[0]).classList.toggle('on',x===v));renderAnal();}
+
+function renderAnal(){
+  const zf=document.getElementById('azone').value;
+  const af=document.getElementById('afrom').value,at2=document.getElementById('ato').value;
+  let recs=getR();
+  if(zf!=='all')recs=recs.filter(r=>r.z===zf);
+  if(af)recs=recs.filter(r=>r.d>=af);if(at2)recs=recs.filter(r=>r.d<=at2);
+  const zones=getZ().filter(z=>z.on&&(zf==='all'||z.id===zf));
+  const kfn=AV==='day'?d=>d:AV==='week'?wkKey:AV==='month'?moKey:yrKey;
+  const keys=[...new Set(recs.map(r=>kfn(r.d)))].sort();
+
+  const at3=recs.filter(r=>r.t!==''&&!isNaN(r.t)).map(r=>+r.t);
+  const ah3=recs.filter(r=>r.h!==''&&!isNaN(r.h)).map(r=>+r.h);
+  const av=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'--';
+
+  document.getElementById('anal-stats').innerHTML=[
+    {l:'🌡️ '+T('an_avgt'),v:av(at3)+(at3.length?'°C':''),c:'#4f6ef7'},
+    {l:'🔴 '+T('an_maxt'),v:at3.length?Math.max(...at3).toFixed(1)+'°C':'--',c:'#ef4444'},
+    {l:'🔵 '+T('an_mint'),v:at3.length?Math.min(...at3).toFixed(1)+'°C':'--',c:'#3b82f6'},
+    {l:'💧 '+T('an_avgh'),v:av(ah3)+(ah3.length?'%':''),c:'#8b5cf6'},
+    {l:'🔴 '+T('an_maxh'),v:ah3.length?Math.max(...ah3).toFixed(1)+'%':'--',c:'#f97316'},
+    {l:'🔵 '+T('an_minh'),v:ah3.length?Math.min(...ah3).toFixed(1)+'%':'--',c:'#06b6d4'},
+    {l:'⚠️ '+T('an_anom'),v:recs.filter(r=>isAnom(r)).length,c:'#f59e0b'},
+    {l:'📋 '+T('an_cnt'),v:recs.length,c:'#22c55e'},
+  ].map(s=>`<div class="scard" style="border-left-color:${s.c}"><div class="sl">${s.l}</div><div class="sv">${s.v}</div></div>`).join('');
+
+  // Chart datasets
+  const mkDS=(propK,zones2)=>zones2.map(z=>({
+    label:znm(z),
+    data:keys.map(k=>{const zr=recs.filter(r=>r.z===z.id&&kfn(r.d)===k&&r[propK]!==''&&!isNaN(r[propK])).map(r=>+r[propK]);return zr.length?(zr.reduce((a,b)=>a+b,0)/zr.length).toFixed(1):null;}),
+    borderColor:z.col,backgroundColor:z.col+'33',fill:false,tension:.3,pointRadius:4,spanGaps:true
+  }));
+
+  const cOpts=(yLbl)=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{maxRotation:40,maxTicksLimit:12}},y:{title:{display:true,text:yLbl}}}});
+
+  if(chT)chT.destroy();
+  chT=new Chart(document.getElementById('ctmp'),{type:'line',data:{labels:keys,datasets:mkDS('t',zones)},options:cOpts('°C')});
+
+  if(chH)chH.destroy();
+  chH=new Chart(document.getElementById('chum'),{type:'line',data:{labels:keys,datasets:mkDS('h',zones)},options:cOpts('%RH')});
+
+  const acrit=keys.map(k=>recs.filter(r=>kfn(r.d)===k&&isCrit(r)).length);
+  const awarn=keys.map((k,i)=>recs.filter(r=>kfn(r.d)===k&&isAnom(r)&&!isCrit(r)).length);
+  if(chA)chA.destroy();
+  chA=new Chart(document.getElementById('canom'),{type:'bar',data:{labels:keys,datasets:[
+    {label:T('crit'),data:acrit,backgroundColor:'#ef4444bb'},
+    {label:T('warn'),data:awarn,backgroundColor:'#f59e0bbb'},
+  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,ticks:{stepSize:1}}}}});
+
+  // Stats Table
+  document.getElementById('at-head').innerHTML=`<tr><th>${T('zone')}</th><th>${T('an_cnt')}</th><th>${T('an_avgt')}</th><th>${T('an_maxt')}</th><th>${T('an_mint')}</th><th>${T('an_avgh')}</th><th>${T('an_maxh')}</th><th>${T('an_minh')}</th><th>${T('an_anom')}</th></tr>`;
+  document.getElementById('at-body').innerHTML=zones.map(z=>{
+    const zr=recs.filter(r=>r.z===z.id);
+    const ts2=zr.filter(r=>r.t!==''&&!isNaN(r.t)).map(r=>+r.t);
+    const hs2=zr.filter(r=>r.h!==''&&!isNaN(r.h)).map(r=>+r.h);
+    const an=zr.filter(r=>isAnom(r)).length;
+    const tA=tSt(av(ts2)),hA=hSt(av(hs2));
+    return `<tr>
+      <td><span style="display:inline-flex;align-items:center;gap:6px"><span style="width:9px;height:9px;border-radius:50%;background:${z.col};display:inline-block"></span><strong>${znm(z)}</strong></span></td>
+      <td>${zr.length}</td>
+      <td class="${tA?tA.tc:''}">${av(ts2)}${ts2.length?'°C':''}</td>
+      <td style="color:var(--hot)">${ts2.length?Math.max(...ts2).toFixed(1)+'°C':'--'}</td>
+      <td style="color:var(--cold)">${ts2.length?Math.min(...ts2).toFixed(1)+'°C':'--'}</td>
+      <td class="${hA?hA.tc:''}">${av(hs2)}${hs2.length?'%':''}</td>
+      <td style="color:var(--hot)">${hs2.length?Math.max(...hs2).toFixed(1)+'%':'--'}</td>
+      <td style="color:var(--cold)">${hs2.length?Math.min(...hs2).toFixed(1)+'%':'--'}</td>
+      <td>${an>0?`<span class="bdg ${an>5?'b-hot':'b-warm'}">${an}</span>`:'<span class="bdg b-ok">✅</span>'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// ZONES
+// ══════════════════════════════════════════
+function renderZones(){
+  const zones=getZ();
+  document.getElementById('zone-list').innerHTML=zones.length?zones.map(z=>`
+    <div class="zli" style="${!z.on?'opacity:.5':''}">
+      <div class="zcdot" style="background:${z.col}" onclick="openZM('${z.id}')"></div>
+      <div style="flex:1"><div style="font-size:14px;font-weight:600">${z.zh} / ${z.en}</div><div class="sm-t muted">${z.km}${z.desc?' · '+z.desc:''}</div></div>
+      <span class="bdg ${z.on?'b-ok':'b-dry'}">${z.on?T('znact'):'Off'}</span>
+      <button class="btn bg sm" onclick="openZM('${z.id}')">✏️</button>
+      <button class="btn bd sm" onclick="delZone('${z.id}')">🗑</button>
+    </div>`).join(''):
+    `<div class="emp"><div class="empi">🏭</div><div>${T('nodata')}</div></div>`;
+}
+
+function openZM(id){
+  editZID=id;const zones=getZ();const z=id?zones.find(z=>z.id===id):null;
+  document.getElementById('zm-tit').textContent=z?T('tab-zones'):T('addztit');
+  document.getElementById('zm-zh').value=z?z.zh:'';
+  document.getElementById('zm-en').value=z?z.en:'';
+  document.getElementById('zm-km').value=z?z.km:'';
+  document.getElementById('zm-col').value=z?z.col:'#'+Math.floor(Math.random()*16777215).toString(16).padStart(6,'0');
+  document.getElementById('zm-desc').value=z?z.desc:'';
+  document.getElementById('zm-act').checked=z?z.on:true;
+  openMod('zm-over');
+}
+
+function saveZone(){
+  const zh=document.getElementById('zm-zh').value.trim(),en=document.getElementById('zm-en').value.trim();
+  if(!zh&&!en){toast('請輸入名稱','err');return;}
+  const zones=getZ();
+  if(editZID){
+    const i=zones.findIndex(z=>z.id===editZID);
+    if(i>=0)zones[i]={...zones[i],zh:zh||zones[i].zh,en:en||zones[i].en,
+      km:document.getElementById('zm-km').value.trim()||zones[i].km,
+      col:document.getElementById('zm-col').value,
+      desc:document.getElementById('zm-desc').value.trim(),
+      on:document.getElementById('zm-act').checked};
+  }else{
+    if(zones.length>=10){toast('最多10個區域','err');return;}
+    zones.push({id:'z'+Date.now().toString(36),zh,en,km:document.getElementById('zm-km').value.trim(),
+      col:document.getElementById('zm-col').value,desc:document.getElementById('zm-desc').value.trim(),on:document.getElementById('zm-act').checked});
+  }
+  setZ(zones);closeMod('zm-over');toast(T('saved'),'ok');renderZones();popSelects();
+}
+
+function delZone(id){confirmAction(T('cdelzone'),()=>{setZ(getZ().filter(z=>z.id!==id));setR(getR().filter(r=>r.z!==id));toast(T('deleted'),'inf');renderZones();popSelects();});}
+function resetZones(){confirmAction(T('crstzone'),()=>{setZ(JSON.parse(JSON.stringify(DZ)));toast('已重置','inf');popSelects();renderZones();});}
+
+// ══════════════════════════════════════════
+// ALERTS
+// ══════════════════════════════════════════
+function renderAlert(){
+  const zf=document.getElementById('alzone').value,sf=document.getElementById('alsev').value;
+  const af=document.getElementById('alfrom').value,at2=document.getElementById('alto').value;
+  let recs=getR().filter(r=>isAnom(r));
+  if(zf!=='all')recs=recs.filter(r=>r.z===zf);
+  if(af)recs=recs.filter(r=>r.d>=af);if(at2)recs=recs.filter(r=>r.d<=at2);
+  if(sf==='crit')recs=recs.filter(r=>isCrit(r));
+  if(sf==='warn')recs=recs.filter(r=>!isCrit(r));
+  recs.sort((a,b)=>b.d.localeCompare(a.d));
+  const zones=getZ();
+  updBadge();
+  if(!recs.length){document.getElementById('alert-list').innerHTML=`<div class="emp"><div class="empi">✅</div><div>${T('noanom')}</div></div>`;return;}
+  const th=getTH();
+  document.getElementById('alert-list').innerHTML=recs.map(r=>{
+    const z=zones.find(z=>z.id===r.z),ts=tSt(r.t),hs=hSt(r.h),c=isCrit(r);
+    let msgs=[];
+    if(r.t!==''&&!isNaN(r.t)){if(+r.t>=th.t.hot)msgs.push(`🌡️ ${T('ahigh')}: ${r.t}°C ≥ ${th.t.hot}°C`);else if(+r.t<th.t.cold)msgs.push(`🌡️ ${T('alow')}: ${r.t}°C < ${th.t.cold}°C`);}
+    if(r.h!==''&&!isNaN(r.h)){if(+r.h>th.h.vhum)msgs.push(`💧 ${T('ahhigh')}: ${r.h}% > ${th.h.vhum}%`);else if(+r.h<th.h.dry)msgs.push(`💧 ${T('ahlow')}: ${r.h}% < ${th.h.dry}%`);}
+    return `<div class="aitm ${c?'crit':'warn'}"><div class="aico">${c?'🔴':'⚠️'}</div>
+    <div class="atxt"><strong>${c?T('crit'):T('warn')} · ${r.d} · ${z?znm(z):'?'} · ${r.p==='morning'?T('am').slice(0,2):T('pm').slice(0,2)}</strong>
+    ${msgs.map(m=>`<div>${m}</div>`).join('')}${r.note?`<div class="muted sm-t">📝 ${r.note}</div>`:''}</div>
+    <button class="btn bd xs" onclick="delRec('${r.id}')" style="flex-shrink:0">🗑</button></div>`;
+  }).join('');
+}
+
+// ══════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════
+function renderSet(){
+  const th=getTH();
+  const setSlider=(id,val,unit)=>{document.getElementById(id).value=val;document.getElementById(id+'-v').textContent=val+unit;};
+  setSlider('th-tc',th.t.cold,'°C');setSlider('th-tl',th.t.cool,'°C');
+  setSlider('th-tw',th.t.warm,'°C');setSlider('th-th',th.t.hot,'°C');
+  setSlider('th-hd',th.h.dry,'%');setSlider('th-hh',th.h.humid,'%');setSlider('th-hv',th.h.vhum,'%');
+  renderThLegend();
+  const tg=getTG();document.getElementById('tg-tok').value=tg.tok||'';document.getElementById('tg-chat').value=tg.chat||'';
+  document.getElementById('tg-date').value=today();
+  document.getElementById('gas-url').value=getGAS().url||GAS_DEFAULT_URL||'';
+  const recs=getR();const dates=recs.map(r=>r.d).sort();
+  document.getElementById('inf-rc').textContent=recs.length;
+  document.getElementById('inf-zn').textContent=getZ().filter(z=>z.on).length;
+  document.getElementById('inf-fc').textContent=dates.length?dates[0]:'--';
+  document.getElementById('inf-lc').textContent=dates.length?dates[dates.length-1]:'--';
+  const sz=new Blob([localStorage.getItem(LSR)||'']).size;
+  document.getElementById('inf-st').textContent=sz<1024?sz+'B':(sz/1024).toFixed(1)+'KB';
+}
+
+function renderThLegend(){
+  const th=getTH();
+  document.getElementById('th-legend').innerHTML=`
+    <div style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:5px">
+      <span class="bdg b-cold">< ${th.t.cold}°C ${T('cold')}</span>
+      <span class="bdg b-cool">${th.t.cold}~${th.t.cool}°C ${T('cool')}</span>
+      <span class="bdg b-ok">${th.t.cool}~${th.t.warm}°C ${T('ok')}</span>
+      <span class="bdg b-warm">${th.t.warm}~${th.t.hot}°C ${T('warm')}</span>
+      <span class="bdg b-hot">> ${th.t.hot}°C ${T('hot')}</span>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px">
+      <span class="bdg b-dry">< ${th.h.dry}% ${T('dry')}</span>
+      <span class="bdg b-ok">${th.h.dry}~${th.h.humid}% ${T('ok')}</span>
+      <span class="bdg b-humid">${th.h.humid}~${th.h.vhum}% ${T('humid')}</span>
+      <span class="bdg b-vhum">> ${th.h.vhum}% ${T('vhum')}</span>
+    </div>`;
+}
+
+function updateThV(id,v,u){document.getElementById(id).textContent=v+u;}
+function saveTH(){setTH({t:{cold:+document.getElementById('th-tc').value,cool:+document.getElementById('th-tl').value,warm:+document.getElementById('th-tw').value,hot:+document.getElementById('th-th').value},h:{dry:+document.getElementById('th-hd').value,humid:+document.getElementById('th-hh').value,vhum:+document.getElementById('th-hv').value}});renderThLegend();}
+function saveTGcfg(){setTG({tok:document.getElementById('tg-tok').value,chat:document.getElementById('tg-chat').value});}
+function saveGAScfg(){setGAS({url:document.getElementById('gas-url').value});}
+function clearAll(){confirmAction(T('cclrall'),()=>{setR([]);toast(T('deleted'),'inf');renderAll();updBadge();});}
+
+// ══════════════════════════════════════════
+// RECORD EDIT MODAL
+// ══════════════════════════════════════════
+function popREmod(id){
+  const zones=getZ();
+  document.getElementById('re-zon').innerHTML=zones.map(z=>`<option value="${z.id}">${znm(z)}</option>`).join('');
+  document.getElementById('re-id').value='';
+  document.getElementById('re-date').value=today();
+  document.getElementById('re-per').value='morning';
+  document.getElementById('re-tmp').value='';
+  document.getElementById('re-hum').value='';
+  document.getElementById('re-note').value='';
+  openMod('re-over');
+}
+
+function openREmod(id){
+  const r=getR().find(r=>r.id===id);if(!r)return;
+  const zones=getZ();
+  document.getElementById('re-zon').innerHTML=zones.map(z=>`<option value="${z.id}">${znm(z)}</option>`).join('');
+  document.getElementById('re-id').value=id;
+  document.getElementById('re-date').value=r.d;
+  document.getElementById('re-per').value=r.p;
+  document.getElementById('re-zon').value=r.z;
+  document.getElementById('re-tmp').value=r.t!==''?r.t:'';
+  document.getElementById('re-hum').value=r.h!==''?r.h:'';
+  document.getElementById('re-note').value=r.note||'';
+  openMod('re-over');
+}
+
+function saveREedit(){
+  const id=document.getElementById('re-id').value;
+  const t=document.getElementById('re-tmp').value,h=document.getElementById('re-hum').value;
+  let recs=getR();
+  if(id){
+    const i=recs.findIndex(r=>r.id===id);
+    if(i>=0)recs[i]={...recs[i],d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',note:document.getElementById('re-note').value,ts:new Date().toISOString()};
+  }else{
+    recs.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,5),d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',note:document.getElementById('re-note').value,ts:new Date().toISOString()});
+  }
+  setR(recs);closeMod('re-over');toast(T('saved'),'ok');renderAll();updBadge();
+  // 雲端同步
+  const syncRec=recs.find(r=>r.id===(id||recs[recs.length-1]?.id));
+  if(syncRec) gasAutoSync([syncRec]);
+}
+
+function delRec(id){confirmAction(T('cdelrec'),()=>{setR(getR().filter(r=>r.id!==id));toast(T('deleted'),'inf');renderAll();updBadge();gasDelete(id);});}
+
+// ══════════════════════════════════════════
+// IMPORT / EXPORT
+// ══════════════════════════════════════════
+function exportXL(){
+  const recs=getR();const zones=getZ();
+  if(!recs.length){toast(T('nodata'),'err');return;}
+  const months={};recs.forEach(r=>{const mk=r.d.slice(0,7);if(!months[mk])months[mk]=[];months[mk].push(r);});
+  const wb=XLSX.utils.book_new();const mnms=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  Object.keys(months).sort().forEach(mk=>{
+    const [yr,mo]=mk.split('-'),azones=zones.filter(z=>z.on);
+    const shData=[
+      ['VRT Temperature & Humidity Report '+mk],
+      ['Date',...azones.flatMap(z=>[z.en+' Morning Temp','Morning Hum%',z.en+' Afternoon Temp','Afternoon Hum%'])],
+    ];
+    const days=[...new Set(months[mk].map(r=>+r.d.slice(8)))].sort((a,b)=>a-b);
+    days.forEach(d=>{
+      const row=[d];
+      azones.forEach(z=>{
+        const mr=months[mk].find(r=>+r.d.slice(8)===d&&r.z===z.id&&r.p==='morning');
+        const ar=months[mk].find(r=>+r.d.slice(8)===d&&r.z===z.id&&r.p==='afternoon');
+        row.push(mr&&mr.t!==''?mr.t:'',mr&&mr.h!==''?mr.h:'',ar&&ar.t!==''?ar.t:'',ar&&ar.h!==''?ar.h:'');
+      });shData.push(row);
+    });
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(shData),mnms[+mo-1]);
+  });
+  XLSX.writeFile(wb,'VRT_TH_'+today()+'.xlsx');toast(T('expok'),'ok');
+}
+
+function exportJSON(){
+  const a=document.createElement('a');
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify({zones:getZ(),records:getR(),thresholds:getTH(),exported:new Date().toISOString()},null,2));
+  a.download='VRT_TH_'+today()+'.json';a.click();toast(T('expok'),'ok');
+}
+
+function importXL(evt){
+  const file=evt.target.files[0];if(!file)return;
+  const log=document.getElementById('imp-log');log.style.display='block';log.textContent='⏳ 讀取中...';
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      // cellDates:false ensures date-formatted cells return raw serial numbers, not Date objects
+      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:false,raw:true});
+      const mnMap={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
+      let recs=getR();const existIds=new Set(recs.map(r=>r.d+'|'+r.p+'|'+r.z));
+      const newRecs=[];
+      let added=0,skipped=0;
+      const zones=getZ();
+      // Helper: safely parse a numeric value from a cell (number or string)
+      const numCell=v=>{
+        if(v===null||v===undefined||v==='')return '';
+        if(typeof v==='number')return isNaN(v)?'':v;
+        const n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));
+        return isNaN(n)?'':n;
+      };
+      wb.SheetNames.forEach(sn=>{
+        const mn=mnMap[sn.toLowerCase()];if(!mn)return;
+        const sh=wb.Sheets[sn];const rows=XLSX.utils.sheet_to_json(sh,{header:1,defval:'',raw:true});
+        // Year detection: row index 1, col 0 is the date serial (Excel BIFF date)
+        let year=new Date().getFullYear();
+        const r1raw=rows[1]?.[0];
+        if(r1raw instanceof Date){year=r1raw.getFullYear();}
+        else if(typeof r1raw==='number'&&r1raw>40000){
+          year=new Date(Math.round((r1raw-25569)*86400*1000)).getFullYear();
+        } else if(typeof r1raw==='string'){
+          const m=String(r1raw).match(/\d{4}/);if(m)year=+m[0];
+        }
+        const zm=[{cols:[1,2,3,4],id:zones[0]?.id},{cols:[6,7,8,9],id:zones[1]?.id},{cols:[11,12,13,14],id:zones[2]?.id}];
+        for(let ri=6;ri<rows.length;ri++){
+          const row=rows[ri];
+          const dayRaw=numCell(row[0]);
+          if(dayRaw===''||dayRaw<1||dayRaw>31)continue;
+          const day=Math.round(dayRaw);
+          const ds=`${year}-${String(mn).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+          zm.forEach(z=>{
+            if(!z.id)return;
+            [['morning',z.cols[0],z.cols[1]],['afternoon',z.cols[2],z.cols[3]]].forEach(([p,tc,hc])=>{
+              const tv=numCell(row[tc]),hv=numCell(row[hc]);
+              if(tv===''&&hv==='')return;
+              const key=ds+'|'+p+'|'+z.id;
+              if(existIds.has(key)){skipped++;return;}
+              const nrec={id:'r'+Date.now()+Math.random().toString(36).slice(2,6),z:z.id,d:ds,p,t:tv,h:hv,note:'',ts:new Date().toISOString()};
+              recs.push(nrec);newRecs.push(nrec);
+              existIds.add(key);added++;
+            });
+          });
+        }
+      });
+      setR(recs);log.textContent=`✅ 完成：新增 ${added} 筆，跳過重複 ${skipped} 筆`;
+      toast(T('impok')+' ('+added+'筆)','ok');renderAll();updBadge();
+      // 批量同步歷史資料到雲端
+      if(newRecs.length>0) gasBulkSync(newRecs);
+    }catch(ex){log.textContent='❌ 匯入失敗: '+ex.message+' | '+ex.stack;toast('匯入失敗','err');}
+  };
+  reader.readAsBinaryString(file);evt.target.value='';
+}
+
+function importJSON(evt){
+  const file=evt.target.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{const d=JSON.parse(e.target.result);
+      if(d.records)setR(d.records);if(d.zones)setZ(d.zones);if(d.thresholds)setTH(d.thresholds);
+      toast(T('impok'),'ok');renderAll();updBadge();
+    }catch(ex){toast('JSON匯入失敗','err');}
+  };
+  reader.readAsText(file);evt.target.value='';
+}
+
+// ══════════════════════════════════════════
+// TELEGRAM
+// ══════════════════════════════════════════
+function tWarn(t){const n=parseFloat(t);if(isNaN(n))return'';if(n>=35)return'[HIGH/高溫]';if(n<18)return'[LOW/低溫]';if(n>=32)return'[WARM/偏熱]';return'';}
+function hWarn(h){const n=parseFloat(h);if(isNaN(n))return'';if(n>90)return'[V.HUMID/過濕]';if(n<40)return'[DRY/過乾]';if(n>80)return'[HUMID/偏濕]';return'';}
+function buildTGmsg(type,date){
+  const d2=date.replace(/\//g,'-');
+  const recs=getR().filter(r=>r.d===d2);
+  const zones=getZ(),now=new Date().toLocaleString();
+  if(!recs.length)return 'VRT Temp & Humidity / 溫濕度\nDate: '+d2+'\n\nNo records for this date. / 此日期無記錄。';
+  const LINE='─'.repeat(26);
+  if(type==='daily'){
+    let m='VRT Daily Report / 溫濕度日報\n';
+    m+='Date / 日期: '+d2+'\n'+LINE+'\n';
+    let anom=0;
+    zones.filter(z=>z.on).forEach(z=>{
+      const zr=recs.filter(r=>r.z===z.id),mr=zr.find(r=>r.p==='morning'),ar=zr.find(r=>r.p==='afternoon');
+      const lbl=(z.en?z.en+' / ':'')+z.zh;
+      m+='['+lbl+']\n';
+      if(mr){const tw=tWarn(mr.t),hw=hWarn(mr.h);if(tw||hw)anom++;m+='  AM/早: '+( mr.t!==''?mr.t+'C':'--')+tw+'  '+(mr.h!==''?mr.h+'%':'--')+hw+'\n';}
+      if(ar){const tw=tWarn(ar.t),hw=hWarn(ar.h);if(tw||hw)anom++;m+='  PM/午: '+(ar.t!==''?ar.t+'C':'--')+tw+'  '+(ar.h!==''?ar.h+'%':'--')+hw+'\n';}
+    });
+    m+=LINE+'\n';
+    m+=anom>0?'Anomaly/異常: '+anom+' zone(s)\n':'All Normal / 全部正常\n';
+    m+=now;return m;
+  }else if(type==='anomaly'){
+    const an=recs.filter(r=>isAnom(r));
+    if(!an.length)return 'VRT Anomaly Report / 異常報告\nDate: '+d2+'\n\nAll Normal / 無異常\n'+now;
+    let m='VRT Anomaly Report / 異常報告\nDate / 日期: '+d2+'\n'+LINE+'\n';
+    an.forEach(r=>{
+      const z=zones.find(z=>z.id===r.z);
+      const lbl=z?((z.en?z.en+'/':'')+z.zh):'?';
+      const per=r.p==='morning'?'Morning/早':'Afternoon/午';
+      const tw=tWarn(r.t),hw=hWarn(r.h);
+      m+=(isCrit(r)?'[CRITICAL/高危] ':'[WARNING/警告] ')+lbl+'\n';
+      m+='  '+per+': Temp '+(r.t!==''?r.t+'C':'--')+tw+'  Hum '+(r.h!==''?r.h+'%':'--')+hw+'\n';
+    });
+    m+=LINE+'\n'+now;return m;
+  }else{
+    let m='VRT Full Records / 完整記錄\nDate / 日期: '+d2+'\n'+LINE+'\n';
+    m+='Date | Zone | Period | Temp | Hum\n';
+    recs.forEach(r=>{
+      const z=zones.find(z=>z.id===r.z);
+      const lbl=z?(z.en||z.zh):'?';
+      m+=r.d+' | '+lbl+' | '+(r.p==='morning'?'AM':'PM')+' | '+(r.t!==''?r.t+'C':'--')+' | '+(r.h!==''?r.h+'%':'--')+'\n';
+    });
+    m+=now;return m;
+  }
+}
+function prevTG(){const msg=buildTGmsg(document.getElementById('tg-type').value,document.getElementById('tg-date').value||today());const p=document.getElementById('tg-prev');p.textContent=msg;p.style.display='block';}
+async function sendTG(){
+  const cfg=getTG();if(!cfg.tok||!cfg.chat){toast('請設定 Bot Token 和 Chat ID','err');return;}
+  const msg=buildTGmsg(document.getElementById('tg-type').value,document.getElementById('tg-date').value||today());
+  if(!msg||!msg.trim()){toast('訊息內容為空，請確認日期有記錄','err');return;}
+  try{
+    // Telegram API 要用 application/json（不是 text/plain）
+    const r=await fetch('https://api.telegram.org/bot'+cfg.tok+'/sendMessage',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({chat_id:cfg.chat, text:msg})
+      // 不加 parse_mode，用純文字避免特殊字元報錯
+    });
+    const d=await r.json();
+    d.ok?toast('Telegram 發送成功 ✅','ok'):toast('Telegram 錯誤: '+(d.description||''),'err');
+  }catch(ex){toast('網路錯誤: '+ex.message,'err');}
+}
+
+// ══════════════════════════════════════════
+// GAS CLOUD SYNC (v3 — POST-only)
+// ══════════════════════════════════════════
+
+// 把 HTML 短欄位（z,d,p,t,h）轉成 GAS 長欄位，並夾入 zone 名稱
+function enrichRec(r){
+  const z=getZ().find(zz=>zz.id===r.z)||{zh:'',en:''};
+  return {
+    id:          r.id,
+    date:        r.d,
+    period:      r.p,
+    zoneId:      r.z,
+    zoneName:    z.zh,
+    zoneEn:      z.en,
+    temperature: r.t!==''&&r.t!==undefined?r.t:'',
+    humidity:    r.h!==''&&r.h!==undefined?r.h:'',
+    note:        r.note||'',
+    submittedAt: r.ts||new Date().toISOString()
+  };
+}
+
+// 把 GAS 長欄位回傳的記錄正規化成 HTML 內部格式
+function normalizeRec(r){
+  const t=r.temperature!==undefined&&r.temperature!==''?parseFloat(r.temperature):'';
+  const h=r.humidity   !==undefined&&r.humidity   !==''?parseFloat(r.humidity)   :'';
+  return {
+    id:   r.id||'',
+    z:    r.zoneId||'',
+    d:    (r.date||'').slice(0,10),
+    p:    r.period||'',
+    t:    isNaN(t)?'':t,
+    h:    isNaN(h)?'':h,
+    note: r.note||'',
+    ts:   r.submittedAt||''
+  };
+}
+
+// 測試 GAS 連線
+// GAS Web App 的 CORS 限制：用 no-cors 送出後無法讀回應
+// 改用 doGet (GET request) 做 ping，GET 不受 CORS preflight 影響
+async function testGAS(){
+  const url=document.getElementById('gas-url').value.trim();
+  if(!url){toast('請輸入 GAS URL','err');return;}
+  document.getElementById('sdot').className='syncdt sd-idle';
+  document.getElementById('sstatus').textContent='測試中...';
+  try{
+    // GET request：GAS doGet 回傳 JSON，瀏覽器可以直接讀
+    const r=await fetch(url+'?ping=1',{method:'GET',redirect:'follow'});
+    if(r.ok){
+      document.getElementById('sdot').className='syncdt sd-ok';
+      document.getElementById('sstatus').textContent='✅ 已連接';
+      toast('GAS 連接成功 ✅','ok');
+    } else {
+      throw new Error('HTTP '+r.status);
+    }
+  }catch(ex){
+    document.getElementById('sdot').className='syncdt sd-err';
+    document.getElementById('sstatus').textContent='❌ 連接失敗';
+    toast('連接失敗: '+ex.message,'err');
+  }
+}
+
+// 全量上傳（手動，不觸發 TG 通知）
+async function syncUp(){
+  const url=getGAS().url;if(!url){toast('請設定 GAS URL','err');return;}
+  const recs=getR();
+  document.getElementById('sdot').className='syncdt sd-idle';
+  document.getElementById('sstatus').textContent='上傳中...';
+  try{
+    await fetch(url,{method:'POST',mode:'no-cors',
+      body:JSON.stringify({type:'tempSync',records:recs.map(enrichRec),zones:getZ(),full:true})});
+    document.getElementById('sdot').className='syncdt sd-ok';
+    document.getElementById('sstatus').textContent='✅ 已連接';
+    toast('✅ 已送出 '+recs.length+' 筆（no-cors模式，資料已送達GAS）','ok');
+  }catch(ex){
+    document.getElementById('sdot').className='syncdt sd-err';
+    document.getElementById('sstatus').textContent='❌ 同步失敗';
+    toast('上傳失敗: '+ex.message,'err');
+  }
+}
+
+// 從雲端拉取記錄（合併到本機，雲端為主）
+async function syncDown(){
+  const url=getGAS().url;if(!url){toast('請設定 GAS URL','err');return;}
+  document.getElementById('sdot').className='syncdt sd-idle';
+  document.getElementById('sstatus').textContent='拉取中...';
+  try{
+    // Pull 用 GET + query param，避免 CORS 問題
+    const r=await fetch(url+'?type=tempList',{method:'GET',redirect:'follow'});
+    const d=await r.json();
+    if(d.ok&&d.records){
+      const cloudRecs=d.records.map(normalizeRec);
+      const cloudIds=new Set(cloudRecs.map(r=>r.id));
+      const onlyLocal=getR().filter(r=>!cloudIds.has(r.id));
+      const merged=[...cloudRecs,...onlyLocal];
+      setR(merged);
+      document.getElementById('sdot').className='syncdt sd-ok';
+      document.getElementById('sstatus').textContent='✅ 已連接';
+      toast(`拉取成功：雲端 ${cloudRecs.length} 筆，本機獨有 ${onlyLocal.length} 筆`,'ok');
+      renderAll();
+    } else throw new Error(d.error||'fail');
+  }catch(ex){
+    document.getElementById('sdot').className='syncdt sd-err';
+    document.getElementById('sstatus').textContent='❌ 拉取失敗';
+    toast('拉取失敗: '+ex.message,'err');
+  }
+}
+
+// 自動同步（儲存時靜默觸發，不阻塞 UI）
+async function gasAutoSync(newRecs){
+  const url=getGAS().url;if(!url)return;
+  try{
+    // no-cors: GAS CORS 限制，用 fire-and-forget 模式
+    await fetch(url,{method:'POST',mode:'no-cors',
+      body:JSON.stringify({type:'tempSync',records:newRecs.map(enrichRec),zones:getZ()})});
+    document.getElementById('sdot').className='syncdt sd-ok';
+    document.getElementById('sstatus').textContent='✅ 已同步';
+  }catch(ex){
+    document.getElementById('sdot').className='syncdt sd-err';
+    console.warn('gasAutoSync failed:',ex.message);
+  }
+}
+
+// 批量匯入到雲端（Excel 歷史資料匯入時使用）
+async function gasBulkSync(newRecs){
+  const url=getGAS().url;if(!url)return;
+  try{
+    await fetch(url,{method:'POST',mode:'no-cors',
+      body:JSON.stringify({type:'tempImport',records:newRecs.map(enrichRec),zones:getZ()})});
+    if(true){
+      document.getElementById('sdot').className='syncdt sd-ok';
+      document.getElementById('sstatus').textContent='✅ 已同步';
+      toast(`☁️ 雲端匯入完成：新增 ${d.added} 筆，跳過重複 ${d.skipped} 筆`,'ok');
+    } else {
+      document.getElementById('sdot').className='syncdt sd-err';
+      toast('☁️ 雲端匯入失敗: '+(d.error||''),'err');
+    }
+  }catch(ex){
+    document.getElementById('sdot').className='syncdt sd-err';
+    console.warn('gasBulkSync failed:',ex.message);
+    toast('☁️ 雲端網路錯誤','err');
+  }
+}
+
+// 刪除雲端記錄（靜默）
+async function gasDelete(id){
+  const url=getGAS().url;if(!url)return;
+  try{
+    await fetch(url,{method:'POST',mode:'no-cors',
+      body:JSON.stringify({type:'tempDelete',id})});
+  }catch(ex){console.warn('gasDelete failed:',ex.message);}
+}
+
+// 啟動時從雲端拉取（靜默合併）
+async function gasPullOnInit(){
+  const url=getGAS().url;if(!url)return;
+  try{
+    const r=await fetch(url+'?type=tempList',{method:'GET',redirect:'follow'});
+    const d=await r.json();
+    if(d.ok&&d.records&&d.records.length>0){
+      const cloudRecs=d.records.map(normalizeRec);
+      const cloudIds=new Set(cloudRecs.map(r=>r.id));
+      const local=getR();
+      const onlyLocal=local.filter(r=>!cloudIds.has(r.id));
+      const merged=[...cloudRecs,...onlyLocal];
+      if(merged.length!==local.length){
+        setR(merged);
+        renderAll();
+        toast(`☁️ 已從雲端同步 ${cloudRecs.length} 筆記錄`,'inf');
+      }
+      document.getElementById('sdot').className='syncdt sd-ok';
+      document.getElementById('sstatus').textContent='✅ 已連接';
+    }
+  }catch(ex){
+    console.warn('gasPullOnInit failed:',ex.message);
+  }
+}
+
+// ══════════════════════════════════════════
+// MODALS / CONFIRM / TOAST
+// ══════════════════════════════════════════
+function openMod(id){document.getElementById(id).classList.add('on');}
+function closeMod(id){document.getElementById(id).classList.remove('on');}
+document.querySelectorAll('.mover').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)closeMod(m.id);}));
+
+function confirmAction(msg,cb){
+  cfCB=cb;document.getElementById('cf-msg').textContent=msg;openMod('cf-over');
+}
+document.getElementById('cf-ok').onclick=()=>{if(cfCB){cfCB();cfCB=null;}closeMod('cf-over');};
+
+function toast(msg,type='inf'){
+  const c=document.getElementById('tbox'),t=document.createElement('div');
+  t.className=`toast t-${type==='ok'?'ok':type==='err'?'err':'inf'}`;
+  t.innerHTML=(type==='ok'?'✅':type==='err'?'❌':'ℹ️')+' '+msg;
+  c.appendChild(t);
+  setTimeout(()=>{t.style.transition='opacity .3s';t.style.opacity='0';setTimeout(()=>t.remove(),300);},2800);
+}
+
+// ══════════════════════════════════════════
+// POPULATE SELECTS & MISC
+// ══════════════════════════════════════════
+function popSelects(){
+  const zones=getZ();
+  const allOpt=`<option value="all">${T('allz')}</option>`;
+  const zoneOpts=allOpt+zones.map(z=>`<option value="${z.id}">${znm(z)}</option>`).join('');
+  ['hzone','azone','alzone','hzone2'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const prev=el.value;el.innerHTML=zoneOpts;try{el.value=prev;}catch(e){}
+  });
+  const perOpts=`<option value="all">${T('allp')}</option><option value="morning">${T('am')}</option><option value="afternoon">${T('pm')}</option>`;
+  ['hperiod','hperiod2'].forEach(id=>{const el=document.getElementById(id);if(!el)return;const prev=el.value;el.innerHTML=perOpts;try{el.value=prev;}catch(e){}});
+  const hvSel=document.getElementById('hview');
+  if(hvSel){
+    hvSel.innerHTML=`<option value="day">${T('view_day')}</option><option value="week">${T('view_week')}</option><option value="month">${T('view_month')}</option><option value="year">${T('view_year')}</option>`;
+    hvSel.value=HV;
+  }
+}
+
+function updBadge(){
+  const n=getR().filter(r=>isAnom(r)).length;
+  const b=document.getElementById('abadge');b.textContent=n;b.style.display=n?'inline':'none';
+}
+
+function renderAll(){
+  popSelects();
+  const active=document.querySelector('.tab.on')?.id?.replace('tab-','');
+  if(active==='dash')renderDash();
+  else if(active==='rec')renderRec();
+  else if(active==='hist')renderHist();
+  else if(active==='anal')renderAnal();
+  else if(active==='zones')renderZones();
+  else if(active==='alert')renderAlert();
+  else if(active==='set')renderSet();
+  updBadge();
+}
+
+// ══════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════
+function init(){
+  const td=today();
+  ['dash-date','rec-date','tg-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=td;});
+  const d30=new Date();d30.setDate(d30.getDate()-30);const d30s=d30.toISOString().slice(0,10);
+  ['hfrom','afrom','alfrom'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=d30s;});
+  ['hto','ato','alto'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=td;});
+  popSelects();applyI18n();renderDash();updBadge();renderHNavLabel();
+  setInterval(tick,1000);tick();
+  // 啟動時靜默從雲端拉取最新資料
+  setTimeout(gasPullOnInit, 800);
+}
+window.addEventListener('load',init);
+</script></body></html>
