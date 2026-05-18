@@ -1,0 +1,82 @@
+/* AC_GASCHECK — Shared Platform Nav Bar styles
+   Include in each module: <link rel="stylesheet" href="./shared/ac_nav.css"> */
+.ac-nav {
+  background: linear-gradient(90deg, #0F1E3D 0%, #1A3458 100%);
+  color: #fff;
+  padding: 0 14px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  box-shadow: 0 2px 12px rgba(10,20,50,.45);
+  font-family: 'DM Sans','IBM Plex Sans','Noto Sans TC',sans-serif;
+  font-size: 12px;
+}
+.ac-nav-back {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: rgba(255,255,255,.65);
+  text-decoration: none;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid rgba(255,255,255,.12);
+  transition: .15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ac-nav-back:hover { background: rgba(255,255,255,.12); color: #fff; }
+.ac-nav-title { font-size: 12px; font-weight: 700; color: #fff; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ac-nav-badge { font-size: 9px; color: rgba(255,255,255,.45); font-family: 'JetBrains Mono',monospace; white-space: nowrap; flex-shrink: 0; }
+/* cloud mini status */
+.ac-cloud-mini { display: flex; align-items: center; gap: 5px; flex-shrink: 0; cursor: pointer; padding: 3px 7px; border-radius: 6px; border: 1px solid rgba(255,255,255,.1); transition: .15s; }
+.ac-cloud-mini:hover { background: rgba(255,255,255,.08); }
+.c-dot { width: 7px; height: 7px; border-radius: 50%; background: #94a3b8; transition: .3s; flex-shrink: 0; }
+.c-dot.ok { background: #4ade80; box-shadow: 0 0 5px #4ade80; }
+.c-dot.err { background: #f87171; }
+.c-dot.syncing { background: #fbbf24; animation: ac-blink .8s infinite; }
+@keyframes ac-blink { 0%,100%{opacity:1} 50%{opacity:.3} }
+/* lang switch */
+.ac-lang { display: flex; background: rgba(0,0,0,.2); border-radius: 7px; overflow: hidden; border: 1px solid rgba(255,255,255,.1); flex-shrink: 0; }
+.ac-lang button { padding: 3px 8px; border: none; background: transparent; color: rgba(255,255,255,.6); cursor: pointer; font-size: 10px; font-weight: 700; font-family: inherit; transition: .15s; }
+.ac-lang button.on { background: #F97316; color: #fff; }
+/* toast override */
+#ac-toast {
+  position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+  background: #0F1E3D; color: #fff; border-radius: 8px; padding: 9px 18px;
+  font-size: 12px; font-weight: 600; opacity: 0; transition: opacity .3s;
+  pointer-events: none; z-index: 9999; max-width: 90vw; text-align: center;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3);
+}
+#ac-toast.show { opacity: 1; }
+/* Cloud panel */
+.ac-cloud-panel {
+  position: fixed; top: 44px; right: 0; width: min(320px, 92vw);
+  background: #0F1E3D; border-left: 1px solid rgba(255,255,255,.1);
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  padding: 12px; z-index: 299; display: none;
+  border-radius: 0 0 0 12px;
+  box-shadow: -4px 4px 20px rgba(0,0,0,.4);
+  font-family: 'DM Sans','IBM Plex Sans',sans-serif;
+}
+.ac-cloud-panel.open { display: block; }
+.ac-cloud-panel input {
+  width: 100%; background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.15);
+  border-radius: 7px; color: #fff; padding: 7px 10px; font-size: 11px; font-family: monospace;
+  outline: none; margin: 6px 0;
+}
+.ac-cloud-panel input::placeholder { color: rgba(255,255,255,.3); }
+.ac-cloud-panel input:focus { border-color: #F97316; }
+.ac-cp-row { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; }
+.ac-cp-btn { flex: 1; padding: 7px; border-radius: 7px; font-size: 10px; font-weight: 700; cursor: pointer; border: none; font-family: inherit; transition: .15s; min-width: 60px; }
+.ac-cp-save { background: #1c1500; border: 1px solid #92400e; color: #fbbf24; }
+.ac-cp-push { background: rgba(0,150,100,.3); border: 1px solid rgba(0,200,100,.2); color: #4ade80; }
+.ac-cp-pull { background: rgba(0,80,200,.3); border: 1px solid rgba(100,150,255,.2); color: #93c5fd; }
+.ac-cp-tg   { background: rgba(0,100,200,.35); border: 1px solid rgba(100,160,255,.2); color: #93c5fd; }
+.ac-cp-lbl  { font-size: 9px; font-weight: 700; color: rgba(255,255,255,.4); text-transform: uppercase; letter-spacing:.07em; margin-bottom: 2px; }
+.ll-ok{color:#4ade80}.ll-err{color:#f87171}.ll-info{color:#60a5fa}
