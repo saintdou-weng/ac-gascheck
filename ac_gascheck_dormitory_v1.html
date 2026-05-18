@@ -1,0 +1,1429 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>VRT · Dormitory Hub</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Sans+Khmer:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2EFF9;--surface:#FFFFFF;--border:#DDD9EE;--border2:#EAE7F5;
+  --accent:#5B4FCF;--accent2:#4438A8;--accent-bg:#EEECFB;--accent-lt:#F5F3FD;
+  --text:#1E1B3A;--text2:#4A4870;--dim:#8884AB;
+  --red:#D64141;--red-lt:#FCEAEA;--green:#2E8B57;--green-lt:#E6F5EC;
+  --amber:#C17D2A;--amber-lt:#FEF3E2;--blue:#3069BE;--blue-lt:#E8F0FC;
+  --header:#2A2060;--header2:#1D1549;
+  --insp-ok:#27AE60;--insp-fail:#C0392B;--insp-na:#95A5A6;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'DM Sans','Noto Sans TC','Noto Sans Khmer',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:13px}
+
+/* ── TOPBAR ── */
+.topbar{background:linear-gradient(135deg,var(--header) 0%,var(--header2) 100%);color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 12px rgba(30,20,80,.4)}
+.tb-logo{width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.tb-info{flex:1;min-width:0}
+.tb-title{font-size:14px;font-weight:700;letter-spacing:.2px}
+.tb-sub{font-size:9px;opacity:.6;font-family:'JetBrains Mono',monospace}
+.lang-grp{display:flex;gap:3px;flex-shrink:0}
+.lbtn{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.75);padding:4px 8px;border-radius:20px;cursor:pointer;font-size:10px;font-weight:600;transition:.2s;font-family:inherit}
+.lbtn.active{background:#fff;color:var(--header);font-weight:700}
+.ts-wrap{display:flex;align-items:center;gap:5px;font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.5);flex-shrink:0}
+.ts-dot{width:5px;height:5px;border-radius:50%;background:#6EE7B7;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+/* ── TABS ── */
+.tabs{display:flex;background:var(--surface);border-bottom:2px solid var(--border2);overflow-x:auto;scrollbar-width:none;padding:0 6px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 11px;font-size:11px;font-weight:600;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.2s;white-space:nowrap;display:flex;align-items:center;gap:4px;flex-shrink:0}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent)}
+.tab-icon{font-size:15px}
+.content{display:none}.content.active{display:block}
+
+/* ── MAIN ── */
+.main{padding:10px;max-width:980px;margin:0 auto}
+
+/* ── CARDS ── */
+.card{background:var(--surface);border:1px solid var(--border2);border-radius:12px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 4px rgba(90,79,207,.06)}
+.card-hd{padding:9px 13px;border-bottom:1px solid var(--border2);display:flex;align-items:center;gap:7px;background:var(--accent-lt)}
+.card-hd-icon{font-size:15px}
+.card-hd-title{font-size:11px;font-weight:700;color:var(--accent2);text-transform:uppercase;letter-spacing:.7px}
+.card-hd-note{font-size:9px;color:var(--dim);margin-left:auto;font-weight:400;text-transform:none;letter-spacing:0}
+.card-bd{padding:12px}
+
+/* ── DASHBOARD GRID ── */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.kpi{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:12px 10px;text-align:center;position:relative;overflow:hidden}
+.kpi::after{content:'';position:absolute;bottom:0;left:0;right:0;height:3px}
+.kpi.total::after{background:var(--accent)}.kpi.in::after{background:var(--green)}.kpi.out::after{background:var(--red)}.kpi.pend::after{background:var(--amber)}.kpi.insp::after{background:var(--blue)}
+.kpi-icon{font-size:22px;margin-bottom:4px;display:block}
+.kpi-val{font-size:24px;font-weight:700;color:var(--text);line-height:1}
+.kpi-label{font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.5px;margin-top:3px;text-transform:uppercase}
+.chart-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.chart-card{background:var(--surface);border:1px solid var(--border2);border-radius:12px;padding:12px;box-shadow:0 1px 4px rgba(90,79,207,.05)}
+.chart-title{font-size:10px;font-weight:700;color:var(--text2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+
+/* ── DATE FILTER ── */
+.date-filter{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.period-tabs{display:flex;background:var(--bg);border-radius:7px;padding:2px;gap:1px}
+.ptab{padding:5px 10px;border-radius:5px;font-size:10px;font-weight:600;cursor:pointer;color:var(--dim);transition:.2s;white-space:nowrap}
+.ptab.active{background:var(--accent);color:#fff}
+.date-inputs{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.date-inputs input,.date-inputs select{border:1px solid var(--border);border-radius:6px;padding:5px 8px;font-size:11px;color:var(--text);background:#fff;outline:none;font-family:inherit}
+.date-inputs input:focus,.date-inputs select:focus{border-color:var(--accent)}
+
+/* ── FORM ── */
+.type-toggle{display:flex;border-radius:10px;overflow:hidden;border:1px solid var(--border);margin-bottom:10px}
+.type-btn{flex:1;padding:11px;text-align:center;font-size:13px;font-weight:700;cursor:pointer;transition:.2s;border:none;background:transparent;font-family:inherit;color:var(--dim)}
+.type-btn.move-in{background:var(--green-lt);color:#1A5C38;box-shadow:inset 0 -3px 0 var(--insp-ok)}
+.type-btn.move-out{background:var(--red-lt);color:#8B1A1A;box-shadow:inset 0 -3px 0 var(--insp-fail)}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.form-grid.c3{grid-template-columns:1fr 1fr 1fr}
+.fg{border-right:1px solid var(--border2);border-bottom:1px solid var(--border2);display:flex;flex-direction:column}
+.fg:nth-child(2n){border-right:none}
+.form-grid.c3 .fg:nth-child(3n){border-right:none}
+.form-grid.c3 .fg:nth-child(2n){border-right:1px solid var(--border2)}
+.fg.full{grid-column:1/-1;border-right:none}
+.fg-label{font-size:9px;font-weight:700;color:var(--dim);background:var(--accent-lt);padding:3px 9px;border-bottom:1px solid var(--border2);display:flex;justify-content:space-between;align-items:center;letter-spacing:.4px}
+.fg-label .req{color:var(--red);margin-left:2px}
+.fg-input{border:none;outline:none;font-family:inherit;font-size:12px;color:var(--text);padding:7px 9px;width:100%;background:transparent;transition:background .15s}
+.fg-input:focus{background:var(--accent-bg)}
+.fg-input::placeholder{color:#C5C0D8;font-size:11px}
+select.fg-input{cursor:pointer}
+
+/* ── ITEMS TABLE ── */
+.itbl{width:100%;border-collapse:collapse}
+.itbl th{background:var(--accent-lt);font-size:9px;font-weight:700;color:var(--accent2);padding:5px 7px;border-bottom:2px solid var(--border);border-right:1px solid var(--border2);text-align:left;white-space:nowrap}
+.itbl th:last-child{border-right:none}
+.itbl td{border-bottom:1px solid var(--border2);border-right:1px solid var(--border2);padding:0;vertical-align:middle}
+.itbl td:last-child{border-right:none}
+.itbl tr:last-child td{border-bottom:none}
+.itbl tr:hover td{background:var(--accent-bg)}
+.itbl .rn{width:22px;text-align:center;font-size:10px;font-weight:700;color:var(--dim);background:var(--accent-lt);padding:4px}
+.itbl input[type="text"]{border:none;outline:none;font-family:inherit;font-size:11px;padding:6px 7px;width:100%;background:transparent}
+.itbl input[type="text"]:focus{background:var(--accent-bg)}
+.itbl input[type="checkbox"]{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
+.itbl select{border:none;outline:none;font-size:10px;padding:5px 3px;background:transparent;font-family:inherit;cursor:pointer;width:100%}
+.itbl .del-btn{background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;padding:4px 6px}
+.itbl .del-btn:hover{background:var(--red-lt);border-radius:4px}
+.add-row{padding:5px 8px}
+.add-btn{width:100%;background:transparent;border:1.5px dashed var(--border);border-radius:7px;padding:6px;cursor:pointer;font-size:11px;color:var(--accent);font-weight:600;font-family:inherit;transition:.2s;text-align:center}
+.add-btn:hover{border-color:var(--accent);background:var(--accent-bg)}
+
+/* ── APPROVAL GRID ── */
+.appr-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+.appr-cell{border-right:1px solid var(--border2);border-bottom:1px solid var(--border2);display:flex;flex-direction:column}
+.appr-cell:nth-child(3n){border-right:none}
+
+/* ── BUTTONS ── */
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;font-family:inherit;font-size:12px;font-weight:700;border:none;border-radius:8px;padding:10px 14px;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn:hover{opacity:.9}.btn:active{transform:scale(.97)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#fff}
+.btn-green{background:linear-gradient(135deg,#2E8B57,#1E6940);color:#fff}
+.btn-red{background:linear-gradient(135deg,#D64141,#B02F2F);color:#fff}
+.btn-blue{background:linear-gradient(135deg,#3069BE,#2051A0);color:#fff}
+.btn-gray{background:linear-gradient(135deg,#6B7280,#4B5563);color:#fff}
+.btn-purple{background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff}
+.btn-amber{background:linear-gradient(135deg,#C17D2A,#9A6220);color:#fff}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--text2)}
+
+/* ── WARN BOX ── */
+.warn-box{background:var(--amber-lt);border:1.5px solid #E8A838;border-radius:9px;padding:9px 12px;margin-bottom:8px;font-size:11px;color:#7A4D10;display:none}
+.warn-box.show{display:block}
+
+/* ── STATUS CARD ── */
+.status-card{display:none;background:var(--surface);border:1px solid var(--border2);border-radius:14px;padding:28px 16px;text-align:center;margin-bottom:10px}
+.s-icon{font-size:46px;margin-bottom:8px;display:block}.s-title{font-size:16px;font-weight:700;margin-bottom:4px}
+.s-sub{font-size:11px;color:var(--dim);line-height:1.7}
+.s-ts{margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--accent);background:var(--accent-bg);border:1px solid var(--border);border-radius:6px;padding:4px 10px;display:inline-block}
+
+/* ── INSPECTION TABLE ── */
+.loc-tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px}
+.loc-tab{padding:6px 12px;background:var(--surface);border:1.5px solid var(--border2);border-radius:20px;font-size:11px;font-weight:600;color:var(--dim);cursor:pointer;transition:.2s;white-space:nowrap}
+.loc-tab.active{background:var(--accent);border-color:var(--accent);color:#fff}
+.insp-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.insp-tbl{border-collapse:collapse;width:100%;min-width:700px;font-size:11px}
+.insp-tbl th,.insp-tbl td{border:1px solid var(--border2);padding:0;text-align:center;vertical-align:middle}
+.insp-tbl th{font-weight:600;font-size:9px;color:var(--accent2);padding:5px 4px;background:var(--accent-lt);white-space:nowrap}
+.grp-hd{padding:6px !important;font-size:10px !important;font-weight:700 !important;color:#fff !important}
+.grp-ac{background:#4438A8 !important}.grp-room{background:#1D5C8A !important}.grp-wc{background:#1A7A5A !important}
+.room-cell{background:var(--accent-lt);font-weight:700;font-size:12px;color:var(--accent2);padding:0 9px !important;min-width:52px;position:sticky;left:0;z-index:2;border-right:2px solid var(--border) !important}
+.sc{width:100%;height:30px;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;transition:.15s}
+.sc[data-v="N"]{color:var(--insp-ok);background:#E8F8EE}
+.sc[data-v="X"]{color:var(--insp-fail);background:#FDEDED}
+.sc[data-v="-"]{color:var(--insp-na);background:#F5F5F5;font-size:17px}
+.sc[data-v=""]{color:#D0CCE8;background:transparent}
+.sc:active{transform:scale(.88)}
+.rm-input{border:none;width:100%;padding:5px 7px;font-size:10px;font-family:inherit;outline:none;background:transparent;color:var(--text);min-width:80px}
+.rm-input:focus{background:#FFFDE7}
+
+/* ── RECORDS ── */
+.filter-bar{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:9px 10px;margin-bottom:10px;display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.fb-group{display:flex;flex-direction:column;gap:2px}
+.fb-label{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.4px}
+.fb-input{border:1px solid var(--border);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--text);background:#fff;outline:none;font-family:inherit;min-width:80px}
+.fb-input:focus{border-color:var(--accent)}
+.rtable-wrap{overflow-x:auto}
+.rtable{width:100%;border-collapse:collapse;font-size:10px;min-width:750px}
+.rtable th{background:var(--accent-lt);padding:5px 7px;text-align:left;font-weight:700;color:var(--accent2);border-bottom:2px solid var(--border);font-size:9px;white-space:nowrap}
+.rtable td{padding:5px 7px;border-bottom:1px solid var(--border2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rtable tr:nth-child(even) td{background:#FAFAFF}
+.rtable tr:hover td{background:var(--accent-bg)}
+.badge{display:inline-block;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700}
+.b-in{background:var(--green-lt);color:#1A5C38}.b-out{background:var(--red-lt);color:#8B1A1A}
+.b-pend{background:var(--amber-lt);color:#7A4D10}.b-done{background:var(--green-lt);color:#1A5C38}
+.b-rej{background:var(--red-lt);color:#8B1A1A}
+.empty-state{text-align:center;padding:30px;color:var(--dim);font-size:12px}
+.empty-icon{font-size:28px;margin-bottom:6px;display:block}
+
+/* ── ROSTER ── */
+.roster-stat{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.rst-card{background:var(--surface);border:1px solid var(--border2);border-radius:10px;padding:10px;text-align:center}
+.rst-val{font-size:20px;font-weight:700;color:var(--accent)}
+.rst-label{font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-top:2px}
+
+/* ── VIOLATIONS ── */
+.viol-form .form-grid{margin-bottom:8px}
+.viol-badge{display:inline-block;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700;background:var(--red-lt);color:var(--red)}
+
+/* ── IMPORT LABEL ── */
+.imp-lbl{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border-radius:7px;padding:7px 12px;font-size:11px;font-weight:700;cursor:pointer}
+.imp-lbl:hover{opacity:.9}
+#imp-file{display:none}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#1E1B3A;color:#F5F3FD;border-radius:8px;padding:9px 18px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+.spinner{display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:5px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── GUIDE ── */
+.guide-item{background:var(--surface);border:1px solid var(--border2);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.guide-hd{padding:10px 13px;font-size:12px;font-weight:700;color:var(--accent2);cursor:pointer;display:flex;align-items:center;gap:6px;background:var(--accent-lt)}
+.guide-bd{padding:12px 14px;font-size:12px;line-height:1.7;color:var(--text2);display:none}
+.guide-bd.open{display:block}
+.g-step{display:flex;gap:8px;margin-bottom:8px;align-items:flex-start}
+.g-num{width:22px;height:22px;border-radius:50%;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+
+/* ── RESPONSIVE ── */
+@media(max-width:600px){
+  .kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .chart-row{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}.form-grid.c3{grid-template-columns:1fr 1fr}
+  .fg:nth-child(n){border-right:none}
+  .appr-grid{grid-template-columns:1fr}
+  .appr-cell:nth-child(n){border-right:none}
+  .roster-stat{grid-template-columns:repeat(2,1fr)}
+}
+@media print{
+  .topbar,.tabs,.btn-row,.filter-bar,.date-filter,.type-toggle,.lang-grp,.guide-item{display:none!important}
+  body{background:#fff}.main{max-width:100%;padding:0}
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<div class="topbar">
+  <div class="tb-logo">🏠</div>
+  <div class="tb-info">
+    <div class="tb-title" id="tb-title">宿舍管理中心 · Dormitory Hub</div>
+    <div class="tb-sub">VRT · Sihanoukville · v2.0</div>
+  </div>
+  <div class="ts-wrap">
+    <div class="ts-dot"></div>
+    <span id="ts-now">--:--:--</span>
+  </div>
+  <div class="lang-grp">
+    <button class="lbtn active" onclick="i18n.setLang('zh')">中</button>
+    <button class="lbtn" onclick="i18n.setLang('en')">EN</button>
+    <button class="lbtn" onclick="i18n.setLang('km')">ខ្មែរ</button>
+  </div>
+</div>
+
+<!-- TABS -->
+<div class="tabs" id="main-tabs">
+  <div class="tab active" data-tab="dash" onclick="ui.switchTab('dash')"><span class="tab-icon">📊</span><span data-i="tab-dash">總覽</span></div>
+  <div class="tab" data-tab="apply" onclick="ui.switchTab('apply')"><span class="tab-icon">📋</span><span data-i="tab-apply">申請表單</span></div>
+  <div class="tab" data-tab="roster" onclick="ui.switchTab('roster')"><span class="tab-icon">👥</span><span data-i="tab-roster">在住總表</span></div>
+  <div class="tab" data-tab="insp" onclick="ui.switchTab('insp')"><span class="tab-icon">🔍</span><span data-i="tab-insp">設施巡查</span></div>
+  <div class="tab" data-tab="viol" onclick="ui.switchTab('viol')"><span class="tab-icon">🚫</span><span data-i="tab-viol">違規記錄</span></div>
+  <div class="tab" data-tab="records" onclick="ui.switchTab('records')"><span class="tab-icon">🗂️</span><span data-i="tab-records">記錄查詢</span></div>
+  <div class="tab" data-tab="guide" onclick="ui.switchTab('guide')"><span class="tab-icon">📖</span><span data-i="tab-guide">設定指南</span></div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="content active" id="content-dash">
+<div class="main">
+  <div class="date-filter">
+    <div class="period-tabs">
+      <div class="ptab active" onclick="dateEngine.setPeriod('day',this)" data-i="p-day">日</div>
+      <div class="ptab" onclick="dateEngine.setPeriod('week',this)" data-i="p-week">週</div>
+      <div class="ptab" onclick="dateEngine.setPeriod('month',this)" data-i="p-month">月</div>
+      <div class="ptab" onclick="dateEngine.setPeriod('year',this)" data-i="p-year">年</div>
+    </div>
+    <div class="date-inputs" id="date-inputs-dash">
+      <input type="date" id="dash-from" onchange="dashboard.render()">
+      <span style="color:var(--dim);font-size:11px">→</span>
+      <input type="date" id="dash-to" onchange="dashboard.render()">
+    </div>
+    <button class="btn btn-primary" style="padding:6px 12px;font-size:11px" onclick="dashboard.render()" data-i="btn-refresh">刷新</button>
+  </div>
+  <div class="kpi-grid">
+    <div class="kpi total"><span class="kpi-icon">🏠</span><div class="kpi-val" id="kpi-residents">0</div><div class="kpi-label" data-i="kpi-res">在住人數</div></div>
+    <div class="kpi in"><span class="kpi-icon">📥</span><div class="kpi-val" id="kpi-movein">0</div><div class="kpi-label" data-i="kpi-in">搬入</div></div>
+    <div class="kpi out"><span class="kpi-icon">📤</span><div class="kpi-val" id="kpi-moveout">0</div><div class="kpi-label" data-i="kpi-out">搬出</div></div>
+    <div class="kpi pend"><span class="kpi-icon">⏳</span><div class="kpi-val" id="kpi-pending">0</div><div class="kpi-label" data-i="kpi-pend">待審核</div></div>
+  </div>
+  <div class="kpi-grid" style="grid-template-columns:repeat(3,1fr)">
+    <div class="kpi insp"><span class="kpi-icon">🔍</span><div class="kpi-val" id="kpi-inspections">0</div><div class="kpi-label" data-i="kpi-insp">巡查次數</div></div>
+    <div class="kpi" style="--kpi-color:#D64141"><span class="kpi-icon">⚠️</span><div class="kpi-val" id="kpi-anomaly">0</div><div class="kpi-label" data-i="kpi-anom">異常項目</div><style>.kpi:nth-child(2).insp~.kpi::after{background:var(--red)}</style></div>
+    <div class="kpi"><span class="kpi-icon">🚫</span><div class="kpi-val" id="kpi-violations">0</div><div class="kpi-label" data-i="kpi-viol">違規記錄</div></div>
+  </div>
+  <div class="chart-row">
+    <div class="chart-card"><div class="chart-title" data-i="chart-trend">申請趨勢</div><canvas id="chart-trend" height="160"></canvas></div>
+    <div class="chart-card"><div class="chart-title" data-i="chart-dept">部門分佈</div><canvas id="chart-dept" height="160"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><span class="card-hd-icon">📋</span><span class="card-hd-title" data-i="recent-apps">最近申請</span></div>
+    <div class="card-bd" style="padding:0">
+      <div class="rtable-wrap"><table class="rtable" id="recent-table">
+        <thead><tr><th data-i="th-ts">時間</th><th data-i="th-type">類型</th><th data-i="th-name">姓名</th><th data-i="th-id">工號</th><th data-i="th-room">房號</th><th data-i="th-status">狀態</th></tr></thead>
+        <tbody id="recent-body"><tr><td colspan="6" class="empty-state"><span class="empty-icon">📋</span><br><span data-i="empty-apps">暫無記錄</span></td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══ APPLY ═══ -->
+<div class="content" id="content-apply">
+<div class="main">
+  <div id="status-card" class="status-card">
+    <span class="s-icon" id="s-icon">✅</span>
+    <div class="s-title" id="s-title">提交成功</div>
+    <div class="s-sub" id="s-sub"></div>
+    <div class="s-ts" id="s-ts"></div>
+    <br><br>
+    <button class="btn btn-primary" onclick="resetForm()">🔄 <span data-i="btn-new">新申請</span></button>
+  </div>
+  <div id="apply-form-wrap">
+    <div class="type-toggle">
+      <button class="type-btn move-in" id="btn-type-in" onclick="state.setFormType('in')">🟢 <span data-i="move-in">搬入 Move-in</span></button>
+      <button class="type-btn" id="btn-type-out" onclick="state.setFormType('out')">🔴 <span data-i="move-out">搬出 Move-out</span></button>
+    </div>
+    <div class="warn-box" id="warn-box" data-i="warn-integrity">搬出請確認所有物品已勾選歸還。</div>
+    <div class="card">
+      <div class="card-hd"><span class="card-hd-icon">👤</span><span class="card-hd-title" data-i="sec-info">申請人資訊</span><span class="card-hd-note">帶 * 為必填</span></div>
+      <div class="form-grid c3">
+        <div class="fg"><div class="fg-label"><span data-i="f-name">姓名</span><span class="req">*</span></div><input class="fg-input" id="f-name" placeholder="Dara Chan"></div>
+        <div class="fg"><div class="fg-label"><span data-i="f-gender">性別</span><span class="req">*</span></div><select class="fg-input" id="f-gender"><option value="">—</option><option value="Male">Male 男</option><option value="Female">Female 女</option></select></div>
+        <div class="fg"><div class="fg-label"><span data-i="f-id">工號</span><span class="req">*</span></div><input class="fg-input" id="f-id" placeholder="VRT-001"></div>
+        <div class="fg"><div class="fg-label"><span data-i="f-dept">部門</span><span class="req">*</span></div><select class="fg-input" id="f-dept"><option value="">—</option><option>Sewing 車縫</option><option>Cutting 裁剪</option><option>QC 品管</option><option>HR/Admin</option><option>GA</option><option>Security</option><option>Compliance</option><option>Warehouse</option><option>Finishing</option></select></div>
+        <div class="fg"><div class="fg-label" data-i="f-pos">職位</div><input class="fg-input" id="f-pos" placeholder="Operator"></div>
+        <div class="fg"><div class="fg-label" data-i="f-phone">電話</div><input class="fg-input" id="f-phone" placeholder="0XX-XXX-XXX"></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><span class="card-hd-icon">🚪</span><span class="card-hd-title" data-i="sec-room">房間 / 日期</span></div>
+      <div class="form-grid c3">
+        <div class="fg"><div class="fg-label"><span data-i="f-room">房號</span><span class="req">*</span></div><input class="fg-input" id="f-room" placeholder="A-201"></div>
+        <div class="fg"><div class="fg-label" id="lbl-date"><span data-i="f-movedate">搬入日期</span><span class="req">*</span></div><input class="fg-input" type="date" id="f-date"></div>
+        <div class="fg"><div class="fg-label" data-i="f-applydate">申請日期</div><input class="fg-input" type="date" id="f-applydate" readonly></div>
+        <div class="fg full"><div class="fg-label" id="lbl-reason"><span data-i="f-reason">申請原因</span><span class="req">*</span></div><input class="fg-input" id="f-reason" placeholder="請說明原因..."></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><span class="card-hd-icon">📦</span><span class="card-hd-title" data-i="sec-items">宿舍物品清單</span><span class="card-hd-note" data-i="sec-items-note">可新增/刪減</span></div>
+      <table class="itbl"><thead><tr><th class="rn">#</th><th data-i="th-itemname">物品名稱</th><th id="th-chk" data-i="th-chk">領取 ✓</th><th data-i="th-cond">狀態</th><th data-i="th-note">備註</th><th>✕</th></tr></thead><tbody id="items-body"></tbody></table>
+      <div class="add-row"><button class="add-btn" onclick="addItem()">＋ <span data-i="add-item">新增物品</span></button></div>
+    </div>
+    <div class="card">
+      <div class="card-hd"><span class="card-hd-icon">✍️</span><span class="card-hd-title" data-i="sec-sign">簽核欄位</span></div>
+      <div class="appr-grid">
+        <div class="appr-cell"><div class="fg-label" data-i="sign-applicant">申請人</div><input class="fg-input" id="f-applicant" placeholder="簽名"></div>
+        <div class="appr-cell"><div class="fg-label" data-i="sign-reviewer">審核人 (HR)</div><input class="fg-input" id="f-reviewer" placeholder="Phary"></div>
+        <div class="appr-cell"><div class="fg-label" data-i="sign-approver">核可人 (GA Mgr)</div><input class="fg-input" id="f-approver" placeholder="Paul Weng"></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="btn-submit" onclick="submitForm()"><span id="lbl-submit" data-i="btn-submit-in">📥 提交搬入</span></button>
+      <button class="btn btn-gray" onclick="saveLocal()" data-i="btn-save">💾 儲存草稿</button>
+      <button class="btn btn-outline" onclick="exportFormExcel()" data-i="btn-export">📤 匯出 Excel</button>
+      <button class="btn btn-outline" onclick="resetForm()" data-i="btn-reset">🔄 清空</button>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══ ROSTER ═══ -->
+<div class="content" id="content-roster">
+<div class="main">
+  <div class="roster-stat">
+    <div class="rst-card"><div class="rst-val" id="rs-count">0</div><div class="rst-label" data-i="rs-count">在住人數</div></div>
+    <div class="rst-card"><div class="rst-val" id="rs-rooms">0</div><div class="rst-label" data-i="rs-rooms">使用房間</div></div>
+    <div class="rst-card"><div class="rst-val" id="rs-male">0</div><div class="rst-label" data-i="rs-m">男</div></div>
+    <div class="rst-card"><div class="rst-val" id="rs-female">0</div><div class="rst-label" data-i="rs-f">女</div></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-primary" onclick="loadRoster()">🔄 <span data-i="refresh">刷新</span></button>
+    <button class="btn btn-green" onclick="exportRosterExcel()">📤 <span data-i="export">匯出 Excel</span></button>
+    <label class="imp-lbl"><span>📥</span> <span data-i="import">匯入 Excel</span><input type="file" id="imp-roster" accept=".xlsx,.xls" style="display:none" onchange="importRoster(this)"></label>
+  </div>
+  <div class="card">
+    <div class="card-hd"><span class="card-hd-icon">👥</span><span class="card-hd-title" data-i="roster-title">在住人員總表</span></div>
+    <div class="card-bd" style="padding:0">
+      <div class="rtable-wrap"><table class="rtable">
+        <thead><tr><th>#</th><th data-i="th-name">姓名</th><th data-i="th-gender">性別</th><th data-i="th-id">工號</th><th data-i="th-dept">部門</th><th data-i="th-room">房號</th><th data-i="th-movein">搬入日</th><th data-i="th-phone">電話</th></tr></thead>
+        <tbody id="roster-body"><tr><td colspan="8" class="empty-state"><span class="empty-icon">👥</span><br><span data-i="empty-roster">點擊「刷新」載入在住名單</span></td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══ INSPECTION ═══ -->
+<div class="content" id="content-insp">
+<div class="main">
+  <div class="card">
+    <div class="card-hd"><span class="card-hd-icon">🔍</span><span class="card-hd-title" data-i="insp-hd">設施巡查表</span></div>
+    <div class="card-bd">
+      <div class="date-filter" style="margin-bottom:8px">
+        <div class="fb-group"><div class="fb-label" data-i="f-inspector">巡查員</div><input class="fb-input" id="insp-inspector" placeholder="Phea / Nin" style="min-width:120px"></div>
+        <div class="fb-group"><div class="fb-label" data-i="f-date">日期</div><input class="fb-input" type="date" id="insp-date"></div>
+        <div class="fb-group"><div class="fb-label" data-i="f-quarter">季度</div><select class="fb-input" id="insp-quarter"><option value="Q1">Q1</option><option value="Q2">Q2</option><option value="Q3">Q3</option><option value="Q4">Q4</option></select></div>
+        <button class="btn btn-primary" style="padding:7px 12px;font-size:11px" onclick="insp.save()">💾 <span data-i="btn-save-insp">儲存巡查</span></button>
+        <button class="btn btn-green" style="padding:7px 12px;font-size:11px" onclick="insp.sendTelegram()">📤 Telegram</button>
+      </div>
+      <div class="loc-tabs" id="insp-loc-tabs">
+        <div class="loc-tab active" onclick="insp.setLoc('foreignDorm',this)" data-loc="foreignDorm">🏢 外籍宿舍</div>
+        <div class="loc-tab" onclick="insp.setLoc('localDorm',this)" data-loc="localDorm">🏘️ 當地宿舍</div>
+        <div class="loc-tab" onclick="insp.setLoc('factory',this)" data-loc="factory">🏭 工廠</div>
+        <div class="loc-tab" onclick="insp.setLoc('office',this)" data-loc="office">🏢 辦公室</div>
+      </div>
+      <div id="abn-alert" style="display:none;background:var(--red-lt);border:1px solid #E8A0A0;border-radius:8px;padding:8px 12px;font-size:11px;color:var(--red);margin-bottom:8px"></div>
+      <div class="insp-wrap" id="insp-table-wrap"></div>
+      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <span style="font-size:10px;color:var(--dim)">✓ = N 正常 &nbsp;|&nbsp; ✗ = X 異常 &nbsp;|&nbsp; − = N/A</span>
+        <div style="margin-left:auto;display:flex;gap:5px;flex-wrap:wrap">
+          <button class="btn btn-outline" style="padding:5px 10px;font-size:10px" onclick="insp.clearForm()">🔄 <span data-i="btn-clear">清除</span></button>
+          <button class="btn btn-green" style="padding:5px 10px;font-size:10px" onclick="insp.exportExcel()">📤 Excel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:10px">
+    <div class="card-hd"><span class="card-hd-icon">📊</span><span class="card-hd-title" data-i="insp-history">巡查記錄</span></div>
+    <div class="card-bd" style="padding:0">
+      <div class="filter-bar" style="border:none;border-radius:0;border-bottom:1px solid var(--border2)">
+        <div class="fb-group"><div class="fb-label" data-i="fl-loc">地點</div><select class="fb-input" id="ifl-loc"><option value="">全部</option><option value="foreignDorm">外籍宿舍</option><option value="localDorm">當地宿舍</option><option value="factory">工廠</option><option value="office">辦公室</option></select></div>
+        <div class="fb-group"><div class="fb-label" data-i="fl-status">狀態</div><select class="fb-input" id="ifl-status"><option value="">全部</option><option value="abn">有異常</option><option value="normal">全正常</option></select></div>
+        <div class="fb-group"><div class="fb-label" data-i="fl-month">月份</div><input type="month" class="fb-input" id="ifl-month"></div>
+        <button class="btn btn-primary" style="padding:6px 12px;font-size:11px" onclick="insp.renderHistory()">🔍 <span data-i="query">查詢</span></button>
+      </div>
+      <div id="insp-hist-wrap" class="rtable-wrap"><div class="empty-state"><span class="empty-icon">🔍</span><br><span data-i="empty-insp">查詢後顯示記錄</span></div></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══ VIOLATIONS ═══ -->
+<div class="content" id="content-viol">
+<div class="main">
+  <div class="card">
+    <div class="card-hd"><span class="card-hd-icon">🚫</span><span class="card-hd-title" data-i="viol-new">新增違規記錄</span></div>
+    <div class="card-bd viol-form">
+      <div class="form-grid c3">
+        <div class="fg"><div class="fg-label"><span data-i="f-name">姓名</span><span class="req">*</span></div><input class="fg-input" id="vf-name" placeholder="員工姓名"></div>
+        <div class="fg"><div class="fg-label" data-i="f-id">工號</div><input class="fg-input" id="vf-id" placeholder="VRT-001"></div>
+        <div class="fg"><div class="fg-label" data-i="f-room">房號</div><input class="fg-input" id="vf-room" placeholder="A-201"></div>
+        <div class="fg"><div class="fg-label" data-i="f-date">日期</div><input class="fg-input" type="date" id="vf-date"></div>
+        <div class="fg"><div class="fg-label" data-i="vf-type">違規類型</div><select class="fg-input" id="vf-type"><option value="">—</option><option>環境髒亂</option><option>噪音擾人</option><option>未登記訪客</option><option>財產損壞</option><option>未繳費</option><option>Other</option></select></div>
+        <div class="fg"><div class="fg-label" data-i="vf-level">嚴重程度</div><select class="fg-input" id="vf-level"><option value="Minor">Minor 輕微</option><option value="Moderate">Moderate 中等</option><option value="Serious">Serious 嚴重</option></select></div>
+        <div class="fg full"><div class="fg-label" data-i="vf-desc">違規描述</div><input class="fg-input" id="vf-desc" placeholder="請詳細說明違規情況..."></div>
+        <div class="fg"><div class="fg-label" data-i="vf-by">記錄人</div><input class="fg-input" id="vf-by" placeholder="Security staff"></div>
+        <div class="fg"><div class="fg-label" data-i="vf-action">處理措施</div><input class="fg-input" id="vf-action" placeholder="Warning / Fine..."></div>
+      </div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn btn-red" onclick="viol.save()">🚫 <span data-i="btn-save-viol">儲存違規記錄</span></button>
+        <button class="btn btn-blue" onclick="viol.sendTelegram()">📤 Telegram</button>
+        <button class="btn btn-green" onclick="viol.exportExcel()">📥 <span data-i="export">匯出</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><span class="card-hd-icon">📋</span><span class="card-hd-title" data-i="viol-history">違規記錄清單</span></div>
+    <div class="card-bd" style="padding:0">
+      <div class="rtable-wrap"><table class="rtable">
+        <thead><tr><th data-i="f-date">日期</th><th data-i="f-name">姓名</th><th data-i="f-room">房號</th><th data-i="vf-type">類型</th><th data-i="vf-level">嚴重</th><th data-i="vf-desc">描述</th><th>✕</th></tr></thead>
+        <tbody id="viol-body"><tr><td colspan="7" class="empty-state"><span class="empty-icon">🚫</span><br><span data-i="empty-viol">暫無違規記錄</span></td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══ RECORDS ═══ -->
+<div class="content" id="content-records">
+<div class="main">
+  <div class="filter-bar">
+    <div class="fb-group"><div class="fb-label" data-i="fl-type">類型</div><select class="fb-input" id="fl-type"><option value="">全部</option><option value="搬入">搬入</option><option value="搬出">搬出</option></select></div>
+    <div class="fb-group"><div class="fb-label" data-i="fl-status">狀態</div><select class="fb-input" id="fl-status"><option value="">全部</option><option value="待審核">待審核</option><option value="已核可">已核可</option><option value="已拒絕">已拒絕</option></select></div>
+    <div class="fb-group"><div class="fb-label" data-i="fl-month">月份</div><input type="month" class="fb-input" id="fl-month"></div>
+    <div class="fb-group"><div class="fb-label" data-i="fl-search">搜尋</div><input class="fb-input" id="fl-search" placeholder="姓名/工號/房號..." style="min-width:120px"></div>
+    <button class="btn btn-primary" style="padding:7px 12px;font-size:11px" onclick="queryRecords()">🔍 <span data-i="query">查詢</span></button>
+    <button class="btn btn-green" style="padding:7px 12px;font-size:11px" onclick="exportRecordsExcel()">📤 Excel</button>
+  </div>
+  <div class="card">
+    <div class="card-hd"><span class="card-hd-icon">🗂️</span><span class="card-hd-title" data-i="tab-records">記錄查詢</span><span class="card-hd-note" id="rec-count">0 筆</span></div>
+    <div class="card-bd" style="padding:0">
+      <div class="rtable-wrap"><table class="rtable">
+        <thead><tr><th data-i="th-ts">提交時間</th><th data-i="th-type">類型</th><th data-i="th-name">姓名</th><th data-i="th-id">工號</th><th data-i="th-dept">部門</th><th data-i="th-room">房號</th><th data-i="th-movein">日期</th><th data-i="th-status">狀態</th></tr></thead>
+        <tbody id="records-body"><tr><td colspan="8" class="empty-state"><span class="empty-icon">🗂️</span><br><span data-i="empty-recs">選擇條件後點「查詢」</span></td></tr></tbody>
+      </table></div>
+    </div>
+  </div>
+</div>
+</div>
+
+<!-- ═══ GUIDE ═══ -->
+<div class="content" id="content-guide">
+<div class="main">
+  <div class="card">
+    <div class="card-hd"><span class="card-hd-icon">⚙️</span><span class="card-hd-title" data-i="cfg-title">系統設定</span></div>
+    <div class="card-bd">
+      <div class="form-grid c3">
+        <div class="fg"><div class="fg-label">GAS Web App URL</div><input class="fg-input" id="cfg-gas-url" placeholder="https://script.google.com/macros/s/.../exec"></div>
+        <div class="fg"><div class="fg-label">Telegram Bot Token</div><input class="fg-input" id="cfg-tg-token" placeholder="1234567890:AAH..."></div>
+        <div class="fg"><div class="fg-label">Telegram Chat ID</div><input class="fg-input" id="cfg-tg-chat" placeholder="-100..."></div>
+      </div>
+      <div class="btn-row" style="margin-top:8px">
+        <button class="btn btn-primary" onclick="saveCfg()">💾 <span data-i="btn-save">儲存設定</span></button>
+        <button class="btn btn-outline" onclick="testTelegram()">📤 <span data-i="btn-test-tg">測試 Telegram</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="guide-item">
+    <div class="guide-hd" onclick="toggleGuide(this)">📋 <span data-i="g-setup">建置步驟</span> <span style="margin-left:auto;font-size:10px">▶</span></div>
+    <div class="guide-bd">
+      <div class="g-step"><div class="g-num">1</div><div>建立 Google Sheets → 複製 Sheets ID</div></div>
+      <div class="g-step"><div class="g-num">2</div><div>建立 GAS 專案 → 貼入 Code.gs → 填入 CONFIG</div></div>
+      <div class="g-step"><div class="g-num">3</div><div>執行 <b>testInit</b> → 確認三個工作表已建立</div></div>
+      <div class="g-step"><div class="g-num">4</div><div>部署 Web App（所有人可存取）→ 複製 /exec URL</div></div>
+      <div class="g-step"><div class="g-num">5</div><div>將 URL 填入本頁「設定」 → 儲存</div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-hd"><span class="card-hd-icon">💾</span><span class="card-hd-title" data-i="data-mgmt">數據管理</span></div>
+    <div class="card-bd">
+      <div class="btn-row">
+        <button class="btn btn-blue" onclick="exportAllData()">📤 <span data-i="export-all">匯出全部 JSON</span></button>
+        <label class="imp-lbl">📥 <span data-i="restore">還原備份</span><input type="file" accept=".json" style="display:none" onchange="importAllData(this)"></label>
+        <button class="btn btn-outline" style="color:var(--red);border-color:var(--red)" onclick="clearAllData()">🗑️ <span data-i="clear-all">清除全部</span></button>
+      </div>
+      <p style="font-size:10px;color:var(--dim);margin-top:6px" id="db-info"></p>
+    </div>
+  </div>
+</div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+/* ═══════════════════════════════════════
+   i18n MODULE
+═══════════════════════════════════════ */
+const i18n = (() => {
+  const DICT = {
+    zh:{
+      'tab-dash':'總覽','tab-apply':'申請表單','tab-roster':'在住總表','tab-insp':'設施巡查',
+      'tab-viol':'違規記錄','tab-records':'記錄查詢','tab-guide':'設定指南',
+      'p-day':'日','p-week':'週','p-month':'月','p-year':'年','btn-refresh':'刷新',
+      'kpi-res':'在住人數','kpi-in':'搬入','kpi-out':'搬出','kpi-pend':'待審核',
+      'kpi-insp':'巡查次數','kpi-anom':'異常項目','kpi-viol':'違規記錄',
+      'chart-trend':'申請趨勢','chart-dept':'部門分佈','recent-apps':'最近申請',
+      'th-ts':'提交時間','th-type':'類型','th-name':'姓名','th-id':'工號',
+      'th-room':'房號','th-status':'狀態','th-gender':'性別','th-dept':'部門',
+      'th-movein':'日期','th-phone':'電話',
+      'empty-apps':'暫無記錄','empty-roster':'點擊「刷新」載入在住名單',
+      'empty-insp':'查詢後顯示記錄','empty-viol':'暫無違規記錄','empty-recs':'選擇條件後點「查詢」',
+      'move-in':'搬入 Move-in','move-out':'搬出 Move-out',
+      'warn-integrity':'搬出請確認所有物品已勾選歸還，未歸還或損壞物品請填備註。',
+      'sec-info':'申請人資訊','sec-room':'房間 / 日期','sec-items':'宿舍物品清單',
+      'sec-items-note':'可新增/刪減','sec-sign':'簽核欄位',
+      'f-name':'姓名','f-gender':'性別','f-id':'工號','f-dept':'部門','f-pos':'職位','f-phone':'電話',
+      'f-room':'房號','f-movedate':'搬入日期','f-applydate':'申請日期','f-reason':'申請原因',
+      'f-date':'日期','f-inspector':'巡查員','f-quarter':'季度',
+      'th-itemname':'物品名稱','th-chk':'領取 ✓','th-cond':'狀態','th-note':'備註',
+      'add-item':'新增物品',
+      'sign-applicant':'申請人','sign-reviewer':'審核人 (HR)','sign-approver':'核可人 (GA Mgr)',
+      'btn-submit-in':'📥 提交搬入','btn-submit-out':'📤 提交搬出',
+      'btn-save':'儲存草稿','btn-export':'匯出 Excel','btn-reset':'清空重填','btn-new':'新申請',
+      'refresh':'刷新','export':'匯出 Excel','import':'匯入 Excel',
+      'rs-count':'在住人數','rs-rooms':'使用房間','rs-m':'男','rs-f':'女',
+      'roster-title':'在住人員總表',
+      'insp-hd':'設施巡查表','btn-save-insp':'儲存巡查','btn-clear':'清除',
+      'fl-loc':'地點','fl-status':'狀態','fl-month':'月份','fl-search':'搜尋','fl-type':'類型',
+      'insp-history':'巡查記錄','query':'查詢',
+      'viol-new':'新增違規記錄','viol-history':'違規記錄清單',
+      'vf-type':'違規類型','vf-level':'嚴重程度','vf-desc':'描述','vf-by':'記錄人','vf-action':'處理措施',
+      'btn-save-viol':'儲存違規記錄',
+      'cfg-title':'系統設定','g-setup':'建置步驟',
+      'data-mgmt':'數據管理','export-all':'匯出全部 JSON','restore':'還原備份','clear-all':'清除全部',
+      'btn-save':'儲存設定','btn-test-tg':'測試 Telegram',
+    },
+    en:{
+      'tab-dash':'Overview','tab-apply':'Application','tab-roster':'Residents','tab-insp':'Inspection',
+      'tab-viol':'Violations','tab-records':'Records','tab-guide':'Settings',
+      'p-day':'Day','p-week':'Week','p-month':'Month','p-year':'Year','btn-refresh':'Refresh',
+      'kpi-res':'Residents','kpi-in':'Move-in','kpi-out':'Move-out','kpi-pend':'Pending',
+      'kpi-insp':'Inspections','kpi-anom':'Anomalies','kpi-viol':'Violations',
+      'chart-trend':'Application Trend','chart-dept':'By Department','recent-apps':'Recent Applications',
+      'th-ts':'Submitted','th-type':'Type','th-name':'Name','th-id':'ID','th-room':'Room',
+      'th-status':'Status','th-gender':'Gender','th-dept':'Dept','th-movein':'Date','th-phone':'Phone',
+      'empty-apps':'No records','empty-roster':'Click Refresh to load residents',
+      'empty-insp':'Query to view records','empty-viol':'No violation records','empty-recs':'Select filters and query',
+      'move-in':'Move-in','move-out':'Move-out',
+      'warn-integrity':'Move-out: confirm all items returned. Note damaged/lost items.',
+      'sec-info':'Applicant Info','sec-room':'Room / Date','sec-items':'Dormitory Items',
+      'sec-items-note':'Add/remove items','sec-sign':'Approval Signatures',
+      'f-name':'Name','f-gender':'Gender','f-id':'ID No.','f-dept':'Dept','f-pos':'Position','f-phone':'Phone',
+      'f-room':'Room No.','f-movedate':'Move-in Date','f-applydate':'Apply Date','f-reason':'Reason',
+      'f-date':'Date','f-inspector':'Inspector','f-quarter':'Quarter',
+      'th-itemname':'Item Name','th-chk':'Recv ✓','th-cond':'Condition','th-note':'Notes',
+      'add-item':'Add Item',
+      'sign-applicant':'Applicant','sign-reviewer':'Reviewer (HR)','sign-approver':'Approver (GA Mgr)',
+      'btn-submit-in':'📥 Submit Move-in','btn-submit-out':'📤 Submit Move-out',
+      'btn-save':'Save Draft','btn-export':'Export Excel','btn-reset':'Reset Form','btn-new':'New Application',
+      'refresh':'Refresh','export':'Export','import':'Import Excel',
+      'rs-count':'Residents','rs-rooms':'Rooms Used','rs-m':'Male','rs-f':'Female',
+      'roster-title':'Current Residents',
+      'insp-hd':'Facility Inspection','btn-save-insp':'Save Inspection','btn-clear':'Clear',
+      'fl-loc':'Location','fl-status':'Status','fl-month':'Month','fl-search':'Search','fl-type':'Type',
+      'insp-history':'Inspection Records','query':'Search',
+      'viol-new':'New Violation Record','viol-history':'Violation List',
+      'vf-type':'Violation Type','vf-level':'Severity','vf-desc':'Description','vf-by':'Recorded By','vf-action':'Action Taken',
+      'btn-save-viol':'Save Violation',
+      'cfg-title':'System Settings','g-setup':'Setup Steps',
+      'data-mgmt':'Data Management','export-all':'Export All JSON','restore':'Restore Backup','clear-all':'Clear All',
+      'btn-save':'Save Settings','btn-test-tg':'Test Telegram',
+    },
+    km:{
+      'tab-dash':'ទិដ្ឋភាព','tab-apply':'ទម្រង់','tab-roster':'អ្នករស់នៅ','tab-insp':'ត្រួតពិនិត្យ',
+      'tab-viol':'ល្មើស','tab-records':'កំណត់ត្រា','tab-guide':'ការកំណត់',
+      'p-day':'ថ្ងៃ','p-week':'សប្តាហ៍','p-month':'ខែ','p-year':'ឆ្នាំ','btn-refresh':'ផ្ទុកឡើងវិញ',
+      'kpi-res':'អ្នករស់នៅ','kpi-in':'ចូល','kpi-out':'ចេញ','kpi-pend':'រង់ចាំ',
+      'kpi-insp':'ត្រួតពិនិត្យ','kpi-anom':'អ្វីខុស','kpi-viol':'ល្មើស',
+      'move-in':'ចូល Move-in','move-out':'ចេញ Move-out',
+      'warn-integrity':'ពិនិត្យ: ត្រូវវិលខ្ចប់របស់ទាំងអស់ ។',
+      'f-name':'ឈ្មោះ','f-gender':'ភេទ','f-id':'លេខអ្នកបម្រើ','f-dept':'នាយកដ្ឋាន',
+      'f-room':'លេខបន្ទប់','f-date':'កាលបរិច្ឆេទ',
+      'rs-count':'អ្នករស់នៅ','rs-rooms':'បន្ទប់','rs-m':'ប្រុស','rs-f':'ស្រី',
+      'query':'ស្វែងរក','refresh':'ផ្ទុកឡើងវិញ','export':'នាំចេញ','import':'នាំចូល',
+      'btn-save':'រក្សាទុក','btn-reset':'សម្អាត','btn-new':'ថ្មី',
+    }
+  };
+  let _lang = 'zh';
+  const setLang = (l) => {
+    _lang = l;
+    document.querySelectorAll('.lbtn').forEach((b,i) => b.classList.toggle('active', ['zh','en','km'][i] === l));
+    const dict = DICT[l] || DICT.zh;
+    document.querySelectorAll('[data-i]').forEach(el => {
+      const k = el.getAttribute('data-i');
+      if (dict[k]) el.textContent = dict[k];
+    });
+    if (state) { state.applyFormType(); }
+    updateLocTabLabels();
+  };
+  const t = (k) => (DICT[_lang] || DICT.zh)[k] || k;
+  const getLang = () => _lang;
+  return { setLang, t, getLang };
+})();
+
+/* ═══════════════════════════════════════
+   DATE ENGINE MODULE
+═══════════════════════════════════════ */
+const dateEngine = (() => {
+  let _period = 'day';
+  const fmt = (d) => d.toISOString().split('T')[0];
+  const getRange = () => {
+    const now = new Date();
+    let from = new Date(), to = new Date(now);
+    if (_period === 'day') {
+      from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    } else if (_period === 'week') {
+      const dow = now.getDay();
+      from = new Date(now); from.setDate(now.getDate() - dow);
+    } else if (_period === 'month') {
+      from = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else if (_period === 'year') {
+      from = new Date(now.getFullYear(), 0, 1);
+    }
+    const fi = document.getElementById('dash-from');
+    const ti = document.getElementById('dash-to');
+    if (fi && fi.value) return { from: fi.value, to: ti && ti.value ? ti.value : fmt(to) };
+    return { from: fmt(from), to: fmt(to) };
+  };
+  const setPeriod = (p, el) => {
+    _period = p;
+    document.querySelectorAll('.period-tabs .ptab').forEach(t => t.classList.remove('active'));
+    if (el) el.classList.add('active');
+    const r = getRange();
+    const fi = document.getElementById('dash-from');
+    const ti = document.getElementById('dash-to');
+    if (fi) fi.value = r.from;
+    if (ti) ti.value = r.to;
+    dashboard.render();
+  };
+  return { setPeriod, getRange, fmt };
+})();
+
+/* ═══════════════════════════════════════
+   STATE MODULE
+═══════════════════════════════════════ */
+const STORAGE_KEY = 'vrt_dorm_hub_v2';
+const DEFAULT_ITEMS = [
+  {name:'床單 Sheet', checked:false, condition:'Good', note:''},
+  {name:'床墊 Mattress', checked:false, condition:'Good', note:''},
+  {name:'冷氣 Aircon', checked:false, condition:'Good', note:''},
+  {name:'風扇 Fan', checked:false, condition:'Good', note:''},
+  {name:'枕頭 Pillow', checked:false, condition:'Good', note:''},
+];
+const state = (() => {
+  let _db = { records:[], inspections:[], violations:[], roster:[] };
+  let _items = JSON.parse(JSON.stringify(DEFAULT_ITEMS));
+  let _formType = 'in';
+  let _currentTs = '';
+  const load = () => {
+    try { _db = JSON.parse(localStorage.getItem(STORAGE_KEY)) || _db; } catch(e) {}
+    if (!_db.records)     _db.records = [];
+    if (!_db.inspections) _db.inspections = [];
+    if (!_db.violations)  _db.violations = [];
+    if (!_db.roster)      _db.roster = [];
+  };
+  const save = () => {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(_db)); } catch(e) {}
+    updateDbInfo();
+  };
+  const getDb = () => _db;
+  const setFormType = (t) => { _formType = t; applyFormType(); };
+  const getFormType = () => _formType;
+  const getItems = () => _items;
+  const setItems = (v) => { _items = v; renderItems(); };
+  const applyFormType = () => {
+    const t = i18n.t;
+    const bi  = document.getElementById('btn-type-in');
+    const bo  = document.getElementById('btn-type-out');
+    const btn = document.getElementById('btn-submit');
+    const lbl = document.getElementById('lbl-submit');
+    const thChk = document.getElementById('th-chk');
+    const lblD   = document.getElementById('lbl-date');
+    const lblR   = document.getElementById('lbl-reason');
+    const warn   = document.getElementById('warn-box');
+    if (!bi) return;
+    bi.className = 'type-btn' + (_formType==='in' ? ' move-in' : '');
+    bo.className = 'type-btn' + (_formType==='out' ? ' move-out' : '');
+    if (_formType === 'in') {
+      if (btn) btn.className = 'btn btn-green';
+      if (lbl) lbl.setAttribute('data-i', 'btn-submit-in'), lbl.textContent = i18n.t('btn-submit-in');
+      if (thChk) thChk.textContent = '領取 ✓';
+      if (warn) warn.classList.remove('show');
+    } else {
+      if (btn) btn.className = 'btn btn-red';
+      if (lbl) lbl.setAttribute('data-i', 'btn-submit-out'), lbl.textContent = i18n.t('btn-submit-out');
+      if (thChk) thChk.textContent = '歸還 ✓';
+      if (warn) warn.classList.add('show');
+    }
+  };
+  const updateTs = () => {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2,'0');
+    _currentTs = `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+    const el1 = document.getElementById('ts-now');
+    if (el1) el1.textContent = _currentTs;
+    const fd = document.getElementById('f-applydate');
+    if (fd) fd.value = _currentTs.split(' ')[0];
+    const vfd = document.getElementById('vf-date');
+    if (vfd && !vfd.value) vfd.value = _currentTs.split(' ')[0];
+    const id = document.getElementById('insp-date');
+    if (id && !id.value) id.value = _currentTs.split(' ')[0];
+    const q = document.getElementById('insp-quarter');
+    if (q && !q.value) { const m = d.getMonth()+1; q.value = m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4'; }
+  };
+  const getTs = () => _currentTs;
+  return { load, save, getDb, setFormType, getFormType, getItems, setItems, applyFormType, updateTs, getTs };
+})();
+
+/* ═══════════════════════════════════════
+   API MODULE
+═══════════════════════════════════════ */
+const api = (() => {
+  const getCfg = () => {
+    try { return JSON.parse(localStorage.getItem('vrt_dorm_hub_cfg')) || {}; } catch(e) { return {}; }
+  };
+  const gasPost = async (payload) => {
+    const cfg = getCfg();
+    if (!cfg.gasUrl) return { ok:false, err:'GAS URL 未設定' };
+    const body = new URLSearchParams({ payload: JSON.stringify(payload) });
+    const res = await fetch(cfg.gasUrl, { method:'POST', body, headers:{'Content-Type':'application/x-www-form-urlencoded'} });
+    return res.json();
+  };
+  const sendTelegram = async (msg) => {
+    const cfg = getCfg();
+    if (!cfg.tgToken || !cfg.tgChat) { ui.toast('⚠️ Telegram 未設定'); return; }
+    const url = `https://api.telegram.org/bot${cfg.tgToken}/sendMessage`;
+    await fetch(url, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ chat_id: cfg.tgChat, text: msg, parse_mode:'HTML' }) });
+  };
+  return { gasPost, sendTelegram, getCfg };
+})();
+
+/* ═══════════════════════════════════════
+   UI MODULE
+═══════════════════════════════════════ */
+const ui = (() => {
+  let _currentTab = 'dash';
+  const switchTab = (t) => {
+    _currentTab = t;
+    document.querySelectorAll('.tab').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+    const tb = document.querySelector(`[data-tab="${t}"]`);
+    if (tb) tb.classList.add('active');
+    const ct = document.getElementById(`content-${t}`);
+    if (ct) ct.classList.add('active');
+    if (t === 'dash') dashboard.render();
+    if (t === 'roster') loadRoster();
+    if (t === 'records') queryRecords();
+    if (t === 'viol') viol.renderList();
+    if (t === 'insp') insp.renderTable();
+  };
+  const toast = (msg, dur=3000) => {
+    const el = document.getElementById('toast');
+    el.textContent = msg; el.classList.add('show');
+    clearTimeout(el._t);
+    el._t = setTimeout(() => el.classList.remove('show'), dur);
+  };
+  return { switchTab, toast };
+})();
+
+/* ═══════════════════════════════════════
+   CHART MODULE
+═══════════════════════════════════════ */
+const charts = (() => {
+  const _instances = {};
+  const PALETTE = ['#5B4FCF','#2E8B57','#D64141','#C17D2A','#3069BE','#7C3AED','#0891B2'];
+  const render = (id, type, labels, datasets, opts={}) => {
+    if (_instances[id]) _instances[id].destroy();
+    const ctx = document.getElementById(id);
+    if (!ctx) return;
+    _instances[id] = new Chart(ctx, {
+      type,
+      data: { labels, datasets },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { labels:{ font:{ size:10, family:'DM Sans' }, color:'#4A4870' } }, tooltip:{ bodyFont:{size:11} } },
+        scales: type==='bar'||type==='line' ? {
+          x: { ticks:{ font:{size:9}, color:'#8884AB' }, grid:{ color:'#EAE7F5' } },
+          y: { ticks:{ font:{size:9}, color:'#8884AB' }, grid:{ color:'#EAE7F5' } }
+        } : {},
+        ...opts
+      }
+    });
+  };
+  return { render, PALETTE };
+})();
+
+/* ═══════════════════════════════════════
+   DASHBOARD MODULE
+═══════════════════════════════════════ */
+const dashboard = (() => {
+  const render = () => {
+    const db = state.getDb();
+    const { from, to } = dateEngine.getRange();
+    const inRange = (r) => {
+      const d = (r.timestamp||r.date||'').split(' ')[0];
+      return d >= from && d <= to;
+    };
+    const filtered = db.records.filter(inRange);
+    const roster = db.records.filter(r => r.type==='搬入' && r.status==='已核可').filter(ri =>
+      !db.records.find(ro => ro.idNo===ri.idNo && ro.type==='搬出' && ro.status==='已核可' && ro.date > ri.date)
+    );
+    const moveIns  = filtered.filter(r => r.type==='搬入').length;
+    const moveOuts = filtered.filter(r => r.type==='搬出').length;
+    const pending  = db.records.filter(r => r.status==='待審核').length;
+    const inspCount= db.inspections.filter(inRange).length;
+    const anomCount= db.inspections.reduce((s,r) => inRange(r) ? s + (r.anomalies||0) : s, 0);
+    const violCount= db.violations.filter(inRange).length;
+    document.getElementById('kpi-residents').textContent  = roster.length;
+    document.getElementById('kpi-movein').textContent     = moveIns;
+    document.getElementById('kpi-moveout').textContent    = moveOuts;
+    document.getElementById('kpi-pending').textContent    = pending;
+    document.getElementById('kpi-inspections').textContent= inspCount;
+    document.getElementById('kpi-anomaly').textContent    = anomCount;
+    document.getElementById('kpi-violations').textContent = violCount;
+    // Trend chart
+    const days = []; const inCounts = []; const outCounts = [];
+    const startD = new Date(from); const endD = new Date(to);
+    for (let d = new Date(startD); d <= endD; d.setDate(d.getDate()+1)) {
+      const ds = d.toISOString().split('T')[0];
+      days.push(ds.slice(5));
+      inCounts.push(db.records.filter(r => r.type==='搬入' && (r.timestamp||'').startsWith(ds)).length);
+      outCounts.push(db.records.filter(r => r.type==='搬出' && (r.timestamp||'').startsWith(ds)).length);
+    }
+    charts.render('chart-trend','bar',days.slice(-14),[
+      { label:'搬入', data:inCounts.slice(-14), backgroundColor:'rgba(46,139,87,.7)', borderRadius:3 },
+      { label:'搬出', data:outCounts.slice(-14), backgroundColor:'rgba(214,65,65,.7)', borderRadius:3 },
+    ]);
+    // Dept chart
+    const deptMap = {};
+    roster.forEach(r => { deptMap[r.department||'Other'] = (deptMap[r.department||'Other']||0)+1; });
+    const depts = Object.keys(deptMap);
+    charts.render('chart-dept','doughnut',depts,
+      [{ data:depts.map(d=>deptMap[d]), backgroundColor:charts.PALETTE, borderWidth:2, borderColor:'#fff' }]
+    );
+    // Recent
+    const tbody = document.getElementById('recent-body');
+    const recent = [...db.records].sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||'')).slice(0,8);
+    if (!recent.length) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-state"><span class="empty-icon">📋</span><br><span data-i="empty-apps">${i18n.t('empty-apps')}</span></td></tr>`;
+    } else {
+      tbody.innerHTML = recent.map(r => {
+        const badge = r.type==='搬入' ? `<span class="badge b-in">搬入</span>` : `<span class="badge b-out">搬出</span>`;
+        const statusBadge = {'待審核':'b-pend','已核可':'b-done','已拒絕':'b-rej'}[r.status] || 'b-pend';
+        return `<tr><td>${(r.timestamp||'').substring(0,16)}</td><td>${badge}</td><td>${esc(r.name||'')}</td><td>${esc(r.idNo||'')}</td><td>${esc(r.roomNo||'')}</td><td><span class="badge ${statusBadge}">${r.status||'待審核'}</span></td></tr>`;
+      }).join('');
+    }
+  };
+  return { render };
+})();
+
+/* ═══════════════════════════════════════
+   INSPECTION MODULE
+═══════════════════════════════════════ */
+const INSP_COLS = [
+  {g:'ac',  k:'gas'},  {g:'ac', k:'fan'}, {g:'ac',k:'control'},
+  {g:'ac',  k:'leakage'},{g:'ac',k:'capacitor'},{g:'ac',k:'watertank'},{g:'ac',k:'electricity'},
+  {g:'room',k:'ceiling'},{g:'room',k:'door'},{g:'room',k:'window'},
+  {g:'wc',  k:'handSpray'},{g:'wc',k:'waterFlush'},{g:'wc',k:'waterHeater'},
+  {g:'wc',  k:'sink'},{g:'wc',k:'shower'},{g:'wc',k:'others'},
+];
+const INSP_GROUPS = [
+  {k:'ac',  label:'A/C 冷氣',    cls:'grp-ac',   cols: INSP_COLS.filter(c=>c.g==='ac')},
+  {k:'room',label:'Room 房間',   cls:'grp-room', cols: INSP_COLS.filter(c=>c.g==='room')},
+  {k:'wc',  label:'WC 廁所',     cls:'grp-wc',   cols: INSP_COLS.filter(c=>c.g==='wc')},
+];
+const INSP_COL_LABELS = {
+  gas:'Gas',fan:'Fan',control:'Ctrl',leakage:'Leak',capacitor:'Cap',watertank:'Water',electricity:'Elec',
+  ceiling:'Ceil',door:'Door',window:'Win',
+  handSpray:'Spray',waterFlush:'Flush',waterHeater:'Heater',sink:'Sink',shower:'Shower',others:'Other'
+};
+const DEF_ROOMS = {
+  factory:    ['車間A','車間B','車間C','倉庫','配電房','機修房'],
+  foreignDorm:['#201','#202','#203','#301','#302','#303','#304','#401','#402','#403','#404'],
+  localDorm:  ['#101','#102','#103','#201','#202','#203'],
+  office:     ['主任室','會議室','人事部','財務部','前台'],
+};
+const insp = (() => {
+  let _curLoc = 'foreignDorm';
+  let _formData = {};
+  const setLoc = (loc, el) => {
+    _curLoc = loc;
+    document.querySelectorAll('.loc-tab').forEach(t => t.classList.remove('active'));
+    if (el) el.classList.add('active');
+    _formData = {};
+    renderTable();
+  };
+  const cycleVal = (v) => ({ '':' N','N':'X','X':'-','-':'' })[v] ?? '';
+  const dispSym  = (v) => ({ 'N':'✓','X':'✗','-':'−' })[v] || '';
+  const renderTable = () => {
+    const db = state.getDb();
+    const rooms = (db.settings && db.settings.rooms && db.settings.rooms[_curLoc]) || DEF_ROOMS[_curLoc] || [];
+    let html = `<table class="insp-tbl">
+      <thead>
+        <tr><th rowspan="2" class="room-cell">Room</th>
+          ${INSP_GROUPS.map(g => `<th colspan="${g.cols.length}" class="grp-hd ${g.cls}">${g.label}</th>`).join('')}
+          <th rowspan="2" style="min-width:90px;font-size:9px">備註<br>Remarks</th>
+        </tr>
+        <tr>${INSP_COLS.map(c => `<th>${INSP_COL_LABELS[c.k]||c.k}</th>`).join('')}</tr>
+      </thead><tbody>`;
+    rooms.forEach(room => {
+      if (!_formData[room]) _formData[room] = {};
+      html += `<tr><td class="room-cell">${esc(room)}</td>`;
+      INSP_COLS.forEach(col => {
+        const v = _formData[room][col.k] || '';
+        html += `<td><div class="sc" data-v="${v}" data-room="${esc(room)}" data-col="${col.k}" onclick="insp.tap(this)">${dispSym(v)}</div></td>`;
+      });
+      html += `<td><input class="rm-input" data-room="${esc(room)}" value="${esc(_formData[room].remarks||'')}" oninput="insp.setRemark(this)" placeholder="—"></td></tr>`;
+    });
+    html += `</tbody></table>`;
+    document.getElementById('insp-table-wrap').innerHTML = html;
+    updateAbnAlert();
+  };
+  const tap = (el) => {
+    const room = el.getAttribute('data-room');
+    const col  = el.getAttribute('data-col');
+    if (!_formData[room]) _formData[room] = {};
+    const cur = _formData[room][col] || '';
+    const next = cycleVal(cur);
+    _formData[room][col] = next;
+    el.setAttribute('data-v', next);
+    el.textContent = dispSym(next);
+    updateAbnAlert();
+  };
+  const setRemark = (el) => {
+    const room = el.getAttribute('data-room');
+    if (!_formData[room]) _formData[room] = {};
+    _formData[room].remarks = el.value;
+  };
+  const updateAbnAlert = () => {
+    const abn = [];
+    Object.keys(_formData).forEach(room => {
+      INSP_COLS.forEach(col => {
+        if (_formData[room][col.k] === 'X') abn.push(`${room}: ${INSP_COL_LABELS[col.k]||col.k}`);
+      });
+    });
+    const el = document.getElementById('abn-alert');
+    if (abn.length) {
+      el.style.display = 'block';
+      el.innerHTML = `⚠️ 異常 ${abn.length} 項: ${abn.slice(0,5).join(', ')}${abn.length>5?' ...':''}`;
+    } else {
+      el.style.display = 'none';
+    }
+  };
+  const countAnomalies = () => {
+    let n = 0;
+    Object.keys(_formData).forEach(room => INSP_COLS.forEach(c => { if (_formData[room][c.k]==='X') n++; }));
+    return n;
+  };
+  const save = () => {
+    const inspector = document.getElementById('insp-inspector').value.trim();
+    const date = document.getElementById('insp-date').value;
+    const quarter = document.getElementById('insp-quarter').value;
+    if (!inspector || !date) { ui.toast('⚠️ 請填寫巡查員和日期'); return; }
+    const record = {
+      id: Date.now().toString(36), timestamp: new Date().toISOString(),
+      date, quarter, location: _curLoc, inspector,
+      data: JSON.parse(JSON.stringify(_formData)),
+      anomalies: countAnomalies()
+    };
+    const db = state.getDb();
+    db.inspections.push(record);
+    state.save();
+    ui.toast(`✅ 巡查已儲存 (異常 ${record.anomalies} 項)`);
+    sendTelegram();
+  };
+  const sendTelegram = async () => {
+    const abn = []; const inspector = document.getElementById('insp-inspector').value.trim();
+    const date = document.getElementById('insp-date').value;
+    Object.keys(_formData).forEach(room => INSP_COLS.forEach(c => {
+      if (_formData[room][c.k]==='X') abn.push(`${room}: ${INSP_COL_LABELS[c.k]}`);
+    }));
+    const msg = `🔍 <b>VRT 設施巡查 Inspection</b>\n📍 地點: ${_curLoc}\n📅 日期: ${date}\n👤 巡查員: ${inspector}\n⚠️ 異常: ${abn.length} 項\n${abn.map(a=>`  • ${a}`).join('\n')}`;
+    await api.sendTelegram(msg);
+    ui.toast('📤 Telegram 已發送');
+  };
+  const renderHistory = () => {
+    const loc = document.getElementById('ifl-loc').value;
+    const status = document.getElementById('ifl-status').value;
+    const month = document.getElementById('ifl-month').value;
+    const db = state.getDb();
+    let recs = db.inspections.filter(r => {
+      if (loc && r.location !== loc) return false;
+      if (month && !r.date.startsWith(month)) return false;
+      if (status === 'abn' && r.anomalies === 0) return false;
+      if (status === 'normal' && r.anomalies > 0) return false;
+      return true;
+    }).sort((a,b) => (b.timestamp||'').localeCompare(a.timestamp||''));
+    const wrap = document.getElementById('insp-hist-wrap');
+    if (!recs.length) { wrap.innerHTML = `<div class="empty-state"><span class="empty-icon">🔍</span><br>${i18n.t('empty-insp')}</div>`; return; }
+    wrap.innerHTML = `<div style="padding:6px 12px;font-size:10px;color:var(--dim)">共 ${recs.length} 筆</div>
+      <div class="rtable-wrap"><table class="rtable">
+        <thead><tr><th>日期</th><th>地點</th><th>巡查員</th><th>季度</th><th>異常</th></tr></thead>
+        <tbody>${recs.map(r => `<tr>
+          <td>${r.date||''}</td><td>${r.location||''}</td><td>${r.inspector||''}</td><td>${r.quarter||''}</td>
+          <td>${r.anomalies>0?`<span class="badge viol-badge">${r.anomalies}</span>`:'✅ 0'}</td>
+        </tr>`).join('')}</tbody></table></div>`;
+  };
+  const clearForm = () => { _formData = {}; renderTable(); };
+  const exportExcel = () => {
+    const rows = [];
+    Object.keys(_formData).forEach(room => {
+      const row = { Room: room };
+      INSP_COLS.forEach(c => row[INSP_COL_LABELS[c.k]||c.k] = _formData[room][c.k]||'');
+      row['Remarks'] = _formData[room].remarks || '';
+      rows.push(row);
+    });
+    if (!rows.length) { ui.toast('無資料'); return; }
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Inspection');
+    XLSX.writeFile(wb, `VRT_Inspection_${document.getElementById('insp-date').value||'export'}.xlsx`);
+    ui.toast('✅ 已下載');
+  };
+  return { setLoc, tap, setRemark, save, sendTelegram, renderHistory, clearForm, exportExcel, renderTable };
+})();
+
+/* ═══════════════════════════════════════
+   VIOLATIONS MODULE
+═══════════════════════════════════════ */
+const viol = (() => {
+  const save = () => {
+    const name = document.getElementById('vf-name').value.trim();
+    const id   = document.getElementById('vf-id').value.trim();
+    const room = document.getElementById('vf-room').value.trim();
+    const date = document.getElementById('vf-date').value;
+    const type = document.getElementById('vf-type').value;
+    const level= document.getElementById('vf-level').value;
+    const desc = document.getElementById('vf-desc').value.trim();
+    const by   = document.getElementById('vf-by').value.trim();
+    const act  = document.getElementById('vf-action').value.trim();
+    if (!name || !date || !type) { ui.toast('⚠️ 請填寫姓名、日期、違規類型'); return; }
+    const record = { id: Date.now().toString(36), timestamp: new Date().toISOString(), name, idNo:id, roomNo:room, date, type, level, desc, recordedBy:by, action:act };
+    const db = state.getDb();
+    db.violations.push(record);
+    state.save();
+    renderList();
+    ui.toast('🚫 違規記錄已儲存');
+    ['vf-name','vf-id','vf-room','vf-desc','vf-by','vf-action'].forEach(f => { const el=document.getElementById(f); if(el) el.value=''; });
+  };
+  const renderList = () => {
+    const db = state.getDb();
+    const tbody = document.getElementById('viol-body');
+    if (!db.violations.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="empty-state"><span class="empty-icon">🚫</span><br>${i18n.t('empty-viol')}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = [...db.violations].reverse().map(r => `<tr>
+      <td>${r.date||''}</td><td>${esc(r.name||'')}</td><td>${esc(r.roomNo||'')}</td>
+      <td>${esc(r.type||'')}</td><td><span class="badge viol-badge">${r.level||''}</span></td>
+      <td style="max-width:150px">${esc(r.desc||'')}</td>
+      <td><button onclick="viol.del('${r.id}')" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></td>
+    </tr>`).join('');
+  };
+  const del = (id) => {
+    if (!confirm('確定刪除？')) return;
+    const db = state.getDb();
+    db.violations = db.violations.filter(r => r.id !== id);
+    state.save(); renderList(); ui.toast('已刪除');
+  };
+  const sendTelegram = async () => {
+    const name = document.getElementById('vf-name').value.trim();
+    const room = document.getElementById('vf-room').value.trim();
+    const type = document.getElementById('vf-type').value;
+    const level= document.getElementById('vf-level').value;
+    const desc = document.getElementById('vf-desc').value.trim();
+    const msg = `🚫 <b>VRT 違規記錄 Violation</b>\n👤 ${name} (${room})\n📌 類型: ${type}\n⚠️ 嚴重程度: ${level}\n📋 描述: ${desc}`;
+    await api.sendTelegram(msg);
+    ui.toast('📤 Telegram 已發送');
+  };
+  const exportExcel = () => {
+    const db = state.getDb();
+    if (!db.violations.length) { ui.toast('無資料'); return; }
+    const ws = XLSX.utils.json_to_sheet(db.violations);
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Violations');
+    XLSX.writeFile(wb, `VRT_Violations_${new Date().toISOString().slice(0,10)}.xlsx`);
+    ui.toast('✅ 已下載');
+  };
+  return { save, renderList, del, sendTelegram, exportExcel };
+})();
+
+/* ═══════════════════════════════════════
+   ITEMS CRUD
+═══════════════════════════════════════ */
+function renderItems() {
+  const items = state.getItems();
+  const tbody = document.getElementById('items-body');
+  tbody.innerHTML = items.map((it, i) => `<tr>
+    <td class="rn">${i+1}</td>
+    <td><input type="text" value="${esc(it.name)}" data-idx="${i}" data-field="name" onchange="updateItem(this)" placeholder="物品名稱"></td>
+    <td style="text-align:center"><input type="checkbox" ${it.checked?'checked':''} data-idx="${i}" onchange="state.getItems()[${i}].checked=this.checked"></td>
+    <td><select data-idx="${i}" onchange="state.getItems()[${i}].condition=this.value">
+      <option value="Good"${it.condition==='Good'?' selected':''}>Good 良好</option>
+      <option value="Fair"${it.condition==='Fair'?' selected':''}>Fair 尚可</option>
+      <option value="Damaged"${it.condition==='Damaged'?' selected':''}>Damaged 損壞</option>
+      <option value="Lost"${it.condition==='Lost'?' selected':''}>Lost 遺失</option>
+    </select></td>
+    <td><input type="text" value="${esc(it.note)}" data-idx="${i}" data-field="note" onchange="updateItem(this)" placeholder="—"></td>
+    <td><button class="del-btn" onclick="removeItem(${i})">✕</button></td>
+  </tr>`).join('');
+}
+function updateItem(el) {
+  const idx = parseInt(el.getAttribute('data-idx'));
+  const field = el.getAttribute('data-field');
+  state.getItems()[idx][field] = el.value;
+}
+function addItem() {
+  state.getItems().push({name:'', checked:false, condition:'Good', note:''});
+  renderItems();
+}
+function removeItem(i) {
+  const items = state.getItems();
+  if (items.length <= 1) { ui.toast('至少保留一個物品'); return; }
+  items.splice(i, 1); renderItems();
+}
+
+/* ═══════════════════════════════════════
+   FORM FUNCTIONS
+═══════════════════════════════════════ */
+function gv(id) { const el=document.getElementById(id); return el?el.value.trim():''; }
+function sv(id,v) { const el=document.getElementById(id); if(el) el.value=v; }
+function esc(s) { return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;'); }
+
+function saveLocal() {
+  const data = {
+    type: state.getFormType(), name:gv('f-name'), gender:gv('f-gender'), id:gv('f-id'),
+    dept:gv('f-dept'), pos:gv('f-pos'), phone:gv('f-phone'),
+    room:gv('f-room'), date:gv('f-date'), reason:gv('f-reason'),
+    applicant:gv('f-applicant'), reviewer:gv('f-reviewer'), approver:gv('f-approver'),
+    items: JSON.parse(JSON.stringify(state.getItems()))
+  };
+  localStorage.setItem('vrt_dorm_hub_draft', JSON.stringify(data));
+  ui.toast('💾 草稿已儲存');
+}
+
+function resetForm() {
+  if (!confirm('確定清空所有欄位？')) return;
+  ['f-name','f-gender','f-id','f-dept','f-pos','f-phone','f-room','f-reason','f-applicant','f-reviewer','f-approver'].forEach(id => sv(id,''));
+  sv('f-date', new Date().toISOString().split('T')[0]);
+  state.setItems(JSON.parse(JSON.stringify(DEFAULT_ITEMS)));
+  state.setFormType('in');
+  localStorage.removeItem('vrt_dorm_hub_draft');
+  document.getElementById('status-card').style.display = 'none';
+  document.getElementById('apply-form-wrap').style.display = 'block';
+  ui.toast('🔄 已清空');
+}
+
+async function submitForm() {
+  const checks = [
+    ['f-name','請輸入姓名'],['f-gender','請選擇性別'],['f-id','請輸入工號'],
+    ['f-dept','請輸入部門'],['f-room','請輸入房號'],['f-date','請選擇日期'],['f-reason','請輸入原因']
+  ];
+  for (const [id, msg] of checks) { if (!gv(id)) { ui.toast('⚠️ '+msg); return; } }
+  const validItems = state.getItems().filter(it => it.name.trim());
+  if (!validItems.length) { ui.toast('請至少填入一個物品名稱'); return; }
+  const btn = document.getElementById('btn-submit');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>送出中...';
+  const formType = state.getFormType();
+  const record = {
+    id: Date.now().toString(36), timestamp: state.getTs(),
+    type: formType==='in'?'搬入':'搬出', status: '待審核',
+    name:gv('f-name'), gender:gv('f-gender'), idNo:gv('f-id'),
+    department:gv('f-dept'), position:gv('f-pos'), phone:gv('f-phone'),
+    roomNo:gv('f-room'), date:gv('f-date'), reason:gv('f-reason'),
+    applicant:gv('f-applicant'), reviewer:gv('f-reviewer'), approver:gv('f-approver'),
+    items: JSON.parse(JSON.stringify(validItems))
+  };
+  try {
+    const db = state.getDb();
+    db.records.push(record);
+    state.save();
+    // Send to Telegram
+    const tgMsg = `${formType==='in'?'📥 搬入申請':'📤 搬出申請'} <b>VRT 宿舍</b>\n👤 ${record.name} (${record.idNo})\n🚪 房號: ${record.roomNo}\n📅 日期: ${record.date}\n🏢 部門: ${record.department}\n📋 原因: ${record.reason}\n⏰ ${record.timestamp}`;
+    await api.sendTelegram(tgMsg);
+    // Cloud sync
+    try { await api.gasPost({ action:'dormSubmit', data: record }); } catch(e) {}
+    document.getElementById('status-card').style.display = 'block';
+    document.getElementById('apply-form-wrap').style.display = 'none';
+    document.getElementById('s-icon').textContent = '✅';
+    document.getElementById('s-title').textContent = formType==='in'?'搬入申請成功！':'搬出申請成功！';
+    document.getElementById('s-sub').textContent = `${record.name} · ${record.roomNo} · ${record.date}`;
+    document.getElementById('s-ts').textContent = record.timestamp;
+    localStorage.removeItem('vrt_dorm_hub_draft');
+  } catch(e) {
+    ui.toast('⚠️ 提交失敗：'+e.message);
+  }
+  btn.disabled = false; btn.innerHTML = `<span id="lbl-submit">${formType==='in'?'📥 提交搬入':'📤 提交搬出'}</span>`;
+}
+
+function exportFormExcel() {
+  const items = state.getItems();
+  const data = [{
+    Type:state.getFormType()==='in'?'搬入':'搬出', Name:gv('f-name'), Gender:gv('f-gender'),
+    ID:gv('f-id'), Dept:gv('f-dept'), Room:gv('f-room'), Date:gv('f-date'), Reason:gv('f-reason')
+  }, ...items.map(it => ({ Item:it.name, Received:it.checked?'Y':'N', Condition:it.condition, Note:it.note }))];
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'DormApplication');
+  XLSX.writeFile(wb, `VRT_Dorm_${gv('f-name')||'form'}_${gv('f-date')||'export'}.xlsx`);
+  ui.toast('✅ 已下載');
+}
+
+/* ═══════════════════════════════════════
+   ROSTER
+═══════════════════════════════════════ */
+function loadRoster() {
+  const db = state.getDb();
+  // Compute current residents from records
+  const moveIns = db.records.filter(r => r.type==='搬入');
+  const moveOuts = db.records.filter(r => r.type==='搬出');
+  const roster = moveIns.filter(ri => !moveOuts.find(ro => ro.idNo===ri.idNo && ro.date >= ri.date));
+  document.getElementById('rs-count').textContent  = roster.length;
+  document.getElementById('rs-rooms').textContent  = new Set(roster.map(r=>r.roomNo)).size;
+  document.getElementById('rs-male').textContent   = roster.filter(r=>r.gender==='Male').length;
+  document.getElementById('rs-female').textContent = roster.filter(r=>r.gender==='Female').length;
+  const tbody = document.getElementById('roster-body');
+  if (!roster.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state"><span class="empty-icon">👥</span><br>${i18n.t('empty-roster')}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = roster.map((r,i) => `<tr>
+    <td>${i+1}</td><td><strong>${esc(r.name||'')}</strong></td><td>${r.gender||''}</td>
+    <td>${esc(r.idNo||'')}</td><td>${esc(r.department||'')}</td>
+    <td><strong>${esc(r.roomNo||'')}</strong></td><td>${r.date||''}</td><td>${esc(r.phone||'')}</td>
+  </tr>`).join('');
+}
+
+function exportRosterExcel() {
+  const db = state.getDb();
+  const roster = db.records.filter(r=>r.type==='搬入');
+  if (!roster.length) { ui.toast('無資料'); return; }
+  const ws = XLSX.utils.json_to_sheet(roster.map(r=>({ Name:r.name, Gender:r.gender, ID:r.idNo, Dept:r.department, Room:r.roomNo, MoveIn:r.date, Phone:r.phone })));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Roster');
+  XLSX.writeFile(wb, `VRT_Roster_${new Date().toISOString().slice(0,10)}.xlsx`);
+  ui.toast('✅ 已下載');
+}
+
+function importRoster(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const wb = XLSX.read(e.target.result, { type:'binary' });
+    const ws = wb.Sheets[wb.SheetNames[0]];
+    const rows = XLSX.utils.sheet_to_json(ws);
+    const db = state.getDb();
+    rows.forEach(row => {
+      db.records.push({ id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+        timestamp: new Date().toISOString(), type:'搬入', status:'已核可',
+        name:row.Name||row['姓名']||'', gender:row.Gender||row['性別']||'',
+        idNo:row.ID||row['工號']||'', department:row.Dept||row['部門']||'',
+        roomNo:row.Room||row['房號']||'', date:row.MoveIn||row['搬入日期']||'', phone:row.Phone||row['電話']||''
+      });
+    });
+    state.save(); loadRoster(); ui.toast(`✅ 已匯入 ${rows.length} 筆`);
+  };
+  reader.readAsBinaryString(file);
+}
+
+/* ═══════════════════════════════════════
+   RECORDS QUERY
+═══════════════════════════════════════ */
+function queryRecords() {
+  const type   = document.getElementById('fl-type').value;
+  const status = document.getElementById('fl-status').value;
+  const month  = document.getElementById('fl-month').value;
+  const search = document.getElementById('fl-search').value.toLowerCase();
+  const db = state.getDb();
+  const recs = db.records.filter(r => {
+    if (type   && r.type   !== type)   return false;
+    if (status && r.status !== status) return false;
+    if (month  && !(r.timestamp||'').startsWith(month)) return false;
+    if (search && !JSON.stringify(r).toLowerCase().includes(search)) return false;
+    return true;
+  }).sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+  document.getElementById('rec-count').textContent = `${recs.length} 筆`;
+  const tbody = document.getElementById('records-body');
+  if (!recs.length) {
+    tbody.innerHTML = `<tr><td colspan="8" class="empty-state"><span class="empty-icon">🗂️</span><br>${i18n.t('empty-recs')}</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = recs.map(r => {
+    const badge = r.type==='搬入'?`<span class="badge b-in">搬入</span>`:`<span class="badge b-out">搬出</span>`;
+    const sb = {'待審核':'b-pend','已核可':'b-done','已拒絕':'b-rej'}[r.status]||'b-pend';
+    return `<tr><td>${(r.timestamp||'').substring(0,16)}</td><td>${badge}</td><td>${esc(r.name||'')}</td><td>${esc(r.idNo||'')}</td><td>${esc(r.department||'')}</td><td>${esc(r.roomNo||'')}</td><td>${r.date||''}</td><td><span class="badge ${sb}">${r.status||'待審核'}</span></td></tr>`;
+  }).join('');
+}
+
+function exportRecordsExcel() {
+  const db = state.getDb();
+  if (!db.records.length) { ui.toast('無資料'); return; }
+  const ws = XLSX.utils.json_to_sheet(db.records);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Records');
+  XLSX.writeFile(wb, `VRT_Dorm_Records_${new Date().toISOString().slice(0,10)}.xlsx`);
+  ui.toast('✅ 已下載');
+}
+
+/* ═══════════════════════════════════════
+   SETTINGS
+═══════════════════════════════════════ */
+function saveCfg() {
+  const cfg = { gasUrl: gv('cfg-gas-url'), tgToken: gv('cfg-tg-token'), tgChat: gv('cfg-tg-chat') };
+  localStorage.setItem('vrt_dorm_hub_cfg', JSON.stringify(cfg));
+  ui.toast('✅ 設定已儲存');
+}
+function loadCfg() {
+  const cfg = api.getCfg();
+  sv('cfg-gas-url', cfg.gasUrl||'');
+  sv('cfg-tg-token', cfg.tgToken||'');
+  sv('cfg-tg-chat', cfg.tgChat||'');
+}
+async function testTelegram() {
+  await api.sendTelegram('✅ VRT Dormitory Hub - Telegram 連接測試成功！');
+  ui.toast('📤 測試訊息已發送');
+}
+function exportAllData() {
+  const db = state.getDb();
+  const blob = new Blob([JSON.stringify(db, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `VRT_DormHub_Backup_${new Date().toISOString().slice(0,10)}.json`; a.click();
+  ui.toast('✅ 已匯出備份');
+}
+function importAllData(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const db = JSON.parse(e.target.result);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+      state.load(); ui.toast('✅ 已還原備份'); dashboard.render();
+    } catch(err) { ui.toast('⚠️ 格式錯誤'); }
+  };
+  reader.readAsText(file);
+}
+function clearAllData() {
+  if (!confirm('確定清除所有數據？此操作不可撤銷！')) return;
+  localStorage.removeItem(STORAGE_KEY); state.load();
+  ui.toast('🗑️ 已清除'); dashboard.render();
+}
+function updateDbInfo() {
+  const db = state.getDb();
+  const el = document.getElementById('db-info');
+  if (el) el.textContent = `Records: ${(db.records||[]).length} · Inspections: ${(db.inspections||[]).length} · Violations: ${(db.violations||[]).length}`;
+}
+function toggleGuide(hd) {
+  const bd = hd.nextElementSibling;
+  bd.classList.toggle('open');
+}
+function updateLocTabLabels() {
+  // Re-apply after lang change
+}
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+(function init() {
+  state.load();
+  state.updateTs();
+  setInterval(state.updateTs, 1000);
+  renderItems();
+  state.applyFormType();
+  dashboard.render();
+  loadCfg();
+  updateDbInfo();
+  // Load draft if any
+  try {
+    const draft = JSON.parse(localStorage.getItem('vrt_dorm_hub_draft'));
+    if (draft) {
+      state.setFormType(draft.type||'in');
+      ['name','gender','id','dept','pos','phone','room','date','reason','applicant','reviewer','approver']
+        .forEach(f => sv(`f-${f}`, draft[f]||''));
+      if (draft.items) state.setItems(draft.items);
+    }
+  } catch(e) {}
+  // Set today's date
+  const today = new Date().toISOString().split('T')[0];
+  sv('f-date', today);
+  // Set period
+  dateEngine.setPeriod('month', document.querySelector('.period-tabs .ptab'));
+})();
+</script>
+</body>
+</html>

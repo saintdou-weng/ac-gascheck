@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>VRT · Cleaning Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Sans+Khmer:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#EEF6F1;--sur:#fff;--bdr:#C8DDD3;--bdr2:#DFF0E8;--acc:#2D7A5A;--acc2:#1F5940;--abg:#E3F3EB;--alt:#F0F9F4;--tx:#0F2B1F;--tx2:#2D5040;--dim:#6B8A79;--red:#C94040;--rl:#FCEAEA;--grn:#219653;--gl:#E6F7EE;--amb:#D4810E;--al:#FFF3E0;--blu:#2D6FA3;--bl:#E8F2FB;--hdr:#163D2B;--hdr2:#0D2B1D;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Outfit','Noto Sans TC','Noto Sans Khmer',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:13px}
+/* Topbar */
+.topbar{background:linear-gradient(135deg,var(--hdr),var(--hdr2));color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 14px rgba(15,43,31,.5)}
+.tb-logo{width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.tb-info{flex:1}.tb-title{font-size:14px;font-weight:700}.tb-sub{font-size:9px;opacity:.55;font-family:'JetBrains Mono',monospace}
+.lgp{display:flex;gap:3px;flex-shrink:0}
+.lb{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:rgba(255,255,255,.75);padding:4px 8px;border-radius:20px;cursor:pointer;font-size:10px;font-weight:600;font-family:inherit;transition:.2s}
+.lb.on{background:rgba(255,255,255,.25);color:#fff;border-color:rgba(255,255,255,.5)}
+.tsl{font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.45);display:flex;align-items:center;gap:4px;flex-shrink:0}
+.tsd{width:5px;height:5px;border-radius:50%;background:#6EE7B7;animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.2}}
+/* Tabs */
+.tabs{display:flex;background:var(--sur);border-bottom:2px solid var(--bdr2);overflow-x:auto;scrollbar-width:none;padding:0 4px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 9px;font-size:11px;font-weight:600;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.2s;white-space:nowrap;display:flex;align-items:center;gap:3px;flex-shrink:0}
+.tab.active{color:var(--acc);border-bottom-color:var(--acc)}
+.pane{display:none}.pane.active{display:block}
+.main{padding:10px;max-width:980px;margin:0 auto}
+/* Card */
+.card{background:var(--sur);border:1px solid var(--bdr2);border-radius:12px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 5px rgba(45,122,90,.07)}
+.ch{padding:9px 13px;border-bottom:1px solid var(--bdr2);display:flex;align-items:center;gap:7px;background:var(--alt)}
+.ch-icon{font-size:15px}.ch-title{font-size:11px;font-weight:700;color:var(--acc2);text-transform:uppercase;letter-spacing:.7px}
+.ch-note{font-size:9px;color:var(--dim);margin-left:auto}.cb{padding:12px}
+/* KPI */
+.kg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.kc{background:var(--sur);border:1px solid var(--bdr2);border-radius:12px;padding:12px 10px;text-align:center;position:relative;overflow:hidden}
+.kc::after{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.kc.c0::after{background:var(--acc)}.kc.c1::after{background:var(--grn)}.kc.c2::after{background:var(--red)}.kc.c3::after{background:var(--amb)}.kc.c4::after{background:var(--blu)}
+.ki{font-size:20px;margin-bottom:4px;display:block}.kv{font-size:23px;font-weight:700;line-height:1}.kl{font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-top:3px}
+/* Date filter */
+.df{background:var(--sur);border:1px solid var(--bdr2);border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.pt{display:flex;background:var(--bg);border-radius:7px;padding:2px;gap:1px}
+.ptab{padding:5px 10px;border-radius:5px;font-size:10px;font-weight:600;cursor:pointer;color:var(--dim);transition:.2s;white-space:nowrap}
+.ptab.on{background:var(--acc);color:#fff}
+/* Chart row */
+.cr{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.cc{background:var(--sur);border:1px solid var(--bdr2);border-radius:12px;padding:12px}
+.ct{font-size:10px;font-weight:700;color:var(--tx2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
+/* Form */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.fgrid.c3{grid-template-columns:1fr 1fr 1fr}
+.fg{border-right:1px solid var(--bdr2);border-bottom:1px solid var(--bdr2);display:flex;flex-direction:column}
+.fg:nth-child(2n){border-right:none}
+.fgrid.c3 .fg:nth-child(3n){border-right:none}
+.fgrid.c3 .fg:nth-child(2n){border-right:1px solid var(--bdr2)}
+.fg.full{grid-column:1/-1;border-right:none}
+.fl{font-size:9px;font-weight:700;color:var(--dim);background:var(--alt);padding:3px 9px;border-bottom:1px solid var(--bdr2);letter-spacing:.4px}
+.fi{border:none;outline:none;font-family:inherit;font-size:12px;color:var(--tx);padding:7px 9px;width:100%;background:transparent;transition:background .15s}
+.fi:focus{background:var(--abg)}.fi::placeholder{color:#A8C5B8;font-size:11px}
+select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
+/* Check items grid */
+.cig{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px}
+.ci{border:1.5px solid var(--bdr2);border-radius:10px;padding:10px 8px;text-align:center;cursor:pointer;transition:.2s;user-select:none}
+.ci:hover{border-color:var(--acc)}.ci.pass{border-color:var(--grn);background:var(--gl)}.ci.fail{border-color:var(--red);background:var(--rl)}
+.ci-ic{font-size:22px;display:block;margin-bottom:4px}.ci-nm{font-size:10px;font-weight:600;color:var(--dim)}
+.ci-st{font-size:9px;margin-top:3px;font-weight:700;color:var(--dim)}.ci.pass .ci-st{color:var(--grn)}.ci.fail .ci-st{color:var(--red)}
+/* Slots */
+.sw{display:flex;flex-wrap:wrap;gap:5px;padding:8px}
+.sl{padding:5px 11px;border-radius:20px;font-size:10px;font-weight:600;border:1.5px solid var(--bdr);cursor:pointer;transition:.2s}
+.sl.done{background:var(--gl);border-color:var(--grn);color:var(--grn)}.sl.sel{background:var(--abg);border-color:var(--acc);color:var(--acc)}.sl.none{color:var(--dim)}
+/* Buttons */
+.br{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;font-family:inherit;font-size:11px;font-weight:700;border:none;border-radius:8px;padding:9px 13px;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn:hover{opacity:.9}.btn:active{transform:scale(.97)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.bp{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff}
+.bg{background:linear-gradient(135deg,#219653,#166936);color:#fff}
+.br2{background:linear-gradient(135deg,#C94040,#A83030);color:#fff}
+.ba{background:linear-gradient(135deg,#D4810E,#A86210);color:#fff}
+.bb{background:linear-gradient(135deg,#2D6FA3,#1F5280);color:#fff}
+.bo{background:transparent;border:1.5px solid var(--bdr);color:var(--tx2)}
+.imp-lbl{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border-radius:8px;padding:9px 13px;font-size:11px;font-weight:700;cursor:pointer}
+/* Records table */
+.fb{background:var(--sur);border:1px solid var(--bdr2);border-radius:10px;padding:9px 10px;margin-bottom:10px;display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.fbg{display:flex;flex-direction:column;gap:2px}
+.fbl{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.4px}
+.fbi{border:1px solid var(--bdr);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--tx);background:#fff;outline:none;font-family:inherit;min-width:80px}
+.fbi:focus{border-color:var(--acc)}
+.tw{overflow-x:auto}
+.rt{width:100%;border-collapse:collapse;font-size:10px;min-width:620px}
+.rt th{background:var(--alt);padding:5px 7px;text-align:left;font-weight:700;color:var(--acc2);border-bottom:2px solid var(--bdr);font-size:9px;white-space:nowrap}
+.rt td{padding:5px 7px;border-bottom:1px solid var(--bdr2);max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt tr:nth-child(even) td{background:#FAFDFB}.rt tr:hover td{background:var(--abg)}
+.badge{display:inline-block;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700}
+.bp2{background:var(--gl);color:#1A6B35}.bf2{background:var(--rl);color:#8B1A1A}.bw2{background:var(--al);color:#7A4D10}
+.es{text-align:center;padding:28px;color:var(--dim);font-size:12px}.esi{font-size:26px;margin-bottom:6px;display:block}
+/* Dustbin Map */
+.map-wrap{position:relative;background:#F4FAF6;border:1px solid var(--bdr);border-radius:10px;overflow:hidden;margin-bottom:10px}
+.map-svg{width:100%;cursor:default}
+.map-zone{opacity:.06;cursor:default}
+.map-bin{cursor:pointer;transition:transform .15s}
+.map-bin:hover{transform:scale(1.25);transform-origin:center}
+.bin-tooltip{pointer-events:none}
+.bin-legend{display:flex;flex-wrap:wrap;gap:6px;padding:10px;border-top:1px solid var(--bdr2)}
+.bli{display:flex;align-items:center;gap:4px;font-size:10px;font-weight:600;color:var(--tx2)}
+.bld{width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,.7);flex-shrink:0}
+/* Dustbin table */
+.dbt{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:8px}
+.dbt-btn{padding:5px 12px;border-radius:20px;font-size:10px;font-weight:700;border:1.5px solid var(--bdr2);cursor:pointer;transition:.2s;font-family:inherit}
+.dbt-btn.on{font-weight:700}.dbt-btn:not(.on){opacity:.5}
+/* 6S */
+.sixs-cat{background:var(--sur);border:1px solid var(--bdr2);border-radius:10px;margin-bottom:8px;overflow:hidden}
+.sc-hd{padding:10px 13px;background:var(--alt);border-bottom:1px solid var(--bdr2);display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+.sc-title{font-weight:700;font-size:12px;color:var(--acc2);flex:1}
+.sc-score{font-size:11px;font-weight:700;background:var(--acc);color:#fff;border-radius:20px;padding:2px 9px;flex-shrink:0}
+.sc-bd{display:none;padding:10px 13px}.sc-bd.open{display:block}
+.si{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--bdr2);font-size:11px}
+.si:last-child{border-bottom:none}.si-txt{flex:1;line-height:1.4}
+.si-btns{display:flex;gap:4px;flex-shrink:0}
+.sib{padding:4px 10px;border-radius:6px;font-size:10px;font-weight:700;border:1.5px solid var(--bdr);cursor:pointer;font-family:inherit;transition:.2s}
+.sib.ok{background:var(--gl);color:var(--grn);border-color:var(--grn)}
+.sib.fail{background:var(--rl);color:var(--red);border-color:var(--red)}
+.sib.na{background:var(--abg);color:var(--acc);border-color:var(--acc)}
+.score-banner{background:linear-gradient(135deg,var(--acc),var(--acc2));color:#fff;border-radius:10px;padding:14px;text-align:center;margin-bottom:10px;display:flex;align-items:center;justify-content:space-around}
+.sbn{font-size:38px;font-weight:700}.sbl{font-size:11px;opacity:.8;margin-top:2px}
+.sbg{font-size:20px;margin-bottom:4px}
+/* Area list */
+.alg{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:10px}
+.alc{background:var(--sur);border:1.5px solid var(--bdr2);border-radius:10px;padding:11px;text-align:center;transition:.2s}
+.alc:hover{border-color:var(--acc)}.ali{font-size:24px;display:block;margin-bottom:4px}
+.aln{font-size:11px;font-weight:700;color:var(--tx2)}.alct{font-size:9px;color:var(--dim);margin-top:2px}
+/* Staff tags */
+.stags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.stag{display:inline-flex;align-items:center;gap:4px;background:var(--abg);color:var(--acc2);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600}
+.stag .del{cursor:pointer;color:var(--red);font-weight:700;font-size:12px}
+/* Toast */
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#0F2B1F;color:#E3F3EB;border-radius:8px;padding:9px 18px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;margin-right:5px;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* Responsive */
+@media(max-width:600px){.kg{grid-template-columns:repeat(2,1fr)}.cr{grid-template-columns:1fr}.fgrid{grid-template-columns:1fr}.fgrid.c3{grid-template-columns:1fr 1fr}.fg:nth-child(n){border-right:none}}
+@media print{.topbar,.tabs,.br,.fb,.df{display:none!important}body{background:#fff}.main{max-width:100%;padding:0}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="tb-logo">🧹</div>
+  <div class="tb-info">
+    <div class="tb-title" data-i="tb-title">清潔管理系統 · Cleaning Management</div>
+    <div class="tb-sub">VRT · Sihanoukville · v2.0</div>
+  </div>
+  <div class="tsl"><div class="tsd"></div><span id="ts-now">--:--</span></div>
+  <div class="lgp">
+    <button class="lb on" onclick="i18n.set('zh')">中</button>
+    <button class="lb" onclick="i18n.set('en')">EN</button>
+    <button class="lb" onclick="i18n.set('km')">ខ្មែរ</button>
+  </div>
+</div>
+<div class="tabs" id="main-tabs">
+  <div class="tab active" data-tab="dash" onclick="ui.tab('dash')">📊 <span data-i="t-dash">總覽</span></div>
+  <div class="tab" data-tab="rec" onclick="ui.tab('rec')">✏️ <span data-i="t-rec">新增記錄</span></div>
+  <div class="tab" data-tab="hist" onclick="ui.tab('hist')">📋 <span data-i="t-hist">歷史記錄</span></div>
+  <div class="tab" data-tab="map" onclick="ui.tab('map')">🗺️ <span data-i="t-map">垃圾桶地圖</span></div>
+  <div class="tab" data-tab="sixs" onclick="ui.tab('sixs')">⭐ <span data-i="t-sixs">6S 檢查</span></div>
+  <div class="tab" data-tab="areas" onclick="ui.tab('areas')">📍 <span data-i="t-areas">區域管理</span></div>
+  <div class="tab" data-tab="cfg" onclick="ui.tab('cfg')">⚙️ <span data-i="t-cfg">設定</span></div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="pane active" id="pane-dash"><div class="main">
+  <div class="df">
+    <div class="pt">
+      <div class="ptab on" onclick="de.set('day',this)" data-i="p-d">日</div>
+      <div class="ptab" onclick="de.set('week',this)" data-i="p-w">週</div>
+      <div class="ptab" onclick="de.set('month',this)" data-i="p-m">月</div>
+      <div class="ptab" onclick="de.set('year',this)" data-i="p-y">年</div>
+    </div>
+    <input type="date" id="df-from" class="fbi" style="min-width:110px" onchange="dash.render()">
+    <span style="color:var(--dim);font-size:11px">→</span>
+    <input type="date" id="df-to" class="fbi" style="min-width:110px" onchange="dash.render()">
+    <button class="btn bp" style="padding:6px 12px" onclick="dash.render()" data-i="btn-refresh">刷新</button>
+  </div>
+  <div class="kg">
+    <div class="kc c0"><span class="ki">🧹</span><div class="kv" id="k-total">0</div><div class="kl" data-i="k-total">總記錄</div></div>
+    <div class="kc c1"><span class="ki">✅</span><div class="kv" id="k-pass">0%</div><div class="kl" data-i="k-pass">通過率</div></div>
+    <div class="kc c2"><span class="ki">⚠️</span><div class="kv" id="k-anom">0</div><div class="kl" data-i="k-anom">異常</div></div>
+    <div class="kc c3"><span class="ki">📍</span><div class="kv" id="k-locs">0</div><div class="kl" data-i="k-locs">地點數</div></div>
+  </div>
+  <div class="cr">
+    <div class="cc"><div class="ct" data-i="ch-trend">7天趨勢</div><canvas id="ch-trend" height="160"></canvas></div>
+    <div class="cc"><div class="ct" data-i="ch-items">各項目通過率</div><canvas id="ch-items" height="160"></canvas></div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-icon">📋</span><span class="ch-title" data-i="recent-title">最近記錄</span><span class="ch-note" id="sync-status"></span></div>
+    <div class="tw"><table class="rt" id="dash-tbl">
+      <thead><tr><th data-i="th-date">日期</th><th data-i="th-loc">地點</th><th data-i="th-cleaner">清潔員</th><th data-i="th-slots">時段</th><th data-i="th-status">狀態</th></tr></thead>
+      <tbody id="dash-tbody"><tr><td colspan="5" class="es"><span class="esi">🧹</span><span data-i="no-rec">暫無記錄</span></td></tr></tbody>
+    </table></div>
+  </div>
+</div></div>
+
+<!-- ═══ NEW RECORD ═══ -->
+<div class="pane" id="pane-rec"><div class="main">
+  <div class="card"><div class="ch"><span class="ch-icon">✏️</span><span class="ch-title" data-i="rec-title">新增清潔記錄</span><span class="ch-note" data-i="rec-hint">帶 * 為必填</span></div>
+    <div class="fgrid c3">
+      <div class="fg"><div class="fl"><span data-i="f-date">日期</span> <span style="color:var(--red)">*</span></div><input class="fi" type="date" id="r-date"></div>
+      <div class="fg"><div class="fl"><span data-i="f-loc">地點</span> <span style="color:var(--red)">*</span></div><select class="fi" id="r-loc"><option value="">— 選擇 —</option></select></div>
+      <div class="fg"><div class="fl"><span data-i="f-shift">班次</span></div><select class="fi" id="r-shift"><option value="Day">Day 日班</option><option value="Night">Night 夜班</option></select></div>
+      <div class="fg"><div class="fl"><span data-i="f-cleaner">清潔員</span> <span style="color:var(--red)">*</span></div><select class="fi" id="r-cleaner"><option value="">— 選擇 —</option></select></div>
+      <div class="fg"><div class="fl"><span data-i="f-checker">檢查員</span></div><select class="fi" id="r-checker"><option value="">— 選擇 —</option></select></div>
+      <div class="fg"><div class="fl" data-i="f-photo-n">照片數</div><input class="fi" type="number" id="r-photo-n" placeholder="0" min="0"></div>
+    </div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-icon">⏰</span><span class="ch-title" data-i="slots-title">清潔時段</span><span class="ch-note" id="sel-slot-count">0 已選</span></div>
+    <div class="sw" id="slots-wrap"></div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-icon">🔍</span><span class="ch-title" data-i="chk-title">巡查項目</span><span class="ch-note" data-i="chk-hint">點擊切換</span></div>
+    <div class="cig" id="check-grid"></div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-icon">📝</span><span class="ch-title" data-i="note-title">備注 / 異常</span></div>
+    <div style="padding:8px"><textarea class="fi" id="r-note" rows="3" placeholder="請填寫異常情況或補充說明..."></textarea></div>
+  </div>
+  <div class="br">
+    <button class="btn bp" id="btn-save" onclick="rec.save()">💾 <span data-i="btn-save">儲存記錄</span></button>
+    <button class="btn bg" onclick="rec.saveTg()">📤 <span data-i="btn-tg">Telegram</span></button>
+    <button class="btn bo" onclick="rec.clear()">🔄 <span data-i="btn-clear">清除</span></button>
+  </div>
+</div></div>
+
+<!-- ═══ HISTORY ═══ -->
+<div class="pane" id="pane-hist"><div class="main">
+  <div class="fb">
+    <div class="fbg"><div class="fbl" data-i="fl-loc">地點</div><select class="fbi" id="hl-loc"><option value="" data-i="fl-all">全部</option></select></div>
+    <div class="fbg"><div class="fbl" data-i="fl-status">狀態</div><select class="fbi" id="hl-status"><option value="">全部</option><option value="pass">✅ 通過</option><option value="fail">⚠️ 有異常</option></select></div>
+    <div class="fbg"><div class="fbl" data-i="fl-month">月份</div><input type="month" class="fbi" id="hl-month"></div>
+    <div class="fbg"><div class="fbl" data-i="fl-search">搜尋</div><input class="fbi" id="hl-search" placeholder="姓名/地點..." style="min-width:110px"></div>
+    <button class="btn bp" style="padding:7px 12px" onclick="hist.query()">🔍 <span data-i="btn-query">查詢</span></button>
+    <button class="btn bg" style="padding:7px 12px" onclick="hist.exportXL()">📤 Excel</button>
+    <button class="btn bg" style="padding:7px 12px" onclick="hist.uploadCloud()">☁️ <span data-i="btn-upload">上傳</span></button>
+    <button class="btn bb" style="padding:7px 12px" onclick="hist.downloadCloud()">⬇️ <span data-i="btn-download">下載</span></button>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-icon">📋</span><span class="ch-title" data-i="t-hist">歷史記錄</span><span class="ch-note" id="hist-count">0 筆</span></div>
+    <div class="tw"><table class="rt" id="hist-tbl">
+      <thead><tr><th data-i="th-date">日期</th><th data-i="th-loc">地點</th><th data-i="th-cleaner">清潔員</th><th data-i="th-checker">檢查員</th><th data-i="th-slots">時段</th><th data-i="th-items">檢查項目</th><th data-i="th-status">狀態</th><th data-i="th-note">備注</th><th></th></tr></thead>
+      <tbody id="hist-tbody"><tr><td colspan="9" class="es"><span class="esi">📋</span><span data-i="no-rec">暫無記錄</span></td></tr></tbody>
+    </table></div>
+  </div>
+</div></div>
+
+<!-- ═══ DUSTBIN MAP ═══ -->
+<div class="pane" id="pane-map"><div class="main">
+  <div class="card"><div class="ch"><span class="ch-icon">🗺️</span><span class="ch-title" data-i="map-title">垃圾桶配置地圖</span><span class="ch-note" id="bin-total-count">0 個</span></div>
+    <div class="map-wrap">
+      <svg id="map-svg" class="map-svg" viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg" id="factory-map-svg"></svg>
+    </div>
+    <div class="bin-legend" id="bin-legend"></div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-icon">🗑️</span><span class="ch-title" data-i="bin-mgmt">垃圾桶管理</span><span class="ch-note" id="bin-count-lbl">0 個</span></div>
+    <div class="cb">
+      <div class="dbt" id="bin-type-filter"></div>
+      <div class="tw"><table class="rt" id="bin-tbl">
+        <thead><tr><th data-i="th-area">區域</th><th data-i="th-bin-type">類型</th><th data-i="th-bin-loc">位置描述</th><th data-i="th-bin-resp">責任人</th><th data-i="th-bin-freq">清潔頻率</th><th data-i="th-bin-last">最後清潔</th><th></th></tr></thead>
+        <tbody id="bin-tbody"></tbody>
+      </table></div>
+      <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bdr2)">
+        <div style="font-size:11px;font-weight:700;color:var(--acc2);margin-bottom:8px" data-i="add-bin">新增垃圾桶</div>
+        <div class="fgrid c3">
+          <div class="fg"><div class="fl" data-i="f-area">區域</div><select class="fi" id="b-area"><option value="Cutting">Cutting 裁剪</option><option value="Sewing">Sewing 車縫</option><option value="Finishing">Finishing 成衣</option><option value="Warehouse">Warehouse 倉庫</option><option value="Canteen">Canteen 飯堂</option><option value="Office">Office 辦公室</option><option value="Toilet">Toilet 廁所</option><option value="Entrance">Entrance 入口</option></select></div>
+          <div class="fg"><div class="fl" data-i="f-bin-type">類型</div><select class="fi" id="b-type"><option value="general">General 一般</option><option value="fabric">Fabric 布料</option><option value="plastic">Plastic 塑膠</option><option value="metal">Metal 金屬</option><option value="paper">Paper 紙張</option><option value="hazard">Hazard ⚠️ 危廢</option></select></div>
+          <div class="fg"><div class="fl" data-i="f-bin-freq">頻率</div><select class="fi" id="b-freq"><option value="Daily">Daily 每日</option><option value="2x/Day">2x/Day</option><option value="Weekly">Weekly 每週</option></select></div>
+          <div class="fg"><div class="fl" data-i="f-bin-loc">位置描述</div><input class="fi" id="b-desc" placeholder="例：車縫區西南角"></div>
+          <div class="fg"><div class="fl" data-i="f-bin-resp">責任人</div><input class="fi" id="b-resp" placeholder="Cleaner name"></div>
+          <div class="fg" style="display:flex;align-items:flex-end;padding:8px">
+            <button class="btn bp" onclick="binMgmt.add()">＋ <span data-i="btn-add-bin">新增</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div></div>
+
+<!-- ═══ 6S CHECK ═══ -->
+<div class="pane" id="pane-sixs"><div class="main">
+  <div class="score-banner">
+    <div><div class="sbg">📍</div><div class="sbl" data-i="loc-label">地點</div><div id="s6-loc-name" style="font-weight:700;font-size:14px">—</div></div>
+    <div><div class="sbn" id="s6-total">0</div><div class="sbl" data-i="s6-score">/ 100 分</div></div>
+    <div><div class="sbg">📅</div><div class="sbl" data-i="f-date">日期</div><div id="s6-date-show" style="font-weight:700;font-size:14px">—</div></div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-icon">📝</span><span class="ch-title" data-i="s6-info">巡查資訊</span></div>
+    <div class="fgrid c3">
+      <div class="fg"><div class="fl" data-i="f-date">日期</div><input class="fi" type="date" id="s6-date"></div>
+      <div class="fg"><div class="fl" data-i="f-loc">地點</div><select class="fi" id="s6-loc" onchange="sixs.updateHeader()"><option value="">— 選擇 —</option></select></div>
+      <div class="fg"><div class="fl" data-i="f-observer">觀察員</div><select class="fi" id="s6-obs"><option value="">— 選擇 —</option></select></div>
+    </div>
+  </div>
+  <div id="sixs-cats-wrap"></div>
+  <div class="br">
+    <button class="btn bp" onclick="sixs.save()">💾 <span data-i="btn-save-6s">儲存 6S</span></button>
+    <button class="btn bg" onclick="sixs.sendTg()">📤 Telegram</button>
+    <button class="btn bo" onclick="sixs.reset()">🔄 <span data-i="btn-reset">重置</span></button>
+  </div>
+  <div class="card" style="margin-top:10px"><div class="ch"><span class="ch-icon">📊</span><span class="ch-title" data-i="s6-history">6S 歷史</span></div>
+    <div class="tw"><table class="rt" id="s6-hist-tbl">
+      <thead><tr><th data-i="th-date">日期</th><th data-i="th-loc">地點</th><th data-i="f-observer">觀察員</th><th data-i="s6-score">分數</th><th data-i="th-status">評級</th></tr></thead>
+      <tbody id="s6-hist-body"><tr><td colspan="5" class="es"><span class="esi">⭐</span><br><span data-i="no-rec">暫無記錄</span></td></tr></tbody>
+    </table></div>
+  </div>
+</div></div>
+
+<!-- ═══ AREAS ═══ -->
+<div class="pane" id="pane-areas"><div class="main">
+  <div class="br">
+    <button class="btn bp" onclick="areas.showAdd()">＋ <span data-i="add-area">新增地點</span></button>
+    <button class="btn bg" onclick="areas.exportXL()">📤 Excel</button>
+  </div>
+  <div id="areas-grid" class="alg"></div>
+  <div class="card" id="add-area-card" style="display:none"><div class="ch"><span class="ch-icon">＋</span><span class="ch-title" data-i="add-area">新增地點</span></div>
+    <div class="fgrid c3" style="margin-bottom:8px">
+      <div class="fg"><div class="fl"><span data-i="f-area-name">地點名稱</span> <span style="color:var(--red)">*</span></div><input class="fi" id="a-name" placeholder="例：車縫區廁所 A"></div>
+      <div class="fg"><div class="fl" data-i="f-area-type">類型</div><select class="fi" id="a-type"><option value="toilet">🚻 廁所</option><option value="factory">🏭 廠房</option><option value="office">🏢 辦公室</option><option value="canteen">🍽️ 飯堂</option><option value="warehouse">📦 倉庫</option><option value="entrance">🚪 入口</option><option value="other">📌 其他</option></select></div>
+      <div class="fg"><div class="fl" data-i="f-area-resp">責任人</div><input class="fi" id="a-resp" placeholder="Cleaner name"></div>
+    </div>
+    <div class="br"><button class="btn bp" onclick="areas.add()">✅ <span data-i="btn-confirm">確認新增</span></button><button class="btn bo" onclick="areas.hideAdd()">✕ <span data-i="btn-cancel">取消</span></button></div>
+  </div>
+</div></div>
+
+<!-- ═══ SETTINGS ═══ -->
+<div class="pane" id="pane-cfg"><div class="main">
+  <div class="card"><div class="ch"><span class="ch-icon">⚙️</span><span class="ch-title" data-i="cfg-conn">連線設定</span></div>
+    <div class="fgrid c3">
+      <div class="fg"><div class="fl">GAS Web App URL</div><input class="fi" id="cfg-gas" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      <div class="fg"><div class="fl">Telegram Bot Token</div><input class="fi" id="cfg-token" placeholder="1234567890:AAH..."></div>
+      <div class="fg"><div class="fl">Telegram Chat ID</div><input class="fi" id="cfg-chat" placeholder="-100..."></div>
+    </div>
+    <div class="br" style="padding:8px">
+      <button class="btn bp" onclick="cfg.save()">💾 <span data-i="btn-save-cfg">儲存設定</span></button>
+      <button class="btn bg" onclick="cfg.testTg()">📤 <span data-i="btn-test-tg">測試 Telegram</span></button>
+      <button class="btn bb" onclick="cfg.testGas()">🔌 <span data-i="btn-test-gas">測試 GAS</span></button>
+    </div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-icon">👥</span><span class="ch-title" data-i="staff-cfg">員工名單</span></div>
+    <div style="padding:10px">
+      <div style="margin-bottom:10px">
+        <div class="fbl" data-i="cleaners">清潔員</div><div class="stags" id="cleaner-tags"></div>
+        <div style="display:flex;gap:6px;margin-top:5px"><input class="fbi" id="new-cleaner" placeholder="姓名 Name"><button class="btn bp" style="padding:6px 10px" onclick="staff.add('cleaner')">＋</button></div>
+      </div>
+      <div>
+        <div class="fbl" data-i="checkers">檢查員</div><div class="stags" id="checker-tags"></div>
+        <div style="display:flex;gap:6px;margin-top:5px"><input class="fbi" id="new-checker" placeholder="姓名 Name"><button class="btn bp" style="padding:6px 10px" onclick="staff.add('checker')">＋</button></div>
+      </div>
+    </div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-icon">⏰</span><span class="ch-title" data-i="slots-cfg">清潔時段設定</span></div>
+    <div style="padding:10px">
+      <div class="stags" id="slot-tags"></div>
+      <div style="display:flex;gap:6px;margin-top:8px;flex-wrap:wrap">
+        <input class="fbi" id="new-slot" placeholder="HH:MM" style="max-width:90px">
+        <button class="btn bp" onclick="slotCfg.add()">＋ <span data-i="btn-add-slot">新增</span></button>
+        <button class="btn bo" onclick="slotCfg.reset()">↺ <span data-i="btn-reset-slot">重設預設</span></button>
+      </div>
+    </div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-icon">💾</span><span class="ch-title" data-i="data-mgmt">數據管理</span></div>
+    <div class="br" style="padding:10px">
+      <button class="btn bp" onclick="dataMgmt.exportAll()">📤 <span data-i="export-all">匯出全部 JSON</span></button>
+      <label class="imp-lbl">📥 <span data-i="restore">還原備份</span><input type="file" accept=".json" style="display:none" onchange="dataMgmt.importAll(this)"></label>
+      <button class="btn" style="background:var(--rl);color:var(--red);border:1.5px solid var(--red)" onclick="dataMgmt.clear()">🗑️ <span data-i="clear-all">清除全部</span></button>
+    </div>
+    <div style="padding:0 10px 10px;font-size:10px;color:var(--dim)" id="db-info"></div>
+  </div>
+</div></div>
+
+<div id="toast"></div>
+<script>
+/* ═══ i18n MODULE ═══ */
+const i18n = (() => {
+  const D = {
+    zh:{
+      'tb-title':'清潔管理系統','t-dash':'總覽','t-rec':'新增記錄','t-hist':'歷史記錄',
+      't-map':'垃圾桶地圖','t-sixs':'6S 檢查','t-areas':'區域管理','t-cfg':'設定',
+      'p-d':'日','p-w':'週','p-m':'月','p-y':'年','btn-refresh':'刷新',
+      'k-total':'總記錄','k-pass':'通過率','k-anom':'異常','k-locs':'地點數',
+      'ch-trend':'7天趨勢','ch-items':'各項目通過率','recent-title':'最近記錄','sync-status':'',
+      'th-date':'日期','th-loc':'地點','th-cleaner':'清潔員','th-checker':'檢查員',
+      'th-slots':'時段','th-items':'檢查項目','th-status':'狀態','th-note':'備注',
+      'th-area':'區域','th-bin-type':'類型','th-bin-loc':'位置','th-bin-resp':'責任人',
+      'th-bin-freq':'頻率','th-bin-last':'最後清潔',
+      'no-rec':'暫無記錄',
+      'rec-title':'新增清潔記錄','rec-hint':'帶 * 為必填',
+      'f-date':'日期','f-loc':'地點','f-shift':'班次','f-cleaner':'清潔員',
+      'f-checker':'檢查員','f-photo-n':'照片數','f-observer':'觀察員',
+      'slots-title':'清潔時段','chk-title':'巡查項目','chk-hint':'點擊切換',
+      'note-title':'備注 / 異常',
+      'btn-save':'儲存記錄','btn-tg':'Telegram','btn-clear':'清除',
+      'fl-loc':'地點','fl-all':'全部','fl-status':'狀態','fl-month':'月份','fl-search':'搜尋',
+      'btn-query':'查詢','btn-upload':'上傳','btn-download':'下載',
+      'map-title':'垃圾桶配置地圖','bin-mgmt':'垃圾桶管理',
+      'f-area':'區域','f-bin-type':'類型','f-bin-freq':'頻率','f-bin-loc':'位置描述','f-bin-resp':'責任人',
+      'add-bin':'新增垃圾桶','btn-add-bin':'新增',
+      'loc-label':'地點','s6-score':'/ 100 分','s6-info':'巡查資訊','s6-history':'6S 歷史',
+      'btn-save-6s':'儲存 6S','btn-reset':'重置',
+      'add-area':'新增地點','f-area-name':'地點名稱','f-area-type':'類型','f-area-resp':'責任人',
+      'btn-confirm':'確認新增','btn-cancel':'取消',
+      'cfg-conn':'連線設定','btn-save-cfg':'儲存設定','btn-test-tg':'測試 Telegram','btn-test-gas':'測試 GAS',
+      'staff-cfg':'員工名單','cleaners':'清潔員','checkers':'檢查員',
+      'slots-cfg':'清潔時段設定','btn-add-slot':'新增','btn-reset-slot':'重設預設',
+      'data-mgmt':'數據管理','export-all':'匯出全部 JSON','restore':'還原備份','clear-all':'清除全部',
+      'ci-smell':'氣味','ci-light':'燈光','ci-floor':'地板','ci-door':'門','ci-corner':'角落','ci-ceiling':'天花',
+      'pass':'✓ 通過','fail':'✗ 不通過',
+    },
+    en:{
+      'tb-title':'Cleaning Management','t-dash':'Dashboard','t-rec':'New Record','t-hist':'History',
+      't-map':'Dustbin Map','t-sixs':'6S Check','t-areas':'Areas','t-cfg':'Settings',
+      'p-d':'Day','p-w':'Week','p-m':'Month','p-y':'Year','btn-refresh':'Refresh',
+      'k-total':'Total Records','k-pass':'Pass Rate','k-anom':'Anomalies','k-locs':'Locations',
+      'ch-trend':'7-Day Trend','ch-items':'Pass Rate by Item','recent-title':'Recent Records',
+      'th-date':'Date','th-loc':'Location','th-cleaner':'Cleaner','th-checker':'Checker',
+      'th-slots':'Slots','th-items':'Check Items','th-status':'Status','th-note':'Note',
+      'th-area':'Area','th-bin-type':'Type','th-bin-loc':'Location','th-bin-resp':'Responsible','th-bin-freq':'Frequency','th-bin-last':'Last Clean',
+      'no-rec':'No records',
+      'rec-title':'New Cleaning Record','rec-hint':'* Required',
+      'f-date':'Date','f-loc':'Location','f-shift':'Shift','f-cleaner':'Cleaner','f-checker':'Checker','f-photo-n':'Photos','f-observer':'Observer',
+      'slots-title':'Time Slots','chk-title':'Check Items','chk-hint':'Click to toggle',
+      'note-title':'Notes / Anomaly',
+      'btn-save':'Save Record','btn-tg':'Telegram','btn-clear':'Clear',
+      'fl-loc':'Location','fl-all':'All','fl-status':'Status','fl-month':'Month','fl-search':'Search',
+      'btn-query':'Query','btn-upload':'Upload','btn-download':'Download',
+      'map-title':'Dustbin Layout Map','bin-mgmt':'Dustbin Management',
+      'f-area':'Area','f-bin-type':'Type','f-bin-freq':'Frequency','f-bin-loc':'Description','f-bin-resp':'Responsible','add-bin':'Add Dustbin','btn-add-bin':'Add',
+      'loc-label':'Location','s6-score':'/ 100 pts','s6-info':'Inspection Info','s6-history':'6S History',
+      'btn-save-6s':'Save 6S','btn-reset':'Reset',
+      'add-area':'Add Location','f-area-name':'Location Name','f-area-type':'Type','f-area-resp':'Responsible','btn-confirm':'Confirm','btn-cancel':'Cancel',
+      'cfg-conn':'Connection Settings','btn-save-cfg':'Save Settings','btn-test-tg':'Test Telegram','btn-test-gas':'Test GAS',
+      'staff-cfg':'Staff List','cleaners':'Cleaners','checkers':'Checkers',
+      'slots-cfg':'Time Slot Config','btn-add-slot':'Add','btn-reset-slot':'Reset Default',
+      'data-mgmt':'Data Management','export-all':'Export All JSON','restore':'Restore Backup','clear-all':'Clear All',
+      'ci-smell':'Smell','ci-light':'Light','ci-floor':'Floor','ci-door':'Door','ci-corner':'Corner','ci-ceiling':'Ceiling',
+      'pass':'✓ Pass','fail':'✗ Fail',
+    },
+    km:{
+      'tb-title':'ប្រព័ន្ធគ្រប់គ្រងការសំអាត','t-dash':'ផ្ទាំង','t-rec':'បន្ថែម','t-hist':'ប្រវត្តិ',
+      't-map':'ផែនទី','t-sixs':'6S','t-areas':'តំបន់','t-cfg':'ការកំណត់',
+      'p-d':'ថ្ងៃ','p-w':'សប្តាហ៍','p-m':'ខែ','p-y':'ឆ្នាំ','btn-refresh':'ផ្ទុក',
+      'k-total':'កំណត់ត្រា','k-pass':'អត្រាជាប់','k-anom':'មិនប្រក្រតី','k-locs':'ទីតាំង',
+      'no-rec':'រកមិនឃើញ','rec-title':'បន្ថែម','f-date':'កាលបរិច្ឆេទ','f-loc':'ទីតាំង',
+      'f-cleaner':'អ្នកសំអាត','f-checker':'អ្នកត្រួត','btn-save':'រក្សា','btn-clear':'លុប',
+      'btn-query':'ស្វែងរក','map-title':'ផែនទី','add-area':'បន្ថែមទីតាំង',
+      'btn-confirm':'យល់ព្រម','btn-cancel':'បោះបង់','btn-save-cfg':'រក្សា',
+      'ci-smell':'ក្លិន','ci-light':'អំពូល','ci-floor':'ជាន់','ci-door':'ទ្វារ','ci-corner':'ជ្រុង','ci-ceiling':'ពិដាន',
+      'pass':'✓ ជាប់','fail':'✗ ធ្លាក់',
+    }
+  };
+  let _l = 'zh';
+  const set = (l) => {
+    _l = l;
+    document.querySelectorAll('.lb').forEach((b,i) => b.classList.toggle('on', ['zh','en','km'][i]===l));
+    const d = D[l]||D.zh;
+    document.querySelectorAll('[data-i]').forEach(el => { const k=el.getAttribute('data-i'); if(d[k]!==undefined) el.textContent=d[k]; });
+    state.populate();
+  };
+  const t = (k) => (D[_l]||D.zh)[k] || (D.zh)[k] || k;
+  const get = () => _l;
+  return { set, t, get };
+})();
+
+/* ═══ DATE ENGINE MODULE ═══ */
+const de = (() => {
+  let _p = 'day';
+  const fmt = d => d.toISOString().split('T')[0];
+  const range = () => {
+    const fi=document.getElementById('df-from'), ti=document.getElementById('df-to');
+    if(fi&&fi.value) return {from:fi.value, to:ti&&ti.value?ti.value:fmt(new Date())};
+    const now=new Date(); let from=new Date();
+    if(_p==='day') from=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    else if(_p==='week'){from=new Date(now);from.setDate(now.getDate()-now.getDay());}
+    else if(_p==='month') from=new Date(now.getFullYear(),now.getMonth(),1);
+    else from=new Date(now.getFullYear(),0,1);
+    return {from:fmt(from),to:fmt(now)};
+  };
+  const set = (p,el) => {
+    _p=p;
+    document.querySelectorAll('.pt .ptab').forEach(t=>t.classList.remove('on'));
+    if(el)el.classList.add('on');
+    const r=range();
+    const fi=document.getElementById('df-from'),ti=document.getElementById('df-to');
+    if(fi)fi.value=r.from; if(ti)ti.value=r.to;
+    dash.render();
+  };
+  return {set, range, fmt};
+})();
+
+/* ═══ STATE MODULE ═══ */
+const SK = 'vrt_clean_hub_v2';
+const DEF_SLOTS = ['07:30','08:30','09:30','10:30','12:30','13:30','14:30','15:30','16:30'];
+const CHK_ITEMS = ['smell','light','floor','door','corner','ceiling'];
+const CHK_ICONS = {smell:'👃',light:'💡',floor:'🧹',door:'🚪',corner:'📐',ceiling:'🏠'};
+const BIN_COLORS = {general:'#3B82F6',fabric:'#22C55E',plastic:'#F97316',metal:'#8B5CF6',paper:'#06B6D4',hazard:'#EF4444'};
+const LOC_ICONS = {toilet:'🚻',factory:'🏭',office:'🏢',canteen:'🍽️',warehouse:'📦',entrance:'🚪',other:'📌'};
+const SIXS_CATS = [
+  {key:'sort',    zh:'整理 Sort',     en:'Sort',        items:['公告欄未清理','走道/角落有雜物','安全隱患']},
+  {key:'order',   zh:'整頓 Set',      en:'Set in Order', items:['物品未在正確位置','使用後未放回','工作站未標明']},
+  {key:'shine',   zh:'清潔 Shine',    en:'Shine',        items:['地板/牆壁有污垢','其他清潔問題','清潔後更整潔？']},
+  {key:'std',     zh:'標準化 Std',    en:'Standardize',  items:['未嚴格遵守標準','無清潔清單','30秒找不到物品']},
+  {key:'sustain', zh:'自律 Sustain',  en:'Sustain',      items:['未接受6S培訓','上週未做6S檢查','個人物品未整齊']},
+  {key:'safety',  zh:'安全 Safety',   en:'Safety',       items:['未接受SOE培訓','今年工傷次數','安全出口未標明','危險區域未標示','SOE糾正未完成']},
+];
+
+const state = (() => {
+  let _db = {records:[],sixsRecords:[],locations:[],bins:[],cleaners:[],checkers:[],slots:[...DEF_SLOTS],cfg:{}};
+  let _selSlots = [], _chkState = {}, _sixsState = {};
+
+  const load = () => {
+    try {
+      const raw = localStorage.getItem(SK);
+      if(raw) { const d=JSON.parse(raw); Object.assign(_db, d); }
+    } catch(e) {}
+    if(!_db.records) _db.records=[];
+    if(!_db.sixsRecords) _db.sixsRecords=[];
+    if(!_db.locations) _db.locations=[];
+    if(!_db.bins) _db.bins=[];
+    if(!_db.cleaners) _db.cleaners=[];
+    if(!_db.checkers) _db.checkers=[];
+    if(!_db.slots||!_db.slots.length) _db.slots=[...DEF_SLOTS];
+    if(!_db.cfg) _db.cfg={};
+  };
+  const save = () => {
+    try { localStorage.setItem(SK, JSON.stringify(_db)); } catch(e) {}
+    updateDbInfo();
+  };
+  const db = () => _db;
+  const resetChk = () => { _chkState={}; CHK_ITEMS.forEach(k=>_chkState[k]=null); };
+  const getChk = () => _chkState;
+  const setChk = (k,v) => { _chkState[k]=v; };
+  const getSlots = () => _selSlots;
+  const toggleSlot = (s) => {
+    const i=_selSlots.indexOf(s);
+    if(i>=0) _selSlots.splice(i,1); else _selSlots.push(s);
+    renderSlots();
+  };
+  const resetSlots = () => { _selSlots=[]; renderSlots(); };
+  const resetSixs = () => { _sixsState={}; };
+  const getSixs = () => _sixsState;
+  const setSixs = (cat,idx,v) => { if(!_sixsState[cat]) _sixsState[cat]={}; _sixsState[cat][idx]=v; calcSixsScore(); };
+  const populate = () => {
+    // Populate location selects
+    ['r-loc','s6-loc','hl-loc'].forEach(id => {
+      const el=document.getElementById(id); if(!el)return;
+      const cur=el.value;
+      el.innerHTML = `<option value="">${id==='hl-loc'?(i18n.t('fl-all')||'全部'):'— 選擇 —'}</option>`;
+      _db.locations.forEach(l => { el.innerHTML+=`<option value="${l.id}"${l.id===cur?' selected':''}>${esc(l.name)}</option>`; });
+      if(el.value!==cur) el.value=cur;
+    });
+    // Populate cleaner/checker
+    ['r-cleaner','s6-obs'].forEach(id => {
+      const el=document.getElementById(id); if(!el)return;
+      el.innerHTML='<option value="">— 選擇 —</option>';
+      _db.cleaners.forEach(n=>el.innerHTML+=`<option value="${esc(n)}">${esc(n)}</option>`);
+    });
+    const rc=document.getElementById('r-checker');
+    if(rc){rc.innerHTML='<option value="">— 選擇 —</option>';_db.checkers.forEach(n=>rc.innerHTML+=`<option value="${esc(n)}">${esc(n)}</option>`);}
+    renderSlots();
+    renderCheckGrid();
+  };
+  return { load, save, db, resetChk, getChk, setChk, getSlots, toggleSlot, resetSlots, resetSixs, getSixs, setSixs, populate };
+})();
+
+/* ═══ API MODULE ═══ */
+const api = (() => {
+  const cfg = () => state.db().cfg || {};
+  const post = async (payload) => {
+    const c=cfg(); if(!c.gasUrl) return {ok:false};
+    const body=new URLSearchParams({payload:JSON.stringify(payload)});
+    const r=await fetch(c.gasUrl,{method:'POST',body,headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+    return r.json();
+  };
+  const get = async (params) => {
+    const c=cfg(); if(!c.gasUrl) return {ok:false};
+    const qs=new URLSearchParams(params).toString();
+    const r=await fetch(c.gasUrl+'?'+qs);
+    return r.json();
+  };
+  const tg = async (msg) => {
+    const c=cfg(); if(!c.botToken||!c.chatId) return;
+    await fetch(`https://api.telegram.org/bot${c.botToken}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:c.chatId,text:msg,parse_mode:'HTML'})});
+  };
+  return { post, get, tg };
+})();
+
+/* ═══ CHART MODULE ═══ */
+const chs = (() => {
+  const _i={};
+  const PAL=['#2D7A5A','#219653','#C94040','#D4810E','#2D6FA3','#7C3AED'];
+  const render=(id,type,labels,datasets,opts={})=>{
+    if(_i[id])_i[id].destroy();
+    const ctx=document.getElementById(id); if(!ctx)return;
+    _i[id]=new Chart(ctx,{type,data:{labels,datasets},options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:10,family:'Outfit'},color:'#2D5040'}},tooltip:{bodyFont:{size:11}}},
+      scales:type==='bar'||type==='line'?{x:{ticks:{font:{size:9},color:'#6B8A79'},grid:{color:'#DFF0E8'}},y:{ticks:{font:{size:9},color:'#6B8A79'},grid:{color:'#DFF0E8'}}}:{},
+      ...opts
+    }});
+  };
+  return {render,PAL};
+})();
+
+/* ═══ UI MODULE ═══ */
+const ui = (() => {
+  let _cur='dash';
+  const tab = (t) => {
+    _cur=t;
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+    const tb=document.querySelector(`[data-tab="${t}"]`); if(tb)tb.classList.add('active');
+    const pn=document.getElementById(`pane-${t}`); if(pn)pn.classList.add('active');
+    if(t==='dash') dash.render();
+    if(t==='hist') hist.query();
+    if(t==='map')  binMap.render();
+    if(t==='areas') areas.render();
+    if(t==='sixs') sixs.renderCats();
+    if(t==='cfg')  cfg.load();
+  };
+  const toast = (msg,dur=3000) => {
+    const el=document.getElementById('toast');
+    el.textContent=msg; el.classList.add('show');
+    clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),dur);
+  };
+  return {tab, toast};
+})();
+
+/* ═══ DASHBOARD MODULE ═══ */
+const dash = (() => {
+  const render = () => {
+    const db=state.db();
+    const {from,to}=de.range();
+    const filtered=db.records.filter(r=>{const d=(r.date||'').split('T')[0];return d>=from&&d<=to;});
+    const total=filtered.length;
+    const fails=filtered.filter(r=>Object.values(r.checks||{}).some(v=>v===false)).length;
+    const passRate=total?Math.round((total-fails)/total*100):0;
+    document.getElementById('k-total').textContent=total;
+    document.getElementById('k-pass').textContent=passRate+'%';
+    document.getElementById('k-anom').textContent=fails;
+    document.getElementById('k-locs').textContent=db.locations.length;
+    // Trend
+    const days=[],pCounts=[],fCounts=[];
+    const start=new Date(from);
+    for(let d=new Date(start);d<=new Date(to);d.setDate(d.getDate()+1)){
+      const ds=d.toISOString().split('T')[0];
+      days.push(ds.slice(5));
+      const dr=db.records.filter(r=>r.date===ds);
+      pCounts.push(dr.filter(r=>!Object.values(r.checks||{}).some(v=>v===false)).length);
+      fCounts.push(dr.filter(r=>Object.values(r.checks||{}).some(v=>v===false)).length);
+    }
+    chs.render('ch-trend','bar',days.slice(-14),[
+      {label:'Pass',data:pCounts.slice(-14),backgroundColor:'rgba(33,150,83,.7)',borderRadius:3},
+      {label:'Fail',data:fCounts.slice(-14),backgroundColor:'rgba(201,64,64,.7)',borderRadius:3},
+    ]);
+    // Items pass rate
+    const itemRate=CHK_ITEMS.map(k=>{
+      const recs=filtered.filter(r=>r.checks&&r.checks[k]!==null&&r.checks[k]!==undefined);
+      return recs.length?Math.round(recs.filter(r=>r.checks[k]===true).length/recs.length*100):0;
+    });
+    chs.render('ch-items','bar',CHK_ITEMS.map(k=>i18n.t('ci-'+k)),[
+      {data:itemRate,backgroundColor:chs.PAL,borderRadius:4}
+    ]);
+    // Recent
+    const recent=[...db.records].sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||'')).slice(0,8);
+    const tbody=document.getElementById('dash-tbody');
+    if(!recent.length){tbody.innerHTML=`<tr><td colspan="5" class="es"><span class="esi">🧹</span><br>${i18n.t('no-rec')}</td></tr>`;return;}
+    tbody.innerHTML=recent.map(r=>{
+      const hasFail=Object.values(r.checks||{}).some(v=>v===false);
+      return`<tr><td>${r.date||''}</td><td>${esc(locName(r.locId))}</td><td>${esc(r.cleaner||'')}</td><td style="font-size:9px">${(r.slots||[]).join(' ')}</td><td><span class="badge ${hasFail?'bf2':'bp2'}">${hasFail?i18n.t('fail'):i18n.t('pass')}</span></td></tr>`;
+    }).join('');
+  };
+  return {render};
+})();
+
+/* ═══ RECORD MODULE ═══ */
+const rec = (() => {
+  const save = async () => {
+    const date=gv('r-date'),locId=gv('r-loc'),cleaner=gv('r-cleaner');
+    if(!date||!locId||!cleaner){ui.toast('⚠️ 請填寫日期、地點、清潔員');return;}
+    const chks=state.getChk();
+    const record={
+      id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      timestamp:new Date().toISOString(), date, locId, shift:gv('r-shift'),
+      cleaner, checker:gv('r-checker'), slots:[...state.getSlots()],
+      checks:JSON.parse(JSON.stringify(chks)), note:gv('r-note'),
+      photoCount:parseInt(gv('r-photo-n'))||0, synced:false
+    };
+    state.db().records.push(record);
+    state.save();
+    try { await api.post({action:'cleaningSave',data:record}); record.synced=true; state.save(); } catch(e){}
+    ui.toast('✅ 記錄已儲存');
+    clear();
+  };
+  const saveTg = async () => {
+    const date=gv('r-date'),locId=gv('r-loc'),cleaner=gv('r-cleaner');
+    const loc=locName(locId);
+    const chks=state.getChk();
+    const fails=CHK_ITEMS.filter(k=>chks[k]===false).map(k=>i18n.t('ci-'+k));
+    const msg=`🧹 <b>VRT 清潔記錄</b>\n📅 ${date}  📍 ${loc}\n👷 ${cleaner}\n⏰ ${state.getSlots().join(', ')||'—'}\n${fails.length?'❌ 異常: '+fails.join(', '):'✅ 全部通過'}\n${gv('r-note')?'📝 '+gv('r-note'):''}`;
+    await api.tg(msg);
+    ui.toast('📤 Telegram 已發送');
+  };
+  const clear = () => {
+    ['r-date','r-loc','r-shift','r-cleaner','r-checker','r-note','r-photo-n'].forEach(id=>sv(id,''));
+    sv('r-date',de.fmt(new Date()));
+    state.resetChk(); state.resetSlots();
+    renderCheckGrid(); renderSlots();
+  };
+  return {save, saveTg, clear};
+})();
+
+/* ═══ HISTORY MODULE ═══ */
+const hist = (() => {
+  const query = () => {
+    const loc=gv('hl-loc'), status=gv('hl-status'), month=gv('hl-month'), search=gv('hl-search').toLowerCase();
+    const recs=state.db().records.filter(r=>{
+      if(loc&&r.locId!==loc)return false;
+      if(month&&!r.date.startsWith(month))return false;
+      if(status){const f=Object.values(r.checks||{}).some(v=>v===false);if(status==='pass'&&f)return false;if(status==='fail'&&!f)return false;}
+      if(search&&!JSON.stringify(r).toLowerCase().includes(search))return false;
+      return true;
+    }).sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+    document.getElementById('hist-count').textContent=recs.length+' 筆';
+    const tbody=document.getElementById('hist-tbody');
+    if(!recs.length){tbody.innerHTML=`<tr><td colspan="9" class="es"><span class="esi">📋</span><br>${i18n.t('no-rec')}</td></tr>`;return;}
+    tbody.innerHTML=recs.map(r=>{
+      const chks=r.checks||{};
+      const fail=Object.values(chks).some(v=>v===false);
+      const itemStr=CHK_ITEMS.map(k=>chks[k]===true?'✅':chks[k]===false?'❌':'—').join(' ');
+      return`<tr><td>${r.date||''}</td><td>${esc(locName(r.locId))}</td><td>${esc(r.cleaner||'')}</td><td>${esc(r.checker||'')}</td><td style="font-size:9px">${(r.slots||[]).join(' ')}</td><td style="font-size:10px;letter-spacing:2px">${itemStr}</td><td><span class="badge ${fail?'bf2':'bp2'}">${fail?i18n.t('fail'):i18n.t('pass')}</span></td><td>${esc(r.note||'')}</td><td><button onclick="delRec('${r.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px">✕</button></td></tr>`;
+    }).join('');
+  };
+  const exportXL = () => {
+    const db=state.db();
+    if(!db.records.length){ui.toast('無資料');return;}
+    const rows=db.records.map(r=>({
+      Date:r.date, Location:locName(r.locId), Shift:r.shift, Cleaner:r.cleaner, Checker:r.checker,
+      Slots:(r.slots||[]).join('|'),
+      Smell:fmtChk(r.checks,'smell'),Light:fmtChk(r.checks,'light'),Floor:fmtChk(r.checks,'floor'),
+      Door:fmtChk(r.checks,'door'),Corner:fmtChk(r.checks,'corner'),Ceiling:fmtChk(r.checks,'ceiling'),
+      HasAnomaly:Object.values(r.checks||{}).some(v=>v===false)?'YES':'NO',
+      Note:r.note||'', PhotoCount:r.photoCount||0, Submitted:r.timestamp
+    }));
+    const ws=XLSX.utils.json_to_sheet(rows);
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Cleaning');
+    XLSX.writeFile(wb,`VRT_Cleaning_${new Date().toISOString().slice(0,10)}.xlsx`);
+    ui.toast('✅ 已下載');
+  };
+  const uploadCloud = async () => {
+    const un=state.db().records.filter(r=>!r.synced);
+    if(!un.length){ui.toast('✅ 全部已同步');return;}
+    ui.toast('☁️ 上傳中...');
+    let ok=0;
+    for(const r of un){try{await api.post({action:'cleaningSave',data:r});r.synced=true;ok++;}catch(e){}}
+    state.save(); ui.toast(`✅ 上傳完成 ${ok}/${un.length} 筆`); query();
+  };
+  const downloadCloud = async () => {
+    ui.toast('⬇️ 下載中...');
+    try {
+      const d=await api.get({action:'getCleaning'});
+      if(!d.ok)throw new Error(d.err||'GAS error');
+      const ids=new Set(state.db().records.map(r=>r.id));
+      let added=0;
+      (d.records||[]).forEach(r=>{if(!ids.has(r.id)){state.db().records.push({...r,synced:true});ids.add(r.id);added++;}});
+      state.save(); ui.toast(`✅ 下載完成 新增 ${added} 筆`); query();
+    }catch(e){ui.toast('⚠️ 下載失敗：'+e.message);}
+  };
+  return {query, exportXL, uploadCloud, downloadCloud};
+})();
+
+/* ═══ DUSTBIN MAP MODULE ═══ */
+const binMap = (() => {
+  const BIN_ZONES = [
+    {id:'cutting',  label:'CUTTING 裁剪',  x:20,y:20,w:240,h:200,fill:'#3B82F6'},
+    {id:'sewing',   label:'SEWING 車縫',   x:280,y:20,w:260,h:200,fill:'#22C55E'},
+    {id:'finishing',label:'FINISHING 成衣',x:560,y:20,w:220,h:200,fill:'#F97316'},
+    {id:'canteen',  label:'CANTEEN 飯堂',  x:20,y:240,w:180,h:140,fill:'#EF4444'},
+    {id:'toilet',   label:'TOILET 廁所',   x:220,y:240,w:120,h:140,fill:'#06B6D4'},
+    {id:'office',   label:'OFFICE 辦公室', x:360,y:240,w:220,h:140,fill:'#8B5CF6'},
+    {id:'warehouse',label:'WAREHOUSE 倉庫',x:600,y:240,w:180,h:140,fill:'#D4810E'},
+  ];
+  const render = () => {
+    const svg=document.getElementById('factory-map-svg');
+    if(!svg)return;
+    // Draw zones
+    let html=`<rect width="800" height="480" fill="#F4FAF6" rx="8"/>`;
+    // Grid lines
+    for(let x=0;x<=800;x+=40) html+=`<line x1="${x}" y1="0" x2="${x}" y2="480" stroke="#2D7A5A" stroke-width=".3" opacity=".15"/>`;
+    for(let y=0;y<=480;y+=40) html+=`<line x1="0" y1="${y}" x2="800" y2="${y}" stroke="#2D7A5A" stroke-width=".3" opacity=".15"/>`;
+    // Zones
+    BIN_ZONES.forEach(z=>{
+      html+=`<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="${z.fill}" opacity=".08" rx="6"/>`;
+      html+=`<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="none" stroke="${z.fill}" stroke-width="1.5" stroke-dasharray="5,3" rx="6" opacity=".4"/>`;
+      html+=`<text x="${z.x+z.w/2}" y="${z.y+14}" text-anchor="middle" font-size="9" font-weight="700" fill="${z.fill}" opacity=".8" font-family="Outfit,sans-serif">${z.label}</text>`;
+    });
+    // Bins from state
+    const bins=state.db().bins;
+    bins.forEach(b=>{
+      const zone=BIN_ZONES.find(z=>z.id===b.area);
+      if(!zone) return;
+      const bx=zone.x+20+(bins.filter(bb=>bb.area===b.area).indexOf(b)%5)*38;
+      const by=zone.y+zone.h/2+10;
+      const col=BIN_COLORS[b.type]||'#6B7280';
+      html+=`<g class="map-bin" transform="translate(${bx},${by})">
+        <circle r="13" fill="${col}" opacity=".9"/>
+        <text y="5" text-anchor="middle" font-size="13">${binEmoji(b.type)}</text>
+        <title>${esc(b.desc||b.area+' '+b.type)}</title>
+      </g>`;
+    });
+    // Add default bins if none
+    if(!bins.length){
+      const defaults=[
+        {area:'cutting',type:'fabric',x:60,y:120},{area:'cutting',type:'general',x:110,y:120},
+        {area:'sewing',type:'fabric',x:320,y:100},{area:'sewing',type:'general',x:360,y:100},{area:'sewing',type:'plastic',x:400,y:100},
+        {area:'canteen',type:'general',x:70,y:300},{area:'canteen',type:'paper',x:110,y:300},
+        {area:'toilet',type:'hazard',x:250,y:310},{area:'toilet',type:'general',x:290,y:310},
+        {area:'office',type:'paper',x:380,y:310},{area:'office',type:'general',x:420,y:310},
+        {area:'warehouse',type:'metal',x:640,y:300},{area:'warehouse',type:'general',x:680,y:300},
+      ];
+      defaults.forEach(b=>{
+        const col=BIN_COLORS[b.type]||'#6B7280';
+        html+=`<g class="map-bin" transform="translate(${b.x},${b.y})"><circle r="13" fill="${col}" opacity=".9"/><text y="5" text-anchor="middle" font-size="13">${binEmoji(b.type)}</text></g>`;
+      });
+    }
+    svg.innerHTML=html;
+    renderBinLegend();
+    renderBinTable();
+    document.getElementById('bin-total-count').textContent=(bins.length||14)+' 個';
+  };
+  const renderBinLegend = () => {
+    const el=document.getElementById('bin-legend');
+    el.innerHTML=Object.entries(BIN_COLORS).map(([t,c])=>`<div class="bli"><div class="bld" style="background:${c}"></div>${binEmoji(t)} ${t}</div>`).join('');
+  };
+  const renderBinTable = () => {
+    const bins=state.db().bins;
+    const tbody=document.getElementById('bin-tbody');
+    if(!bins.length){tbody.innerHTML=`<tr><td colspan="7" class="es"><span class="esi">🗑️</span><br>${i18n.t('no-rec')}</td></tr>`;return;}
+    tbody.innerHTML=bins.map(b=>`<tr><td>${esc(b.area||'')}</td><td><span style="background:${BIN_COLORS[b.type]||'#ddd'};color:#fff;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">${binEmoji(b.type)} ${b.type}</span></td><td>${esc(b.desc||'')}</td><td>${esc(b.resp||'')}</td><td>${esc(b.freq||'')}</td><td>${b.lastClean||'—'}</td><td><button onclick="delBin('${b.id}')" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></td></tr>`).join('');
+    document.getElementById('bin-count-lbl').textContent=bins.length+' 個';
+  };
+  return {render};
+})();
+
+/* ═══ 6S MODULE ═══ */
+const sixs = (() => {
+  const renderCats = () => {
+    const wrap=document.getElementById('sixs-cats-wrap');
+    if(!wrap)return;
+    wrap.innerHTML=SIXS_CATS.map((cat,ci)=>`
+      <div class="sixs-cat">
+        <div class="sc-hd" onclick="this.nextElementSibling.classList.toggle('open')">
+          <span style="font-size:16px">${['🔵','🟡','🟢','🟠','🟣','🔴'][ci]}</span>
+          <span class="sc-title">${cat.zh}</span>
+          <span class="sc-score" id="sc-score-${cat.key}">0/${cat.items.length}</span>
+        </div>
+        <div class="sc-bd${ci===0?' open':''}">
+          ${cat.items.map((item,ii)=>`<div class="si">
+            <div class="si-txt">${esc(item)}</div>
+            <div class="si-btns">
+              <button class="sib" id="sib-ok-${cat.key}-${ii}" onclick="sixs.mark('${cat.key}',${ii},'ok')">✓ OK</button>
+              <button class="sib" id="sib-fail-${cat.key}-${ii}" onclick="sixs.mark('${cat.key}',${ii},'fail')">✗</button>
+              <button class="sib" id="sib-na-${cat.key}-${ii}" onclick="sixs.mark('${cat.key}',${ii},'na')">N/A</button>
+            </div>
+          </div>`).join('')}
+        </div>
+      </div>`).join('');
+    updateHeader();
+    renderHistory();
+  };
+  const mark = (cat,idx,val) => {
+    state.setSixs(cat,idx,val);
+    const keys=['ok','fail','na'];
+    keys.forEach(k=>{
+      const btn=document.getElementById(`sib-${k}-${cat}-${idx}`);
+      if(btn){btn.className='sib'+(val===k?' '+k:'');}
+    });
+  };
+  const calcScore = () => {
+    let total=0,max=0;
+    const ss=state.getSixs();
+    SIXS_CATS.forEach(cat=>{
+      let catScore=0,catMax=0;
+      cat.items.forEach((_,ii)=>{
+        const v=(ss[cat.key]||{})[ii];
+        if(v==='ok'){catScore++;catMax++;}
+        else if(v==='fail'){catMax++;}
+        // na = not counted
+      });
+      const sc=document.getElementById('sc-score-'+cat.key);
+      if(sc)sc.textContent=`${catScore}/${catMax}`;
+      total+=catScore; max+=catMax;
+    });
+    const pct=max>0?Math.round(total/max*100):0;
+    document.getElementById('s6-total').textContent=pct;
+    return pct;
+  };
+  const updateHeader = () => {
+    const loc=state.db().locations.find(l=>l.id===gv('s6-loc'));
+    const el=document.getElementById('s6-loc-name');
+    if(el)el.textContent=loc?loc.name:'—';
+    const de2=document.getElementById('s6-date-show');
+    if(de2)de2.textContent=gv('s6-date')||'—';
+    calcScore();
+  };
+  const save = () => {
+    const date=gv('s6-date'), locId=gv('s6-loc'), obs=gv('s6-obs');
+    if(!date){ui.toast('⚠️ 請選擇日期');return;}
+    const score=calcScore();
+    const record={id:Date.now().toString(36),timestamp:new Date().toISOString(),date,locId,observer:obs,score,data:JSON.parse(JSON.stringify(state.getSixs()))};
+    state.db().sixsRecords.push(record);
+    state.save();
+    ui.toast(`✅ 6S 已儲存 (${score}分)`);
+    renderHistory();
+  };
+  const sendTg = async () => {
+    const score=calcScore();
+    const loc=state.db().locations.find(l=>l.id===gv('s6-loc'));
+    const grade=score>=90?'A':score>=75?'B':score>=60?'C':'D';
+    const msg=`⭐ <b>VRT 6S 檢查</b>\n📍 ${loc?loc.name:'—'}  📅 ${gv('s6-date')}\n👤 ${gv('s6-obs')||'—'}\n📊 分數: ${score}/100  評級: ${grade}`;
+    await api.tg(msg);
+    ui.toast('📤 Telegram 已發送');
+  };
+  const reset = () => {
+    if(!confirm('確定重置所有評分？'))return;
+    state.resetSixs(); renderCats();
+  };
+  const renderHistory = () => {
+    const recs=[...state.db().sixsRecords].sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+    const tbody=document.getElementById('s6-hist-body');
+    if(!recs.length){tbody.innerHTML=`<tr><td colspan="5" class="es"><span class="esi">⭐</span><br>${i18n.t('no-rec')}</td></tr>`;return;}
+    tbody.innerHTML=recs.map(r=>{
+      const grade=r.score>=90?'A':r.score>=75?'B':r.score>=60?'C':'D';
+      const col={A:'#219653',B:'#2D6FA3',C:'#D4810E',D:'#C94040'}[grade];
+      return`<tr><td>${r.date}</td><td>${esc(locName(r.locId))}</td><td>${esc(r.observer||'')}</td><td>${r.score}/100</td><td><span class="badge" style="background:${col}22;color:${col}">${grade}</span></td></tr>`;
+    }).join('');
+  };
+  return {renderCats, mark, calcScore, updateHeader, save, sendTg, reset, renderHistory};
+})();
+
+/* ═══ AREAS MODULE ═══ */
+const areas = (() => {
+  const render = () => {
+    const grid=document.getElementById('areas-grid');
+    const locs=state.db().locations;
+    if(!locs.length){grid.innerHTML=`<div class="es"><span class="esi">📍</span><br>${i18n.t('no-rec')}</div>`;return;}
+    grid.innerHTML=locs.map(l=>{
+      const cnt=state.db().records.filter(r=>r.locId===l.id).length;
+      const icon=LOC_ICONS[l.type]||'📌';
+      return`<div class="alc"><span class="ali">${icon}</span><div class="aln">${esc(l.name)}</div><div class="alct">${esc(l.type)} · ${cnt} 筆</div><button onclick="delArea('${l.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;margin-top:4px">✕</button></div>`;
+    }).join('');
+  };
+  const showAdd = () => document.getElementById('add-area-card').style.display='block';
+  const hideAdd = () => document.getElementById('add-area-card').style.display='none';
+  const add = () => {
+    const name=gv('a-name').trim(), type=gv('a-type'), resp=gv('a-resp');
+    if(!name){ui.toast('⚠️ 請輸入地點名稱');return;}
+    state.db().locations.push({id:'loc'+Date.now(),name,type,resp});
+    state.save(); render(); state.populate();
+    ['a-name','a-resp'].forEach(id=>sv(id,'')); hideAdd();
+    ui.toast('✅ 地點已新增');
+  };
+  const exportXL = () => {
+    const db=state.db();
+    if(!db.locations.length){ui.toast('無資料');return;}
+    const rows=db.locations.map(l=>({Name:l.name,Type:l.type,Responsible:l.resp||'',Records:db.records.filter(r=>r.locId===l.id).length}));
+    const ws=XLSX.utils.json_to_sheet(rows);
+    const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Areas');
+    XLSX.writeFile(wb,`VRT_Areas_${new Date().toISOString().slice(0,10)}.xlsx`);
+    ui.toast('✅ 已下載');
+  };
+  return {render, showAdd, hideAdd, add, exportXL};
+})();
+
+/* ═══ CONFIG MODULE ═══ */
+const cfg = (() => {
+  const load = () => {
+    const c=state.db().cfg||{};
+    sv('cfg-gas',c.gasUrl||''); sv('cfg-token',c.botToken||''); sv('cfg-chat',c.chatId||'');
+    renderStaff(); renderSlotTags();
+  };
+  const save = () => {
+    state.db().cfg={gasUrl:gv('cfg-gas'),botToken:gv('cfg-token'),chatId:gv('cfg-chat')};
+    state.save(); ui.toast('✅ 設定已儲存');
+  };
+  const testTg = async () => {
+    await api.tg('🧹 VRT Cleaning Management — Telegram 測試成功！');
+    ui.toast('📤 測試訊息已發送');
+  };
+  const testGas = async () => {
+    try{const d=await api.get({action:'ping'});ui.toast(d.ok?'✅ GAS 連接成功':'⚠️ '+d.err);}
+    catch(e){ui.toast('⚠️ 連接失敗：'+e.message);}
+  };
+  return {load, save, testTg, testGas};
+})();
+
+/* ═══ STAFF MODULE ═══ */
+const staff = (() => {
+  const add = (type) => {
+    const id=type==='cleaner'?'new-cleaner':'new-checker';
+    const name=gv(id).trim(); if(!name)return;
+    if(type==='cleaner') state.db().cleaners.push(name);
+    else state.db().checkers.push(name);
+    state.save(); state.populate(); renderStaff(); sv(id,'');
+    ui.toast('✅ 已新增');
+  };
+  return {add};
+})();
+
+/* ═══ SLOT CONFIG MODULE ═══ */
+const slotCfg = (() => {
+  const add = () => {
+    const v=gv('new-slot').trim();
+    if(!v||!/^\d{2}:\d{2}$/.test(v)){ui.toast('⚠️ 格式 HH:MM');return;}
+    const slots=state.db().slots;
+    if(!slots.includes(v)){slots.push(v);slots.sort();state.save();renderSlotTags();renderSlots();}
+    sv('new-slot','');
+  };
+  const reset = () => {state.db().slots=[...DEF_SLOTS];state.save();renderSlotTags();renderSlots();};
+  return {add, reset};
+})();
+
+/* ═══ DATA MGMT MODULE ═══ */
+const dataMgmt = (() => {
+  const exportAll = () => {
+    const blob=new Blob([JSON.stringify(state.db(),null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=`VRT_Cleaning_Backup_${new Date().toISOString().slice(0,10)}.json`;a.click();
+    ui.toast('✅ 已匯出');
+  };
+  const importAll = (inp) => {
+    const file=inp.files[0]; if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{const d=JSON.parse(e.target.result);Object.assign(state.db(),d);state.save();state.populate();dash.render();ui.toast('✅ 已還原');}
+      catch(ex){ui.toast('⚠️ 格式錯誤');}
+    };
+    reader.readAsText(file);
+  };
+  const clear = () => {
+    if(!confirm('確定清除所有數據？'))return;
+    localStorage.removeItem(SK);location.reload();
+  };
+  return {exportAll, importAll, clear};
+})();
+
+/* ═══ BIN MGMT ═══ */
+const binMgmt = (() => {
+  const add = () => {
+    const area=gv('b-area'),type=gv('b-type'),freq=gv('b-freq'),desc=gv('b-desc'),resp=gv('b-resp');
+    state.db().bins.push({id:'bin'+Date.now(),area,type,freq,desc,resp,lastClean:de.fmt(new Date())});
+    state.save(); binMap.render(); ui.toast('✅ 垃圾桶已新增');
+    ['b-desc','b-resp'].forEach(id=>sv(id,''));
+  };
+  return {add};
+})();
+
+/* ═══ HELPERS ═══ */
+function gv(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+function sv(id,v){const el=document.getElementById(id);if(el)el.value=v;}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function locName(id){const l=state.db().locations.find(l=>l.id===id);return l?l.name:id||'—';}
+function fmtChk(chks,k){const v=(chks||{})[k];return v===true?'PASS':v===false?'FAIL':'—';}
+function binEmoji(t){return{general:'🗑️',fabric:'🟢',plastic:'🟠',metal:'⚫',paper:'📄',hazard:'⚠️'}[t]||'🗑️';}
+
+function renderSlots(){
+  const wrap=document.getElementById('slots-wrap');if(!wrap)return;
+  const slots=state.db().slots||DEF_SLOTS;
+  const sel=state.getSlots();
+  wrap.innerHTML=slots.map(s=>`<div class="sl ${sel.includes(s)?'sel':'none'}" onclick="state.toggleSlot('${s}')">${s}</div>`).join('');
+  const cnt=document.getElementById('sel-slot-count');if(cnt)cnt.textContent=sel.length+' 已選';
+}
+
+function renderCheckGrid(){
+  const grid=document.getElementById('check-grid');if(!grid)return;
+  const chks=state.getChk();
+  grid.innerHTML=CHK_ITEMS.map(k=>{
+    const v=chks[k];
+    let cls=v===true?'pass':v===false?'fail':'';
+    let st=v===true?i18n.t('pass'):v===false?i18n.t('fail'):'—';
+    return`<div class="ci ${cls}" onclick="cycleCheck('${k}')"><span class="ci-ic">${CHK_ICONS[k]}</span><div class="ci-nm">${i18n.t('ci-'+k)}</div><div class="ci-st">${st}</div></div>`;
+  }).join('');
+}
+
+function cycleCheck(k){
+  const v=state.getChk()[k];
+  state.setChk(k, v===null?true:v===true?false:null);
+  renderCheckGrid();
+}
+
+function renderStaff(){
+  const db=state.db();
+  const ct=document.getElementById('cleaner-tags');
+  const cht=document.getElementById('checker-tags');
+  if(ct)ct.innerHTML=db.cleaners.map((n,i)=>`<div class="stag">${esc(n)}<span class="del" onclick="staff_del('cleaner',${i})">✕</span></div>`).join('')||'<span style="color:var(--dim);font-size:10px">—</span>';
+  if(cht)cht.innerHTML=db.checkers.map((n,i)=>`<div class="stag">${esc(n)}<span class="del" onclick="staff_del('checker',${i})">✕</span></div>`).join('')||'<span style="color:var(--dim);font-size:10px">—</span>';
+}
+
+function staff_del(type,idx){
+  if(type==='cleaner')state.db().cleaners.splice(idx,1);
+  else state.db().checkers.splice(idx,1);
+  state.save();state.populate();renderStaff();
+}
+
+function renderSlotTags(){
+  const el=document.getElementById('slot-tags');if(!el)return;
+  const slots=state.db().slots||[];
+  el.innerHTML=slots.map((s,i)=>`<div class="stag">${s}<span class="del" onclick="slot_del(${i})">✕</span></div>`).join('');
+}
+
+function slot_del(i){state.db().slots.splice(i,1);state.save();renderSlotTags();renderSlots();}
+function delRec(id){if(!confirm('確定刪除？'))return;state.db().records=state.db().records.filter(r=>r.id!==id);state.save();hist.query();}
+function delBin(id){if(!confirm('確定刪除？'))return;state.db().bins=state.db().bins.filter(b=>b.id!==id);state.save();binMap.render();}
+function delArea(id){if(!confirm('確定刪除地點？'))return;state.db().locations=state.db().locations.filter(l=>l.id!==id);state.save();areas.render();state.populate();}
+function calcSixsScore(){sixs.calcScore();sixs.updateHeader();}
+
+function updateDbInfo(){
+  const db=state.db();
+  const el=document.getElementById('db-info');
+  if(el)el.textContent=`Records: ${(db.records||[]).length} · 6S: ${(db.sixsRecords||[]).length} · Locations: ${(db.locations||[]).length} · Bins: ${(db.bins||[]).length}`;
+}
+
+function updateTs(){
+  const d=new Date();
+  const p=n=>String(n).padStart(2,'0');
+  const el=document.getElementById('ts-now');
+  if(el)el.textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+/* ═══ INIT ═══ */
+(function init(){
+  state.load();
+  state.resetChk();
+  updateTs(); setInterval(updateTs,1000);
+  // Set today
+  const today=de.fmt(new Date());
+  sv('r-date',today); sv('s6-date',today);
+  // Set quarter
+  const q=document.getElementById('insp-quarter');
+  if(q){const m=new Date().getMonth()+1;q.value=m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';}
+  state.populate();
+  renderStaff(); renderSlotTags();
+  de.set('month', document.querySelector('.pt .ptab'));
+  updateDbInfo();
+})();
+</script>
+</body>
+</html>

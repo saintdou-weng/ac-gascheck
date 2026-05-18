@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<title>VRT · EHS Environment</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Sans+Khmer:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F2F5FA;--sur:#fff;--bdr:#C4CDD8;--bdr2:#DCE5EE;
+  --acc:#B36010;--acc2:#8A4A0A;--abg:#FFF1E0;--alt:#FEF8F2;
+  --tx:#0F1E2E;--tx2:#2B3D50;--dim:#627282;
+  --nv:#1A3458;--nv2:#0F2240;--nv3:#243C5A;
+  --red:#C04040;--rl:#FDE8E8;--grn:#1E7A45;--gl:#E6F5EC;
+  --amb:#D4810E;--al:#FFF3E0;--blu:#2563A8;--bl:#E8F0FB;
+  --haz:#8B1A8B;--hzl:#F5E8F5;
+  --int-plastic:#3B82F6;--int-fabric:#22C55E;--int-core:#F59E0B;
+  --gate-solid:#8B5CF6;--gate-ind:#EF4444;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'IBM Plex Sans','Noto Sans TC','Noto Sans Khmer',sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;font-size:13px}
+/* Topbar */
+.topbar{background:linear-gradient(135deg,var(--nv),var(--nv2));color:#fff;padding:10px 14px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:200;box-shadow:0 2px 16px rgba(15,34,64,.5)}
+.tb-logo{width:32px;height:32px;background:rgba(255,255,255,.15);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.tb-info{flex:1}.tb-title{font-size:14px;font-weight:700}.tb-sub{font-size:9px;opacity:.55;font-family:'JetBrains Mono',monospace}
+.lgp{display:flex;gap:3px;flex-shrink:0}
+.lb{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.75);padding:4px 8px;border-radius:20px;cursor:pointer;font-size:10px;font-weight:600;font-family:inherit;transition:.2s}
+.lb.on{background:rgba(211,145,30,.6);color:#fff;border-color:var(--amb)}
+.tsl{font-family:'JetBrains Mono',monospace;font-size:9px;color:rgba(255,255,255,.4);display:flex;align-items:center;gap:4px;flex-shrink:0}
+.tsd{width:5px;height:5px;border-radius:50%;background:#FCD34D;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+/* Tabs */
+.tabs{display:flex;background:var(--sur);border-bottom:2px solid var(--bdr2);overflow-x:auto;scrollbar-width:none;padding:0 4px}
+.tabs::-webkit-scrollbar{display:none}
+.tab{padding:10px 9px;font-size:11px;font-weight:600;color:var(--dim);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;transition:.2s;white-space:nowrap;display:flex;align-items:center;gap:3px;flex-shrink:0}
+.tab.active{color:var(--acc);border-bottom-color:var(--acc)}
+.pane{display:none}.pane.active{display:block}
+.main{padding:10px;max-width:980px;margin:0 auto}
+/* Card */
+.card{background:var(--sur);border:1px solid var(--bdr2);border-radius:12px;overflow:hidden;margin-bottom:10px;box-shadow:0 1px 5px rgba(26,52,88,.06)}
+.ch{padding:9px 13px;border-bottom:1px solid var(--bdr2);display:flex;align-items:center;gap:7px;background:var(--alt)}
+.ch-ic{font-size:15px}.ch-tl{font-size:11px;font-weight:700;color:var(--acc2);text-transform:uppercase;letter-spacing:.7px}
+.ch-nt{font-size:9px;color:var(--dim);margin-left:auto}.cb{padding:12px}
+/* KPI */
+.kg{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:10px}
+.kc{background:var(--sur);border:1px solid var(--bdr2);border-radius:12px;padding:12px 10px;text-align:center;position:relative;overflow:hidden}
+.kc::after{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.c0::after{background:var(--nv)}.c1::after{background:var(--grn)}.c2::after{background:var(--red)}.c3::after{background:var(--amb)}.c4::after{background:var(--haz)}.c5::after{background:var(--blu)}
+.ki{font-size:20px;display:block;margin-bottom:4px}.kv{font-size:23px;font-weight:700;line-height:1}.kl{font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-top:3px}
+/* Anomaly banner */
+.abn-banner{background:linear-gradient(135deg,#7A1010,#C04040);color:#fff;border-radius:10px;padding:10px 14px;margin-bottom:10px;display:flex;align-items:center;gap:10px;display:none}
+.abn-banner.show{display:flex}
+.abn-icon{font-size:24px;flex-shrink:0}.abn-txt{font-size:12px;line-height:1.5;flex:1}
+.abn-close{background:rgba(255,255,255,.2);border:none;color:#fff;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:13px;flex-shrink:0}
+/* Date filter */
+.df{background:var(--sur);border:1px solid var(--bdr2);border-radius:10px;padding:8px 10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.pt{display:flex;background:var(--bg);border-radius:7px;padding:2px;gap:1px}
+.ptab{padding:5px 10px;border-radius:5px;font-size:10px;font-weight:600;cursor:pointer;color:var(--dim);transition:.2s;white-space:nowrap}
+.ptab.on{background:var(--nv);color:#fff}
+/* Chart row */
+.cr{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.cc{background:var(--sur);border:1px solid var(--bdr2);border-radius:12px;padding:12px}
+.ct{font-size:10px;font-weight:700;color:var(--tx2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;justify-content:space-between}
+/* Form */
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0}
+.fgrid.c3{grid-template-columns:1fr 1fr 1fr}.fgrid.c4{grid-template-columns:1fr 1fr 1fr 1fr}
+.fg{border-right:1px solid var(--bdr2);border-bottom:1px solid var(--bdr2);display:flex;flex-direction:column}
+.fg:nth-child(2n){border-right:none}
+.fgrid.c3 .fg:nth-child(3n){border-right:none}.fgrid.c3 .fg:nth-child(2n){border-right:1px solid var(--bdr2)}
+.fgrid.c4 .fg:nth-child(4n){border-right:none}.fgrid.c4 .fg:nth-child(2n),.fgrid.c4 .fg:nth-child(3n){border-right:1px solid var(--bdr2)}
+.fg.full{grid-column:1/-1;border-right:none}
+.fl{font-size:9px;font-weight:700;color:var(--dim);background:var(--alt);padding:3px 9px;border-bottom:1px solid var(--bdr2);letter-spacing:.4px;display:flex;align-items:center;justify-content:space-between}
+.req{color:var(--red)}
+.fi{border:none;outline:none;font-family:inherit;font-size:12px;color:var(--tx);padding:7px 9px;width:100%;background:transparent;transition:background .15s}
+.fi:focus{background:var(--abg)}.fi::placeholder{color:#B0B8C4;font-size:11px}
+select.fi{cursor:pointer}textarea.fi{min-height:55px;resize:vertical}
+/* Batch table */
+.btbl{width:100%;border-collapse:collapse;font-size:11px;min-width:600px}
+.btbl th{background:var(--alt);padding:5px 6px;text-align:left;font-weight:700;color:var(--acc2);border-bottom:2px solid var(--bdr);border-right:1px solid var(--bdr2);font-size:9px;white-space:nowrap}
+.btbl th:last-child{border-right:none}
+.btbl td{border-bottom:1px solid var(--bdr2);border-right:1px solid var(--bdr2);padding:1px}
+.btbl td:last-child{border-right:none}
+.btbl input[type=date],.btbl input[type=number],.btbl input[type=text],.btbl select{border:none;outline:none;font-family:inherit;font-size:11px;padding:5px 5px;width:100%;background:transparent;color:var(--tx)}
+.btbl input:focus,.btbl select:focus{background:var(--abg)}
+.btbl input[type=checkbox]{width:16px;height:16px;accent-color:var(--acc);cursor:pointer}
+.btbl .tot{background:var(--abg);font-weight:700;color:var(--acc2)}
+.del-row{background:none;border:none;color:var(--red);font-size:13px;cursor:pointer;padding:4px 6px}
+.del-row:hover{background:var(--rl);border-radius:4px}
+.add-row-btn{width:100%;background:transparent;border:1.5px dashed var(--bdr);border-radius:7px;padding:6px;cursor:pointer;font-size:11px;color:var(--nv);font-weight:600;font-family:inherit;transition:.2s;text-align:center;margin-top:6px}
+.add-row-btn:hover{border-color:var(--nv);background:var(--bl)}
+/* Buttons */
+.br{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;font-family:inherit;font-size:11px;font-weight:700;border:none;border-radius:8px;padding:9px 13px;cursor:pointer;transition:.15s;white-space:nowrap}
+.btn:hover{opacity:.9}.btn:active{transform:scale(.97)}.btn:disabled{opacity:.45;cursor:not-allowed}
+.bn{background:linear-gradient(135deg,var(--nv),var(--nv2));color:#fff}
+.ba{background:linear-gradient(135deg,var(--amb),var(--acc2));color:#fff}
+.bg{background:linear-gradient(135deg,#1E7A45,#155E33);color:#fff}
+.br2{background:linear-gradient(135deg,#C04040,#A03030);color:#fff}
+.bb{background:linear-gradient(135deg,#2563A8,#1A4A80);color:#fff}
+.bpurp{background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff}
+.bo{background:transparent;border:1.5px solid var(--bdr);color:var(--tx2)}
+.imp-lbl{display:inline-flex;align-items:center;gap:5px;background:linear-gradient(135deg,#7C3AED,#5B21B6);color:#fff;border-radius:8px;padding:9px 13px;font-size:11px;font-weight:700;cursor:pointer}
+/* Records table */
+.fb{background:var(--sur);border:1px solid var(--bdr2);border-radius:10px;padding:9px 10px;margin-bottom:10px;display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap}
+.fbg{display:flex;flex-direction:column;gap:2px}
+.fbl{font-size:9px;font-weight:700;color:var(--dim);text-transform:uppercase;letter-spacing:.4px}
+.fbi{border:1px solid var(--bdr);border-radius:6px;padding:6px 8px;font-size:11px;color:var(--tx);background:#fff;outline:none;font-family:inherit;min-width:80px}
+.fbi:focus{border-color:var(--acc)}
+.tw{overflow-x:auto}
+.rt{width:100%;border-collapse:collapse;font-size:10px;min-width:620px}
+.rt th{background:var(--alt);padding:5px 7px;text-align:left;font-weight:700;color:var(--acc2);border-bottom:2px solid var(--bdr);font-size:9px;white-space:nowrap}
+.rt td{padding:5px 7px;border-bottom:1px solid var(--bdr2);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rt tr:nth-child(even) td{background:#FAFBFD}.rt tr:hover td{background:var(--abg)}
+.badge{display:inline-block;border-radius:4px;padding:2px 6px;font-size:9px;font-weight:700}
+.bn2{background:#E8F0FB;color:#1A3458}.ba2{background:var(--al);color:#7A4D10}
+.br22{background:var(--rl);color:#8B1A1A}.bg2{background:var(--gl);color:#1A5C2A}
+.bhz{background:var(--hzl);color:#5C1A5C}
+.es{text-align:center;padding:28px;color:var(--dim);font-size:12px}.esi{font-size:26px;display:block;margin-bottom:6px}
+/* Comparison table */
+.cmp-tbl{width:100%;border-collapse:collapse;font-size:11px}
+.cmp-tbl th{background:var(--alt);padding:6px 8px;text-align:left;font-weight:700;color:var(--tx2);border-bottom:2px solid var(--bdr);font-size:10px}
+.cmp-tbl td{padding:6px 8px;border-bottom:1px solid var(--bdr2)}
+.cmp-up{color:var(--red);font-weight:700}.cmp-dn{color:var(--grn);font-weight:700}.cmp-nc{color:var(--dim)}
+/* Hazard class badges */
+.hz-1{background:#FFEAEA;color:#C00}.hz-2{background:#FFF3EA;color:#B36010}.hz-3{background:#EAFFF3;color:#1A7A45}.hz-4{background:#F3EAFF;color:#5B21B6}.hz-5{background:#EAF0FF;color:#2563A8}
+/* Chemical cards */
+.chem-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px;margin-bottom:10px}
+.chem-card{background:var(--sur);border:1px solid var(--bdr2);border-radius:10px;padding:11px;position:relative;overflow:hidden}
+.chem-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px}
+.chem-card.hz1::before{background:#C00}.chem-card.hz2::before{background:#B36010}.chem-card.hz3::before{background:#1A7A45}.chem-card.hz4::before{background:#5B21B6}.chem-card.hz5::before{background:#2563A8}
+.chem-name{font-size:12px;font-weight:700;color:var(--tx);margin-bottom:4px}
+.chem-meta{font-size:10px;color:var(--dim);line-height:1.6}
+.chem-qty{font-size:18px;font-weight:700;color:var(--acc);margin-top:6px}
+.chem-unit{font-size:10px;color:var(--dim);font-weight:400}
+/* Staff tags */
+.stags{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:8px}
+.stag{display:inline-flex;align-items:center;gap:4px;background:var(--abg);color:var(--acc2);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600}
+.stag .del{cursor:pointer;color:var(--red);font-weight:700;font-size:12px}
+/* Toast */
+#toast{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:#0F1E2E;color:#FEF8F2;border-radius:8px;padding:9px 18px;font-size:12px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9999;max-width:90vw;text-align:center}
+#toast.show{opacity:1}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;margin-right:5px;vertical-align:middle}
+@keyframes sp{to{transform:rotate(360deg)}}
+@media(max-width:600px){.kg{grid-template-columns:repeat(2,1fr)}.cr{grid-template-columns:1fr}.fgrid{grid-template-columns:1fr}.fgrid.c3{grid-template-columns:1fr 1fr}.fg:nth-child(n){border-right:none}}
+@media print{.topbar,.tabs,.br,.fb,.df{display:none!important}body{background:#fff}.main{max-width:100%;padding:0}}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <div class="tb-logo">♻️</div>
+  <div class="tb-info">
+    <div class="tb-title" data-i="tb-title">EHS 環境安全管理</div>
+    <div class="tb-sub">VRT · Sihanoukville · v2.0</div>
+  </div>
+  <div class="tsl"><div class="tsd"></div><span id="ts-now">--:--</span></div>
+  <div class="lgp">
+    <button class="lb on" onclick="i18n.set('zh')">中</button>
+    <button class="lb" onclick="i18n.set('en')">EN</button>
+    <button class="lb" onclick="i18n.set('km')">ខ្មែរ</button>
+  </div>
+</div>
+<div class="tabs">
+  <div class="tab active" data-tab="dash" onclick="ui.tab('dash')">📊 <span data-i="t-dash">總覽</span></div>
+  <div class="tab" data-tab="wint" onclick="ui.tab('wint')">📦 <span data-i="t-wint">內部廢料</span></div>
+  <div class="tab" data-tab="wgate" onclick="ui.tab('wgate')">🚛 <span data-i="t-wgate">大門廢棄物</span></div>
+  <div class="tab" data-tab="chem" onclick="ui.tab('chem')">🧪 <span data-i="t-chem">化學品</span></div>
+  <div class="tab" data-tab="trend" onclick="ui.tab('trend')">📈 <span data-i="t-trend">趨勢分析</span></div>
+  <div class="tab" data-tab="imp" onclick="ui.tab('imp')">📥 <span data-i="t-imp">歷史匯入</span></div>
+  <div class="tab" data-tab="cfg" onclick="ui.tab('cfg')">⚙️ <span data-i="t-cfg">設定</span></div>
+</div>
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="pane active" id="pane-dash"><div class="main">
+  <div id="abn-banner" class="abn-banner">
+    <div class="abn-icon">⚠️</div>
+    <div class="abn-txt" id="abn-txt">異常警示</div>
+    <button class="abn-close" onclick="this.parentElement.classList.remove('show')">✕</button>
+  </div>
+  <div class="df">
+    <div class="pt">
+      <div class="ptab on" onclick="de.set('day',this)" data-i="p-d">日</div>
+      <div class="ptab" onclick="de.set('week',this)" data-i="p-w">週</div>
+      <div class="ptab" onclick="de.set('month',this)" data-i="p-m">月</div>
+      <div class="ptab" onclick="de.set('year',this)" data-i="p-y">年</div>
+    </div>
+    <input type="date" id="df-from" class="fbi" style="min-width:110px" onchange="dash.render()">
+    <span style="color:var(--dim);font-size:11px">→</span>
+    <input type="date" id="df-to" class="fbi" style="min-width:110px" onchange="dash.render()">
+    <button class="btn bn" style="padding:6px 12px" onclick="dash.render()" data-i="btn-refresh">刷新</button>
+  </div>
+  <div class="kg">
+    <div class="kc c0"><span class="ki">♻️</span><div class="kv" id="k-int-total">0</div><div class="kl" data-i="k-int-total">內部廢料 (kg)</div></div>
+    <div class="kc c1"><span class="ki">🚛</span><div class="kv" id="k-gate-trips">0</div><div class="kl" data-i="k-gate-trips">大門趟次</div></div>
+    <div class="kc c2"><span class="ki">⚠️</span><div class="kv" id="k-anomaly">0</div><div class="kl" data-i="k-anomaly">異常記錄</div></div>
+    <div class="kc c3"><span class="ki">🧪</span><div class="kv" id="k-chem">0</div><div class="kl" data-i="k-chem">化學品種類</div></div>
+  </div>
+  <div class="kg" style="grid-template-columns:repeat(3,1fr)">
+    <div class="kc c1"><span class="ki">🟦</span><div class="kv" id="k-plastic">0</div><div class="kl" data-i="k-plastic">塑膠 Plastic (kg)</div></div>
+    <div class="kc c1"><span class="ki">🟩</span><div class="kv" id="k-fabric">0</div><div class="kl" data-i="k-fabric">布料 Fabric (kg)</div></div>
+    <div class="kc c3"><span class="ki">🟡</span><div class="kv" id="k-core">0</div><div class="kl" data-i="k-core">紙管 Core (kg)</div></div>
+  </div>
+  <div class="cr">
+    <div class="cc"><div class="ct"><span data-i="ch-int-trend">內部廢料趨勢</span></div><canvas id="ch-int-trend" height="160"></canvas></div>
+    <div class="cc"><div class="ct"><span data-i="ch-gate-trend">大門趟次趨勢</span></div><canvas id="ch-gate-trend" height="160"></canvas></div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-ic">📋</span><span class="ch-tl" data-i="recent-title">最近記錄</span></div>
+    <div class="tw"><table class="rt">
+      <thead><tr><th data-i="th-date">日期</th><th data-i="th-type">模組</th><th data-i="th-detail">詳情</th><th data-i="th-total">重量/趟</th><th data-i="th-anom">異常</th></tr></thead>
+      <tbody id="dash-tbody"><tr><td colspan="5" class="es"><span class="esi">♻️</span><span data-i="no-rec">暫無記錄</span></td></tr></tbody>
+    </table></div>
+  </div>
+</div></div>
+
+<!-- ═══ WASTE INTERNAL ═══ -->
+<div class="pane" id="pane-wint"><div class="main">
+  <div class="card"><div class="ch"><span class="ch-ic">📦</span><span class="ch-tl" data-i="int-batch-title">批次填寫 — 內部廢料記錄</span><span class="ch-nt" id="a-row-count">0 筆</span></div>
+    <div class="cb">
+      <div class="tw"><table class="btbl" id="a-batch-tbl">
+        <thead><tr><th data-i="th-date">日期</th><th data-i="th-plastic">塑膠 (kg)</th><th data-i="th-fabric">布料 (kg)</th><th data-i="th-core">紙管 (kg)</th><th data-i="th-total">Total (kg)</th><th data-i="th-remark">備注</th><th data-i="th-submitter">填報人</th><th>✕</th></tr></thead>
+        <tbody id="a-batch-body"></tbody>
+      </table></div>
+      <button class="add-row-btn" onclick="wint.addRow()">＋ <span data-i="add-row">新增一行</span></button>
+    </div>
+    <div class="br" style="padding:0 12px 12px">
+      <button class="btn bn" id="a-submit-btn" onclick="wint.submit()">📨 <span data-i="btn-submit-int">批次提交</span> (<span id="a-submit-count">0</span> <span data-i="rows">筆</span>)</button>
+      <button class="btn bo" onclick="wint.clearRows()">🔄 <span data-i="btn-clear">清除</span></button>
+      <button class="btn bg" onclick="wint.exportXL()">📤 Excel</button>
+    </div>
+  </div>
+  <div class="cc" style="border:1px solid var(--bdr2);border-radius:12px;padding:12px;margin-bottom:10px">
+    <div class="ct"><span data-i="ch-int-hist">歷史趨勢 (最近14筆)</span></div>
+    <canvas id="ch-int-hist" height="160"></canvas>
+  </div>
+</div></div>
+
+<!-- ═══ WASTE GATE ═══ -->
+<div class="pane" id="pane-wgate"><div class="main">
+  <div class="card"><div class="ch"><span class="ch-ic">🚛</span><span class="ch-tl" data-i="gate-batch-title">批次填寫 — 大門出入記錄</span><span class="ch-nt" id="b-row-count">0 筆</span></div>
+    <div class="cb">
+      <div class="tw"><table class="btbl" id="b-batch-tbl">
+        <thead><tr>
+          <th data-i="th-date">日期</th><th data-i="th-driver">司機</th><th data-i="th-supplier">回收商</th>
+          <th data-i="th-plate">車牌</th><th>固廢</th><th>工廢</th>
+          <th data-i="th-weight">重量</th><th data-i="th-time-in">進廠</th><th data-i="th-time-out">出廠</th>
+          <th data-i="th-gate">警衛</th><th data-i="th-remark">備注</th><th>✕</th>
+        </tr></thead>
+        <tbody id="b-batch-body"></tbody>
+      </table></div>
+      <button class="add-row-btn" onclick="wgate.addRow()">＋ <span data-i="add-row">新增一行</span></button>
+    </div>
+    <div class="br" style="padding:0 12px 12px">
+      <button class="btn bn" id="b-submit-btn" onclick="wgate.submit()">📨 <span data-i="btn-submit-gate">批次提交</span> (<span id="b-submit-count">0</span> <span data-i="rows">筆</span>)</button>
+      <button class="btn bo" onclick="wgate.clearRows()">🔄 <span data-i="btn-clear">清除</span></button>
+      <button class="btn bg" onclick="wgate.exportXL()">📤 Excel</button>
+    </div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-ic">🔍</span><span class="ch-tl" data-i="gate-hist-title">大門記錄查詢</span><span class="ch-nt" id="gate-hist-count">0 筆</span></div>
+    <div class="fb" style="border:none;border-radius:0;border-bottom:1px solid var(--bdr2)">
+      <div class="fbg"><div class="fbl" data-i="th-supplier">回收商</div><select class="fbi" id="gh-sup"><option value="">全部</option><option>K.S.W.M</option><option>SONYAPICH</option><option>OTHER</option></select></div>
+      <div class="fbg"><div class="fbl" data-i="fl-month">月份</div><input type="month" class="fbi" id="gh-month"></div>
+      <div class="fbg"><div class="fbl" data-i="fl-anomaly">只看異常</div><select class="fbi" id="gh-anom"><option value="">全部</option><option value="YES">⚠️ 有異常</option></select></div>
+      <button class="btn bn" style="padding:7px 12px" onclick="wgate.query()">🔍 <span data-i="query">查詢</span></button>
+    </div>
+    <div class="tw"><table class="rt" id="gate-hist-tbl">
+      <thead><tr><th data-i="th-date">日期</th><th data-i="th-driver">司機</th><th data-i="th-supplier">回收商</th><th data-i="th-plate">車牌</th><th>固/工廢</th><th data-i="th-weight">重量</th><th data-i="th-time-in">進廠</th><th data-i="th-time-out">出廠</th><th data-i="th-stay">停留</th><th data-i="th-anom">異常</th><th></th></tr></thead>
+      <tbody id="gate-hist-body"><tr><td colspan="11" class="es"><span class="esi">🚛</span><span data-i="no-rec">暫無記錄</span></td></tr></tbody>
+    </table></div>
+  </div>
+</div></div>
+
+<!-- ═══ CHEMICAL ═══ -->
+<div class="pane" id="pane-chem"><div class="main">
+  <div class="card"><div class="ch"><span class="ch-ic">🧪</span><span class="ch-tl" data-i="chem-add-title">新增化學品記錄</span></div>
+    <div class="fgrid c3">
+      <div class="fg"><div class="fl"><span data-i="f-chem-name">化學品名稱</span><span class="req">*</span></div><input class="fi" id="c-name" placeholder="例：洗滌劑 Detergent"></div>
+      <div class="fg"><div class="fl" data-i="f-cas">CAS 號</div><input class="fi" id="c-cas" placeholder="XXX-XX-X"></div>
+      <div class="fg"><div class="fl" data-i="f-hazard">危險等級</div><select class="fi" id="c-hazard"><option value="1">1 極度危險</option><option value="2">2 高度危險</option><option value="3" selected>3 中度危險</option><option value="4">4 輕度危險</option><option value="5">5 一般</option></select></div>
+      <div class="fg"><div class="fl"><span data-i="f-qty">數量</span><span class="req">*</span></div><input class="fi" type="number" id="c-qty" placeholder="0" min="0" step="0.1"></div>
+      <div class="fg"><div class="fl" data-i="f-unit">單位</div><select class="fi" id="c-unit"><option value="kg">kg</option><option value="L">L (公升)</option><option value="pcs">pcs (個)</option><option value="drum">drum (桶)</option></select></div>
+      <div class="fg"><div class="fl" data-i="f-location">儲存位置</div><input class="fi" id="c-loc" placeholder="例：化學品房 A 架"></div>
+      <div class="fg"><div class="fl" data-i="f-supplier">供應商</div><input class="fi" id="c-supplier" placeholder="Supplier name"></div>
+      <div class="fg"><div class="fl" data-i="f-expiry">到期日</div><input class="fi" type="date" id="c-expiry"></div>
+      <div class="fg"><div class="fl" data-i="f-sds">SDS 狀態</div><select class="fi" id="c-sds"><option value="有 Available">有 Available</option><option value="待更新 Pending">待更新 Pending</option><option value="無 Missing">無 Missing</option></select></div>
+      <div class="fg"><div class="fl" data-i="f-handler">責任人</div><input class="fi" id="c-handler" placeholder="Handler name"></div>
+      <div class="fg"><div class="fl" data-i="f-date">日期</div><input class="fi" type="date" id="c-date"></div>
+      <div class="fg full"><div class="fl" data-i="f-remark">備注 / 用途</div><input class="fi" id="c-remark" placeholder="用途說明..."></div>
+    </div>
+    <div class="br" style="padding:8px">
+      <button class="btn bn" onclick="chem.save()">💾 <span data-i="btn-save-chem">儲存化學品</span></button>
+      <button class="btn bg" onclick="chem.sendTg()">📤 Telegram</button>
+      <button class="btn ba" onclick="chem.exportXL()">📤 Excel</button>
+      <label class="imp-lbl">📥 <span data-i="btn-import-chem">匯入 Excel</span><input type="file" accept=".xlsx,.xls" style="display:none" onchange="chem.importXL(this)"></label>
+    </div>
+  </div>
+  <div class="fb">
+    <div class="fbg"><div class="fbl" data-i="f-hazard">危險等級</div><select class="fbi" id="ch-hazard"><option value="">全部</option><option value="1">1 極度</option><option value="2">2 高度</option><option value="3">3 中度</option><option value="4">4 輕度</option><option value="5">5 一般</option></select></div>
+    <div class="fbg"><div class="fbl" data-i="f-sds">SDS 狀態</div><select class="fbi" id="ch-sds"><option value="">全部</option><option value="有 Available">有</option><option value="待更新 Pending">待更新</option><option value="無 Missing">無</option></select></div>
+    <div class="fbg"><div class="fbl" data-i="fl-search">搜尋</div><input class="fbi" id="ch-search" placeholder="名稱/CAS..." style="min-width:110px"></div>
+    <button class="btn bn" style="padding:7px 12px" onclick="chem.query()">🔍 <span data-i="query">查詢</span></button>
+  </div>
+  <div id="chem-cards-wrap"></div>
+  <div class="card"><div class="ch"><span class="ch-ic">📋</span><span class="ch-tl" data-i="chem-list-title">化學品清單</span><span class="ch-nt" id="chem-count">0 種</span></div>
+    <div class="tw"><table class="rt" id="chem-tbl">
+      <thead><tr><th data-i="f-chem-name">名稱</th><th data-i="f-cas">CAS</th><th data-i="f-hazard">危等</th><th data-i="f-qty">數量</th><th data-i="f-location">位置</th><th data-i="f-sds">SDS</th><th data-i="f-expiry">到期</th><th data-i="f-handler">責任人</th><th></th></tr></thead>
+      <tbody id="chem-tbody"><tr><td colspan="9" class="es"><span class="esi">🧪</span><span data-i="no-rec">暫無記錄</span></td></tr></tbody>
+    </table></div>
+  </div>
+</div></div>
+
+<!-- ═══ TREND ANALYSIS ═══ -->
+<div class="pane" id="pane-trend"><div class="main">
+  <div class="cr">
+    <div class="cc"><div class="ct"><span data-i="ch-waste-comp">廢料組成比例</span></div><canvas id="ch-comp" height="200"></canvas></div>
+    <div class="cc"><div class="ct"><span data-i="ch-supplier-dist">回收商趟次分佈</span></div><canvas id="ch-supplier" height="200"></canvas></div>
+  </div>
+  <div class="cc" style="border:1px solid var(--bdr2);border-radius:12px;padding:12px;margin-bottom:10px">
+    <div class="ct"><span data-i="ch-monthly-trend">月度廢料趨勢</span><select class="fbi" id="trend-year" onchange="trend.render()" style="font-size:10px;padding:3px 6px"></select></div>
+    <canvas id="ch-monthly" height="180"></canvas>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-ic">📊</span><span class="ch-tl" data-i="comparison-title">本月 vs 上月對比</span></div>
+    <div class="cb" style="padding:0">
+      <table class="cmp-tbl"><thead><tr><th data-i="th-metric">指標</th><th data-i="th-current">本月</th><th data-i="th-prev">上月</th><th data-i="th-change">變動</th></tr></thead>
+      <tbody id="cmp-tbody"></tbody></table>
+    </div>
+  </div>
+</div></div>
+
+<!-- ═══ IMPORT ═══ -->
+<div class="pane" id="pane-imp"><div class="main">
+  <div class="card"><div class="ch"><span class="ch-ic">📥</span><span class="ch-tl" data-i="imp-int-title">匯入 — 內部廢料歷史 Excel</span></div>
+    <div class="cb">
+      <div style="background:var(--bl);border:1.5px solid var(--blu);border-radius:8px;padding:10px;font-size:11px;color:var(--nv);margin-bottom:10px" data-i="imp-int-hint">
+        支援欄位：日期/Date、塑膠/Plastic_kg、布料/Fabric_kg、紙管/Core_kg、備注/Remark、填報人/Submitted_by
+      </div>
+      <div class="br">
+        <label class="imp-lbl">📥 <span data-i="btn-import">選擇 Excel</span><input type="file" accept=".xlsx,.xls" style="display:none" onchange="importer.importInt(this)"></label>
+      </div>
+      <div id="imp-int-preview"></div>
+    </div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-ic">📥</span><span class="ch-tl" data-i="imp-gate-title">匯入 — 大門廢棄物歷史 Excel</span></div>
+    <div class="cb">
+      <div style="background:var(--bl);border:1.5px solid var(--blu);border-radius:8px;padding:10px;font-size:11px;color:var(--nv);margin-bottom:10px" data-i="imp-gate-hint">
+        支援欄位：日期/Date、司機/Name、回收商/Supplier、車牌/Car_number、重量/Weight_kg、進廠/Time_in、出廠/Time_out
+      </div>
+      <div class="br">
+        <label class="imp-lbl">📥 <span data-i="btn-import">選擇 Excel</span><input type="file" accept=".xlsx,.xls" style="display:none" onchange="importer.importGate(this)"></label>
+      </div>
+      <div id="imp-gate-preview"></div>
+    </div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-ic">💾</span><span class="ch-tl" data-i="data-mgmt">數據管理</span></div>
+    <div class="br" style="padding:10px">
+      <button class="btn bn" onclick="dataMgmt.exportAll()">📤 <span data-i="export-all">匯出全部 JSON</span></button>
+      <label class="imp-lbl">📥 <span data-i="restore">還原備份</span><input type="file" accept=".json" style="display:none" onchange="dataMgmt.importAll(this)"></label>
+      <button class="btn" style="background:var(--rl);color:var(--red);border:1.5px solid var(--red)" onclick="dataMgmt.clear()">🗑️ <span data-i="clear-all">清除全部</span></button>
+    </div>
+    <div style="padding:0 10px 10px;font-size:10px;color:var(--dim)" id="db-info"></div>
+  </div>
+</div></div>
+
+<!-- ═══ SETTINGS ═══ -->
+<div class="pane" id="pane-cfg"><div class="main">
+  <div class="card"><div class="ch"><span class="ch-ic">⚙️</span><span class="ch-tl" data-i="cfg-conn">連線設定</span></div>
+    <div class="fgrid c3">
+      <div class="fg"><div class="fl">GAS Web App URL</div><input class="fi" id="cfg-gas" placeholder="https://script.google.com/macros/s/.../exec"></div>
+      <div class="fg"><div class="fl">Telegram Bot Token</div><input class="fi" id="cfg-token" placeholder="8619620911:AAH..."></div>
+      <div class="fg"><div class="fl">Telegram Group Chat ID</div><input class="fi" id="cfg-chat" placeholder="-4002295659"></div>
+    </div>
+    <div class="br" style="padding:8px">
+      <button class="btn bn" onclick="cfg.save()">💾 <span data-i="btn-save-cfg">儲存設定</span></button>
+      <button class="btn bg" onclick="cfg.testTg()">📤 <span data-i="btn-test-tg">測試 Telegram</span></button>
+      <button class="btn bb" onclick="cfg.testGas()">🔌 <span data-i="btn-test-gas">測試 GAS</span></button>
+    </div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-ic">🔔</span><span class="ch-tl" data-i="abn-cfg">異常偵測設定</span></div>
+    <div class="fgrid c3">
+      <div class="fg"><div class="fl" data-i="abn-threshold-int">內部廢料異常倍率</div><input class="fi" id="cfg-thr-int" type="number" value="1.5" step="0.1" min="1"></div>
+      <div class="fg"><div class="fl" data-i="abn-threshold-gate">大門停留上限 (分鐘)</div><input class="fi" id="cfg-thr-gate" type="number" value="180" min="30"></div>
+      <div class="fg"><div class="fl" data-i="abn-notify">Telegram 異常通知</div><select class="fi" id="cfg-notify"><option value="1">開啟</option><option value="0">關閉</option></select></div>
+    </div>
+    <div class="br" style="padding:8px"><button class="btn bn" onclick="cfg.saveAbn()">💾 <span data-i="btn-save-abn">儲存異常設定</span></button></div>
+  </div>
+  <div class="card"><div class="ch"><span class="ch-ic">👤</span><span class="ch-tl" data-i="pin-cfg">使用者 PIN 設定</span></div>
+    <div class="cb"><div class="tw"><table class="rt">
+      <thead><tr><th data-i="th-user">使用者</th><th data-i="th-pin">PIN</th><th data-i="th-role">角色</th><th data-i="th-perms">權限</th></tr></thead>
+      <tbody id="pin-tbody"></tbody>
+    </table></div>
+    <div class="fgrid c3" style="margin-top:8px">
+      <div class="fg"><div class="fl" data-i="th-user">使用者名稱</div><input class="fi" id="np-name" placeholder="Nin"></div>
+      <div class="fg"><div class="fl" data-i="th-pin">PIN</div><input class="fi" id="np-pin" type="text" maxlength="6" placeholder="1234"></div>
+      <div class="fg"><div class="fl" data-i="th-role">角色</div><select class="fi" id="np-role"><option value="Staff">Staff 員工</option><option value="Supervisor">Supervisor 主管</option><option value="Admin">Admin 管理員</option></select></div>
+    </div>
+    <div class="br" style="padding:8px"><button class="btn bn" onclick="cfg.addPin()">＋ <span data-i="btn-add-user">新增使用者</span></button></div>
+  </div>
+</div></div>
+
+<div id="toast"></div>
+<script>
+/* ═══ i18n MODULE ═══ */
+const i18n = (() => {
+  const D = {
+    zh:{
+      'tb-title':'EHS 環境安全管理','t-dash':'總覽','t-wint':'內部廢料','t-wgate':'大門廢棄物',
+      't-chem':'化學品','t-trend':'趨勢分析','t-imp':'歷史匯入','t-cfg':'設定',
+      'p-d':'日','p-w':'週','p-m':'月','p-y':'年','btn-refresh':'刷新',
+      'k-int-total':'內部廢料 (kg)','k-gate-trips':'大門趟次','k-anomaly':'異常記錄','k-chem':'化學品種類',
+      'k-plastic':'塑膠 (kg)','k-fabric':'布料 (kg)','k-core':'紙管 (kg)',
+      'ch-int-trend':'內部廢料趨勢','ch-gate-trend':'大門趟次趨勢','recent-title':'最近記錄',
+      'th-date':'日期','th-type':'模組','th-detail':'詳情','th-total':'重量/趟','th-anom':'異常',
+      'no-rec':'暫無記錄',
+      'int-batch-title':'批次填寫 — 內部廢料','gate-batch-title':'批次填寫 — 大門出入記錄',
+      'th-plastic':'塑膠 (kg)','th-fabric':'布料 (kg)','th-core':'紙管 (kg)','th-remark':'備注',
+      'th-submitter':'填報人','th-driver':'司機','th-supplier':'回收商','th-plate':'車牌',
+      'th-weight':'重量','th-time-in':'進廠','th-time-out':'出廠','th-gate':'警衛','th-stay':'停留',
+      'btn-submit-int':'批次提交','btn-submit-gate':'批次提交','add-row':'新增一行',
+      'btn-clear':'清除','rows':'筆','query':'查詢',
+      'fl-month':'月份','fl-anomaly':'異常','fl-search':'搜尋',
+      'gate-hist-title':'大門記錄查詢',
+      'chem-add-title':'新增化學品記錄',
+      'f-chem-name':'化學品名稱','f-cas':'CAS 號','f-hazard':'危險等級','f-qty':'數量','f-unit':'單位',
+      'f-location':'儲存位置','f-supplier':'供應商','f-expiry':'到期日','f-sds':'SDS 狀態',
+      'f-handler':'責任人','f-date':'日期','f-remark':'備注',
+      'btn-save-chem':'儲存化學品','btn-import-chem':'匯入 Excel',
+      'chem-list-title':'化學品清單',
+      'ch-waste-comp':'廢料組成比例','ch-supplier-dist':'回收商趟次分佈',
+      'ch-monthly-trend':'月度廢料趨勢','comparison-title':'本月 vs 上月對比',
+      'th-metric':'指標','th-current':'本月','th-prev':'上月','th-change':'變動',
+      'ch-int-hist':'歷史趨勢 (最近14筆)',
+      'imp-int-title':'匯入 — 內部廢料歷史','imp-gate-title':'匯入 — 大門廢棄物歷史',
+      'imp-int-hint':'支援欄位：日期、塑膠、布料、紙管、備注、填報人',
+      'imp-gate-hint':'支援欄位：日期、司機、回收商、車牌、重量、進廠、出廠',
+      'btn-import':'選擇 Excel',
+      'data-mgmt':'數據管理','export-all':'匯出全部 JSON','restore':'還原備份','clear-all':'清除全部',
+      'cfg-conn':'連線設定','abn-cfg':'異常偵測設定','pin-cfg':'使用者 PIN 設定',
+      'abn-threshold-int':'內部廢料異常倍率','abn-threshold-gate':'大門停留上限 (分鐘)','abn-notify':'Telegram 通知',
+      'btn-save-cfg':'儲存設定','btn-test-tg':'測試 Telegram','btn-test-gas':'測試 GAS',
+      'btn-save-abn':'儲存異常設定','btn-add-user':'新增使用者',
+      'th-user':'使用者','th-pin':'PIN','th-role':'角色','th-perms':'權限',
+    },
+    en:{
+      'tb-title':'EHS Environment','t-dash':'Dashboard','t-wint':'Internal Waste','t-wgate':'Gate Waste',
+      't-chem':'Chemicals','t-trend':'Trend Analysis','t-imp':'Import','t-cfg':'Settings',
+      'p-d':'Day','p-w':'Week','p-m':'Month','p-y':'Year','btn-refresh':'Refresh',
+      'k-int-total':'Internal Waste (kg)','k-gate-trips':'Gate Trips','k-anomaly':'Anomalies','k-chem':'Chemical Types',
+      'k-plastic':'Plastic (kg)','k-fabric':'Fabric (kg)','k-core':'Core (kg)',
+      'ch-int-trend':'Internal Waste Trend','ch-gate-trend':'Gate Trips Trend','recent-title':'Recent Records',
+      'th-date':'Date','th-type':'Module','th-detail':'Detail','th-total':'Weight/Trip','th-anom':'Anomaly',
+      'no-rec':'No records',
+      'int-batch-title':'Batch Entry — Internal Waste','gate-batch-title':'Batch Entry — Gate Records',
+      'th-plastic':'Plastic (kg)','th-fabric':'Fabric (kg)','th-core':'Core (kg)','th-remark':'Remark',
+      'th-submitter':'Submitted By','th-driver':'Driver','th-supplier':'Supplier','th-plate':'Plate No.',
+      'th-weight':'Weight','th-time-in':'Time In','th-time-out':'Time Out','th-gate':'Gatekeeper','th-stay':'Duration',
+      'btn-submit-int':'Batch Submit','btn-submit-gate':'Batch Submit','add-row':'Add Row',
+      'btn-clear':'Clear','rows':'rows','query':'Search',
+      'fl-month':'Month','fl-anomaly':'Anomaly','fl-search':'Search','gate-hist-title':'Gate Records Query',
+      'chem-add-title':'Add Chemical Record',
+      'f-chem-name':'Chemical Name','f-cas':'CAS No.','f-hazard':'Hazard Class','f-qty':'Quantity','f-unit':'Unit',
+      'f-location':'Storage Location','f-supplier':'Supplier','f-expiry':'Expiry Date','f-sds':'SDS Status',
+      'f-handler':'Handler','f-date':'Date','f-remark':'Remarks',
+      'btn-save-chem':'Save Chemical','btn-import-chem':'Import Excel','chem-list-title':'Chemical Inventory',
+      'ch-waste-comp':'Waste Composition','ch-supplier-dist':'Supplier Distribution',
+      'ch-monthly-trend':'Monthly Waste Trend','comparison-title':'This Month vs Last Month',
+      'th-metric':'Metric','th-current':'This Month','th-prev':'Last Month','th-change':'Change',
+      'ch-int-hist':'Historical Trend (last 14)',
+      'imp-int-title':'Import — Internal Waste History','imp-gate-title':'Import — Gate Waste History',
+      'imp-int-hint':'Supported fields: Date, Plastic_kg, Fabric_kg, Core_kg, Remark, Submitted_by',
+      'imp-gate-hint':'Supported fields: Date, Name, Supplier, Car_number, Weight_kg, Time_in, Time_out',
+      'btn-import':'Select Excel',
+      'data-mgmt':'Data Management','export-all':'Export All JSON','restore':'Restore Backup','clear-all':'Clear All',
+      'cfg-conn':'Connection Settings','abn-cfg':'Anomaly Detection','pin-cfg':'User PIN Settings',
+      'abn-threshold-int':'Internal Anomaly Multiplier','abn-threshold-gate':'Max Gate Stay (min)','abn-notify':'Telegram Notify',
+      'btn-save-cfg':'Save Settings','btn-test-tg':'Test Telegram','btn-test-gas':'Test GAS',
+      'btn-save-abn':'Save Anomaly Config','btn-add-user':'Add User',
+      'th-user':'User','th-pin':'PIN','th-role':'Role','th-perms':'Permissions',
+    },
+    km:{
+      'tb-title':'EHS បរិស្ថានសុវត្ថិភាព','t-dash':'ទិដ្ឋភាព','t-wint':'សំណល់ខាងក្នុង',
+      't-wgate':'ច្រក','t-chem':'គីមី','t-trend':'ន័យ','t-imp':'នាំចូល','t-cfg':'ការកំណត់',
+      'p-d':'ថ្ងៃ','p-w':'សប្តាហ៍','p-m':'ខែ','p-y':'ឆ្នាំ','btn-refresh':'ផ្ទុក',
+      'k-int-total':'សំណល់ (kg)','k-gate-trips':'ដំណើរ','k-anomaly':'មិនប្រក្រតី','k-chem':'គីមី',
+      'no-rec':'រកមិនឃើញ','th-date':'កាលបរិច្ឆេទ','query':'ស្វែងរក',
+      'btn-save-chem':'រក្សា','btn-import':'ជ្រើស','data-mgmt':'គ្រប់គ្រង',
+      'btn-save-cfg':'រក្សា','btn-test-tg':'សាកល្បង',
+    }
+  };
+  let _l='zh';
+  const set = l => {
+    _l=l;
+    document.querySelectorAll('.lb').forEach((b,i)=>b.classList.toggle('on',['zh','en','km'][i]===l));
+    const d=D[l]||D.zh;
+    document.querySelectorAll('[data-i]').forEach(el=>{const k=el.getAttribute('data-i');if(d[k]!==undefined)el.textContent=d[k];});
+  };
+  const t = k => (D[_l]||D.zh)[k]||(D.zh)[k]||k;
+  return {set, t};
+})();
+
+/* ═══ DATE ENGINE ═══ */
+const de = (() => {
+  let _p='day';
+  const fmt = d => d.toISOString().split('T')[0];
+  const range = () => {
+    const fi=document.getElementById('df-from'),ti=document.getElementById('df-to');
+    if(fi&&fi.value) return {from:fi.value,to:ti&&ti.value?ti.value:fmt(new Date())};
+    const now=new Date(); let from=new Date();
+    if(_p==='day') from=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+    else if(_p==='week'){from=new Date(now);from.setDate(now.getDate()-now.getDay());}
+    else if(_p==='month') from=new Date(now.getFullYear(),now.getMonth(),1);
+    else from=new Date(now.getFullYear(),0,1);
+    return {from:fmt(from),to:fmt(now)};
+  };
+  const set = (p,el) => {
+    _p=p;
+    document.querySelectorAll('.pt .ptab').forEach(t=>t.classList.remove('on'));
+    if(el) el.classList.add('on');
+    const r=range();
+    const fi=document.getElementById('df-from'),ti=document.getElementById('df-to');
+    if(fi)fi.value=r.from; if(ti)ti.value=r.to;
+    dash.render();
+  };
+  return {set, range, fmt};
+})();
+
+/* ═══ STATE MODULE ═══ */
+const SK='vrt_ehs_hub_v2';
+const SUPPLIERS=['K.S.W.M','SONYAPICH','OTHER'];
+const DEF_PINS=[{name:'Nin',pin:'1111',role:'Staff'},{name:'Mom',pin:'2222',role:'Staff'},{name:'Phea',pin:'3333',role:'Supervisor'},{name:'Paul',pin:'4444',role:'Admin'}];
+
+const state = (() => {
+  let _db={internal:[],gate:[],chemicals:[],pins:[...DEF_PINS],cfg:{botToken:'8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM',chatId:'-4002295659',gasUrl:'',abnThrInt:1.5,abnThrGate:180,notify:true}};
+  const load = () => {
+    try{const r=localStorage.getItem(SK);if(r){const d=JSON.parse(r);Object.assign(_db,d);}}catch(e){}
+    if(!_db.internal)_db.internal=[];if(!_db.gate)_db.gate=[];if(!_db.chemicals)_db.chemicals=[];
+    if(!_db.pins)_db.pins=[...DEF_PINS];if(!_db.cfg)_db.cfg={};
+  };
+  const save = () => {try{localStorage.setItem(SK,JSON.stringify(_db));}catch(e){}updateDbInfo();};
+  const db = () => _db;
+  return {load, save, db};
+})();
+
+/* ═══ API MODULE ═══ */
+const api = (() => {
+  const cfg = () => state.db().cfg||{};
+  const post = async payload => {
+    const c=cfg(); if(!c.gasUrl) return {ok:false};
+    const body=new URLSearchParams({payload:JSON.stringify(payload)});
+    const r=await fetch(c.gasUrl,{method:'POST',body,headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+    return r.json();
+  };
+  const tg = async msg => {
+    const c=cfg(); if(!c.botToken||!c.chatId) return;
+    await fetch(`https://api.telegram.org/bot${c.botToken}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:c.chatId,text:msg,parse_mode:'HTML'})});
+  };
+  return {post, tg, cfg};
+})();
+
+/* ═══ CHART MODULE ═══ */
+const chs = (() => {
+  const _i={};
+  const PAL=['#1A3458','#22C55E','#C04040','#D4810E','#2563A8','#7C3AED','#06B6D4','#F59E0B'];
+  const render=(id,type,labels,datasets,opts={})=>{
+    if(_i[id])_i[id].destroy();
+    const ctx=document.getElementById(id);if(!ctx)return;
+    _i[id]=new Chart(ctx,{type,data:{labels,datasets},options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{font:{size:10,family:'IBM Plex Sans'},color:'#2B3D50'}},tooltip:{bodyFont:{size:11}}},
+      scales:type==='bar'||type==='line'?{x:{ticks:{font:{size:9},color:'#627282'},grid:{color:'#DCE5EE'}},y:{ticks:{font:{size:9},color:'#627282'},grid:{color:'#DCE5EE'}}}:{},
+      ...opts
+    }});
+  };
+  return {render,PAL};
+})();
+
+/* ═══ UI MODULE ═══ */
+const ui = (() => {
+  const tab = t => {
+    document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+    document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
+    const tb=document.querySelector(`[data-tab="${t}"]`);if(tb)tb.classList.add('active');
+    const pn=document.getElementById(`pane-${t}`);if(pn)pn.classList.add('active');
+    if(t==='dash') dash.render();
+    if(t==='wint') wint.renderChart();
+    if(t==='wgate') wgate.query();
+    if(t==='chem') chem.query();
+    if(t==='trend') trend.render();
+    if(t==='cfg') cfg.load();
+  };
+  const toast = (msg,dur=3000) => {
+    const el=document.getElementById('toast');
+    el.textContent=msg;el.classList.add('show');
+    clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),dur);
+  };
+  return {tab,toast};
+})();
+
+/* ═══ DASHBOARD MODULE ═══ */
+const dash = (() => {
+  const render = () => {
+    const db=state.db();
+    const {from,to}=de.range();
+    const intFiltered=db.internal.filter(r=>r.date>=from&&r.date<=to);
+    const gateFiltered=db.gate.filter(r=>r.date>=from&&r.date<=to);
+    const totalKg=intFiltered.reduce((s,r)=>s+(+r.total_kg||0),0);
+    const plasticKg=intFiltered.reduce((s,r)=>s+(+r.plastic_kg||0),0);
+    const fabricKg=intFiltered.reduce((s,r)=>s+(+r.fabric_kg||0),0);
+    const coreKg=intFiltered.reduce((s,r)=>s+(+r.core_kg||0),0);
+    const anomCount=[...intFiltered,...gateFiltered].filter(r=>r.anomaly==='YES').length;
+    document.getElementById('k-int-total').textContent=totalKg.toFixed(0);
+    document.getElementById('k-gate-trips').textContent=gateFiltered.length;
+    document.getElementById('k-anomaly').textContent=anomCount;
+    document.getElementById('k-chem').textContent=db.chemicals.length;
+    document.getElementById('k-plastic').textContent=plasticKg.toFixed(0);
+    document.getElementById('k-fabric').textContent=fabricKg.toFixed(0);
+    document.getElementById('k-core').textContent=coreKg.toFixed(0);
+    // Anomaly banner
+    const abn=document.getElementById('abn-banner');
+    const abnRecs=[...intFiltered,...gateFiltered].filter(r=>r.anomaly==='YES');
+    if(abnRecs.length){
+      abn.classList.add('show');
+      document.getElementById('abn-txt').textContent=`⚠️ 發現 ${abnRecs.length} 筆異常記錄！${abnRecs[0].anomaly_msg||''}`;
+    }else{abn.classList.remove('show');}
+    // Charts - trends by day
+    const days=[],intKgs=[],gateTrips=[];
+    const start=new Date(from);
+    for(let d=new Date(start);d<=new Date(to);d.setDate(d.getDate()+1)){
+      const ds=d.toISOString().split('T')[0];
+      days.push(ds.slice(5));
+      intKgs.push(db.internal.filter(r=>r.date===ds).reduce((s,r)=>s+(+r.total_kg||0),0));
+      gateTrips.push(db.gate.filter(r=>r.date===ds).length);
+    }
+    chs.render('ch-int-trend','bar',days.slice(-14),[{label:'Total (kg)',data:intKgs.slice(-14),backgroundColor:'rgba(34,197,94,.65)',borderRadius:3},{label:'Plastic',data:intKgs.slice(-14).map((_,i)=>db.internal.filter(r=>r.date===days.slice(-14)[i]?days.slice(-14)[i]:null).reduce((s,r)=>s+(+r.plastic_kg||0),0)),backgroundColor:'rgba(59,130,246,.5)',borderRadius:3}]]);
+    chs.render('ch-gate-trend','bar',days.slice(-14),[{label:'Gate Trips',data:gateTrips.slice(-14),backgroundColor:'rgba(139,92,246,.65)',borderRadius:3}]);
+    // Recent combined
+    const allRecs=[...db.internal.map(r=>({...r,_mod:'Internal'})),...db.gate.map(r=>({...r,_mod:'Gate'}))].sort((a,b)=>(b.submitted_at||b.date||'').localeCompare(a.submitted_at||a.date||'')).slice(0,10);
+    const tbody=document.getElementById('dash-tbody');
+    if(!allRecs.length){tbody.innerHTML=`<tr><td colspan="5" class="es"><span class="esi">♻️</span>${i18n.t('no-rec')}</td></tr>`;return;}
+    tbody.innerHTML=allRecs.map(r=>{
+      const isInt=r._mod==='Internal';
+      const detail=isInt?`🟦${r.plastic_kg||0}kg 🟩${r.fabric_kg||0}kg 🟡${r.core_kg||0}kg`:`${r.suppliers||''} ${r.car_number||''}`;
+      const total=isInt?`${r.total_kg||0} kg`:`${r.weight_kg||'—'}`;
+      return`<tr><td>${r.date||''}</td><td><span class="badge ${isInt?'bg2':'bn2'}">${r._mod}</span></td><td>${esc(detail)}</td><td><strong>${esc(total)}</strong></td><td>${r.anomaly==='YES'?'<span class="badge br22">⚠️ 異常</span>':'—'}</td></tr>`;
+    }).join('');
+  };
+  return {render};
+})();
+
+/* ═══ WASTE INTERNAL MODULE ═══ */
+let aRows=[];
+const wint = (() => {
+  const addRow = () => {
+    const id='A-'+Date.now()+'-'+Math.random().toString(36).slice(2,5);
+    aRows.push({id,date:'',plastic:0,fabric:0,core:0,total:0,remark:'',submitter:''});
+    renderABatch();
+  };
+  const removeRow = id => { aRows=aRows.filter(r=>r.id!==id); renderABatch(); };
+  const renderABatch = () => {
+    const tbody=document.getElementById('a-batch-body');
+    document.getElementById('a-row-count').textContent=aRows.length+' 筆';
+    document.getElementById('a-submit-count').textContent=aRows.filter(r=>r.date&&(r.plastic||r.fabric||r.core)).length;
+    if(!aRows.length){tbody.innerHTML='<tr><td colspan="8" class="es" style="padding:14px"><span data-i="no-rec">— 點擊下方新增一行 —</span></td></tr>';return;}
+    tbody.innerHTML=aRows.map(r=>`<tr data-id="${r.id}">
+      <td><input type="date" value="${r.date}" style="min-width:110px" onchange="updateARow('${r.id}','date',this.value)"></td>
+      <td><input type="number" placeholder="0" value="${r.plastic||''}" min="0" style="max-width:70px" onchange="updateARow('${r.id}','plastic',this.value);calcATotal('${r.id}',this)"></td>
+      <td><input type="number" placeholder="0" value="${r.fabric||''}" min="0" style="max-width:70px" onchange="updateARow('${r.id}','fabric',this.value);calcATotal('${r.id}',this)"></td>
+      <td><input type="number" placeholder="0" value="${r.core||''}" min="0" style="max-width:70px" onchange="updateARow('${r.id}','core',this.value);calcATotal('${r.id}',this)"></td>
+      <td class="tot"><input type="number" id="at-${r.id}" value="${r.total||''}" readonly style="max-width:70px;font-weight:700"></td>
+      <td><input type="text" placeholder="備注" value="${r.remark||''}" onchange="updateARow('${r.id}','remark',this.value)"></td>
+      <td><input type="text" placeholder="Nin" value="${r.submitter||''}" style="max-width:80px" onchange="updateARow('${r.id}','submitter',this.value)"></td>
+      <td><button class="del-row" onclick="wint.removeRow('${r.id}')">✕</button></td>
+    </tr>`).join('');
+  };
+  const calcATotal = (id,el) => {
+    const row=el.closest('tr');
+    const nums=row.querySelectorAll('input[type=number]');
+    const p=parseFloat(nums[0].value)||0,f=parseFloat(nums[1].value)||0,c=parseFloat(nums[2].value)||0;
+    const tot=p+f+c;
+    document.getElementById('at-'+id).value=tot||'';
+    const r=aRows.find(r=>r.id===id);
+    if(r){r.plastic=p;r.fabric=f;r.core=c;r.total=tot;}
+    document.getElementById('a-submit-count').textContent=aRows.filter(r=>r.date&&(r.plastic||r.fabric||r.core)).length;
+  };
+  const submit = async () => {
+    const valid=aRows.filter(r=>r.date&&(r.plastic||r.fabric||r.core));
+    if(!valid.length){ui.toast('⚠️ 請至少填寫一行（日期 + 重量）');return;}
+    const btn=document.getElementById('a-submit-btn');
+    btn.disabled=true;btn.innerHTML='<span class="spin"></span>提交中...';
+    const now=new Date().toISOString();
+    const newRecs=valid.map(r=>({
+      id:'A-'+Date.now().toString(36)+Math.random().toString(36).slice(2,4),
+      date:r.date,plastic_kg:+r.plastic||0,fabric_kg:+r.fabric||0,core_kg:+r.core||0,
+      total_kg:+r.total||0,remark:r.remark||'',submitted_by:r.submitter||'',submitted_at:now,
+      anomaly:detectAnomalyInt(r)?'YES':'',anomaly_msg:detectAnomalyInt(r)||''
+    }));
+    newRecs.forEach(r=>{state.db().internal.push(r);});
+    state.save();
+    const abn=newRecs.filter(r=>r.anomaly==='YES');
+    try{await api.post({action:'batchImport',type:'internal',rows:newRecs});}catch(e){}
+    if(abn.length){
+      const msg=`⚠️ <b>VRT 內部廢料異常</b>\n📅 ${newRecs[0].date}\n${abn.map(r=>r.anomaly_msg).join('\n')}`;
+      if(state.db().cfg.notify)await api.tg(msg);
+    }
+    const tgMsg=`♻️ <b>VRT 內部廢料記錄</b>\n📅 ${newRecs[0].date} · ${valid.length} 筆\n🟦 Plastic: ${newRecs.reduce((s,r)=>s+r.plastic_kg,0).toFixed(0)} kg\n🟩 Fabric: ${newRecs.reduce((s,r)=>s+r.fabric_kg,0).toFixed(0)} kg\n🟡 Core: ${newRecs.reduce((s,r)=>s+r.core_kg,0).toFixed(0)} kg\n📦 Total: ${newRecs.reduce((s,r)=>s+r.total_kg,0).toFixed(0)} kg`;
+    try{await api.tg(tgMsg);}catch(e){}
+    ui.toast(`✅ 已提交 ${valid.length} 筆${abn.length?' (⚠️ '+abn.length+' 異常)':''}`);
+    aRows=[];renderABatch();renderChart();
+    btn.disabled=false;btn.innerHTML=`📨 <span data-i="btn-submit-int">批次提交</span> (<span id="a-submit-count">0</span> 筆)`;
+  };
+  const clearRows = () => { if(aRows.length&&!confirm('確定清除？'))return;aRows=[];renderABatch(); };
+  const renderChart = () => {
+    const recs=[...state.db().internal].sort((a,b)=>a.date.localeCompare(b.date)).slice(-14);
+    chs.render('ch-int-hist','bar',recs.map(r=>r.date.slice(5)),[
+      {label:'Plastic',data:recs.map(r=>+r.plastic_kg||0),backgroundColor:'rgba(59,130,246,.7)',borderRadius:3,stack:'s'},
+      {label:'Fabric',data:recs.map(r=>+r.fabric_kg||0),backgroundColor:'rgba(34,197,94,.7)',borderRadius:3,stack:'s'},
+      {label:'Core',data:recs.map(r=>+r.core_kg||0),backgroundColor:'rgba(245,158,11,.7)',borderRadius:3,stack:'s'},
+    ],{scales:{x:{stacked:true,ticks:{font:{size:9}}},y:{stacked:true,ticks:{font:{size:9}}}}});
+  };
+  const exportXL = () => {
+    const db=state.db();if(!db.internal.length){ui.toast('無資料');return;}
+    const ws=XLSX.utils.json_to_sheet(db.internal);
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'WasteInternal');
+    XLSX.writeFile(wb,`VRT_WasteInternal_${new Date().toISOString().slice(0,10)}.xlsx`);
+    ui.toast('✅ 已下載');
+  };
+  return {addRow, removeRow, calcATotal, renderABatch, submit, clearRows, renderChart, exportXL};
+})();
+
+function updateARow(id,field,val){const r=aRows.find(r=>r.id===id);if(r){r[field]=val;}}
+function calcATotal(id,el){wint.calcATotal(id,el);}
+
+/* ═══ WASTE GATE MODULE ═══ */
+let bRows=[];
+const wgate = (() => {
+  const addRow = () => {
+    const id='B-'+Date.now()+'-'+Math.random().toString(36).slice(2,5);
+    bRows.push({id,date:'',name:'',supplier:'',car:'',solid:false,industrial:false,kg:'',timein:'',timeout:'',gate:'',remark:''});
+    renderBBatch();
+  };
+  const removeRow = id => {bRows=bRows.filter(r=>r.id!==id);renderBBatch();};
+  const renderBBatch = () => {
+    const tbody=document.getElementById('b-batch-body');
+    document.getElementById('b-row-count').textContent=bRows.length+' 筆';
+    document.getElementById('b-submit-count').textContent=bRows.filter(r=>r.date&&r.supplier).length;
+    if(!bRows.length){tbody.innerHTML='<tr><td colspan="12" class="es" style="padding:14px">— 點擊下方新增一行 —</td></tr>';return;}
+    tbody.innerHTML=bRows.map(r=>`<tr data-id="${r.id}">
+      <td><input type="date" value="${r.date}" style="min-width:108px" onchange="updateBRow('${r.id}','date',this.value)"></td>
+      <td><input type="text" placeholder="Na Rin" value="${r.name}" style="min-width:80px" onchange="updateBRow('${r.id}','name',this.value)"></td>
+      <td><select onchange="updateBRow('${r.id}','supplier',this.value)"><option value="">—</option>${SUPPLIERS.map(s=>`<option value="${s}"${r.supplier===s?' selected':''}>${s}</option>`).join('')}</select></td>
+      <td><input type="text" placeholder="C527" value="${r.car}" style="min-width:65px" onchange="updateBRow('${r.id}','car',this.value)"></td>
+      <td style="text-align:center;padding:6px"><input type="checkbox"${r.solid?' checked':''} onchange="updateBRow('${r.id}','solid',this.checked)"></td>
+      <td style="text-align:center;padding:6px"><input type="checkbox"${r.industrial?' checked':''} onchange="updateBRow('${r.id}','industrial',this.checked)"></td>
+      <td><input type="text" placeholder="2000kg" value="${r.kg}" style="min-width:65px" onchange="updateBRow('${r.id}','kg',this.value)"></td>
+      <td><input type="text" placeholder="14:00" value="${r.timein}" style="min-width:65px" onchange="updateBRow('${r.id}','timein',this.value)"></td>
+      <td><input type="text" placeholder="15:30" value="${r.timeout}" style="min-width:65px" onchange="updateBRow('${r.id}','timeout',this.value)"></td>
+      <td><input type="text" placeholder="Guard" value="${r.gate}" style="min-width:65px" onchange="updateBRow('${r.id}','gate',this.value)"></td>
+      <td><input type="text" placeholder="備注" value="${r.remark}" style="min-width:70px" onchange="updateBRow('${r.id}','remark',this.value)"></td>
+      <td><button class="del-row" onclick="wgate.removeRow('${r.id}')">✕</button></td>
+    </tr>`).join('');
+  };
+  const calcDuration = (tin,tout) => {
+    if(!tin||!tout)return null;
+    const parse=t=>{const[h,m]=(t||'').split(':');return(parseInt(h)||0)*60+(parseInt(m)||0);};
+    const diff=parse(tout)-parse(tin);
+    return diff>0?diff:null;
+  };
+  const submit = async () => {
+    const valid=bRows.filter(r=>r.date&&r.supplier);
+    if(!valid.length){ui.toast('⚠️ 請填寫日期和回收商');return;}
+    const btn=document.getElementById('b-submit-btn');
+    btn.disabled=true;btn.innerHTML='<span class="spin"></span>提交中...';
+    const now=new Date().toISOString();
+    const cfg=state.db().cfg;
+    const thrGate=cfg.abnThrGate||180;
+    const newRecs=valid.map(r=>{
+      const dur=calcDuration(r.timein,r.timeout);
+      const isAbn=dur!==null&&dur>thrGate;
+      return{
+        id:'B-'+Date.now().toString(36)+Math.random().toString(36).slice(2,4),
+        date:r.date,name:r.name,suppliers:r.supplier,car_number:r.car,
+        solid_waste:r.solid?'V':'',industrial_waste:r.industrial?'V':'',
+        weight_kg:r.kg,time_in:r.timein,time_out:r.timeout,
+        duration_min:dur,gate_keeper:r.gate,remark:r.remark,
+        submitted_at:now,
+        anomaly:isAbn?'YES':'',anomaly_msg:isAbn?`停留 ${dur} 分鐘，超過 ${thrGate} 分鐘上限`:''
+      };
+    });
+    newRecs.forEach(r=>state.db().gate.push(r));
+    state.save();
+    const abn=newRecs.filter(r=>r.anomaly==='YES');
+    try{await api.post({action:'batchImport',type:'gate',rows:newRecs});}catch(e){}
+    if(abn.length&&cfg.notify){
+      const msg=`⚠️ <b>VRT 大門廢棄物異常</b>\n${abn.map(r=>`🚛 ${r.suppliers} (${r.car_number}): ${r.anomaly_msg}`).join('\n')}`;
+      await api.tg(msg);
+    }
+    const tgMsg=`🚛 <b>VRT 大門廢棄物</b>\n📅 ${valid[0].date} · ${valid.length} 趟\n${newRecs.map(r=>`• ${r.suppliers} ${r.car_number} ${r.weight_kg||'—'}`).join('\n')}`;
+    try{await api.tg(tgMsg);}catch(e){}
+    ui.toast(`✅ 已提交 ${valid.length} 筆${abn.length?' (⚠️ '+abn.length+' 異常)':''}`);
+    bRows=[];renderBBatch();query();
+    btn.disabled=false;btn.innerHTML=`📨 批次提交 (<span id="b-submit-count">0</span> 筆)`;
+  };
+  const clearRows = () => {if(bRows.length&&!confirm('確定清除？'))return;bRows=[];renderBBatch();};
+  const query = () => {
+    const sup=document.getElementById('gh-sup')?.value;
+    const month=document.getElementById('gh-month')?.value;
+    const anom=document.getElementById('gh-anom')?.value;
+    const recs=state.db().gate.filter(r=>{
+      if(sup&&r.suppliers!==sup)return false;
+      if(month&&!r.date.startsWith(month))return false;
+      if(anom&&r.anomaly!==anom)return false;
+      return true;
+    }).sort((a,b)=>(b.date||'').localeCompare(a.date||''));
+    document.getElementById('gate-hist-count').textContent=recs.length+' 筆';
+    const tbody=document.getElementById('gate-hist-body');
+    if(!recs.length){tbody.innerHTML=`<tr><td colspan="11" class="es"><span class="esi">🚛</span>${i18n.t('no-rec')}</td></tr>`;return;}
+    tbody.innerHTML=recs.map(r=>{
+      const wtype=[(r.solid_waste?'<span class="badge bn2">固</span>':''),(r.industrial_waste?'<span class="badge br22">工</span>':'')].filter(Boolean).join(' ')||'—';
+      const dur=r.duration_min!=null?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'—';
+      return`<tr><td>${r.date||''}</td><td>${esc(r.name||'')}</td><td><strong>${esc(r.suppliers||'')}</strong></td><td>${esc(r.car_number||'')}</td><td>${wtype}</td><td>${esc(r.weight_kg||'—')}</td><td>${r.time_in||''}</td><td>${r.time_out||'—'}</td><td>${dur}</td><td>${r.anomaly==='YES'?'<span class="badge br22">⚠️</span>':'—'}</td><td><button onclick="delGate('${r.id}')" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></td></tr>`;
+    }).join('');
+  };
+  const exportXL = () => {
+    const db=state.db();if(!db.gate.length){ui.toast('無資料');return;}
+    const ws=XLSX.utils.json_to_sheet(db.gate);
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'WasteGate');
+    XLSX.writeFile(wb,`VRT_WasteGate_${new Date().toISOString().slice(0,10)}.xlsx`);ui.toast('✅ 已下載');
+  };
+  return {addRow, removeRow, renderBBatch, submit, clearRows, query, exportXL};
+})();
+
+function updateBRow(id,field,val){const r=bRows.find(r=>r.id===id);if(r){r[field]=val;document.getElementById('b-submit-count').textContent=bRows.filter(r=>r.date&&r.supplier).length;}}
+
+/* ═══ CHEMICAL MODULE ═══ */
+const chem = (() => {
+  const save = () => {
+    const name=gv('c-name').trim();const qty=parseFloat(gv('c-qty'));
+    if(!name){ui.toast('⚠️ 請填寫化學品名稱');return;}
+    if(isNaN(qty)){ui.toast('⚠️ 請填寫數量');return;}
+    const record={id:'C-'+Date.now().toString(36),timestamp:new Date().toISOString(),
+      chemical_name:name,cas_number:gv('c-cas'),hazard_class:gv('c-hazard'),
+      quantity:qty,unit:gv('c-unit'),location:gv('c-loc'),supplier:gv('c-supplier'),
+      expiry_date:gv('c-expiry'),sds_status:gv('c-sds'),handler:gv('c-handler'),
+      date:gv('c-date')||de.fmt(new Date()),remark:gv('c-remark')
+    };
+    state.db().chemicals.push(record);state.save();query();ui.toast('✅ 化學品記錄已儲存');
+    ['c-name','c-cas','c-qty','c-loc','c-supplier','c-expiry','c-remark'].forEach(id=>sv(id,''));
+  };
+  const query = () => {
+    const hz=document.getElementById('ch-hazard')?.value;
+    const sds=document.getElementById('ch-sds')?.value;
+    const search=(document.getElementById('ch-search')?.value||'').toLowerCase();
+    let recs=state.db().chemicals.filter(r=>{
+      if(hz&&r.hazard_class!==hz)return false;
+      if(sds&&r.sds_status!==sds)return false;
+      if(search&&!JSON.stringify(r).toLowerCase().includes(search))return false;
+      return true;
+    }).sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
+    document.getElementById('chem-count').textContent=recs.length+' 種';
+    const tbody=document.getElementById('chem-tbody');
+    if(!recs.length){tbody.innerHTML=`<tr><td colspan="9" class="es"><span class="esi">🧪</span>${i18n.t('no-rec')}</td></tr>`;}
+    else tbody.innerHTML=recs.map(r=>{
+      const hzCls={1:'br22',2:'ba2',3:'bn2',4:'bg2',5:''}[r.hazard_class]||'';
+      const sdsCls=r.sds_status==='無 Missing'?'br22':r.sds_status==='待更新 Pending'?'ba2':'bg2';
+      const isExp=r.expiry_date&&r.expiry_date<de.fmt(new Date());
+      return`<tr><td><strong>${esc(r.chemical_name||'')}</strong></td><td style="font-family:'JetBrains Mono',monospace;font-size:9px">${esc(r.cas_number||'')}</td><td><span class="badge ${hzCls}">${r.hazard_class}</span></td><td><strong>${r.quantity||0}</strong> ${r.unit}</td><td>${esc(r.location||'')}</td><td><span class="badge ${sdsCls}">${r.sds_status||'—'}</span></td><td style="${isExp?'color:var(--red);font-weight:700':''}">${r.expiry_date||'—'}</td><td>${esc(r.handler||'')}</td><td><button onclick="delChem('${r.id}')" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></td></tr>`;
+    }).join('');
+    // Cards
+    const cardsWrap=document.getElementById('chem-cards-wrap');
+    if(cardsWrap&&recs.length){
+      const topRecs=recs.slice(0,6);
+      cardsWrap.innerHTML=`<div class="chem-grid">${topRecs.map(r=>{
+        const hzClr={1:'#C00',2:'#B36010',3:'#1A7A45',4:'#5B21B6',5:'#2563A8'}[r.hazard_class]||'#627282';
+        return`<div class="chem-card hz${r.hazard_class}"><div class="chem-name">${esc(r.chemical_name||'')}</div><div class="chem-meta">CAS: ${r.cas_number||'—'}<br>📍 ${r.location||'—'}<br>SDS: ${r.sds_status||'—'}</div><div class="chem-qty" style="color:${hzClr}">${r.quantity||0}<span class="chem-unit"> ${r.unit}</span></div></div>`;
+      }).join('')}</div>`;
+    }else if(cardsWrap) cardsWrap.innerHTML='';
+  };
+  const sendTg = async () => {
+    const hz1=state.db().chemicals.filter(r=>r.hazard_class==='1').length;
+    const exp=state.db().chemicals.filter(r=>r.expiry_date&&r.expiry_date<de.fmt(new Date())).length;
+    const msg=`🧪 <b>VRT 化學品統計</b>\n📦 總計: ${state.db().chemicals.length} 種\n☠️ 極度危險(1): ${hz1} 種\n⏰ 已過期: ${exp} 種`;
+    await api.tg(msg);ui.toast('📤 Telegram 已發送');
+  };
+  const exportXL = () => {
+    if(!state.db().chemicals.length){ui.toast('無資料');return;}
+    const ws=XLSX.utils.json_to_sheet(state.db().chemicals);
+    const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Chemicals');
+    XLSX.writeFile(wb,`VRT_Chemicals_${new Date().toISOString().slice(0,10)}.xlsx`);ui.toast('✅ 已下載');
+  };
+  const importXL = (inp) => {
+    const file=inp.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws);
+      const map={chemical_name:['Chemical Name','化學品名稱','name'],cas_number:['CAS No.','CAS號','cas_number'],hazard_class:['Hazard Class','危險等級','hazard_class'],quantity:['Quantity','數量','qty'],unit:['Unit','單位','unit'],location:['Storage Location','儲存位置','location'],expiry_date:['Expiry Date','到期日','expiry_date'],sds_status:['SDS Status','SDS狀態','sds_status'],handler:['Handler','責任人','handler']};
+      let added=0;
+      rows.forEach(row=>{
+        const rec={id:'C-imp-'+Date.now().toString(36)+Math.random().toString(36).slice(2,4),timestamp:new Date().toISOString()};
+        Object.entries(map).forEach(([k,aliases])=>{for(const a of aliases){if(row[a]!==undefined){rec[k]=String(row[a]);break;}}});
+        if(rec.chemical_name){state.db().chemicals.push(rec);added++;}
+      });
+      state.save();query();ui.toast(`✅ 已匯入 ${added} 筆化學品記錄`);
+    };
+    reader.readAsBinaryString(file);
+  };
+  return {save, query, sendTg, exportXL, importXL};
+})();
+
+/* ═══ TREND MODULE ═══ */
+const trend = (() => {
+  const render = () => {
+    const db=state.db();
+    const now=new Date();
+    // Year select
+    const yearSel=document.getElementById('trend-year');
+    const years=[...new Set(db.internal.map(r=>r.date.slice(0,4)))].sort().reverse();
+    if(years.length&&yearSel){yearSel.innerHTML=years.map(y=>`<option value="${y}">${y}</option>`).join('');}
+    const yr=yearSel?.value||String(now.getFullYear());
+    // Composition pie
+    const totalP=db.internal.reduce((s,r)=>s+(+r.plastic_kg||0),0);
+    const totalF=db.internal.reduce((s,r)=>s+(+r.fabric_kg||0),0);
+    const totalC=db.internal.reduce((s,r)=>s+(+r.core_kg||0),0);
+    chs.render('ch-comp','doughnut',['Plastic','Fabric','Core'],[{data:[totalP,totalF,totalC],backgroundColor:['rgba(59,130,246,.8)','rgba(34,197,94,.8)','rgba(245,158,11,.8)'],borderWidth:2,borderColor:'#fff'}],{plugins:{legend:{position:'right',labels:{font:{size:10},generateLabels:chart=>{const d=chart.data;return d.labels.map((l,i)=>({text:`${l}: ${d.datasets[0].data[i].toFixed(0)}kg`,fillStyle:d.datasets[0].backgroundColor[i]}));}}}}});
+    // Supplier distribution
+    const supMap={};db.gate.forEach(r=>{supMap[r.suppliers||'Other']=(supMap[r.suppliers||'Other']||0)+1;});
+    chs.render('ch-supplier','doughnut',Object.keys(supMap),[{data:Object.values(supMap),backgroundColor:chs.PAL,borderWidth:2,borderColor:'#fff'}]);
+    // Monthly trend
+    const months=Array.from({length:12},(_,i)=>yr+'-'+String(i+1).padStart(2,'0'));
+    const mInt=months.map(m=>db.internal.filter(r=>r.date.startsWith(m)).reduce((s,r)=>s+(+r.total_kg||0),0));
+    const mGate=months.map(m=>db.gate.filter(r=>r.date.startsWith(m)).length);
+    chs.render('ch-monthly','bar',months.map(m=>m.slice(5)),[
+      {label:'廢料 Total (kg)',data:mInt,backgroundColor:'rgba(34,197,94,.65)',borderRadius:3,yAxisID:'y'},
+      {label:'Gate Trips',data:mGate,backgroundColor:'rgba(139,92,246,.65)',borderRadius:3,yAxisID:'y1'},
+    ],{scales:{x:{ticks:{font:{size:9}}},y:{type:'linear',position:'left',ticks:{font:{size:9}}},y1:{type:'linear',position:'right',ticks:{font:{size:9}},grid:{drawOnChartArea:false}}}});
+    // Comparison table
+    const curM=String(now.getFullYear())+'-'+String(now.getMonth()+1).padStart(2,'0');
+    const prevD=new Date(now.getFullYear(),now.getMonth()-1,1);
+    const prevM=String(prevD.getFullYear())+'-'+String(prevD.getMonth()+1).padStart(2,'0');
+    const curInt=db.internal.filter(r=>r.date.startsWith(curM));
+    const prevInt=db.internal.filter(r=>r.date.startsWith(prevM));
+    const curGate=db.gate.filter(r=>r.date.startsWith(curM));
+    const prevGate=db.gate.filter(r=>r.date.startsWith(prevM));
+    const rows=[
+      {m:'廢料 Total (kg)',c:curInt.reduce((s,r)=>s+(+r.total_kg||0),0).toFixed(0),p:prevInt.reduce((s,r)=>s+(+r.total_kg||0),0).toFixed(0),cv:curInt.reduce((s,r)=>s+(+r.total_kg||0),0),pv:prevInt.reduce((s,r)=>s+(+r.total_kg||0),0)},
+      {m:'Plastic (kg)',c:curInt.reduce((s,r)=>s+(+r.plastic_kg||0),0).toFixed(0),p:prevInt.reduce((s,r)=>s+(+r.plastic_kg||0),0).toFixed(0),cv:curInt.reduce((s,r)=>s+(+r.plastic_kg||0),0),pv:prevInt.reduce((s,r)=>s+(+r.plastic_kg||0),0)},
+      {m:'Fabric (kg)',c:curInt.reduce((s,r)=>s+(+r.fabric_kg||0),0).toFixed(0),p:prevInt.reduce((s,r)=>s+(+r.fabric_kg||0),0).toFixed(0),cv:curInt.reduce((s,r)=>s+(+r.fabric_kg||0),0),pv:prevInt.reduce((s,r)=>s+(+r.fabric_kg||0),0)},
+      {m:'Gate Trips',c:curGate.length,p:prevGate.length,cv:curGate.length,pv:prevGate.length},
+    ];
+    document.getElementById('cmp-tbody').innerHTML=rows.map(r=>{
+      let chg='—',cls='cmp-nc';
+      if(r.pv>0){const pct=((r.cv-r.pv)/r.pv*100).toFixed(1);chg=(r.cv>=r.pv?'▲':'▼')+Math.abs(pct)+'%';cls=r.cv>r.pv?'cmp-up':'cmp-dn';}
+      return`<tr><td>${r.m}</td><td><strong>${r.c}</strong></td><td>${r.p}</td><td class="${cls}">${chg}</td></tr>`;
+    }).join('');
+  };
+  return {render};
+})();
+
+/* ═══ IMPORTER MODULE ═══ */
+const importer = (() => {
+  const fieldMap_int={date:['日期','date','Date'],plastic_kg:['塑膠','plastic','Plastic_kg','plastic_kg'],fabric_kg:['布料','fabric','Fabric_kg','fabric_kg'],core_kg:['紙管','core','Core_kg','core_kg'],remark:['備注','remark','Remark'],submitted_by:['填報人','submitted_by','Submitted_by']};
+  const fieldMap_gate={date:['日期','date','Date'],name:['司機','name','Name'],suppliers:['回收商','supplier','Supplier','suppliers'],car_number:['車牌','car_number','Car_number'],weight_kg:['重量','weight_kg','Weight_kg'],time_in:['進廠','time_in','Time_in'],time_out:['出廠','time_out','Time_out']};
+  const mapRow=(row,map)=>{const rec={};Object.entries(map).forEach(([k,aliases])=>{for(const a of aliases){if(row[a]!==undefined){rec[k]=String(row[a]);break;}}});return rec;};
+  const importInt = inp => {
+    const file=inp.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws);
+      let added=0;
+      rows.forEach(row=>{
+        const rec=mapRow(row,fieldMap_int);
+        if(!rec.date)return;
+        rec.id='IMP-'+Date.now().toString(36)+Math.random().toString(36).slice(2,4);
+        rec.total_kg=String((parseFloat(rec.plastic_kg)||0)+(parseFloat(rec.fabric_kg)||0)+(parseFloat(rec.core_kg)||0));
+        rec.submitted_at=new Date().toISOString();
+        state.db().internal.push(rec);added++;
+      });
+      state.save();
+      document.getElementById('imp-int-preview').innerHTML=`<div style="background:var(--gl);border-radius:8px;padding:10px;margin-top:8px;font-size:11px;color:var(--grn)">✅ 已成功匯入 ${added} 筆內部廢料記錄</div>`;
+      ui.toast(`✅ 匯入 ${added} 筆`);wint.renderChart();
+    };
+    reader.readAsBinaryString(file);
+  };
+  const importGate = inp => {
+    const file=inp.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws);
+      let added=0;
+      rows.forEach(row=>{
+        const rec=mapRow(row,fieldMap_gate);
+        if(!rec.date)return;
+        rec.id='IMP-G-'+Date.now().toString(36)+Math.random().toString(36).slice(2,4);
+        rec.submitted_at=new Date().toISOString();
+        state.db().gate.push(rec);added++;
+      });
+      state.save();
+      document.getElementById('imp-gate-preview').innerHTML=`<div style="background:var(--gl);border-radius:8px;padding:10px;margin-top:8px;font-size:11px;color:var(--grn)">✅ 已成功匯入 ${added} 筆大門廢棄物記錄</div>`;
+      ui.toast(`✅ 匯入 ${added} 筆`);
+    };
+    reader.readAsBinaryString(file);
+  };
+  return {importInt, importGate};
+})();
+
+/* ═══ CONFIG MODULE ═══ */
+const cfg = (() => {
+  const load = () => {
+    const c=state.db().cfg||{};
+    sv('cfg-gas',c.gasUrl||'');sv('cfg-token',c.botToken||'8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM');sv('cfg-chat',c.chatId||'-4002295659');
+    sv('cfg-thr-int',c.abnThrInt||1.5);sv('cfg-thr-gate',c.abnThrGate||180);
+    const cn=document.getElementById('cfg-notify');if(cn)cn.value=c.notify!==false?'1':'0';
+    renderPins();
+  };
+  const save = () => {
+    const c=state.db().cfg;
+    Object.assign(c,{gasUrl:gv('cfg-gas'),botToken:gv('cfg-token'),chatId:gv('cfg-chat')});
+    state.save();ui.toast('✅ 設定已儲存');
+  };
+  const saveAbn = () => {
+    const c=state.db().cfg;
+    c.abnThrInt=parseFloat(gv('cfg-thr-int'))||1.5;
+    c.abnThrGate=parseInt(gv('cfg-thr-gate'))||180;
+    c.notify=document.getElementById('cfg-notify')?.value==='1';
+    state.save();ui.toast('✅ 異常設定已儲存');
+  };
+  const testTg = async () => {await api.tg('✅ VRT EHS Environment — Telegram 測試成功！');ui.toast('📤 測試訊息已發送');};
+  const testGas = async () => {
+    try{const r=await fetch((state.db().cfg.gasUrl||'')+'?action=ping');const d=await r.json();ui.toast(d.ok?'✅ GAS 連接成功':'⚠️ '+d.err);}
+    catch(e){ui.toast('⚠️ 連接失敗');}
+  };
+  const addPin = () => {
+    const name=gv('np-name').trim(),pin=gv('np-pin').trim(),role=gv('np-role');
+    if(!name||!pin){ui.toast('⚠️ 請填寫姓名和 PIN');return;}
+    state.db().pins.push({name,pin,role});state.save();renderPins();
+    sv('np-name','');sv('np-pin','');
+    ui.toast('✅ 使用者已新增');
+  };
+  const renderPins = () => {
+    const pins=state.db().pins||[];
+    const perms={Staff:'新增、查看',Supervisor:'新增、查看、篩選',Admin:'全部包含刪除、匯入匯出'};
+    const tbody=document.getElementById('pin-tbody');
+    if(!tbody)return;
+    tbody.innerHTML=pins.map((p,i)=>`<tr><td>${esc(p.name)}</td><td style="font-family:'JetBrains Mono',monospace;letter-spacing:2px">${p.pin}</td><td><span class="badge ${p.role==='Admin'?'br22':p.role==='Supervisor'?'ba2':'bg2'}">${p.role}</span></td><td style="font-size:10px">${perms[p.role]||''}</td><td><button onclick="delPin(${i})" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px">✕</button></td></tr>`).join('');
+  };
+  return {load, save, saveAbn, testTg, testGas, addPin, renderPins};
+})();
+
+/* ═══ DATA MGMT ═══ */
+const dataMgmt = (() => {
+  const exportAll = () => {
+    const blob=new Blob([JSON.stringify(state.db(),null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+    a.download=`VRT_EHS_Backup_${new Date().toISOString().slice(0,10)}.json`;a.click();
+    ui.toast('✅ 已匯出');
+  };
+  const importAll = inp => {
+    const file=inp.files[0];if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{const d=JSON.parse(e.target.result);Object.assign(state.db(),d);state.save();dash.render();ui.toast('✅ 已還原');}
+      catch(ex){ui.toast('⚠️ 格式錯誤');}
+    };
+    reader.readAsText(file);
+  };
+  const clear = () => {if(!confirm('確定清除所有數據？'))return;localStorage.removeItem(SK);location.reload();};
+  return {exportAll, importAll, clear};
+})();
+
+/* ═══ ANOMALY DETECTION ═══ */
+function detectAnomalyInt(row){
+  const db=state.db();const thr=db.cfg.abnThrInt||1.5;
+  const last7=db.internal.slice(-7);if(last7.length<3)return'';
+  const avgP=last7.reduce((s,r)=>s+(+r.plastic_kg||0),0)/last7.length;
+  const avgF=last7.reduce((s,r)=>s+(+r.fabric_kg||0),0)/last7.length;
+  const msgs=[];
+  if(avgP>0&&((+row.plastic>avgP*thr)||(+row.plastic<avgP/thr)))msgs.push(`Plastic ${row.plastic}kg (avg ${avgP.toFixed(0)}kg)`);
+  if(avgF>0&&((+row.fabric>avgF*thr)||(+row.fabric<avgF/thr)))msgs.push(`Fabric ${row.fabric}kg (avg ${avgF.toFixed(0)}kg)`);
+  return msgs.length?msgs.join('; '):'';
+}
+
+/* ═══ HELPERS ═══ */
+function gv(id){const el=document.getElementById(id);return el?el.value.trim():'';}
+function sv(id,v){const el=document.getElementById(id);if(el)el.value=v;}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function delGate(id){if(!confirm('確定刪除？'))return;state.db().gate=state.db().gate.filter(r=>r.id!==id);state.save();wgate.query();}
+function delChem(id){if(!confirm('確定刪除？'))return;state.db().chemicals=state.db().chemicals.filter(r=>r.id!==id);state.save();chem.query();}
+function delPin(i){state.db().pins.splice(i,1);state.save();cfg.renderPins();}
+function updateDbInfo(){const db=state.db();const el=document.getElementById('db-info');if(el)el.textContent=`Internal: ${(db.internal||[]).length} · Gate: ${(db.gate||[]).length} · Chemicals: ${(db.chemicals||[]).length}`;}
+function updateTs(){const d=new Date();const p=n=>String(n).padStart(2,'0');const el=document.getElementById('ts-now');if(el)el.textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;}
+
+/* ═══ INIT ═══ */
+(function init(){
+  state.load();
+  updateTs();setInterval(updateTs,1000);
+  sv('c-date',de.fmt(new Date()));
+  de.set('month',document.querySelector('.pt .ptab'));
+  updateDbInfo();
+  wint.renderABatch();
+  wgate.renderBBatch();
+})();
+</script>
+</body>
+</html>
