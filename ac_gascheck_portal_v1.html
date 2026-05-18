@@ -193,7 +193,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;b
       <button class="gbtn g-pull" id="btnPull" onclick="pullAll()" disabled>⬇ Pull All</button>
     </div>
     <div class="gas-row" style="margin-top:5px">
-      <button class="gbtn g-wh"  onclick="fixWebhook()">🔧 Webhook</button>
+      <button class="gbtn g-wh"  onclick="fixWebhook()">⚙ Polling</button>
       <button class="gbtn g-chk" onclick="checkWebhook()">🔍 Status</button>
       <button class="gbtn g-tg"  onclick="testGasCheck()">📱 /gc</button>
       <button class="gbtn g-log" onclick="toggleLog()">📝 Log</button>
@@ -466,24 +466,11 @@ function pullAll() {
 function fixWebhook() {
   if(!GAS_URL){ toast('❌ 請先設定並儲存 GAS URL'); return; }
   if(!_logOpen) toggleLog();
-  toast(t('wh_fixing'), 6000);
-  log('🔧 呼叫 fixWebhook…','info');
-  gasPost({action:'fixWebhook'})
-    .then(function(d){
-      if(d.ok){
-        var short = (d.webhookUrl||'').slice(-45);
-        toast(t('wh_ok')+'\n…'+short, 6000);
-        log('✓ Webhook OK → …'+short,'ok');
-        if(d.description) log('  '+d.description,'info');
-      } else {
-        toast(t('wh_fail')+': '+(d.error||d.description||''), 6000);
-        log('✗ Webhook fail: '+(d.error||d.description||''),'err');
-      }
-    })
-    .catch(function(e){
-      toast('❌ fixWebhook: '+e.message, 5000);
-      log('✗ fixWebhook error: '+e.message,'err');
-    });
+  log('⚙ Polling 模式：不需要 Webhook！','info');
+  log('請在 GAS Editor 執行 setupPolling() 啟動每分鐘拉取。','info');
+  toast('ℹ️ 此系統使用 Polling 模式\n請在 GAS Editor 執行 setupPolling()', 6000);
+  // Verify GAS connectivity
+  fetchStatus();
 }
 
 function checkWebhook() {
