@@ -547,7 +547,7 @@ const COL_LABELS = {gas:'Gas',fan:'Fan',ctrl:'Ctrl',leak:'Leak',cap:'Cap',water:
 // ═══════════════════════════════════════════════════════════════
 // i18n MODULE
 // ═══════════════════════════════════════════════════════════════
-const i18n = (() => {
+var i18n = (() => {
   const D = {
     zh:{
       't-dash':'總覽','t-apply':'申請表單','t-roster':'在住總表','t-insp':'設施巡查',
@@ -620,45 +620,45 @@ function makeDateEngine(labelId, onChange) {
     return '';
   };
   const getRange = () => ({ from: fmt(startOf(_p,_anchor)), to: fmt(endOf(_p,_anchor)) });
-  const sync = () => {
+  const sync = (triggerChange) => {
     const el = document.getElementById(labelId);
     if(el) el.textContent = getLabel();
-    if(onChange) onChange(getRange());
+    if(triggerChange && onChange) onChange(getRange());
   };
   const set = (p,el) => {
     _p=p;
     if(el) { el.closest('.dn-periods').querySelectorAll('.dnp').forEach(b=>b.classList.remove('on')); el.classList.add('on'); }
-    sync();
+    sync(true);
   };
   const prev = () => {
     if(_p==='day')   _anchor.setDate(_anchor.getDate()-1);
     else if(_p==='week')  _anchor.setDate(_anchor.getDate()-7);
     else if(_p==='month') _anchor.setMonth(_anchor.getMonth()-1);
     else if(_p==='year')  _anchor.setFullYear(_anchor.getFullYear()-1);
-    sync();
+    sync(true);
   };
   const next = () => {
     if(_p==='day')   _anchor.setDate(_anchor.getDate()+1);
     else if(_p==='week')  _anchor.setDate(_anchor.getDate()+7);
     else if(_p==='month') _anchor.setMonth(_anchor.getMonth()+1);
     else if(_p==='year')  _anchor.setFullYear(_anchor.getFullYear()+1);
-    sync();
+    sync(true);
   };
-  const today = () => { _anchor=new Date(); sync(); };
+  const today = () => { _anchor=new Date(); sync(true); };
   const inRange = (dateStr) => { const d=(dateStr||'').split('T')[0]; return d>=getRange().from && d<=getRange().to; };
-  sync();
+  sync(false);
   return { set, prev, next, today, getRange, inRange };
 }
 
 // Three date engines: dashboard, inspection, records
-const de    = makeDateEngine('dn-label',    () => dash.render());
-const inspDE = makeDateEngine('dn-insp-label', () => {});
-const recDE  = makeDateEngine('dn-rec-label',  () => records.query());
+var de = makeDateEngine('dn-label',    () => dash.render());
+var inspDE = makeDateEngine('dn-insp-label', () => {});
+var recDE = makeDateEngine('dn-rec-label',  () => records.query());
 
 // ═══════════════════════════════════════════════════════════════
 // STATE
 // ═══════════════════════════════════════════════════════════════
-const state = (() => {
+var state = (() => {
   let _db = { records:[], inspections:[], violations:[], cfg:{} };
   let _items = JSON.parse(JSON.stringify(DEF_ITEMS));
   let _ftype = 'in';
@@ -707,7 +707,7 @@ const state = (() => {
 // ═══════════════════════════════════════════════════════════════
 // CFG MODULE
 // ═══════════════════════════════════════════════════════════════
-const cfg = (() => {
+var cfg = (() => {
   let _cfg = {};
   const load = () => {
     try { _cfg=JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e){}
@@ -753,7 +753,7 @@ const cfg = (() => {
 // ═══════════════════════════════════════════════════════════════
 // SETTINGS MODULE
 // ═══════════════════════════════════════════════════════════════
-const settings = (() => {
+var settings = (() => {
   const renderAll = () => {
     const c = cfg.get();
     renderTags('room-tags', c.rooms||[], 'room');
@@ -805,7 +805,7 @@ const settings = (() => {
 // ═══════════════════════════════════════════════════════════════
 // TELEGRAM & GAS API
 // ═══════════════════════════════════════════════════════════════
-const tgPost = async (body) => {
+var tgPost = async (body) => {
   const c=cfg.get();
   const token = c.botToken || '8618516219:AAELNq_Iux_jL5k0lustjTcf_eCBGc7iwKI';
   const chatId= c.chatId   || '-5167815203';
@@ -818,13 +818,13 @@ const tgPost = async (body) => {
   } catch(e) { return null; }
 };
 
-const gasGet = async (params) => {
+var gasGet = async (params) => {
   const url=cfg.get().gasUrl; if(!url) throw new Error('GAS URL 未設定');
   const qs=new URLSearchParams({...params,_t:Date.now()}).toString();
   const r=await fetch(url+'?'+qs,{redirect:'follow'});
   return r.json();
 };
-const gasPost = async (payload) => {
+var gasPost = async (payload) => {
   const url=cfg.get().gasUrl; if(!url) throw new Error('GAS URL 未設定');
   const body=new URLSearchParams({payload:JSON.stringify(payload)});
   const r=await fetch(url,{method:'POST',body,redirect:'follow',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
@@ -834,7 +834,7 @@ const gasPost = async (payload) => {
 // ═══════════════════════════════════════════════════════════════
 // CLOUD MODULE
 // ═══════════════════════════════════════════════════════════════
-const cloud = (() => {
+var cloud = (() => {
   const push = async () => {
     const url=cfg.get().gasUrl;
     if(!url){toast('請先設定 GAS URL');return;}
@@ -874,7 +874,7 @@ function updateCloudBadge(ok) {
 // ═══════════════════════════════════════════════════════════════
 // CHART MODULE
 // ═══════════════════════════════════════════════════════════════
-const charts = (() => {
+var charts = (() => {
   const _i={};
   const PAL=['#5B4FCF','#2E8B57','#D64141','#C17D2A','#3069BE','#7C3AED'];
   const render=(id,type,labels,datasets,opts={})=>{
@@ -893,7 +893,7 @@ const charts = (() => {
 // ═══════════════════════════════════════════════════════════════
 // UI MODULE — tab switching
 // ═══════════════════════════════════════════════════════════════
-const ui = (() => {
+var ui = (() => {
   let _cur='dash';
   const tab = (t) => {
     _cur=t;
@@ -914,7 +914,7 @@ const ui = (() => {
 // ═══════════════════════════════════════════════════════════════
 // DASHBOARD
 // ═══════════════════════════════════════════════════════════════
-const dash = (() => {
+var dash = (() => {
   const render = () => {
     const db=state.db();
     const {from,to}=de.getRange();
@@ -978,7 +978,7 @@ const dash = (() => {
 // ═══════════════════════════════════════════════════════════════
 // FORM MODULE — application submit with real Telegram approval
 // ═══════════════════════════════════════════════════════════════
-const form = (() => {
+var form = (() => {
   const setType = t => { state.setFType(t); };
   const reset = () => {
     ['f-name','f-gender','f-id','f-dept','f-pos','f-phone','f-room','f-reason','f-applicant'].forEach(id=>sv(id,''));
@@ -1134,7 +1134,7 @@ function removeItem(i){ if(state.getItems().length<=1){toast('至少保留一項
 // ═══════════════════════════════════════════════════════════════
 // ROSTER MODULE
 // ═══════════════════════════════════════════════════════════════
-const roster = (() => {
+var roster = (() => {
   const load = async () => {
     const db=state.db();
     // Compute from local records
@@ -1204,7 +1204,7 @@ const roster = (() => {
 // ═══════════════════════════════════════════════════════════════
 // INSPECTION MODULE — fixed cell cycling, all locations
 // ═══════════════════════════════════════════════════════════════
-const insp = (() => {
+var insp = (() => {
   let _data = {}; // { [room]: { [colKey]: val, remarks: '' } }
 
   // Cycle: ''→'N'→'X'→'-'→''
@@ -1374,7 +1374,7 @@ const insp = (() => {
 // ═══════════════════════════════════════════════════════════════
 // VIOLATIONS MODULE
 // ═══════════════════════════════════════════════════════════════
-const viol = (() => {
+var viol = (() => {
   const save = () => {
     const name=gv('vf-name').trim();
     if(!name){toast('⚠️ 請填寫姓名');return;}
@@ -1421,7 +1421,7 @@ const viol = (() => {
 // ═══════════════════════════════════════════════════════════════
 // RECORDS MODULE
 // ═══════════════════════════════════════════════════════════════
-const records = (() => {
+var records = (() => {
   const query = () => {
     const type=gv('fl-type'), status=gv('fl-status'), room=gv('fl-room').toLowerCase(), search=gv('fl-search').toLowerCase();
     const {from,to}=recDE.getRange();
@@ -1486,7 +1486,7 @@ const records = (() => {
 // ═══════════════════════════════════════════════════════════════
 // DATA MANAGEMENT
 // ═══════════════════════════════════════════════════════════════
-const dataMgmt = (() => {
+var dataMgmt = (() => {
   const exportAll = () => {
     const blob=new Blob([JSON.stringify(state.db(),null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);
