@@ -5,216 +5,185 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>AC GASCHECK Portal</title>
 <style>
-:root{--acc:#F97316;--nv:#0F1E3D;--nv2:#1A3458;--gold:#FCD34D;--w:#fff;--muted:rgba(255,255,255,.62);--sh:0 3px 12px rgba(0,0,0,.28);--r:12px}
+:root{--acc:#F97316;--nv:#0F1E3D;--nv2:#1A3458;--gold:#FCD34D;--w:#fff;--mt:rgba(255,255,255,.62);--r:12px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 html,body{min-height:100%;font-family:"DM Sans","IBM Plex Sans","Noto Sans TC","Noto Sans Khmer",system-ui,sans-serif;overflow-x:hidden}
 body{background:linear-gradient(160deg,#0F1E3D 0%,#1A3458 50%,#0D2240 100%);min-height:100dvh;display:flex;align-items:flex-start;justify-content:center;padding:12px}
-body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;background-image:radial-gradient(circle at 15% 25%,#fff 2px,transparent 2px),radial-gradient(circle at 85% 70%,#fff 2px,transparent 2px),radial-gradient(circle at 45% 80%,#fff 1.5px,transparent 1.5px),radial-gradient(circle at 75% 15%,#fff 1.5px,transparent 1.5px);background-size:160px 160px}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;
+  background-image:radial-gradient(circle at 15% 25%,#fff 2px,transparent 2px),radial-gradient(circle at 85% 70%,#fff 2px,transparent 2px),radial-gradient(circle at 45% 80%,#fff 1.5px,transparent 1.5px),radial-gradient(circle at 60% 40%,#fff 1px,transparent 1px);
+  background-size:160px 160px}
 .wrap{width:100%;max-width:380px;display:flex;flex-direction:column;gap:8px;padding-bottom:20px}
 /* Header */
-.portal-hdr{background:rgba(0,0,0,.22);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,.1);backdrop-filter:blur(6px)}
-.ph-logo{width:40px;height:40px;background:linear-gradient(135deg,var(--acc),#ea580c);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 2px 8px rgba(249,115,22,.4)}
-.ph-text .t1{font-size:16px;font-weight:700;color:var(--w);letter-spacing:.3px}
-.ph-text .t2{font-size:9.5px;color:var(--muted);margin-top:1px;letter-spacing:.08em;text-transform:uppercase}
-.ph-right{margin-left:auto;display:flex;gap:5px;align-items:center;flex-shrink:0}
+.hdr{background:rgba(0,0,0,.22);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:10px;border:1px solid rgba(255,255,255,.1)}
+.hdr-logo{width:40px;height:40px;background:linear-gradient(135deg,var(--acc),#ea580c);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;box-shadow:0 2px 8px rgba(249,115,22,.4)}
+.hdr-t1{font-size:16px;font-weight:700;color:var(--w)}
+.hdr-t2{font-size:9.5px;color:var(--mt);margin-top:1px;letter-spacing:.08em;text-transform:uppercase}
+.hdr-r{margin-left:auto;display:flex;gap:5px;align-items:center;flex-shrink:0}
 .lang-sw{display:flex;background:rgba(0,0,0,.22);border-radius:7px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
-.lb{padding:4px 9px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-size:10px;font-weight:700;font-family:inherit;transition:.15s}
+.lb{padding:4px 9px;border:none;background:transparent;color:var(--mt);cursor:pointer;font-size:10px;font-weight:700;font-family:inherit;transition:.15s}
 .lb.on{background:var(--acc);color:#fff}
-/* Stats bar */
-.stats-bar{background:rgba(0,0,0,.15);border-radius:10px;padding:9px 14px;display:flex;gap:0;border:1px solid rgba(255,255,255,.07)}
-.stat-item{flex:1;text-align:center;border-right:1px solid rgba(255,255,255,.07)}
-.stat-item:last-child{border-right:none}
-.stat-v{font-size:15px;font-weight:700;font-family:monospace;color:var(--gold)}
-.stat-l{font-size:9px;color:var(--muted);margin-top:1px;text-transform:uppercase;letter-spacing:.04em}
-/* Section label */
-.sec-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.12em;padding:2px 4px}
+/* Stats */
+.stats{background:rgba(0,0,0,.15);border-radius:10px;padding:9px 14px;display:flex;border:1px solid rgba(255,255,255,.07)}
+.st{flex:1;text-align:center;border-right:1px solid rgba(255,255,255,.07)}
+.st:last-child{border-right:none}
+.st-v{font-size:15px;font-weight:700;font-family:monospace;color:var(--gold)}
+.st-l{font-size:9px;color:var(--mt);margin-top:1px;text-transform:uppercase;letter-spacing:.04em}
+/* Section */
+.sec{font-size:9px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.12em;padding:2px 4px}
 /* Module grid */
 .mod-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.mod-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:13px 11px;cursor:pointer;transition:.15s;display:flex;align-items:center;gap:10px;text-decoration:none;position:relative;overflow:hidden;box-shadow:var(--sh)}
-.mod-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.05),transparent);pointer-events:none}
-.mod-btn::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
-.mod-btn:hover{background:rgba(255,255,255,.1);transform:translateY(-1px);box-shadow:0 5px 20px rgba(0,0,0,.35)}
-.mod-btn:active{transform:scale(.97)}
-.mb-icon{font-size:22px;flex-shrink:0;width:28px;text-align:center}
-.mb-text{display:flex;flex-direction:column;gap:1px;min-width:0}
+.mb{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:13px 11px;cursor:pointer;transition:.15s;display:flex;align-items:center;gap:10px;text-decoration:none;position:relative;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,.28)}
+.mb::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.05),transparent);pointer-events:none}
+.mb::after{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;border-radius:3px 0 0 3px}
+.mb:hover{background:rgba(255,255,255,.1);transform:translateY(-1px)}.mb:active{transform:scale(.97)}
+.mb-ic{font-size:22px;flex-shrink:0;width:28px;text-align:center}
 .mb-zh{font-size:13px;font-weight:700;color:var(--w);line-height:1.2}
-.mb-en{font-size:9px;color:var(--muted);letter-spacing:.04em;font-weight:500}
+.mb-en{font-size:9px;color:var(--mt);letter-spacing:.04em}
 .mb-arr{position:absolute;top:7px;right:7px;font-size:10px;color:rgba(255,255,255,.28)}
-.mod-btn.full{grid-column:1/-1}
+.mb.full{grid-column:1/-1}
 /* Cloud bar */
-.cloud-bar{background:rgba(0,0,0,.16);border-radius:10px;padding:9px 14px;display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.08);font-size:11px;cursor:pointer;transition:.15s}
-.cloud-bar:hover{background:rgba(0,0,0,.28)}
-.c-dot{width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0;transition:.3s}
-.c-dot.ok{background:#4ade80;box-shadow:0 0 6px #4ade80}
-.c-dot.err{background:#f87171}
-.c-dot.syncing{background:#fbbf24;animation:blink .8s infinite}
+.cbar{background:rgba(0,0,0,.16);border-radius:10px;padding:9px 14px;display:flex;align-items:center;gap:8px;border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:.15s}
+.cbar:hover{background:rgba(0,0,0,.28)}
+.cdot{width:8px;height:8px;border-radius:50%;background:#94a3b8;flex-shrink:0;transition:.3s}
+.cdot.ok{background:#4ade80;box-shadow:0 0 6px #4ade80}.cdot.err{background:#f87171}.cdot.syn{background:#fbbf24;animation:blink .8s infinite}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
-.c-lbl{font-weight:600;color:rgba(255,255,255,.8);font-size:11px}
-.c-ts{font-size:10px;margin-left:auto;font-family:monospace;color:rgba(255,255,255,.4)}
-/* GAS Panel */
-.gas-panel{background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:12px;display:none;backdrop-filter:blur(6px)}
-.gas-panel.open{display:block}
-.gas-panel input{width:100%;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);border-radius:7px;color:#fff;padding:7px 10px;font-size:11px;font-family:monospace;outline:none;margin:6px 0}
-.gas-panel input::placeholder{color:rgba(255,255,255,.28)}
-.gas-panel input:focus{border-color:var(--acc)}
-.gas-row{display:flex;gap:5px;margin-top:4px;flex-wrap:wrap}
-.gbtn{flex:1;padding:7px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:.15s;min-width:55px}
-.gbtn:disabled{opacity:.4;cursor:not-allowed}
+.clbl{font-weight:600;color:rgba(255,255,255,.8);font-size:11px}
+.cts{font-size:10px;margin-left:auto;font-family:monospace;color:rgba(255,255,255,.4)}
+/* GAS panel */
+.gp{background:rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:12px;display:none}
+.gp.open{display:block}
+.gp input{width:100%;background:rgba(0,0,0,.3);border:1px solid rgba(255,255,255,.15);border-radius:7px;color:#fff;padding:7px 10px;font-size:11px;font-family:monospace;outline:none;margin:5px 0}
+.gp input::placeholder{color:rgba(255,255,255,.28)}
+.gp input:focus{border-color:var(--acc)}
+.gp-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
+.gr{display:flex;gap:5px;flex-wrap:wrap;margin-top:5px}
+.gb{flex:1;padding:7px;border-radius:7px;font-size:10px;font-weight:700;cursor:pointer;border:none;font-family:inherit;transition:.15s;min-width:55px}
+.gb:disabled{opacity:.4;cursor:not-allowed}
 .g-save{background:#1c1500;border:1px solid #92400e;color:#fbbf24}
 .g-push{background:rgba(0,150,100,.3);border:1px solid rgba(0,200,100,.2);color:#4ade80}
 .g-pull{background:rgba(0,80,200,.3);border:1px solid rgba(100,150,255,.2);color:#93c5fd}
 .g-wh{background:rgba(245,158,11,.25);border:1px solid rgba(245,158,11,.3);color:#fbbf24}
 .g-chk{background:rgba(139,92,246,.25);border:1px solid rgba(139,92,246,.3);color:#c4b5fd}
 .g-tg{background:rgba(0,100,200,.35);border:1px solid rgba(100,160,255,.2);color:#93c5fd}
+.g-clr{background:rgba(200,50,50,.25);border:1px solid rgba(255,100,100,.2);color:#fca5a5}
 .g-log{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.1);color:rgba(255,255,255,.6)}
-.cp-lbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.35);text-transform:uppercase;letter-spacing:.07em;margin-bottom:2px}
 /* Log */
-.log-wrap{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:7px 9px;font-size:10px;font-family:monospace;color:rgba(255,255,255,.35);max-height:90px;overflow-y:auto;display:none}
-.log-wrap.open{display:block}
-.ll-ok{color:#4ade80}.ll-err{color:#f87171}.ll-info{color:#60a5fa}
-/* Bottom row */
-.bot-row{display:grid;grid-template-columns:1fr 1fr;gap:7px}
-.act-btn{background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,.75);font-family:inherit;transition:.15s}
-.act-btn:hover{background:rgba(0,0,0,.35);color:#fff}
-.act-btn.tg{background:rgba(0,100,200,.3);border-color:rgba(100,160,255,.2)}
-.act-btn.tg:hover{background:rgba(0,100,200,.5)}
+.logw{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.07);border-radius:8px;padding:7px 9px;font-size:10px;font-family:monospace;color:rgba(255,255,255,.35);max-height:100px;overflow-y:auto;display:none}
+.logw.open{display:block}
+.ll-ok{color:#4ade80}.ll-err{color:#f87171}.ll-info{color:#60a5fa}.ll-warn{color:#fbbf24}
+/* Bottom */
+.bot{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.ab{background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.1);border-radius:10px;padding:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-size:11px;font-weight:700;color:rgba(255,255,255,.75);font-family:inherit;transition:.15s}
+.ab:hover{background:rgba(0,0,0,.35);color:#fff}.ab.tg{background:rgba(0,100,200,.3);border-color:rgba(100,160,255,.2)}
 /* Toast */
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#0F1E3D;color:#fff;padding:9px 18px;border-radius:8px;font-size:12px;font-weight:600;opacity:0;transition:.3s;z-index:999;max-width:88vw;text-align:center;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.4);white-space:pre-line}
 #toast.show{opacity:1}
-.spin{display:inline-block;animation:sp .7s linear infinite}
-@keyframes sp{to{transform:rotate(360deg)}}
-@media(max-width:360px){.mb-zh{font-size:12px}.ph-text .t1{font-size:14px}}
+.spin{display:inline-block;animation:sp .7s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
+@media(max-width:360px){.mb-zh{font-size:12px}.hdr-t1{font-size:14px}}
 </style>
 </head>
 <body>
 <div class="wrap">
 
-  <!-- Header -->
-  <div class="portal-hdr">
-    <div class="ph-logo">♻️</div>
-    <div class="ph-text">
-      <div class="t1" id="hTitle">AC GASCHECK 平台</div>
-      <div class="t2">VANTAGE RIVER TEXTILES · SHV</div>
-    </div>
-    <div class="ph-right">
-      <div class="lang-sw">
-        <button class="lb on" onclick="setLang('zh')">中</button>
-        <button class="lb"    onclick="setLang('en')">EN</button>
-        <button class="lb"    onclick="setLang('km')">ក</button>
-      </div>
-    </div>
+<!-- Header -->
+<div class="hdr">
+  <div class="hdr-logo">♻️</div>
+  <div>
+    <div class="hdr-t1" id="hTitle">AC GASCHECK 平台</div>
+    <div class="hdr-t2">VANTAGE RIVER TEXTILES · SHV</div>
   </div>
-
-  <!-- Stats bar -->
-  <div class="stats-bar">
-    <div class="stat-item"><div class="stat-v">7</div><div class="stat-l" id="sl-mods">模組</div></div>
-    <div class="stat-item"><div class="stat-v" id="s-recs" style="color:#93c5fd">—</div><div class="stat-l" id="sl-recs">記錄</div></div>
-    <div class="stat-item"><div class="stat-v" id="s-sync" style="color:#4ade80">—</div><div class="stat-l" id="sl-sync">同步</div></div>
-    <div class="stat-item"><div class="stat-v" id="s-last" style="font-size:10px;color:#fbbf24">—</div><div class="stat-l" id="sl-last">上次</div></div>
-  </div>
-
-  <!-- Section label -->
-  <div class="sec-lbl" id="sec-mods">管理模組</div>
-
-  <!-- Module grid -->
-  <div class="mod-grid">
-    <a class="mod-btn" href="ac_gascheck_asset_v1.html" style="--mc:#2563EB">
-      <style>.mod-btn:nth-child(1)::after{background:#2563EB}</style>
-      <div class="mb-icon">📦</div>
-      <div class="mb-text">
-        <div class="mb-zh" id="n-asset">資產管理</div>
-        <div class="mb-en" id="s-asset">Asset Management</div>
-      </div><div class="mb-arr">↗</div>
-    </a>
-    <a class="mod-btn" href="ac_gascheck_dormitory_v1.html">
-      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#5B4FCF;border-radius:3px 0 0 3px"></div>
-      <div class="mb-icon">🏠</div>
-      <div class="mb-text">
-        <div class="mb-zh" id="n-dorm">宿舍管理</div>
-        <div class="mb-en" id="s-dorm">Dormitory Hub</div>
-      </div><div class="mb-arr">↗</div>
-    </a>
-    <a class="mod-btn" href="ac_gascheck_cleaning_v1.html">
-      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#2D7A5A;border-radius:3px 0 0 3px"></div>
-      <div class="mb-icon">🧹</div>
-      <div class="mb-text">
-        <div class="mb-zh" id="n-clean">清潔管理</div>
-        <div class="mb-en" id="s-clean">Cleaning Management</div>
-      </div><div class="mb-arr">↗</div>
-    </a>
-    <a class="mod-btn" href="ac_gascheck_keymovement_v1.html">
-      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#E8640A;border-radius:3px 0 0 3px"></div>
-      <div class="mb-icon">🔑</div>
-      <div class="mb-text">
-        <div class="mb-zh" id="n-key">鑰匙管理</div>
-        <div class="mb-en" id="s-key">Key Movement</div>
-      </div><div class="mb-arr">↗</div>
-    </a>
-    <a class="mod-btn" href="ac_gascheck_ehs_v1.html">
-      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#B36010;border-radius:3px 0 0 3px"></div>
-      <div class="mb-icon">♻️</div>
-      <div class="mb-text">
-        <div class="mb-zh" id="n-ehs">EHS 環境</div>
-        <div class="mb-en" id="s-ehs">EHS Environment</div>
-      </div><div class="mb-arr">↗</div>
-    </a>
-    <a class="mod-btn" href="ac_gascheck_waterdrum_v1.html">
-      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#0891B2;border-radius:3px 0 0 3px"></div>
-      <div class="mb-icon">💧</div>
-      <div class="mb-text">
-        <div class="mb-zh" id="n-water">水桶管理</div>
-        <div class="mb-en" id="s-water">Water Drum</div>
-      </div><div class="mb-arr">↗</div>
-    </a>
-    <a class="mod-btn full" href="ac_gascheck_temperature_v1.html">
-      <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#4F6EF7;border-radius:3px 0 0 3px"></div>
-      <div class="mb-icon">🌡️</div>
-      <div class="mb-text">
-        <div class="mb-zh" id="n-temp">溫度記錄</div>
-        <div class="mb-en" id="s-temp">Temperature &amp; Humidity Monitor</div>
-      </div><div class="mb-arr">↗</div>
-    </a>
-  </div>
-
-  <!-- Cloud bar -->
-  <div class="cloud-bar" onclick="togglePanel()">
-    <div class="c-dot" id="cDot"></div>
-    <span class="c-lbl" id="cLbl">GAS 未設定</span>
-    <span class="c-ts"  id="cTs">⚙ 點此設定</span>
-  </div>
-
-  <!-- GAS Config panel -->
-  <div class="gas-panel" id="gasPanel">
-    <div class="cp-lbl">GAS URL (AC_GASCHECK_CORE)</div>
-    <input id="gasInput" type="text" placeholder="https://script.google.com/macros/s/…/exec">
-    <div class="gas-row">
-      <button class="gbtn g-save" onclick="saveGas()">💾 儲存</button>
-      <button class="gbtn g-push" id="btnPush" onclick="pushAll()" disabled>☁ Push All</button>
-      <button class="gbtn g-pull" id="btnPull" onclick="pullAll()" disabled>⬇ Pull All</button>
-    </div>
-    <div class="gas-row" style="margin-top:5px">
-      <button class="gbtn g-wh"  onclick="fixWebhook()">⚙ Polling</button>
-      <button class="gbtn g-chk" onclick="checkWebhook()">🔍 Status</button>
-      <button class="gbtn g-tg"  onclick="testGasCheck()">📱 /gc</button>
-      <button class="gbtn g-log" onclick="toggleLog()">📝 Log</button>
+  <div class="hdr-r">
+    <div class="lang-sw">
+      <button class="lb on" onclick="setLang('zh')">中</button>
+      <button class="lb"    onclick="setLang('en')">EN</button>
+      <button class="lb"    onclick="setLang('km')">ក</button>
     </div>
   </div>
+</div>
 
-  <!-- Log -->
-  <div class="log-wrap" id="logWrap">
-    <span class="ll-info">AC GASCHECK Portal v1.1 就緒</span>
-  </div>
+<!-- Stats -->
+<div class="stats">
+  <div class="st"><div class="st-v">7</div><div class="st-l" id="sl-mods">模組</div></div>
+  <div class="st"><div class="st-v" id="s-recs" style="color:#93c5fd">—</div><div class="st-l" id="sl-recs">記錄</div></div>
+  <div class="st"><div class="st-v" id="s-sync" style="color:#4ade80">—</div><div class="st-l" id="sl-sync">同步</div></div>
+  <div class="st"><div class="st-v" id="s-last" style="font-size:10px;color:#fbbf24">—</div><div class="st-l" id="sl-last">上次</div></div>
+</div>
 
-  <!-- Bottom actions -->
-  <div class="bot-row">
-    <button class="act-btn tg" onclick="sendTgMenu()">📱 <span id="bt-tg">Telegram 選單</span></button>
-    <button class="act-btn"    onclick="toggleLog()">  📝 <span id="bt-log">操作紀錄</span></button>
+<!-- Modules -->
+<div class="sec" id="sec-mods">管理模組</div>
+<div class="mod-grid">
+  <a class="mb" href="ac_gascheck_asset_v1.html">
+    <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#2563EB;border-radius:3px 0 0 3px"></div>
+    <div class="mb-ic">📦</div><div><div class="mb-zh" id="n-asset">資產管理</div><div class="mb-en" id="s-asset">Asset Management</div></div><div class="mb-arr">↗</div>
+  </a>
+  <a class="mb" href="ac_gascheck_dormitory_v1.html">
+    <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#5B4FCF;border-radius:3px 0 0 3px"></div>
+    <div class="mb-ic">🏠</div><div><div class="mb-zh" id="n-dorm">宿舍管理</div><div class="mb-en" id="s-dorm">Dormitory Hub</div></div><div class="mb-arr">↗</div>
+  </a>
+  <a class="mb" href="ac_gascheck_cleaning_v1.html">
+    <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#2D7A5A;border-radius:3px 0 0 3px"></div>
+    <div class="mb-ic">🧹</div><div><div class="mb-zh" id="n-clean">清潔管理</div><div class="mb-en" id="s-clean">Cleaning Mgmt</div></div><div class="mb-arr">↗</div>
+  </a>
+  <a class="mb" href="ac_gascheck_keymovement_v1.html">
+    <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#E8640A;border-radius:3px 0 0 3px"></div>
+    <div class="mb-ic">🔑</div><div><div class="mb-zh" id="n-key">鑰匙管理</div><div class="mb-en" id="s-key">Key Movement</div></div><div class="mb-arr">↗</div>
+  </a>
+  <a class="mb" href="ac_gascheck_ehs_v1.html">
+    <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#B36010;border-radius:3px 0 0 3px"></div>
+    <div class="mb-ic">♻️</div><div><div class="mb-zh" id="n-ehs">EHS 環境</div><div class="mb-en" id="s-ehs">EHS Environment</div></div><div class="mb-arr">↗</div>
+  </a>
+  <a class="mb" href="ac_gascheck_waterdrum_v1.html">
+    <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#0891B2;border-radius:3px 0 0 3px"></div>
+    <div class="mb-ic">💧</div><div><div class="mb-zh" id="n-water">水桶管理</div><div class="mb-en" id="s-water">Water Drum</div></div><div class="mb-arr">↗</div>
+  </a>
+  <a class="mb full" href="ac_gascheck_temperature_v1.html">
+    <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#4F6EF7;border-radius:3px 0 0 3px"></div>
+    <div class="mb-ic">🌡️</div><div><div class="mb-zh" id="n-temp">溫度記錄</div><div class="mb-en" id="s-temp">Temperature &amp; Humidity</div></div><div class="mb-arr">↗</div>
+  </a>
+</div>
+
+<!-- Cloud bar -->
+<div class="cbar" onclick="togglePanel()">
+  <div class="cdot" id="cDot"></div>
+  <span class="clbl" id="cLbl">GAS 未設定</span>
+  <span class="cts"  id="cTs">⚙ 點此設定</span>
+</div>
+
+<!-- GAS Config panel -->
+<div class="gp" id="gasPanel">
+  <div class="gp-lbl">GAS URL (AC_GASCHECK_CORE)</div>
+  <input id="gasInput" type="text" placeholder="https://script.google.com/macros/s/…/exec">
+
+  <div class="gr">
+    <button class="gb g-save" onclick="saveGas()">💾 儲存</button>
+    <button class="gb g-push" id="btnPush" onclick="pushAll()" disabled>☁ Push All</button>
+    <button class="gb g-pull" id="btnPull" onclick="pullAll()" disabled>⬇ Pull All</button>
   </div>
+  <div class="gr" style="margin-top:5px">
+    <button class="gb g-wh"  id="btnWH"  onclick="fixWebhook()" disabled>🔧 Webhook</button>
+    <button class="gb g-chk" onclick="checkWebhook()">🔍 Status</button>
+    <button class="gb g-clr" onclick="clearUidCache()">🧹 清快取</button>
+    <button class="gb g-log" onclick="toggleLog()">📝 Log</button>
+  </div>
+</div>
+
+<!-- Log -->
+<div class="logw" id="logWrap"><span class="ll-info">AC GASCHECK Portal v2.0 就緒</span></div>
+
+<!-- Bottom actions -->
+<div class="bot">
+  <button class="ab tg" onclick="sendTgMenu()">📱 <span id="bt-tg">Telegram 選單</span></button>
+  <button class="ab"    onclick="toggleLog()">  📝 <span id="bt-log">操作紀錄</span></button>
+</div>
 
 </div>
 <div id="toast"></div>
 
 <script>
+// ═══════════════════════════════════════════════════════════════
+// AC GASCHECK Portal v2.0
+// Webhook mode — fixWebhook() calls Telegram API directly
+// ═══════════════════════════════════════════════════════════════
 var GAS_KEY   = 'ac_gascheck_gas_url';
 var LANG_KEY  = 'ac_gascheck_lang';
 var META_KEY  = 'ac_gascheck_meta';
@@ -226,78 +195,76 @@ var GAS_URL  = localStorage.getItem(GAS_KEY)  || '';
 var LANG     = localStorage.getItem(LANG_KEY)  || 'zh';
 var _logOpen = false;
 
-// ── i18n ─────────────────────────────────────
+// ── i18n ─────────────────────────────────────────────────────
 var TXT = {
-  zh: {
+  zh:{
     title:'AC GASCHECK 平台', sec:'管理模組',
     sl_mods:'模組', sl_recs:'記錄', sl_sync:'同步', sl_last:'上次',
     tg:'Telegram 選單', log:'操作紀錄',
     gas_ok:'雲端已連接', gas_not:'GAS 未設定', gas_tap:'⚙ 點此設定', gas_err:'連接失敗',
     push_ok:'Push 完成', pull_ok:'Pull 完成', no_gas:'請先設定 GAS URL',
-    wh_fixing:'🔧 設定 Webhook 中…', wh_ok:'✅ Webhook 設定成功！', wh_fail:'❌ Webhook 設定失敗',
-    wh_chk:'🔍 查詢中…', wh_good:'✅ Webhook 正常 → /exec', wh_bad:'⚠ Webhook 異常，請按「🔧 Webhook」重設',
-    wh_none:'⚠ Webhook 尚未設定，請按「🔧 Webhook」',
+    wh_ing:'🔧 設定 Webhook 中…', wh_ok:'✅ Webhook 設定成功！Bot 已就緒。',
+    wh_fail:'❌ Webhook 設定失敗', wh_chk:'🔍 查詢 Webhook 狀態中…',
+    wh_good:'✅ Webhook 正常 → /exec', wh_bad:'⚠ Webhook URL 異常，請重設',
+    wh_none:'⚠ Webhook 尚未設定',
+    cache_ok:'✅ UID 快取已清除，Bot 應恢復回應',
     n:{asset:'資產管理',dorm:'宿舍管理',clean:'清潔管理',key:'鑰匙管理',ehs:'EHS 環境',water:'水桶管理',temp:'溫度記錄'},
     s:{asset:'Asset Management',dorm:'Dormitory Hub',clean:'Cleaning Mgmt',key:'Key Movement',ehs:'EHS Environment',water:'Water Drum',temp:'Temperature & Humidity'},
   },
-  en: {
+  en:{
     title:'AC GASCHECK Platform', sec:'Modules',
     sl_mods:'Modules', sl_recs:'Records', sl_sync:'Synced', sl_last:'Last',
     tg:'Telegram Menu', log:'Activity Log',
     gas_ok:'Cloud Connected', gas_not:'GAS Not Set', gas_tap:'⚙ Tap to Configure', gas_err:'Connection Failed',
     push_ok:'Push Done', pull_ok:'Pull Done', no_gas:'Please set GAS URL first',
-    wh_fixing:'🔧 Setting Webhook…', wh_ok:'✅ Webhook set successfully!', wh_fail:'❌ Webhook failed',
-    wh_chk:'🔍 Checking…', wh_good:'✅ Webhook OK → /exec', wh_bad:'⚠ Webhook abnormal, click 🔧 to reset',
-    wh_none:'⚠ Webhook not set, click 🔧 Webhook',
+    wh_ing:'🔧 Setting Webhook…', wh_ok:'✅ Webhook set! Bot ready.',
+    wh_fail:'❌ Webhook failed', wh_chk:'🔍 Checking Webhook…',
+    wh_good:'✅ Webhook OK → /exec', wh_bad:'⚠ Webhook URL abnormal',
+    wh_none:'⚠ Webhook not set',
+    cache_ok:'✅ UID cache cleared',
     n:{asset:'Asset Mgmt',dorm:'Dormitory',clean:'Cleaning',key:'Key Move',ehs:'EHS',water:'Water Drum',temp:'Temperature'},
-    s:{asset:'Asset Management',dorm:'Dormitory Hub',clean:'Cleaning Mgmt',key:'Key Movement',ehs:'EHS Environment',water:'Water Drum',temp:'Temperature & Humidity'},
+    s:{asset:'Asset',dorm:'Dormitory',clean:'Cleaning',key:'Key',ehs:'EHS',water:'Water',temp:'Temperature'},
   },
-  km: {
+  km:{
     title:'វេទិកា AC GASCHECK', sec:'ម៉ូឌុល',
     sl_mods:'ម៉ូឌុល', sl_recs:'ទំរង់', sl_sync:'Sync', sl_last:'ចុងក្រោយ',
     tg:'Telegram', log:'កំណត់ហេតុ',
     gas_ok:'ភ្ជាប់ Cloud', gas_not:'GAS មិនទាន់', gas_tap:'⚙ ចុចកំណត់', gas_err:'ការភ្ជាប់បរាជ័យ',
     push_ok:'Push រួច', pull_ok:'Pull រួច', no_gas:'សូមកំណត់ GAS URL',
-    wh_fixing:'🔧 កំណត់…', wh_ok:'✅ Webhook រួច', wh_fail:'❌ Webhook ទ្រេត',
+    wh_ing:'🔧 កំណត់…', wh_ok:'✅ Webhook រួច', wh_fail:'❌ Webhook ទ្រេត',
     wh_chk:'🔍 ពិនិត្យ…', wh_good:'✅ Webhook ប្រក្រតី', wh_bad:'⚠ Webhook ខុស', wh_none:'⚠ Webhook មិនទាន់',
+    cache_ok:'✅ Cache លុបរួច',
     n:{asset:'ទ្រព្យ',dorm:'ផ្ទះ',clean:'ការសំអាត',key:'សោ',ehs:'EHS',water:'ធុងទឹក',temp:'សីតុណ្ហភាព'},
-    s:{asset:'Asset',dorm:'Dormitory',clean:'Cleaning',key:'Key Movement',ehs:'EHS',water:'Water',temp:'Temperature'},
+    s:{asset:'Asset',dorm:'Dormitory',clean:'Cleaning',key:'Key',ehs:'EHS',water:'Water',temp:'Temp'},
   }
 };
 
-function t(k) {
-  var d = TXT[LANG] || TXT.zh;
-  return d[k] !== undefined ? d[k] : (TXT.zh[k] !== undefined ? TXT.zh[k] : k);
-}
+function t(k) { var d=TXT[LANG]||TXT.zh; return d[k]!==undefined ? d[k] : (TXT.zh[k]!==undefined ? TXT.zh[k] : k); }
 
 function setLang(l) {
-  LANG = l;
-  localStorage.setItem(LANG_KEY, l);
-  document.querySelectorAll('.lb').forEach(function(b,i){ b.classList.toggle('on',['zh','en','km'][i]===l); });
+  LANG=l; localStorage.setItem(LANG_KEY,l);
+  document.querySelectorAll('.lb').forEach(function(b,i){b.classList.toggle('on',['zh','en','km'][i]===l);});
   applyLang();
 }
-
 function applyLang() {
-  var d = TXT[LANG] || TXT.zh;
-  document.getElementById('hTitle').textContent  = d.title;
-  document.getElementById('sec-mods').textContent = d.sec;
-  document.getElementById('sl-mods').textContent  = d.sl_mods;
-  document.getElementById('sl-recs').textContent  = d.sl_recs;
-  document.getElementById('sl-sync').textContent  = d.sl_sync;
-  document.getElementById('sl-last').textContent  = d.sl_last;
-  document.getElementById('bt-tg').textContent    = d.tg;
-  document.getElementById('bt-log').textContent   = d.log;
-  var mods = ['asset','dorm','clean','key','ehs','water','temp'];
-  mods.forEach(function(m){
-    var ne = document.getElementById('n-'+m);
-    var se = document.getElementById('s-'+m);
-    if(ne && d.n && d.n[m]) ne.textContent = d.n[m];
-    if(se && d.s && d.s[m]) se.textContent = d.s[m];
+  var d=TXT[LANG]||TXT.zh;
+  document.getElementById('hTitle').textContent   = d.title;
+  document.getElementById('sec-mods').textContent  = d.sec;
+  document.getElementById('sl-mods').textContent   = d.sl_mods;
+  document.getElementById('sl-recs').textContent   = d.sl_recs;
+  document.getElementById('sl-sync').textContent   = d.sl_sync;
+  document.getElementById('sl-last').textContent   = d.sl_last;
+  document.getElementById('bt-tg').textContent     = d.tg;
+  document.getElementById('bt-log').textContent    = d.log;
+  ['asset','dorm','clean','key','ehs','water','temp'].forEach(function(m){
+    var ne=document.getElementById('n-'+m); var se=document.getElementById('s-'+m);
+    if(ne&&d.n&&d.n[m]) ne.textContent=d.n[m];
+    if(se&&d.s&&d.s[m]) se.textContent=d.s[m];
   });
   updateCloudLabel();
 }
 
-// ── Local data count ─────────────────────────
+// ── Local record count ────────────────────────────────────────
 var MODS = [
   {id:'asset',       lsKey:'vrt_asset_v1'     },
   {id:'dormitory',   lsKey:'vrt_dorm_hub_v2'  },
@@ -307,287 +274,343 @@ var MODS = [
   {id:'waterdrum',   lsKey:'wdr_data'          },
   {id:'temperature', lsKey:'vrt_temp_db'       },
 ];
-
 function getCount() {
   return MODS.reduce(function(s,m){
-    try {
-      var raw = localStorage.getItem(m.lsKey); if(!raw) return s;
-      var d = JSON.parse(raw);
+    try{
+      var raw=localStorage.getItem(m.lsKey); if(!raw) return s;
+      var d=JSON.parse(raw);
       if(Array.isArray(d)) return s+d.length;
-      if(d.records && Array.isArray(d.records)) return s+d.records.length;
-      return s+Object.values(d).filter(Array.isArray).reduce(function(a,arr){return a+arr.length;},0);
-    } catch(e){ return s; }
-  }, 0);
+      if(d.records&&Array.isArray(d.records)) return s+d.records.length;
+      return s+Object.values(d).filter(Array.isArray).reduce(function(a,b){return a+b.length;},0);
+    }catch(e){return s;}
+  },0);
 }
-
 function updateStats(meta) {
-  var synced = MODS.filter(function(m){ return !!localStorage.getItem(m.lsKey); }).length;
-  document.getElementById('s-recs').textContent = getCount() || '—';
-  document.getElementById('s-sync').textContent = synced ? synced+'/7' : '—';
-  var ts = (meta||{}).lastPush || (meta||{}).lastPull;
-  document.getElementById('s-last').textContent = ts ? fmtTs(ts) : '—';
+  var sy=MODS.filter(function(m){return !!localStorage.getItem(m.lsKey);}).length;
+  document.getElementById('s-recs').textContent=getCount()||'—';
+  document.getElementById('s-sync').textContent=sy ? sy+'/7' : '—';
+  var ts=(meta||{}).lastPush||(meta||{}).lastPull;
+  document.getElementById('s-last').textContent=ts?fmtTs(ts):'—';
 }
 
-// ── Cloud label ───────────────────────────────
+// ── Cloud dot + label ─────────────────────────────────────────
 function updateCloudLabel(state) {
-  var dot = document.getElementById('cDot');
-  var lbl = document.getElementById('cLbl');
-  var cts = document.getElementById('cTs');
-  dot.className = 'c-dot';
-  if(!GAS_URL){
-    lbl.textContent = t('gas_not');
-    cts.textContent = t('gas_tap');
-    return;
-  }
-  if(state === false){
-    dot.classList.add('err');
-    lbl.textContent = t('gas_err');
-    cts.textContent = '⚙ 點此重設';
-    return;
-  }
-  dot.classList.add('ok');
-  lbl.textContent = t('gas_ok');
-  var meta = JSON.parse(localStorage.getItem(META_KEY)||'{}');
-  var ts = meta.lastPush || meta.lastPull;
-  cts.textContent = ts ? fmtTs(ts) : t('gas_tap');
+  var dot=document.getElementById('cDot');
+  var lbl=document.getElementById('cLbl');
+  var cts=document.getElementById('cTs');
+  dot.className='cdot';
+  if(!GAS_URL){ lbl.textContent=t('gas_not'); cts.textContent=t('gas_tap'); return; }
+  if(state===false){ dot.classList.add('err'); lbl.textContent=t('gas_err'); cts.textContent='⚙ 點此重設'; return; }
+  dot.classList.add('ok'); lbl.textContent=t('gas_ok');
+  var meta=JSON.parse(localStorage.getItem(META_KEY)||'{}');
+  var ts=meta.lastPush||meta.lastPull;
+  cts.textContent=ts?fmtTs(ts):t('gas_tap');
 }
 
-// ── GAS panel ────────────────────────────────
+// ── GAS panel toggle ──────────────────────────────────────────
 function togglePanel() {
-  var p = document.getElementById('gasPanel');
+  var p=document.getElementById('gasPanel');
   p.classList.toggle('open');
-  if(p.classList.contains('open') && GAS_URL){
-    document.getElementById('gasInput').value = GAS_URL;
-  }
-  if(GAS_URL) setTimeout(fetchStatus, 200);
+  if(p.classList.contains('open')&&GAS_URL) document.getElementById('gasInput').value=GAS_URL;
+  if(GAS_URL) setTimeout(fetchStatus,200);
 }
 
 function saveGas() {
-  var url = document.getElementById('gasInput').value.trim();
+  var url=document.getElementById('gasInput').value.trim();
   if(!url){ toast('⚠ URL 不能為空'); return; }
-  if(url.indexOf('script.google.com')<0){ toast('⚠ URL 格式錯誤'); return; }
-  GAS_URL = url;
-  localStorage.setItem(GAS_KEY, url);
-  document.getElementById('btnPush').disabled = false;
-  document.getElementById('btnPull').disabled = false;
+  if(url.indexOf('script.google.com')<0){ toast('⚠ URL 格式錯誤\n需為 script.google.com/macros/s/…/exec'); return; }
+  if(url.indexOf('/exec')<0){ toast('⚠ 請使用 /exec URL\n不要使用 /dev'); return; }
+  GAS_URL=url;
+  localStorage.setItem(GAS_KEY,url);
+  document.getElementById('btnPush').disabled=false;
+  document.getElementById('btnPull').disabled=false;
+  document.getElementById('btnWH').disabled=false;
   updateCloudLabel(true);
   log('GAS URL 已儲存','info');
   toast('✅ GAS 已儲存');
-  setTimeout(fetchStatus, 600);
+  setTimeout(fetchStatus,600);
 }
 
-// Core GAS POST caller — URLSearchParams body
+// ── Core GAS caller ──────────────────────────────────────────
 function gasPost(payload) {
   if(!GAS_URL) return Promise.reject(new Error(t('no_gas')));
-  var body = new URLSearchParams();
+  var body=new URLSearchParams();
   body.append('payload', JSON.stringify(payload));
   return fetch(GAS_URL, {
     method:'POST', body:body, redirect:'follow',
     headers:{'Content-Type':'application/x-www-form-urlencoded'}
-  }).then(function(res){
-    return res.text().then(function(txt){
+  }).then(function(r){
+    return r.text().then(function(txt){
       try{ return JSON.parse(txt); }
-      catch(e){ throw new Error('GAS non-JSON: '+txt.substring(0,80)); }
+      catch(e){ throw new Error('GAS 非 JSON 回應: '+txt.substring(0,80)); }
     });
   });
 }
 
 function fetchStatus() {
   if(!GAS_URL){ updateCloudLabel(); return; }
-  var dot = document.getElementById('cDot');
-  dot.className = 'c-dot syncing';
-  fetch(GAS_URL+'?action=status&_t='+Date.now(), {redirect:'follow'})
-    .then(function(r){ return r.json(); })
+  document.getElementById('cDot').className='cdot syn';
+  fetch(GAS_URL+'?action=status&_t='+Date.now(),{redirect:'follow'})
+    .then(function(r){return r.json();})
     .then(function(d){
-      if(d.ok !== false){ updateCloudLabel(true); updateStats(d.meta||{}); log('✓ GAS status OK','ok'); }
-      else{ updateCloudLabel(false); log('✗ GAS status: '+(d.error||''),'err'); }
+      if(d.ok!==false){ updateCloudLabel(true); updateStats(d.meta||{}); log('✓ GAS status OK','ok'); }
+      else{ updateCloudLabel(false); log('✗ GAS: '+(d.error||''),'err'); }
     })
     .catch(function(e){ updateCloudLabel(false); log('✗ fetchStatus: '+e.message,'err'); });
 }
 
-// ── Push / Pull All ───────────────────────────
+// ── Push All ─────────────────────────────────────────────────
 function pushAll() {
   if(!GAS_URL){ toast(t('no_gas')); return; }
-  var btn = document.getElementById('btnPush');
-  btn.disabled = true; btn.innerHTML = '<span class="spin">⏳</span>';
-  var ok = 0, fail = 0, i = 0;
+  var btn=document.getElementById('btnPush');
+  btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span>';
+  var ok=0, fail=0, i=0;
   function next(){
-    if(i >= MODS.length){
-      var meta = {lastPush: new Date().toISOString()};
-      var cur = JSON.parse(localStorage.getItem(META_KEY)||'{}');
-      localStorage.setItem(META_KEY, JSON.stringify(Object.assign(cur, meta)));
+    if(i>=MODS.length){
+      var meta={lastPush:new Date().toISOString()};
+      var cur=JSON.parse(localStorage.getItem(META_KEY)||'{}');
+      localStorage.setItem(META_KEY,JSON.stringify(Object.assign(cur,meta)));
       updateCloudLabel(true); updateStats(meta);
       toast('✅ '+t('push_ok')+' ('+ok+'/'+MODS.length+')');
-      btn.disabled = false; btn.textContent = '☁ Push All';
+      btn.disabled=false; btn.textContent='☁ Push All';
       return;
     }
-    var m = MODS[i++];
+    var m=MODS[i++];
     try{
-      var raw = localStorage.getItem(m.lsKey); if(!raw){ next(); return; }
-      var d = JSON.parse(raw);
-      var recs = Array.isArray(d) ? d : d.records ? d.records : Object.values(d).filter(Array.isArray).reduce(function(a,b){return a.concat(b);}, []);
-      if(!recs.length){ next(); return; }
-      gasPost({action:'push', tool:m.id, records:recs, recordCount:recs.length, updatedAt:new Date().toISOString()})
-        .then(function(res){ if(res.ok!==false){ ok++; log('✓ push:'+m.id+' '+recs.length+'筆','ok'); } else{ fail++; log('✗ push:'+m.id+':'+(res.error||''),'err'); } next(); })
-        .catch(function(e){ fail++; log('✗ push:'+m.id+':'+e.message,'err'); next(); });
-    }catch(e){ fail++; log('✗ push:'+m.id+':'+e.message,'err'); next(); }
+      var raw=localStorage.getItem(m.lsKey); if(!raw){next();return;}
+      var d=JSON.parse(raw);
+      var recs=Array.isArray(d)?d:(d.records?d.records:Object.values(d).filter(Array.isArray).reduce(function(a,b){return a.concat(b);},[]));
+      if(!recs.length){next();return;}
+      gasPost({action:'push',tool:m.id,records:recs,recordCount:recs.length,updatedAt:new Date().toISOString()})
+        .then(function(r){
+          if(r.ok!==false){ok++;log('✓ push:'+m.id+' '+recs.length+'筆','ok');}
+          else{fail++;log('✗ push:'+m.id+':'+(r.error||''),'err');}
+          next();
+        })
+        .catch(function(e){fail++;log('✗ push:'+m.id+':'+e.message,'err');next();});
+    }catch(e){fail++;log('✗ push:'+m.id+':'+e.message,'err');next();}
   }
   next();
 }
 
+// ── Pull All ─────────────────────────────────────────────────
 function pullAll() {
   if(!GAS_URL){ toast(t('no_gas')); return; }
-  var btn = document.getElementById('btnPull');
-  btn.disabled = true; btn.innerHTML = '<span class="spin">⏳</span>';
-  var ok = 0, fail = 0, i = 0;
+  var btn=document.getElementById('btnPull');
+  btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span>';
+  var ok=0, fail=0, i=0;
   function next(){
-    if(i >= MODS.length){
+    if(i>=MODS.length){
       updateStats({});
       toast('✅ '+t('pull_ok')+' ('+ok+')');
-      btn.disabled = false; btn.textContent = '⬇ Pull All';
+      btn.disabled=false; btn.textContent='⬇ Pull All';
       return;
     }
-    var m = MODS[i++];
-    fetch(GAS_URL+'?action=pull&tool='+m.id+'&_t='+Date.now(), {redirect:'follow'})
-      .then(function(r){ return r.json(); })
+    var m=MODS[i++];
+    fetch(GAS_URL+'?action=pull&tool='+m.id+'&_t='+Date.now(),{redirect:'follow'})
+      .then(function(r){return r.json();})
       .then(function(d){
-        if(d.ok!==false && Array.isArray(d.records) && d.records.length){
-          localStorage.setItem(m.lsKey, JSON.stringify(d.records));
-          ok++; log('✓ pull:'+m.id+' '+d.records.length+'筆','ok');
+        if(d.ok!==false&&Array.isArray(d.records)&&d.records.length){
+          localStorage.setItem(m.lsKey,JSON.stringify(d.records));
+          ok++;log('✓ pull:'+m.id+' '+d.records.length+'筆','ok');
         }
         next();
       })
-      .catch(function(e){ fail++; log('✗ pull:'+m.id+':'+e.message,'err'); next(); });
+      .catch(function(e){fail++;log('✗ pull:'+m.id+':'+e.message,'err');next();});
   }
   next();
 }
 
-// ── Webhook ───────────────────────────────────
+// ═══════════════════════════════════════════════════════════════
+// WEBHOOK — 真正呼叫 Telegram setWebhook API
+// ★ 直接從瀏覽器呼叫 Telegram，使用使用者輸入的 GAS /exec URL
+// ★ 不依賴 ScriptApp.getService().getUrl()（那會是 /dev）
+// ═══════════════════════════════════════════════════════════════
 function fixWebhook() {
-  if(!GAS_URL){ toast('❌ 請先設定並儲存 GAS URL'); return; }
+  var gasUrl=document.getElementById('gasInput').value.trim();
+  if(!gasUrl){ toast('⚠ 請先在上方輸入 GAS URL'); return; }
+  if(gasUrl.indexOf('/exec')<0){ toast('⚠ 請使用 /exec URL（不是 /dev）'); return; }
+
   if(!_logOpen) toggleLog();
-  log('⚙ Polling 模式：不需要 Webhook！','info');
-  log('請在 GAS Editor 執行 setupPolling() 啟動每分鐘拉取。','info');
-  toast('ℹ️ 此系統使用 Polling 模式\n請在 GAS Editor 執行 setupPolling()', 6000);
-  // Verify GAS connectivity
-  fetchStatus();
+  toast(t('wh_ing'), 7000);
+  log('🔧 setWebhook → '+gasUrl.slice(-45)+'…','info');
+
+  fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/setWebhook', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      url                 : gasUrl,
+      allowed_updates     : ['message','callback_query'],
+      drop_pending_updates: true,
+    }),
+  })
+  .then(function(r){return r.json();})
+  .then(function(d){
+    if(d.ok){
+      toast(t('wh_ok'), 6000);
+      log('✓ setWebhook OK → …'+gasUrl.slice(-40),'ok');
+      log('  desc: '+(d.description||''),'info');
+      // Also save the GAS URL
+      if(!GAS_URL){ GAS_URL=gasUrl; localStorage.setItem(GAS_KEY,gasUrl); updateCloudLabel(true); }
+    } else {
+      toast(t('wh_fail')+'\n'+(d.description||''), 6000);
+      log('✗ setWebhook fail: '+(d.description||d.error||JSON.stringify(d)),'err');
+    }
+  })
+  .catch(function(e){
+    toast('❌ fixWebhook: '+e.message, 5000);
+    log('✗ fixWebhook error: '+e.message,'err');
+  });
 }
 
+// ═══════════════════════════════════════════════════════════════
+// CHECK WEBHOOK — 真正呼叫 getWebhookInfo
+// ═══════════════════════════════════════════════════════════════
 function checkWebhook() {
   if(!_logOpen) toggleLog();
   toast(t('wh_chk'), 4000);
   log('🔍 getWebhookInfo…','info');
+
   fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/getWebhookInfo')
-    .then(function(r){ return r.json(); })
+    .then(function(r){return r.json();})
     .then(function(d){
       if(!d.ok){ toast('❌ Token 錯誤: '+d.description); log('✗ '+d.description,'err'); return; }
-      var url  = d.result.url || '';
-      var pend = d.result.pending_update_count || 0;
-      var err  = d.result.last_error_message || '';
-      var good = url.indexOf('/exec') >= 0;
-      if(!url){ toast(t('wh_none'), 5000); log('⚠ Webhook 未設定','err'); }
-      else if(good){ toast(t('wh_good'), 5000); log('✓ URL: …'+url.slice(-40),'ok'); }
-      else{ toast(t('wh_bad'), 5000); log('⚠ URL: …'+url.slice(-40),'err'); }
-      if(pend) log('  Pending: '+pend,'info');
-      if(err)  log('  LastErr: '+err,'err');
+      var r    = d.result;
+      var url  = r.url || '';
+      var pend = r.pending_update_count || 0;
+      var err  = r.last_error_message  || '';
+      var good = url.length>0 && url.indexOf('/exec')>=0;
+
+      if(!url){
+        toast(t('wh_none'), 5000);
+        log('⚠ Webhook 尚未設定 → 請點「🔧 Webhook」','warn');
+      } else if(good) {
+        toast(t('wh_good'), 5000);
+        log('✓ URL: …'+url.slice(-50),'ok');
+      } else {
+        toast(t('wh_bad'), 5000);
+        log('⚠ URL: '+url,'err');
+        log('  → 指向 /dev 或錯誤路徑，請重設','warn');
+      }
+      if(pend>0) log('  Pending: '+pend+' (上次有訊息未處理)','warn');
+      else       log('  Pending: 0 ✓','info');
+      if(err)    log('  LastErr: '+err,'err');
+      else       log('  LastErr: none ✓','info');
     })
-    .catch(function(e){ toast('❌ '+e.message); log('✗ checkWebhook: '+e.message,'err'); });
+    .catch(function(e){
+      toast('❌ '+e.message);
+      log('✗ checkWebhook: '+e.message,'err');
+    });
 }
 
-function testGasCheck() {
-  toast('📱 發送 /gascheck…');
-  log('📱 direct send /gascheck','info');
-  fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/sendMessage',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({chat_id:CHAT_ID, text:'/gascheck', parse_mode:'HTML'})
-  }).then(function(r){ return r.json(); })
+// ─── Clear Telegram UID dedup cache (via GAS) ─────────────────
+// When /gc stops responding, clear the cache
+function clearUidCache() {
+  if(!_logOpen) toggleLog();
+  log('🧹 清除 UID 快取中…','info');
+  // Try via GAS
+  if(GAS_URL){
+    gasPost({action:'clearCache'})
+      .then(function(d){ log(d.ok!==false?'✓ GAS 快取已清除':'⚠ GAS 無此指令（需更新 GAS）','ok'); })
+      .catch(function(){});
+  }
+  // Also: Telegram delete webhook then re-set it to clear pending
+  var gasUrl=GAS_URL||(document.getElementById('gasInput').value.trim());
+  if(gasUrl&&gasUrl.indexOf('/exec')>=0){
+    // deleteWebhook to drop pending
+    fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/deleteWebhook',{
+      method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({drop_pending_updates:true}),
+    })
+    .then(function(r){return r.json();})
     .then(function(d){
-      if(d.ok){ toast('✅ 已送出，請看 Telegram 群組'); log('✓ /gascheck sent','ok'); }
-      else{ toast('❌ '+d.description); log('✗ '+d.description,'err'); }
+      log('✓ deleteWebhook + drop_pending=true','ok');
+      // Then re-set webhook
+      return fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/setWebhook',{
+        method:'POST',headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({url:gasUrl,allowed_updates:['message','callback_query'],drop_pending_updates:true}),
+      });
     })
-    .catch(function(e){ toast('❌ '+e.message); log('✗ '+e.message,'err'); });
+    .then(function(r){return r.json();})
+    .then(function(d){ log(d.ok?'✓ Webhook 重設完成':'✗ '+d.description, d.ok?'ok':'err'); toast(t('cache_ok'),5000); })
+    .catch(function(e){ log('✗ '+e.message,'err'); });
+  } else {
+    toast(t('cache_ok'));
+    log('⚠ 沒有 GAS URL，只做本地提示','warn');
+  }
 }
 
-// ── Telegram Portal Menu ──────────────────────
+// ═══════════════════════════════════════════════════════════════
+// SEND TELEGRAM MENU (from Portal)
+// ═══════════════════════════════════════════════════════════════
 function sendTgMenu() {
-  var now = new Date().toLocaleString('zh-TW',{timeZone:'Asia/Phnom_Penh',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-  var cnt = getCount();
-  var text = '\u267b\ufe0f <b>AC GASCHECK \u5e73\u53f0</b> \u2014 '+now+'\n'+
-    '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n'+
-    '\u{1F4E6} \u8cc7\u7522  |  \u{1F3E0} \u5bbf\u820d  |  \u{1F9F9} \u6e05\u6f54\n'+
-    '\u{1F511} \u9470\u5319  |  \u267b\ufe0f EHS  |  \u{1F4A7} \u6c34\u6876  |  \u{1F321}\ufe0f \u6eab\u5ea6\n'+
-    '\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n'+
-    '\u{1F4CA} \u672c\u5730\u8a18\u9304: '+cnt+' \u7b46\n'+
-    '\u{1F3ED} Vantage River Textiles \u00b7 SHV';
-  var buttons = [
-    [{text:'\u{1F4E6} Asset',     url:BASE_URL+'ac_gascheck_asset_v1.html'},{text:'\u{1F3E0} Dorm',url:BASE_URL+'ac_gascheck_dormitory_v1.html'}],
-    [{text:'\u{1F9F9} Cleaning',  url:BASE_URL+'ac_gascheck_cleaning_v1.html'},{text:'\u{1F511} Key',url:BASE_URL+'ac_gascheck_keymovement_v1.html'}],
-    [{text:'\u267b\ufe0f EHS',   url:BASE_URL+'ac_gascheck_ehs_v1.html'},{text:'\u{1F4A7} Water',url:BASE_URL+'ac_gascheck_waterdrum_v1.html'}],
-    [{text:'\u{1F321}\ufe0f Temp',url:BASE_URL+'ac_gascheck_temperature_v1.html'},{text:'\u{1F3E0} Portal',url:BASE_URL+'ac_gascheck_portal_v1.html'}],
+  var now=new Date().toLocaleString('zh-TW',{timeZone:'Asia/Phnom_Penh',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
+  var cnt=getCount();
+  var text='♻️ <b>AC GASCHECK 平台</b> — '+now+'\n'+
+    '━━━━━━━━━━━━━━━━━━\n'+
+    '📦 資產  |  🏠 宿舍  |  🧹 清潔\n'+
+    '🔑 鑰匙  |  ♻️ EHS  |  💧 水桶  |  🌡️ 溫度\n'+
+    '━━━━━━━━━━━━━━━━━━\n'+
+    '📊 本地記錄: '+cnt+' 筆\n'+
+    '🏭 Vantage River Textiles · SHV';
+  var buttons=[
+    [{text:'📦 Asset',     url:BASE_URL+'ac_gascheck_asset_v1.html'       },{text:'🏠 Dorm',  url:BASE_URL+'ac_gascheck_dormitory_v1.html'}],
+    [{text:'🧹 Cleaning',  url:BASE_URL+'ac_gascheck_cleaning_v1.html'    },{text:'🔑 Key',   url:BASE_URL+'ac_gascheck_keymovement_v1.html'}],
+    [{text:'♻️ EHS',       url:BASE_URL+'ac_gascheck_ehs_v1.html'         },{text:'💧 Water', url:BASE_URL+'ac_gascheck_waterdrum_v1.html'}],
+    [{text:'🌡️ Temp',      url:BASE_URL+'ac_gascheck_temperature_v1.html' },{text:'🏠 Portal',url:BASE_URL+'ac_gascheck_portal_v1.html'}],
   ];
   function sendDirect(){
     fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/sendMessage',{
       method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:CHAT_ID,text:text,parse_mode:'HTML',
-        reply_markup:JSON.stringify({inline_keyboard:buttons.map(function(row){return row.map(function(b){return{text:b.text,url:b.url};});})})
+      body:JSON.stringify({
+        chat_id:CHAT_ID,text:text,parse_mode:'HTML',
+        reply_markup:{inline_keyboard:buttons.map(function(row){return row.map(function(b){return{text:b.text,url:b.url};});})}
       })
     }).then(function(r){return r.json();}).then(function(d){
-      if(d.ok){toast('✅ Telegram \u5df2\u767c\u9001');log('\u2713 TG menu (direct)','ok');}
-      else{toast('\u274c '+d.description);log('\u2717 TG: '+d.description,'err');}
-    }).catch(function(e){toast('\u274c '+e.message);log('\u2717 '+e.message,'err');});
+      if(d.ok){toast('✅ Telegram 已發送');log('✓ TG menu (direct)','ok');}
+      else{toast('❌ '+d.description);log('✗ TG: '+d.description,'err');}
+    }).catch(function(e){toast('❌ '+e.message);log('✗ '+e.message,'err');});
   }
   if(GAS_URL){
     gasPost({action:'telegramMenu',text:text,buttons:buttons})
       .then(function(d){
-        if(d.ok!==false){toast('✅ Telegram \u5df2\u767c\u9001');log('\u2713 TG menu via GAS','ok');}
+        if(d.ok!==false){toast('✅ Telegram 已發送');log('✓ TG menu via GAS','ok');}
         else sendDirect();
       })
       .catch(sendDirect);
   } else sendDirect();
 }
 
-// ── Helpers ───────────────────────────────────
-function toggleLog() {
-  _logOpen = !_logOpen;
-  document.getElementById('logWrap').classList.toggle('open',_logOpen);
+// ── Helpers ───────────────────────────────────────────────────
+function toggleLog(){ _logOpen=!_logOpen; document.getElementById('logWrap').classList.toggle('open',_logOpen); }
+function log(msg,type){
+  var el=document.getElementById('logWrap');
+  var now=new Date();
+  var ts=pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds());
+  var cls=type==='ok'?'ll-ok':type==='err'?'ll-err':type==='warn'?'ll-warn':'ll-info';
+  el.innerHTML+='\n<span class="'+cls+'">['+ts+'] '+msg+'</span>';
+  el.scrollTop=el.scrollHeight;
 }
-
-function log(msg, type) {
-  var el = document.getElementById('logWrap');
-  var now = new Date();
-  var ts  = pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds());
-  var cls = type==='ok'?'ll-ok':type==='err'?'ll-err':'ll-info';
-  el.innerHTML += '\n<span class="'+cls+'">['+ts+'] '+msg+'</span>';
-  el.scrollTop = el.scrollHeight;
+function toast(msg,dur){
+  var el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(el._t); el._t=setTimeout(function(){el.classList.remove('show');},dur||3200);
 }
+function fmtTs(iso){try{var d=new Date(iso);return pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());}catch(e){return '—';}}
+function pad(n){return String(n).padStart(2,'0');}
 
-function toast(msg, dur) {
-  var el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(el._t);
-  el._t = setTimeout(function(){ el.classList.remove('show'); }, dur||3200);
-}
-
-function fmtTs(iso) {
-  try { var d=new Date(iso); return pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }
-  catch(e){ return '—'; }
-}
-function pad(n){ return String(n).padStart(2,'0'); }
-
-// ── Init ─────────────────────────────────────
-(function(){
+// ── Init ─────────────────────────────────────────────────────
+(function init(){
   if(GAS_URL){
-    document.getElementById('gasInput').value = GAS_URL;
-    document.getElementById('btnPush').disabled = false;
-    document.getElementById('btnPull').disabled = false;
+    document.getElementById('gasInput').value=GAS_URL;
+    document.getElementById('btnPush').disabled=false;
+    document.getElementById('btnPull').disabled=false;
+    document.getElementById('btnWH').disabled=false;
   }
-  document.querySelectorAll('.lb').forEach(function(b,i){
-    b.classList.toggle('on',['zh','en','km'][i]===LANG);
-  });
+  document.querySelectorAll('.lb').forEach(function(b,i){b.classList.toggle('on',['zh','en','km'][i]===LANG);});
   applyLang();
   updateStats(JSON.parse(localStorage.getItem(META_KEY)||'{}'));
-  if(GAS_URL) setTimeout(fetchStatus, 800);
+  if(GAS_URL) setTimeout(fetchStatus,800);
 })();
 </script>
 </body>
