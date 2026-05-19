@@ -319,8 +319,8 @@ select.fi{cursor:pointer}textarea.fi{min-height:55px;resize:vertical}
 <!-- ═══ TREND ANALYSIS ═══ -->
 <div class="pane" id="pane-trend"><div class="main">
   <div class="cr">
-    <div class="cc"><div class="ct"><span data-i="ch-waste-comp">廢料組成比例</span></div><canvas id="ch-comp" height="200"></canvas></div>
-    <div class="cc"><div class="ct"><span data-i="ch-supplier-dist">回收商趟次分佈</span></div><canvas id="ch-supplier" height="200"></canvas></div>
+    <div class="cc"><div class="ct"><span data-i="ch-waste-comp">廢料組成比例</span></div><canvas id="ch-comp" height="180"></canvas></div>
+    <div class="cc"><div class="ct"><span data-i="ch-supplier-dist">回收商趟次分佈</span></div><canvas id="ch-supplier" height="180"></canvas></div>
   </div>
   <div class="cc" style="border:1px solid var(--bdr2);border-radius:12px;padding:12px;margin-bottom:10px">
     <div class="ct"><span data-i="ch-monthly-trend">月度廢料趨勢</span><select class="fbi" id="trend-year" onchange="trend.render()" style="font-size:10px;padding:3px 6px"></select></div>
@@ -407,7 +407,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:55px;resize:vertical}
 <div id="toast"></div>
 <script>
 /* ═══ i18n MODULE ═══ */
-const i18n = (() => {
+var i18n = (() => {
   const D = {
     zh:{
       'tb-title':'EHS 環境安全管理','t-dash':'總覽','t-wint':'內部廢料','t-wgate':'大門廢棄物',
@@ -505,7 +505,7 @@ const i18n = (() => {
 })();
 
 /* ═══ DATE ENGINE ═══ */
-const de = (() => {
+var de = (() => {
   let _p='day';
   const fmt = d => d.toISOString().split('T')[0];
   const range = () => {
@@ -535,8 +535,8 @@ const SK='vrt_ehs_hub_v2';
 const SUPPLIERS=['K.S.W.M','SONYAPICH','OTHER'];
 const DEF_PINS=[{name:'Nin',pin:'1111',role:'Staff'},{name:'Mom',pin:'2222',role:'Staff'},{name:'Phea',pin:'3333',role:'Supervisor'},{name:'Paul',pin:'4444',role:'Admin'}];
 
-const state = (() => {
-  let _db={internal:[],gate:[],chemicals:[],pins:[...DEF_PINS],cfg:{botToken:'8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM',chatId:'-4002295659',gasUrl:'',abnThrInt:1.5,abnThrGate:180,notify:true}};
+var state = (() => {
+  let _db={internal:[],gate:[],chemicals:[],pins:[...DEF_PINS],cfg:{botToken:'8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw',chatId:'-5113064563',gasUrl:'',abnThrInt:1.5,abnThrGate:180,notify:true}};
   const load = () => {
     try{const r=localStorage.getItem(SK);if(r){const d=JSON.parse(r);Object.assign(_db,d);}}catch(e){}
     if(!_db.internal)_db.internal=[];if(!_db.gate)_db.gate=[];if(!_db.chemicals)_db.chemicals=[];
@@ -548,7 +548,7 @@ const state = (() => {
 })();
 
 /* ═══ API MODULE ═══ */
-const api = (() => {
+var api = (() => {
   const cfg = () => state.db().cfg||{};
   const post = async payload => {
     const c=cfg(); if(!c.gasUrl) return {ok:false};
@@ -564,7 +564,7 @@ const api = (() => {
 })();
 
 /* ═══ CHART MODULE ═══ */
-const chs = (() => {
+var chs = (() => {
   const _i={};
   const PAL=['#1A3458','#22C55E','#C04040','#D4810E','#2563A8','#7C3AED','#06B6D4','#F59E0B'];
   const render=(id,type,labels,datasets,opts={})=>{
@@ -581,7 +581,7 @@ const chs = (() => {
 })();
 
 /* ═══ UI MODULE ═══ */
-const ui = (() => {
+var ui = (() => {
   const tab = t => {
     document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
     document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));
@@ -603,7 +603,7 @@ const ui = (() => {
 })();
 
 /* ═══ DASHBOARD MODULE ═══ */
-const dash = (() => {
+var dash = (() => {
   const render = () => {
     const db=state.db();
     const {from,to}=de.range();
@@ -655,7 +655,7 @@ const dash = (() => {
 
 /* ═══ WASTE INTERNAL MODULE ═══ */
 let aRows=[];
-const wint = (() => {
+var wint = (() => {
   const addRow = () => {
     const id='A-'+Date.now()+'-'+Math.random().toString(36).slice(2,5);
     aRows.push({id,date:'',plastic:0,fabric:0,core:0,total:0,remark:'',submitter:''});
@@ -738,7 +738,7 @@ function calcATotal(id,el){wint.calcATotal(id,el);}
 
 /* ═══ WASTE GATE MODULE ═══ */
 let bRows=[];
-const wgate = (() => {
+var wgate = (() => {
   const addRow = () => {
     const id='B-'+Date.now()+'-'+Math.random().toString(36).slice(2,5);
     bRows.push({id,date:'',name:'',supplier:'',car:'',solid:false,industrial:false,kg:'',timein:'',timeout:'',gate:'',remark:''});
@@ -838,7 +838,7 @@ const wgate = (() => {
 function updateBRow(id,field,val){const r=bRows.find(r=>r.id===id);if(r){r[field]=val;document.getElementById('b-submit-count').textContent=bRows.filter(r=>r.date&&r.supplier).length;}}
 
 /* ═══ CHEMICAL MODULE ═══ */
-const chem = (() => {
+var chem = (() => {
   const save = () => {
     const name=gv('c-name').trim();const qty=parseFloat(gv('c-qty'));
     if(!name){ui.toast('⚠️ 請填寫化學品名稱');return;}
@@ -915,7 +915,7 @@ const chem = (() => {
 })();
 
 /* ═══ TREND MODULE ═══ */
-const trend = (() => {
+var trend = (() => {
   const render = () => {
     const db=state.db();
     const now=new Date();
@@ -964,7 +964,7 @@ const trend = (() => {
 })();
 
 /* ═══ IMPORTER MODULE ═══ */
-const importer = (() => {
+var importer = (() => {
   const fieldMap_int={date:['日期','date','Date'],plastic_kg:['塑膠','plastic','Plastic_kg','plastic_kg'],fabric_kg:['布料','fabric','Fabric_kg','fabric_kg'],core_kg:['紙管','core','Core_kg','core_kg'],remark:['備注','remark','Remark'],submitted_by:['填報人','submitted_by','Submitted_by']};
   const fieldMap_gate={date:['日期','date','Date'],name:['司機','name','Name'],suppliers:['回收商','supplier','Supplier','suppliers'],car_number:['車牌','car_number','Car_number'],weight_kg:['重量','weight_kg','Weight_kg'],time_in:['進廠','time_in','Time_in'],time_out:['出廠','time_out','Time_out']};
   const mapRow=(row,map)=>{const rec={};Object.entries(map).forEach(([k,aliases])=>{for(const a of aliases){if(row[a]!==undefined){rec[k]=String(row[a]);break;}}});return rec;};
@@ -1015,7 +1015,7 @@ const importer = (() => {
 })();
 
 /* ═══ CONFIG MODULE ═══ */
-const cfg = (() => {
+var cfg = (() => {
   const load = () => {
     const c=state.db().cfg||{};
     sv('cfg-gas',c.gasUrl||'');sv('cfg-token',c.botToken||'8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM');sv('cfg-chat',c.chatId||'-4002295659');
@@ -1058,7 +1058,7 @@ const cfg = (() => {
 })();
 
 /* ═══ DATA MGMT ═══ */
-const dataMgmt = (() => {
+var dataMgmt = (() => {
   const exportAll = () => {
     const blob=new Blob([JSON.stringify(state.db(),null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);

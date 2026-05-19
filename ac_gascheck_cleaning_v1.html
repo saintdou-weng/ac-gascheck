@@ -259,7 +259,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 <div class="pane" id="pane-map"><div class="main">
   <div class="card"><div class="ch"><span class="ch-icon">🗺️</span><span class="ch-title" data-i="map-title">垃圾桶配置地圖</span><span class="ch-note" id="bin-total-count">0 個</span></div>
     <div class="map-wrap">
-      <svg id="map-svg" class="map-svg" viewBox="0 0 800 480" xmlns="http://www.w3.org/2000/svg" id="factory-map-svg"></svg>
+      <svg id="factory-map-svg" class="map-svg" viewBox="0 0 800 540" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
     <div class="bin-legend" id="bin-legend"></div>
   </div>
@@ -381,7 +381,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 <div id="toast"></div>
 <script>
 /* ═══ i18n MODULE ═══ */
-const i18n = (() => {
+var i18n = (() => {
   const D = {
     zh:{
       'tb-title':'清潔管理系統','t-dash':'總覽','t-rec':'新增記錄','t-hist':'歷史記錄',
@@ -472,7 +472,7 @@ const i18n = (() => {
 })();
 
 /* ═══ DATE ENGINE MODULE ═══ */
-const de = (() => {
+var de = (() => {
   let _p = 'day';
   const fmt = d => d.toISOString().split('T')[0];
   const range = () => {
@@ -513,7 +513,7 @@ const SIXS_CATS = [
   {key:'safety',  zh:'安全 Safety',   en:'Safety',       items:['未接受SOE培訓','今年工傷次數','安全出口未標明','危險區域未標示','SOE糾正未完成']},
 ];
 
-const state = (() => {
+var state = (() => {
   let _db = {records:[],sixsRecords:[],locations:[],bins:[],cleaners:[],checkers:[],slots:[...DEF_SLOTS],cfg:{}};
   let _selSlots = [], _chkState = {}, _sixsState = {};
 
@@ -573,8 +573,10 @@ const state = (() => {
 })();
 
 /* ═══ API MODULE ═══ */
-const api = (() => {
-  const cfg = () => state.db().cfg || {};
+var api = (() => {
+  const _TG_TOKEN_DEFAULT = '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
+  const _TG_CHAT_DEFAULT = '-5113064563';
+  var cfg = () => state.db().cfg || {};
   const post = async (payload) => {
     const c=cfg(); if(!c.gasUrl) return {ok:false};
     const body=new URLSearchParams({payload:JSON.stringify(payload)});
@@ -595,7 +597,7 @@ const api = (() => {
 })();
 
 /* ═══ CHART MODULE ═══ */
-const chs = (() => {
+var chs = (() => {
   const _i={};
   const PAL=['#2D7A5A','#219653','#C94040','#D4810E','#2D6FA3','#7C3AED'];
   const render=(id,type,labels,datasets,opts={})=>{
@@ -612,7 +614,7 @@ const chs = (() => {
 })();
 
 /* ═══ UI MODULE ═══ */
-const ui = (() => {
+var ui = (() => {
   let _cur='dash';
   const tab = (t) => {
     _cur=t;
@@ -636,7 +638,7 @@ const ui = (() => {
 })();
 
 /* ═══ DASHBOARD MODULE ═══ */
-const dash = (() => {
+var dash = (() => {
   const render = () => {
     const db=state.db();
     const {from,to}=de.range();
@@ -683,7 +685,7 @@ const dash = (() => {
 })();
 
 /* ═══ RECORD MODULE ═══ */
-const rec = (() => {
+var rec = (() => {
   const save = async () => {
     const date=gv('r-date'),locId=gv('r-loc'),cleaner=gv('r-cleaner');
     if(!date||!locId||!cleaner){ui.toast('⚠️ 請填寫日期、地點、清潔員');return;}
@@ -720,7 +722,7 @@ const rec = (() => {
 })();
 
 /* ═══ HISTORY MODULE ═══ */
-const hist = (() => {
+var hist = (() => {
   const query = () => {
     const loc=gv('hl-loc'), status=gv('hl-status'), month=gv('hl-month'), search=gv('hl-search').toLowerCase();
     const recs=state.db().records.filter(r=>{
@@ -778,81 +780,151 @@ const hist = (() => {
   return {query, exportXL, uploadCloud, downloadCloud};
 })();
 
-/* ═══ DUSTBIN MAP MODULE ═══ */
-const binMap = (() => {
-  const BIN_ZONES = [
-    {id:'cutting',  label:'CUTTING 裁剪',  x:20,y:20,w:240,h:200,fill:'#3B82F6'},
-    {id:'sewing',   label:'SEWING 車縫',   x:280,y:20,w:260,h:200,fill:'#22C55E'},
-    {id:'finishing',label:'FINISHING 成衣',x:560,y:20,w:220,h:200,fill:'#F97316'},
-    {id:'canteen',  label:'CANTEEN 飯堂',  x:20,y:240,w:180,h:140,fill:'#EF4444'},
-    {id:'toilet',   label:'TOILET 廁所',   x:220,y:240,w:120,h:140,fill:'#06B6D4'},
-    {id:'office',   label:'OFFICE 辦公室', x:360,y:240,w:220,h:140,fill:'#8B5CF6'},
-    {id:'warehouse',label:'WAREHOUSE 倉庫',x:600,y:240,w:180,h:140,fill:'#D4810E'},
+/* ═══ DUSTBIN MAP MODULE — VRT Factory Layout from Excel ═══ */
+/* Based on VRT Dustbin Chart: Staff House | Factory | Office | Sewing */
+var binMap = (() => {
+
+  // Item types from Excel
+  const BIN_ITEMS = [
+    {no:1, name:'Green bin',        color:'#22C55E', emoji:'🟢'},
+    {no:2, name:'Small bin',        color:'#3B82F6', emoji:'🔵'},
+    {no:3, name:'Basket',           color:'#F59E0B', emoji:'🟡'},
+    {no:4, name:'Dustbin w/ lid',   color:'#8B5CF6', emoji:'🟣'},
+    {no:5, name:'Trolley',          color:'#EF4444', emoji:'🔴'},
   ];
+
+  // Zones from Excel (label, sub, bins: {item_no: qty}, layout: {x,y,w,h})
+  const ZONES = [
+    {id:'staff_a',   label:'Staff House',   sub:'Bldg A',   fill:'#6366F1', bins:{1:2},           x:10, y:10, w:100, h:80},
+    {id:'factory_a', label:'Factory',       sub:'Bldg A',   fill:'#2563EB', bins:{1:3,2:6,5:6},   x:120,y:10, w:160, h:80},
+    {id:'factory_b', label:'Factory',       sub:'Bldg B',   fill:'#0891B2', bins:{1:3,2:6,5:3},   x:290,y:10, w:160, h:80},
+    {id:'sec_post',  label:'Security Post', sub:'Front',    fill:'#0F766E', bins:{1:1},            x:460,y:10, w:110, h:80},
+    {id:'tea_area',  label:'Tea Area',      sub:'',         fill:'#16A34A', bins:{3:2},            x:580,y:10, w:100, h:80},
+    {id:'office',    label:'Office',        sub:'(52 Baskets)', fill:'#7C3AED', bins:{3:52},        x:10, y:105,w:200, h:75},
+    {id:'meeting',   label:'Meeting Rm',    sub:'',         fill:'#9333EA', bins:{4:1},            x:220,y:105,w:100, h:75},
+    {id:'ft_kitchen',label:'Ft. Kitchen',   sub:'',         fill:'#DC2626', bins:{1:1},            x:330,y:105,w:100, h:75},
+    {id:'ft_canteen',label:'Ft. Canteen',   sub:'',         fill:'#F97316', bins:{3:1},            x:440,y:105,w:110, h:75},
+    {id:'sample',    label:'Sample Room',   sub:'(22 Bask)',fill:'#B45309', bins:{3:22},            x:560,y:105,w:120, h:75},
+    // Sewing lines row 1: L1-L11
+    {id:'sew_l1',  label:'Sewing',sub:'L1',  fill:'#166534',bins:{3:30},x:10, y:195,w:60,h:60},
+    {id:'sew_l2',  label:'Sewing',sub:'L2',  fill:'#166534',bins:{3:32},x:75, y:195,w:60,h:60},
+    {id:'sew_l3',  label:'Sewing',sub:'L3',  fill:'#166534',bins:{3:36},x:140,y:195,w:60,h:60},
+    {id:'sew_l5',  label:'Sewing',sub:'L5',  fill:'#166534',bins:{3:25},x:205,y:195,w:60,h:60},
+    {id:'sew_l6',  label:'Sewing',sub:'L6',  fill:'#166534',bins:{3:29},x:270,y:195,w:60,h:60},
+    {id:'sew_l7',  label:'Sewing',sub:'L7',  fill:'#166534',bins:{3:28},x:335,y:195,w:60,h:60},
+    {id:'sew_l8',  label:'Sewing',sub:'L8',  fill:'#166534',bins:{3:23},x:400,y:195,w:60,h:60},
+    {id:'sew_l9',  label:'Sewing',sub:'L9',  fill:'#166534',bins:{3:29},x:465,y:195,w:60,h:60},
+    {id:'sew_l10', label:'Sewing',sub:'L10', fill:'#166534',bins:{3:16},x:530,y:195,w:60,h:60},
+    {id:'sew_l11', label:'Sewing',sub:'L11', fill:'#166534',bins:{3:18},x:595,y:195,w:60,h:60},
+    {id:'sew_l14', label:'Sewing',sub:'L14', fill:'#14532D',bins:{3:36},x:660,y:195,w:60,h:60},
+    // Sewing lines row 2: L15-L21
+    {id:'sew_l15', label:'Sewing',sub:'L15', fill:'#14532D',bins:{3:31},x:10, y:270,w:60,h:60},
+    {id:'sew_l16', label:'Sewing',sub:'L16', fill:'#14532D',bins:{3:31},x:75, y:270,w:60,h:60},
+    {id:'sew_l17', label:'Sewing',sub:'L17', fill:'#14532D',bins:{3:32},x:140,y:270,w:60,h:60},
+    {id:'sew_l18', label:'Sewing',sub:'L18', fill:'#14532D',bins:{3:32},x:205,y:270,w:60,h:60},
+    {id:'sew_l19', label:'Sewing',sub:'L19', fill:'#14532D',bins:{3:30},x:270,y:270,w:60,h:60},
+    {id:'sew_l20', label:'Sewing',sub:'L20', fill:'#14532D',bins:{3:27},x:335,y:270,w:60,h:60},
+    {id:'sew_l21', label:'Sewing',sub:'L21', fill:'#14532D',bins:{3:34},x:400,y:270,w:60,h:60},
+  ];
+
+  const getItemByNo = (no) => BIN_ITEMS.find(b=>b.no===Number(no));
+
   const render = () => {
-    const svg=document.getElementById('factory-map-svg');
-    if(!svg)return;
-    // Draw zones
-    let html=`<rect width="800" height="480" fill="#F4FAF6" rx="8"/>`;
-    // Grid lines
-    for(let x=0;x<=800;x+=40) html+=`<line x1="${x}" y1="0" x2="${x}" y2="480" stroke="#2D7A5A" stroke-width=".3" opacity=".15"/>`;
-    for(let y=0;y<=480;y+=40) html+=`<line x1="0" y1="${y}" x2="800" y2="${y}" stroke="#2D7A5A" stroke-width=".3" opacity=".15"/>`;
-    // Zones
-    BIN_ZONES.forEach(z=>{
-      html+=`<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="${z.fill}" opacity=".08" rx="6"/>`;
-      html+=`<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="none" stroke="${z.fill}" stroke-width="1.5" stroke-dasharray="5,3" rx="6" opacity=".4"/>`;
-      html+=`<text x="${z.x+z.w/2}" y="${z.y+14}" text-anchor="middle" font-size="9" font-weight="700" fill="${z.fill}" opacity=".8" font-family="Outfit,sans-serif">${z.label}</text>`;
-    });
-    // Bins from state
-    const bins=state.db().bins;
-    bins.forEach(b=>{
-      const zone=BIN_ZONES.find(z=>z.id===b.area);
-      if(!zone) return;
-      const bx=zone.x+20+(bins.filter(bb=>bb.area===b.area).indexOf(b)%5)*38;
-      const by=zone.y+zone.h/2+10;
-      const col=BIN_COLORS[b.type]||'#6B7280';
-      html+=`<g class="map-bin" transform="translate(${bx},${by})">
-        <circle r="13" fill="${col}" opacity=".9"/>
-        <text y="5" text-anchor="middle" font-size="13">${binEmoji(b.type)}</text>
-        <title>${esc(b.desc||b.area+' '+b.type)}</title>
-      </g>`;
-    });
-    // Add default bins if none
-    if(!bins.length){
-      const defaults=[
-        {area:'cutting',type:'fabric',x:60,y:120},{area:'cutting',type:'general',x:110,y:120},
-        {area:'sewing',type:'fabric',x:320,y:100},{area:'sewing',type:'general',x:360,y:100},{area:'sewing',type:'plastic',x:400,y:100},
-        {area:'canteen',type:'general',x:70,y:300},{area:'canteen',type:'paper',x:110,y:300},
-        {area:'toilet',type:'hazard',x:250,y:310},{area:'toilet',type:'general',x:290,y:310},
-        {area:'office',type:'paper',x:380,y:310},{area:'office',type:'general',x:420,y:310},
-        {area:'warehouse',type:'metal',x:640,y:300},{area:'warehouse',type:'general',x:680,y:300},
-      ];
-      defaults.forEach(b=>{
-        const col=BIN_COLORS[b.type]||'#6B7280';
-        html+=`<g class="map-bin" transform="translate(${b.x},${b.y})"><circle r="13" fill="${col}" opacity=".9"/><text y="5" text-anchor="middle" font-size="13">${binEmoji(b.type)}</text></g>`;
+    const svg = document.getElementById('factory-map-svg');
+    if(!svg){ console.warn('factory-map-svg not found'); return; }
+
+    let out = `<rect width="800" height="540" fill="#F0FAF4" rx="8"/>`;
+    // Section labels
+    out += `<text x="400" y="22" text-anchor="middle" font-size="11" font-weight="700" fill="#166534" font-family="DM Sans,sans-serif" opacity=".5">VRT DUSTBIN LAYOUT MAP</text>`;
+    // Section dividers
+    out += `<rect x="5" y="185" width="780" height="2" fill="#16A34A" opacity=".15" rx="1"/>`;
+    out += `<text x="400" y="182" text-anchor="middle" font-size="9" fill="#16A34A" opacity=".5" font-family="DM Sans,sans-serif">SEWING LINES</text>`;
+
+    ZONES.forEach(z => {
+      const totalBins = Object.values(z.bins).reduce((s,v)=>s+v,0);
+      // Zone box
+      out += `<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="${z.fill}" opacity=".12" rx="6"/>`;
+      out += `<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="none" stroke="${z.fill}" stroke-width="1.5" rx="6" opacity=".5"/>`;
+      // Zone label
+      out += `<text x="${z.x+z.w/2}" y="${z.y+13}" text-anchor="middle" font-size="8" font-weight="700" fill="${z.fill}" font-family="DM Sans,sans-serif">${z.label}</text>`;
+      if(z.sub) out += `<text x="${z.x+z.w/2}" y="${z.y+23}" text-anchor="middle" font-size="7" fill="${z.fill}" opacity=".8" font-family="DM Sans,sans-serif">${z.sub}</text>`;
+      // Bin icons row
+      let bx = z.x + 6;
+      const by = z.y + z.h - 26;
+      Object.entries(z.bins).forEach(([no, qty]) => {
+        const item = getItemByNo(no);
+        if(!item) return;
+        // Small circle with count badge
+        out += `<circle cx="${bx+10}" cy="${by+10}" r="9" fill="${item.color}" opacity=".85"/>`;
+        out += `<text x="${bx+10}" y="${by+14}" text-anchor="middle" font-size="9" fill="#fff" font-family="DM Sans,sans-serif" font-weight="700">${qty}</text>`;
+        // Tooltip
+        out += `<title>${item.name}: ${qty}</title>`;
+        bx += 24;
       });
-    }
-    svg.innerHTML=html;
-    renderBinLegend();
-    renderBinTable();
-    document.getElementById('bin-total-count').textContent=(bins.length||14)+' 個';
+      // Total badge top-right
+      out += `<rect x="${z.x+z.w-22}" y="${z.y+2}" width="20" height="14" fill="${z.fill}" rx="3" opacity=".7"/>`;
+      out += `<text x="${z.x+z.w-12}" y="${z.y+11}" text-anchor="middle" font-size="8" fill="#fff" font-weight="700" font-family="DM Sans,sans-serif">${totalBins}</text>`;
+    });
+
+    // Grand totals bar at bottom
+    const totals = {};
+    ZONES.forEach(z => Object.entries(z.bins).forEach(([no,qty])=>{ totals[no]=(totals[no]||0)+qty; }));
+    let tx = 20;
+    const ty = 345;
+    out += `<rect x="5" y="${ty-8}" width="790" height="40" fill="#166534" opacity=".08" rx="6"/>`;
+    out += `<text x="10" y="${ty+6}" font-size="9" fill="#166534" font-weight="700" font-family="DM Sans,sans-serif">TOTAL:</text>`;
+    tx = 65;
+    BIN_ITEMS.forEach(item => {
+      const qty = totals[item.no] || 0;
+      if(!qty) return;
+      out += `<circle cx="${tx+8}" cy="${ty+4}" r="7" fill="${item.color}" opacity=".85"/>`;
+      out += `<text x="${tx+18}" y="${ty+8}" font-size="9" fill="#166534" font-family="DM Sans,sans-serif" font-weight="600">${item.name}: ${qty}</text>`;
+      tx += item.name.length*5 + 35;
+    });
+
+    svg.innerHTML = out;
+    renderLegend(totals);
+    document.getElementById('bin-total-count').textContent = Object.values(totals).reduce((s,v)=>s+v,0)+' pcs';
   };
-  const renderBinLegend = () => {
-    const el=document.getElementById('bin-legend');
-    el.innerHTML=Object.entries(BIN_COLORS).map(([t,c])=>`<div class="bli"><div class="bld" style="background:${c}"></div>${binEmoji(t)} ${t}</div>`).join('');
+
+  const renderLegend = (totals) => {
+    const el = document.getElementById('bin-legend');
+    if(!el) return;
+    el.innerHTML = BIN_ITEMS.map(item => `
+      <div class="bli">
+        <div class="bld" style="background:${item.color}"></div>
+        ${item.emoji} ${item.name}
+        <span style="font-size:9px;color:var(--dim);margin-left:4px">(×${totals[item.no]||0})</span>
+      </div>`).join('');
   };
+
+  // Keep renderBinTable for compatibility with the management table
   const renderBinTable = () => {
-    const bins=state.db().bins;
-    const tbody=document.getElementById('bin-tbody');
-    if(!bins.length){tbody.innerHTML=`<tr><td colspan="7" class="es"><span class="esi">🗑️</span><br>${i18n.t('no-rec')}</td></tr>`;return;}
-    tbody.innerHTML=bins.map(b=>`<tr><td>${esc(b.area||'')}</td><td><span style="background:${BIN_COLORS[b.type]||'#ddd'};color:#fff;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">${binEmoji(b.type)} ${b.type}</span></td><td>${esc(b.desc||'')}</td><td>${esc(b.resp||'')}</td><td>${esc(b.freq||'')}</td><td>${b.lastClean||'—'}</td><td><button onclick="delBin('${b.id}')" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></td></tr>`).join('');
-    document.getElementById('bin-count-lbl').textContent=bins.length+' 個';
+    const bins = state.db().bins;
+    const tbody = document.getElementById('bin-tbody');
+    if(!tbody) return;
+    if(!bins.length){
+      tbody.innerHTML=`<tr><td colspan="7" class="es"><span class="esi">🗑️</span><br>${typeof i18n!=='undefined'?i18n.t('no-rec'):'暫無記錄'}</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = bins.map(b => `<tr>
+      <td>${esc(b.area||'')}</td>
+      <td><span style="background:${BIN_COLORS[b.type]||'#ddd'};color:#fff;padding:2px 7px;border-radius:4px;font-size:9px;font-weight:700">${binEmoji(b.type)} ${b.type}</span></td>
+      <td>${esc(b.desc||'')}</td>
+      <td>${esc(b.resp||'')}</td>
+      <td>${esc(b.freq||'')}</td>
+      <td>${b.lastClean||'—'}</td>
+      <td><button onclick="delBin('${b.id}')" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></td>
+    </tr>`).join('');
+    document.getElementById('bin-count-lbl').textContent = bins.length+' 個';
   };
-  return {render};
+
+  return { render, renderBinTable };
 })();
 
+
 /* ═══ 6S MODULE ═══ */
-const sixs = (() => {
+var sixs = (() => {
   const renderCats = () => {
     const wrap=document.getElementById('sixs-cats-wrap');
     if(!wrap)return;
@@ -948,7 +1020,7 @@ const sixs = (() => {
 })();
 
 /* ═══ AREAS MODULE ═══ */
-const areas = (() => {
+var areas = (() => {
   const render = () => {
     const grid=document.getElementById('areas-grid');
     const locs=state.db().locations;
@@ -982,7 +1054,7 @@ const areas = (() => {
 })();
 
 /* ═══ CONFIG MODULE ═══ */
-const cfg = (() => {
+var cfg = (() => {
   const load = () => {
     const c=state.db().cfg||{};
     sv('cfg-gas',c.gasUrl||''); sv('cfg-token',c.botToken||''); sv('cfg-chat',c.chatId||'');
@@ -1004,7 +1076,7 @@ const cfg = (() => {
 })();
 
 /* ═══ STAFF MODULE ═══ */
-const staff = (() => {
+var staff = (() => {
   const add = (type) => {
     const id=type==='cleaner'?'new-cleaner':'new-checker';
     const name=gv(id).trim(); if(!name)return;
@@ -1017,7 +1089,7 @@ const staff = (() => {
 })();
 
 /* ═══ SLOT CONFIG MODULE ═══ */
-const slotCfg = (() => {
+var slotCfg = (() => {
   const add = () => {
     const v=gv('new-slot').trim();
     if(!v||!/^\d{2}:\d{2}$/.test(v)){ui.toast('⚠️ 格式 HH:MM');return;}
@@ -1030,7 +1102,7 @@ const slotCfg = (() => {
 })();
 
 /* ═══ DATA MGMT MODULE ═══ */
-const dataMgmt = (() => {
+var dataMgmt = (() => {
   const exportAll = () => {
     const blob=new Blob([JSON.stringify(state.db(),null,2)],{type:'application/json'});
     const a=document.createElement('a');a.href=URL.createObjectURL(blob);

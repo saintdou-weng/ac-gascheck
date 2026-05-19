@@ -1306,7 +1306,7 @@ function exportAllData() {
 
 // ==================== TELEGRAM ====================
 function getTgSettings() {
-  return { token: localStorage.getItem('tg_token')||'', chat: localStorage.getItem('tg_chat')||'' };
+  return { token: localStorage.getItem('ac_gascheck_tg_token') || '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw', chat: localStorage.getItem('ac_gascheck_tg_chat') || '-5113064563' };
 }
 function saveTgSettings() {
   localStorage.setItem('tg_token', document.getElementById('tg-token').value.trim());

@@ -806,8 +806,8 @@ var cfg = (() => {
   const load = () => {
     try { _cfg=JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e){}
     if(!_cfg.gasUrl)    _cfg.gasUrl='';
-    if(!_cfg.botToken)  _cfg.botToken='8618516219:AAELNq_Iux_jL5k0lustjTcf_eCBGc7iwKI';
-    if(!_cfg.chatId)    _cfg.chatId='-5167815203';
+    if(!_cfg.botToken)  _cfg.botToken=localStorage.getItem('ac_gascheck_tg_token')||'8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
+    if(!_cfg.chatId)    _cfg.chatId=localStorage.getItem('ac_gascheck_tg_chat')||'-5113064563';
     if(!_cfg.approverTgId) _cfg.approverTgId='5026942575';
     if(!_cfg.dormName)  _cfg.dormName='VRT Dormitory';
     if(!_cfg.rooms)     _cfg.rooms=['A-101','A-102','A-103','A-201','A-202','A-203','B-101','B-102','B-103'];

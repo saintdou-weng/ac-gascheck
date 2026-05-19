@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Water Drum Record 水鼓記錄 កំណត់ត្រាធុងទឹក</title>
+<title>Water Drum Record 水桶管理 កំណត់ត្រាធុងទឹក</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -479,6 +479,28 @@
         3. Enter both below and click Send.
       </div>
       <div class="form-group">
+      <!-- ── CURRENCY SETTINGS ────────────────────────────── -->
+      <div class="form-group" style="border:1px solid #e2e8f0;border-radius:10px;padding:12px;background:#f8fafc;margin-bottom:12px">
+        <div style="font-size:11px;font-weight:700;color:#1e3a5f;margin-bottom:8px">💱 Currency / 貨幣設定</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div>
+            <label class="form-label">預設貨幣 Default Currency</label>
+            <select class="form-input" id="wdr-currency-default" onchange="WDR_CURRENCY.setDefault(this.value)">
+              <option value="KHR">KHR (Riels ៛)</option>
+              <option value="USD">USD ($)</option>
+            </select>
+          </div>
+          <div>
+            <label class="form-label">匯率 Exchange Rate (1 USD = ? KHR)</label>
+            <input class="form-input" id="wdr-exchange-rate" type="number" value="4100" min="1" placeholder="4100"
+              oninput="WDR_CURRENCY.setRate(this.value);document.getElementById('wdr-rate-preview').textContent='1 USD = '+parseFloat(this.value||4100).toLocaleString()+' KHR'">
+          </div>
+        </div>
+        <div style="background:#dcfce7;border:1px solid #86efac;border-radius:6px;padding:6px 10px;font-size:11px;color:#166534" id="wdr-rate-preview">
+          1 USD = 4,100 KHR
+        </div>
+      </div>
+      <!-- ── END CURRENCY ──────────────────────────────────── -->
         <label class="form-label" data-key="bot_token">Bot Token</label>
         <input class="form-input" id="tg-token" type="text" placeholder="123456789:AAxxxxxx..." oninput="saveTgConfig()">
       </div>
@@ -612,7 +634,7 @@ const LANGS = {
     all_good: 'All data looks normal.'
   },
   zh: {
-    app_title: '水鼓記錄', app_subtitle: '工廠及職員宿舍追蹤',
+    app_title: '水桶管理', app_subtitle: '工廠及職員宿舍水桶追蹤',
     tab_entry: '數據輸入', tab_analysis: '分析', tab_history: '歷史記錄',
     tab_import: '匯入Excel', tab_alerts: '異常提醒', tab_telegram: 'Telegram',
     add_record: '新增記錄', export: '匯出', save: '儲存', cancel: '取消',
@@ -625,9 +647,9 @@ const LANGS = {
     total_staff_qty: '宿舍數量', total_staff_ttl: '宿舍合計', grand_total: '總計',
     view_by: '查看方式', month_period: '月', quarter: '季', year_period: '年',
     history_desc: '所有已儲存的月度記錄。點擊卡片查看詳情。',
-    import_desc: '匯入符合水鼓記錄格式的Excel文件，按月份儲存。',
+    import_desc: '匯入符合水桶管理格式的Excel文件，按月份儲存。',
     click_upload: '點擊或拖曳Excel文件到此處',
-    supports_format: '支援符合水鼓記錄模板的.xlsx格式',
+    supports_format: '支援符合水桶管理模板的.xlsx格式',
     check_scope: '檢查範圍', all_months: '所有月份', refresh: '刷新',
     bot_token: 'Bot Token', chat_id: 'Chat ID', report_type: '報告類型',
     tg_monthly_summary: '月度摘要', tg_daily_report: '今日報告',
@@ -1397,10 +1419,18 @@ function saveTgConfig() {
 }
 function loadTgConfig() {
   const s = localStorage.getItem('wdr_tg_config');
-  if(!s) return;
-  const c = JSON.parse(s);
-  document.getElementById('tg-token').value = c.token||'';
-  document.getElementById('tg-chat').value = c.chat||'';
+  const c = s ? JSON.parse(s) : {};
+  // Use GASCHECK platform defaults if not set
+  const gasCheck = JSON.parse(localStorage.getItem('ac_gascheck_gas_url') ? '{}' : '{}');
+  document.getElementById('tg-token').value = c.token || '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
+  document.getElementById('tg-chat').value  = c.chat  || '-5113064563';
+  // Apply currency settings
+  const ri = document.getElementById('wdr-exchange-rate');
+  const ci = document.getElementById('wdr-currency-default');
+  const rp = document.getElementById('wdr-rate-preview');
+  if(ri){ ri.value = WDR_CURRENCY.getRate(); }
+  if(ci){ ci.value = WDR_CURRENCY.getDefault(); }
+  if(rp){ rp.textContent = '1 USD = ' + WDR_CURRENCY.getRate().toLocaleString() + ' KHR'; }
 }
 
 function buildTelegramMessage(type, year, month) {
@@ -1505,6 +1535,41 @@ function init() {
 window.addEventListener('load', init);
 </script>
 <script>
+
+// ═══ CURRENCY MODULE ═══════════════════════════════════════════
+const WDR_CURRENCY = {
+  _rate: parseFloat(localStorage.getItem('wdr_exchange_rate') || '4100'),
+  _default: localStorage.getItem('wdr_default_currency') || 'KHR',
+  getRate() { return this._rate; },
+  setRate(r) { this._rate = parseFloat(r)||4100; localStorage.setItem('wdr_exchange_rate', this._rate); this.refreshDisplay(); },
+  getDefault() { return this._default; },
+  setDefault(c) { this._default = c; localStorage.setItem('wdr_default_currency', c); this.refreshDisplay(); },
+  toKHR(usd) { return Math.round(parseFloat(usd||0) * this._rate); },
+  toUSD(khr) { return (parseFloat(khr||0) / this._rate).toFixed(2); },
+  format(amount, currency) {
+    const c = currency || this._default;
+    if(c === 'USD') return '$' + parseFloat(amount).toFixed(2);
+    return parseFloat(amount).toLocaleString() + ' ៛';
+  },
+  formatBoth(khrAmount) {
+    const usd = this.toUSD(khrAmount);
+    return `${parseFloat(khrAmount).toLocaleString()} ៛ ($${usd})`;
+  },
+  refreshDisplay() {
+    // Update any currency display elements
+    document.querySelectorAll('[data-currency-display]').forEach(el => {
+      const raw = parseFloat(el.getAttribute('data-khr-value') || '0');
+      el.textContent = this.format(this._default === 'USD' ? this.toUSD(raw) : raw, this._default);
+    });
+    // Update settings inputs
+    const ri = document.getElementById('wdr-exchange-rate');
+    if(ri) ri.value = this._rate;
+    const ci = document.getElementById('wdr-currency-default');
+    if(ci) ci.value = this._default;
+  },
+};
+
+
 (function(){
   var INIT_NAV = function(){
     try {
@@ -1530,6 +1595,21 @@ window.addEventListener('load', init);
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', INIT_NAV);
   else INIT_NAV();
 })();
+
+// Initialize currency on page load
+(function initCurrency() {
+  const ri = document.getElementById('wdr-exchange-rate');
+  const ci = document.getElementById('wdr-currency-default');
+  const rp = document.getElementById('wdr-rate-preview');
+  if(ri) ri.value = WDR_CURRENCY.getRate();
+  if(ci) ci.value = WDR_CURRENCY.getDefault();
+  if(rp) rp.textContent = `1 USD = ${WDR_CURRENCY.getRate().toLocaleString()} KHR`;
+  // Update rate preview on change
+  if(ri) ri.addEventListener('input', () => {
+    if(rp) rp.textContent = `1 USD = ${parseFloat(ri.value||4100).toLocaleString()} KHR`;
+  });
+})();
+
 </script>
 </body>
 </html>
