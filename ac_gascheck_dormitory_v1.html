@@ -182,6 +182,7 @@ select.fi{cursor:pointer}
 
 /* SETTINGS */
 .stag{display:inline-flex;align-items:center;gap:4px;background:var(--abg);color:var(--acc2);border-radius:20px;padding:3px 10px;font-size:10px;font-weight:600;margin:2px}
+.stags-wrap{display:flex;flex-wrap:wrap;gap:3px;min-height:24px}
 .stag .del{cursor:pointer;color:var(--red);font-weight:700;font-size:12px}
 
 /* TOAST */
@@ -219,7 +220,7 @@ select.fi{cursor:pointer}
 
 <!-- SUB HEADER -->
 <div class="sub-hdr">
-  <div class="sh-name" id="sh-name">宿舍管理中心 · Dormitory Hub</div>
+  <div class="sh-name" id="sh-name" data-i="sh-name">宿舍管理中心 · Dormitory Hub</div>
   <div class="sh-sub">VRT · Sihanoukville · v2.1</div>
 </div>
 
@@ -281,28 +282,28 @@ select.fi{cursor:pointer}
   <div id="apv-card-wrap"></div>
   <div id="apply-form">
     <div class="type-toggle">
-      <button class="tbtn in" id="btn-type-in" onclick="form.setType('in')">🟢 搬入 Move-in</button>
-      <button class="tbtn" id="btn-type-out" onclick="form.setType('out')">🔴 搬出 Move-out</button>
+      <button class="tbtn in" id="btn-type-in" onclick="goApply('in')">🟢 搬入 Move-in</button>
+      <button class="tbtn" id="btn-type-out" onclick="goApply('out')">🔴 搬出 Move-out</button>
     </div>
     <div id="warn-out" style="display:none;background:var(--al);border:1.5px solid #E8A838;border-radius:9px;padding:9px 12px;font-size:11px;color:#7A4D10;margin-bottom:8px">
       ⚠️ 搬出請確認所有物品已勾選歸還。未歸還或損壞物品請填備註。
     </div>
-    <div class="card"><div class="ch"><span class="ch-ic">👤</span><span class="ch-tl" data-i="sec-info">申請人資訊</span><span class="ch-nt">帶 * 為必填</span></div>
+    <div class="card"><div class="ch"><span class="ch-ic">👤</span><span class="ch-tl" data-i="sec-info" data-i="sec-info">申請人資訊</span><span class="ch-nt">帶 * 為必填</span></div>
       <div class="fgrid c3">
-        <div class="fg"><div class="fl">姓名 <span style="color:var(--red)">*</span></div><input class="fi" id="f-name" placeholder="Dara Chan"></div>
-        <div class="fg"><div class="fl">性別 <span style="color:var(--red)">*</span></div><select class="fi" id="f-gender"><option value="">—</option><option value="Male">Male 男</option><option value="Female">Female 女</option></select></div>
-        <div class="fg"><div class="fl">工號 <span style="color:var(--red)">*</span></div><input class="fi" id="f-id" placeholder="VRT-001"></div>
-        <div class="fg"><div class="fl">部門 <span style="color:var(--red)">*</span></div><select class="fi" id="f-dept"><option value="">—</option><option>Sewing</option><option>Cutting</option><option>QC</option><option>HR/Admin</option><option>GA</option><option>Security</option><option>Compliance</option><option>Warehouse</option><option>Finishing</option></select></div>
-        <div class="fg"><div class="fl">職位</div><input class="fi" id="f-pos" placeholder="Operator"></div>
-        <div class="fg"><div class="fl">電話</div><input class="fi" id="f-phone" placeholder="0XX-XXX-XXX"></div>
+        <div class="fg"><div class="fl"><span data-i="f-name">姓名</span> <span style="color:var(--red)">*</span></div><input class="fi" id="f-name" placeholder="Dara Chan"></div>
+        <div class="fg"><div class="fl"><span data-i="f-gender">性別</span> <span style="color:var(--red)">*</span></div><select class="fi" id="f-gender"><option value="">—</option><option value="Male">Male 男</option><option value="Female">Female 女</option></select></div>
+        <div class="fg"><div class="fl"><span data-i="f-id">工號</span> <span style="color:var(--red)">*</span></div><input class="fi" id="f-id" placeholder="VRT-001"></div>
+        <div class="fg"><div class="fl"><span data-i="f-dept">部門</span> <span style="color:var(--red)">*</span></div><select class="fi" id="f-dept"><option value="">—</option><option>Sewing</option><option>Cutting</option><option>QC</option><option>HR/Admin</option><option>GA</option><option>Security</option><option>Compliance</option><option>Warehouse</option><option>Finishing</option></select></div>
+        <div class="fg"><div class="fl" data-i="f-pos">職位</div><input class="fi" id="f-pos" placeholder="Operator"></div>
+        <div class="fg"><div class="fl" data-i="f-phone">電話</div><input class="fi" id="f-phone" placeholder="0XX-XXX-XXX"></div>
       </div>
     </div>
-    <div class="card"><div class="ch"><span class="ch-ic">🚪</span><span class="ch-tl" data-i="sec-room">房間 / 日期</span></div>
+    <div class="card"><div class="ch"><span class="ch-ic">🚪</span><span class="ch-tl" data-i="sec-room" data-i="sec-room">房間 / 日期</span></div>
       <div class="fgrid c3">
         <div class="fg"><div class="fl">房號 <span style="color:var(--red)">*</span></div><select class="fi" id="f-room"></select></div>
-        <div class="fg"><div class="fl" id="f-date-lbl">搬入日期 <span style="color:var(--red)">*</span></div><input class="fi" type="date" id="f-date"></div>
-        <div class="fg"><div class="fl">申請日期</div><input class="fi" type="date" id="f-applydate" readonly></div>
-        <div class="fg full"><div class="fl">申請原因 <span style="color:var(--red)">*</span></div><input class="fi" id="f-reason" placeholder="請說明原因..."></div>
+        <div class="fg"><div class="fl" id="f-date-lbl"><span id="f-date-lbl-text">搬入日期</span> <span style="color:var(--red)">*</span></div><input class="fi" type="date" id="f-date"></div>
+        <div class="fg"><div class="fl" data-i="f-applydate">申請日期</div><input class="fi" type="date" id="f-applydate" readonly></div>
+        <div class="fg full"><div class="fl"><span data-i="f-reason">申請原因</span> <span style="color:var(--red)">*</span></div><input class="fi" id="f-reason" placeholder="請說明原因..."></div>
       </div>
     </div>
     <div class="card"><div class="ch"><span class="ch-ic">📦</span><span class="ch-tl">宿舍物品清單</span><span class="ch-nt">可新增/刪減</span></div>
@@ -312,16 +313,16 @@ select.fi{cursor:pointer}
     </div>
     <div class="card"><div class="ch"><span class="ch-ic">✍️</span><span class="ch-tl">簽核欄位</span></div>
       <div class="fgrid c3">
-        <div class="fg"><div class="fl">申請人</div><input class="fi" id="f-applicant" placeholder="簽名"></div>
-        <div class="fg"><div class="fl">審核人 (GA)</div><input class="fi" id="f-reviewer" value="Phea"></div>
-        <div class="fg"><div class="fl">核可人</div><input class="fi" id="f-approver" value="GA Mgr"></div>
+        <div class="fg"><div class="fl" data-i18n="f-applicant">申請人</div><input class="fi" id="f-applicant" placeholder="簽名"></div>
+        <div class="fg"><div class="fl" data-i18n="f-reviewer">審核人</div><input class="fi" id="f-reviewer" value="Phea"></div>
+        <div class="fg"><div class="fl" data-i18n="f-note">備注</div><input class="fi" id="f-app-note" placeholder="附加備注..."></div>
       </div>
     </div>
     <div class="br">
-      <button class="btn bp" id="btn-submit" onclick="form.submit()">📥 提交搬入</button>
-      <button class="btn bo" onclick="form.save()">💾 儲存草稿</button>
-      <button class="btn bo" onclick="form.exportXL()">📤 匯出</button>
-      <button class="btn bo" onclick="form.reset()">🔄 清空</button>
+      <button class="btn bp" id="btn-submit" onclick="appForm.submit()">📥 提交搬入</button>
+      <button class="btn bo" onclick="appForm.save()">💾 儲存草稿</button>
+      <button class="btn bo" onclick="appForm.exportXL()">📤 匯出</button>
+      <button class="btn bo" onclick="appForm.reset()">🔄 清空</button>
     </div>
   </div>
 </div></div>
@@ -366,9 +367,9 @@ select.fi{cursor:pointer}
   <div class="card"><div class="ch"><span class="ch-ic">🔍</span><span class="ch-tl">設施巡查</span></div>
     <div class="cb">
       <div class="fb" style="border:none;border-radius:0;margin-bottom:0">
-        <div class="fbg"><div class="fbl">巡查員</div><input class="fbi" id="insp-inspector" placeholder="Phea" style="min-width:110px"></div>
-        <div class="fbg"><div class="fbl">日期</div><input class="fbi" type="date" id="insp-date"></div>
-        <div class="fbg"><div class="fbl">季度</div><select class="fbi" id="insp-q"><option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option></select></div>
+        <div class="fbg"><div class="fbl" data-i="f-inspector">巡查員</div><input class="fbi" id="insp-inspector" placeholder="Phea" style="min-width:110px"></div>
+        <div class="fbg"><div class="fbl" data-i="f-date">日期</div><input class="fbi" type="date" id="insp-date"></div>
+        <div class="fbg"><div class="fbl" data-i="f-quarter">季度</div><select class="fbi" id="insp-q"><option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option></select></div>
         <button class="btn bp" style="padding:7px 12px;font-size:11px" onclick="insp.save()">💾 儲存巡查</button>
         <button class="btn bg2" style="padding:7px 12px;font-size:11px" onclick="insp.sendTg()">📤 Telegram</button>
         <button class="btn bo" style="padding:7px 12px;font-size:11px" onclick="insp.exportXL()">📥 Excel</button>
@@ -387,7 +388,7 @@ select.fi{cursor:pointer}
   <div class="card"><div class="ch"><span class="ch-ic">📊</span><span class="ch-tl">巡查歷史</span></div>
     <div class="fb" style="border:none;border-radius:0;border-bottom:1px solid var(--bdr2);padding-bottom:9px">
       <div class="fbg"><div class="fbl">地點</div><select class="fbi" id="ih-loc"><option value="">全部</option><option value="foreignDorm">外籍宿舍</option><option value="localDorm">當地宿舍</option><option value="factory">工廠</option><option value="office">辦公室</option></select></div>
-      <div class="fbg"><div class="fbl">狀態</div><select class="fbi" id="ih-status"><option value="">全部</option><option value="abn">有異常</option><option value="ok">全正常</option></select></div>
+      <div class="fbg"><div class="fbl" data-i="fl-status">狀態</div><select class="fbi" id="ih-status"><option value="">全部</option><option value="abn">有異常</option><option value="ok">全正常</option></select></div>
       <div class="fbg"><div class="fbl">月份</div><input type="month" class="fbi" id="ih-month"></div>
       <button class="btn bp" style="padding:6px 12px;font-size:11px" onclick="insp.queryHist()">🔍 查詢</button>
     </div>
@@ -400,10 +401,10 @@ select.fi{cursor:pointer}
   <div class="card"><div class="ch"><span class="ch-ic">🚫</span><span class="ch-tl">新增違規記錄</span></div>
     <div class="cb">
       <div class="fgrid c3">
-        <div class="fg"><div class="fl">姓名 *</div><input class="fi" id="vf-name" placeholder="員工姓名"></div>
-        <div class="fg"><div class="fl">工號</div><input class="fi" id="vf-id" placeholder="VRT-001"></div>
+        <div class="fg"><div class="fl"><span data-i="f-viol-name">姓名</span> *</div><input class="fi" id="vf-name" placeholder="員工姓名"></div>
+        <div class="fg"><div class="fl" data-i="f-viol-id">工號</div><input class="fi" id="vf-id" placeholder="VRT-001"></div>
         <div class="fg"><div class="fl">房號</div><input class="fi" id="vf-room" placeholder="A-201"></div>
-        <div class="fg"><div class="fl">日期</div><input class="fi" type="date" id="vf-date"></div>
+        <div class="fg"><div class="fl" data-i="f-date">日期</div><input class="fi" type="date" id="vf-date"></div>
         <div class="fg"><div class="fl">違規類型</div><select class="fi" id="vf-type"><option value="">—</option><option>環境髒亂</option><option>噪音擾人</option><option>未登記訪客</option><option>財產損壞</option><option>未繳費</option><option>Other</option></select></div>
         <div class="fg"><div class="fl">嚴重程度</div><select class="fi" id="vf-level"><option value="Minor">Minor 輕微</option><option value="Moderate">Moderate 中等</option><option value="Serious">Serious 嚴重</option></select></div>
         <div class="fg full"><div class="fl">描述</div><input class="fi" id="vf-desc" placeholder="請詳細說明..."></div>
@@ -441,10 +442,10 @@ select.fi{cursor:pointer}
     <button class="dn-today" onclick="recDE.today()">今天</button>
   </div>
   <div class="fb">
-    <div class="fbg"><div class="fbl">類型</div><select class="fbi" id="fl-type"><option value="">全部</option><option value="搬入">搬入</option><option value="搬出">搬出</option></select></div>
-    <div class="fbg"><div class="fbl">狀態</div><select class="fbi" id="fl-status"><option value="">全部</option><option value="待審核">待審核</option><option value="已核可">已核可</option><option value="已退件">已退件</option></select></div>
-    <div class="fbg"><div class="fbl">房號</div><input class="fbi" id="fl-room" placeholder="A-201" style="max-width:80px"></div>
-    <div class="fbg"><div class="fbl">搜尋</div><input class="fbi" id="fl-search" placeholder="姓名/工號..." style="min-width:110px"></div>
+    <div class="fbg"><div class="fbl" data-i="fl-type">類型</div><select class="fbi" id="fl-type"><option value="">全部</option><option value="搬入">搬入</option><option value="搬出">搬出</option></select></div>
+    <div class="fbg"><div class="fbl" data-i="fl-status">狀態</div><select class="fbi" id="fl-status"><option value="">全部</option><option value="待審核">待審核</option><option value="已核可">已核可</option><option value="已退件">已退件</option></select></div>
+    <div class="fbg"><div class="fbl" data-i="f-room">房號</div><input class="fbi" id="fl-room" placeholder="A-201" style="max-width:80px"></div>
+    <div class="fbg"><div class="fbl" data-i="fl-search">搜尋</div><input class="fbi" id="fl-search" placeholder="姓名/工號..." style="min-width:110px"></div>
     <button class="btn bp" style="padding:6px 12px;font-size:11px" onclick="records.query()">🔍 查詢</button>
     <button class="btn bg2" style="padding:6px 12px;font-size:11px" onclick="records.exportXL()">📤 Excel</button>
     <button class="btn bb" style="padding:6px 12px;font-size:11px" onclick="cloud.pullRecords()">⬇ GAS 同步</button>
@@ -500,6 +501,22 @@ select.fi{cursor:pointer}
         <div class="fbl" style="margin-bottom:4px">巡查人員</div>
         <div id="inspector-tags"></div>
         <div style="display:flex;gap:6px;margin-top:5px"><input class="fbi" id="new-inspector" placeholder="Phea / Nin"><button class="btn bp" style="padding:6px 10px" onclick="settings.addStaff('inspector')">＋</button></div>
+      </div>
+      <!-- Per-location inspection rooms -->
+      <div style="margin-bottom:10px">
+        <div class="fbl" style="margin-bottom:4px" data-i="cfg-insp-rooms">各地點房間設定</div>
+        <div style="display:flex;gap:6px;margin-bottom:6px;flex-wrap:wrap">
+          <button class="loc-tab active" id="ir-tab-fd" onclick="settings.selIRLoc('foreignDorm',this)">🏢 外籍宿舍</button>
+          <button class="loc-tab" id="ir-tab-ld" onclick="settings.selIRLoc('localDorm',this)">🏘️ 當地宿舍</button>
+          <button class="loc-tab" id="ir-tab-fa" onclick="settings.selIRLoc('factory',this)">🏭 工廠</button>
+          <button class="loc-tab" id="ir-tab-of" onclick="settings.selIRLoc('office',this)">🏢 辦公室</button>
+        </div>
+        <div id="ir-rooms-wrap" style="display:flex;flex-wrap:wrap;gap:5px;margin-bottom:6px"></div>
+        <div style="display:flex;gap:6px">
+          <input class="fbi" id="new-ir-room" placeholder="E.g. #501" style="max-width:120px">
+          <button class="btn bp" style="padding:6px 10px" onclick="settings.addIRRoom()">＋ 新增</button>
+          <button class="btn bo" style="padding:6px 10px" onclick="settings.resetIRRooms()">↺ 重設預設</button>
+        </div>
       </div>
       <button class="btn bp" onclick="settings.save()">💾 儲存宿舍設定</button>
     </div>
@@ -567,7 +584,60 @@ var i18n = (() => {
       'ch-trend':'Application Trend','ch-dept':'By Department','recent-title':'Recent Applications',
       'th-ts':'Time','th-type':'Type','th-name':'Name','th-id':'ID','th-room':'Room','th-status':'Status',
       'sec-info':'Applicant Info','sec-room':'Room / Date',
-      'no-rec':'No records',
+      'no-rec':'No records found',
+      // Sub-header
+      'sh-name':'Dormitory Management · Dormitory Hub',
+      // Form labels
+      'f-name':'Full Name','f-gender':'Gender','f-id':'Employee ID','f-dept':'Department',
+      'f-pos':'Position','f-phone':'Phone','f-room':'Room No.','f-date':'Move-in Date',
+      'f-applydate':'Apply Date','f-reason':'Reason','f-applicant':'Applicant',
+      'f-reviewer':'Reviewer (GA)','f-note':'Notes',
+      // Type toggle
+      'type-in':'Move-in','type-out':'Move-out',
+      // Buttons
+      'btn-submit-in':'📥 Submit Move-in','btn-submit-out':'📤 Submit Move-out',
+      'btn-save':'💾 Save Draft','btn-clear':'🔄 Clear',
+      'btn-export':'📤 Export','btn-refresh':'🔄 Refresh',
+      'btn-push':'☁ Push','btn-pull':'⬇ Pull','btn-today':'Today',
+      // Warn
+      'warn-out':'⚠️ Move-out: confirm all items returned. Note damaged/lost items in remarks.',
+      // Items table
+      'th-item':'Item','th-recv':'Recv ✓','th-cond':'Condition','th-notes':'Notes',
+      'add-item':'＋ Add Item',
+      // Approval
+      'apv-in':'Move-in','apv-out':'Move-out','apv-pend':'Pending','apv-ok':'Approved','apv-rej':'Rejected',
+      'apv-by':'Approved by','apv-time':'Approval time','apv-reason':'Reject reason',
+      'btn-new-app':'🔄 New Application',
+      // Roster
+      'rs-count':'Residents','rs-rooms':'Rooms Used','rs-m':'Male','rs-f':'Female',
+      'btn-roster-refresh':'🔄 Refresh','btn-roster-export':'📤 Export',
+      'btn-roster-import':'📥 Import',
+      // Inspection
+      'insp-title':'Facility Inspection','f-inspector':'Inspector','f-quarter':'Quarter',
+      'btn-save-insp':'💾 Save Inspection','btn-insp-tg':'📤 Telegram','btn-insp-xl':'📥 Excel',
+      'insp-cycle-hint':'Click cycle: blank → ✓N Normal → ✗X Abnormal → − N/A → blank',
+      'insp-hist-title':'Inspection History',
+      'fl-loc':'Location','fl-status':'Status','fl-month':'Month','btn-query':'🔍 Query',
+      // Violations
+      'viol-title':'New Violation','viol-list-title':'Violation List',
+      'f-viol-name':'Name','f-viol-id':'Employee ID','f-viol-room':'Room No.',
+      'f-viol-date':'Date','f-viol-type':'Type','f-viol-level':'Severity','f-viol-desc':'Description',
+      'f-viol-by':'Recorded By','f-viol-action':'Action Taken',
+      'btn-save-viol':'🚫 Save Violation','btn-viol-tg':'📤 Telegram','btn-viol-xl':'📥 Excel',
+      // Records
+      'rec-title':'Records Query','fl-type':'Type','fl-search':'Search',
+      'btn-rec-query':'🔍 Query','btn-rec-xl':'📤 Excel','btn-rec-pull':'⬇ GAS Sync',
+      'th-submit':'Submitted','th-dept':'Dept','th-date':'Date','th-reason':'Reason','th-apvby':'Approved By',
+      // Settings
+      'cfg-title':'GAS / Telegram Settings','cfg-dorm-title':'Dormitory Settings',
+      'cfg-dorm-name':'Dorm Name','cfg-quarter':'Default Quarter','cfg-refresh':'Dashboard Refresh (sec)',
+      'cfg-room-list':'Room List','cfg-reviewer-list':'Reviewer List',
+      'cfg-approver-list':'Approver List','cfg-insp-list':'Inspector List',
+      'cfg-insp-rooms':'Inspection Rooms by Location',
+      'btn-save-cfg':'💾 Save Settings','btn-test-tg':'📤 Test Telegram','btn-test-gas':'🔌 Test GAS',
+      'btn-save-dorm':'💾 Save Dorm Settings',
+      'data-title':'Data Management','btn-export-all':'📤 Export JSON','btn-restore':'📥 Restore',
+      'btn-clear-all':'🗑️ Clear All',
     },
     km:{
       't-dash':'ទិដ្ឋភាព','t-apply':'ទម្រង់','t-roster':'អ្នករស់នៅ','t-insp':'ត្រួតពិនិត្យ',
@@ -583,6 +653,18 @@ var i18n = (() => {
     document.querySelectorAll('.lbtn').forEach((b,i) => b.classList.toggle('on',['zh','en','km'][i]===l));
     const d = D[l]||D.zh;
     document.querySelectorAll('[data-i]').forEach(el => { const k=el.getAttribute('data-i'); if(d[k]!==undefined) el.textContent=d[k]; });
+    // Update static text that uses data-i18n attribute
+    document.querySelectorAll('[data-i18n]').forEach(el => { const k=el.getAttribute('data-i18n'); if(d[k]!==undefined) el.textContent=d[k]; });
+    // Update type toggle buttons text
+    const bi=document.getElementById('btn-type-in');  if(bi&&d['type-in'])  bi.innerHTML=(l==='en'?'🟢 Move-in':'🟢 '+(l==='km'?'ចូល':'搬入 Move-in'));
+    const bo=document.getElementById('btn-type-out'); if(bo&&d['type-out']) bo.innerHTML=(l==='en'?'🔴 Move-out':'🔴 '+(l==='km'?'ចេញ':'搬出 Move-out'));
+    // Update submit button
+    const sub=document.getElementById('btn-submit');
+    if(sub){ const ftype=state?state.getFType():'in'; sub.textContent=ftype==='in'?(l==='en'?'📥 Submit Move-in':'📥 提交搬入'):(l==='en'?'📤 Submit Move-out':'📤 提交搬出'); }
+    // Update warn message
+    const warn=document.getElementById('warn-out');
+    if(warn&&l==='en') warn.textContent='⚠️ Move-out: confirm all items returned. Note damaged/lost items in remarks.';
+    if(warn&&l==='zh') warn.textContent='⚠️ 搬出請確認所有物品已勾選歸還。未歸還或損壞物品請填備註。';
   };
   const t = k => (D[_l]||D.zh)[k] || (D.zh)[k] || k;
   return { set, t, get:()=>_l };
@@ -691,15 +773,27 @@ var state = (() => {
     const bo=document.getElementById('btn-type-out');
     const sub=document.getElementById('btn-submit');
     const warn=document.getElementById('warn-out');
-    const lbl=document.getElementById('f-date-lbl');
+    const lblTxt=document.getElementById('f-date-lbl-text');
     if(!bi) return;
     bi.className='tbtn'+(_ftype==='in'?' in':'');
     bo.className='tbtn'+(_ftype==='out'?' out':'');
-    if(sub) { sub.className='btn '+(_ftype==='in'?'bp':'br2'); sub.innerHTML=_ftype==='in'?'📥 提交搬入':'📤 提交搬出'; }
+    if(sub) {
+      sub.className='btn '+(_ftype==='in'?'bp':'br2');
+      const lang=typeof i18n!=='undefined'?i18n.get():'zh';
+      sub.textContent=_ftype==='in'
+        ?(lang==='en'?'📥 Submit Move-in':'📥 提交搬入')
+        :(lang==='en'?'📤 Submit Move-out':'📤 提交搬出');
+    }
     if(warn) warn.style.display=_ftype==='out'?'block':'none';
-    if(lbl) lbl.innerHTML=(_ftype==='in'?'搬入':'搬出')+'日期 <span style="color:var(--red)">*</span>';
+    if(lblTxt) {
+      const lang=typeof i18n!=='undefined'?i18n.get():'zh';
+      lblTxt.textContent=lang==='en'?(_ftype==='in'?'Move-in Date':'Move-out Date'):(_ftype==='in'?'搬入日期':'搬出日期');
+    }
     const thChk=document.getElementById('th-chk');
-    if(thChk) thChk.textContent=_ftype==='in'?'領取 ✓':'歸還 ✓';
+    if(thChk) {
+      const lang=typeof i18n!=='undefined'?i18n.get():'zh';
+      thChk.textContent=_ftype==='in'?(lang==='en'?'Recv ✓':'領取 ✓'):(lang==='en'?'Return ✓':'歸還 ✓');
+    }
   };
   return { load, save, db, getItems, setItems, getFType, setFType, getInspLoc, setInspLoc, getInspData, resetInspData, applyFormType };
 })();
@@ -726,6 +820,7 @@ var cfg = (() => {
     sv('cfg-apvid',_cfg.approverTgId); sv('cfg-dorm-name',_cfg.dormName);
     sv('cfg-quarter',_cfg.quarter); sv('cfg-refresh',_cfg.refresh);
     settings.renderAll();
+    settings.renderIRRooms();
     updateCloudBadge();
   };
   const save = () => {
@@ -753,6 +848,8 @@ var cfg = (() => {
 // ═══════════════════════════════════════════════════════════════
 // SETTINGS MODULE
 // ═══════════════════════════════════════════════════════════════
+var _irLoc = 'foreignDorm'; // currently selected location in settings
+
 var settings = (() => {
   const renderAll = () => {
     const c = cfg.get();
@@ -791,15 +888,41 @@ var settings = (() => {
     const c=cfg.get(); const key=type==='room'?'rooms':type+'s';
     (c[key]||[]).splice(idx,1); renderAll();
   };
+  const selIRLoc = (loc, el) => {
+    _irLoc = loc;
+    document.querySelectorAll('[id^="ir-tab-"]').forEach(b=>b.classList.remove('active'));
+    if(el) el.classList.add('active');
+    renderIRRooms();
+  };
+  const renderIRRooms = () => {
+    const c=cfg.get();
+    const rooms = c['rooms_'+_irLoc] || DEF_ROOMS_MAP[_irLoc] || [];
+    const wrap=document.getElementById('ir-rooms-wrap'); if(!wrap) return;
+    wrap.innerHTML = rooms.map((r,i)=>`<span class="stag">${esc(r)}<span class="del" onclick="settings.delIRRoom(${i})">✕</span></span>`).join('')||'<span style="color:var(--dim);font-size:10px">—</span>';
+  };
+  const addIRRoom = () => {
+    const v=gv('new-ir-room').trim(); if(!v) return;
+    const c=cfg.get();
+    const key='rooms_'+_irLoc;
+    c[key]=(c[key]||[...DEF_ROOMS_MAP[_irLoc]]);
+    if(!c[key].includes(v)){c[key].push(v); renderIRRooms();} sv('new-ir-room','');
+  };
+  const delIRRoom = (idx) => {
+    const c=cfg.get(); const key='rooms_'+_irLoc;
+    c[key]=(c[key]||[...DEF_ROOMS_MAP[_irLoc]]); c[key].splice(idx,1); renderIRRooms();
+  };
+  const resetIRRooms = () => {
+    const c=cfg.get(); delete c['rooms_'+_irLoc]; renderIRRooms(); toast('↺ 已重設為預設房間');
+  };
   const save = () => {
     const c=cfg.get();
     c.dormName = gv('cfg-dorm-name');
     c.quarter  = gv('cfg-quarter');
     c.refresh  = parseInt(gv('cfg-refresh'))||0;
     localStorage.setItem(CFG_KEY, JSON.stringify(c));
-    renderAll(); toast('✅ 宿舍設定已儲存');
+    renderAll(); renderIRRooms(); insp.renderTable(); toast('✅ 宿舍設定已儲存');
   };
-  return { renderAll, renderTags, addRoom, addStaff, del, save };
+  return { renderAll, renderTags, addRoom, addStaff, del, selIRLoc, renderIRRooms, addIRRoom, delIRRoom, resetIRRooms, save };
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -978,7 +1101,7 @@ var dash = (() => {
 // ═══════════════════════════════════════════════════════════════
 // FORM MODULE — application submit with real Telegram approval
 // ═══════════════════════════════════════════════════════════════
-var form = (() => {
+var appForm = (() => {
   const setType = t => { state.setFType(t); };
   const reset = () => {
     ['f-name','f-gender','f-id','f-dept','f-pos','f-phone','f-room','f-reason','f-applicant'].forEach(id=>sv(id,''));
@@ -1046,8 +1169,9 @@ var form = (() => {
     // Direct Telegram fallback with approval keyboard
     if(!gasSent){
       const typeIcon = record.type==='搬入'?'🏠':'🚪';
+      const appNote = gv('f-app-note');
       const msgText = [
-        typeIcon+' <b>宿舍申請 Dorm Application</b>',
+        typeIcon+' <b>VRT 宿舍申請 Dorm Application</b>',
         '━━━━━━━━━━━━━━━━',
         '📋 類型：'+record.type,
         '👤 姓名：'+record.name+'（'+record.idNo+'）',
@@ -1056,10 +1180,13 @@ var form = (() => {
         '🛏 房號：'+record.roomNo,
         '📅 日期：'+record.date,
         '📝 原因：'+record.reason,
+        appNote?'📎 備注：'+appNote:'',
+        '👤 審核人：'+(record.reviewer||'Phea'),
+        '✅ 核可人：Paul Weng',
         '🕐 時間：'+ts,
         '━━━━━━━━━━━━━━━━',
-        '⏳ 狀態：待審核  #ID_'+record.id,
-      ].join('\n');
+        '⏳ 狀態：待審核  #'+record.id,
+      ].filter(Boolean).join('\n');
       await tgPost({
         text: msgText,
         reply_markup: JSON.stringify({ inline_keyboard:[[
@@ -1095,16 +1222,48 @@ var form = (() => {
 
 function showApvCard(record) {
   const wrap=document.getElementById('apv-card-wrap');
+  if(!wrap) return;
   const statusCls={'待審核':'apv-pend','已核可':'apv-ok','已退件':'apv-rej'}[record.status]||'apv-pend';
   const icons={'待審核':'⏳','已核可':'✅','已退件':'❌'}[record.status]||'⏳';
+
+  // Analyse items for anomalies
+  const items = record.items || [];
+  const damaged = items.filter(it=>it.condition==='Damaged'||it.condition==='Lost');
+  const notReceived = items.filter(it=>!it.checked);
+  const allOk = damaged.length===0 && notReceived.length===0;
+
+  let analysisHtml = '';
+  if(items.length) {
+    analysisHtml = `
+    <div style="margin:10px 0;background:rgba(0,0,0,.05);border-radius:8px;padding:10px;font-size:11px;text-align:left">
+      <div style="font-weight:700;margin-bottom:6px">📦 物品清單分析</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;text-align:center;margin-bottom:8px">
+        <div><div style="font-size:18px;font-weight:700">${items.length}</div><div style="color:var(--dim)">總數</div></div>
+        <div><div style="font-size:18px;font-weight:700;color:var(--grn)">${items.filter(it=>it.checked).length}</div><div style="color:var(--dim)">已${record.type==='搬入'?'領取':'歸還'}</div></div>
+        <div><div style="font-size:18px;font-weight:700;color:${damaged.length?'var(--red)':'var(--grn)'}">${damaged.length}</div><div style="color:var(--dim)">損壞/遺失</div></div>
+      </div>
+      ${damaged.length?`<div style="color:var(--red);margin-bottom:4px">⚠️ 需注意：${damaged.map(it=>it.name+(it.note?' ('+it.note+')':'')).join('、')}</div>`:''}
+      ${notReceived.length&&record.type==='搬出'?`<div style="color:var(--amb)">📋 未歸還：${notReceived.map(it=>it.name).join('、')}</div>`:''}
+      ${allOk?'<div style="color:var(--grn)">✅ 所有物品狀態正常</div>':''}
+    </div>`;
+  }
+
   wrap.innerHTML=`<div class="apv-card ${statusCls}">
     <span class="apv-icon">${icons}</span>
     <div class="apv-title">${record.type} ${record.status}</div>
     <div class="apv-meta">${record.name} · ${record.roomNo} · ${record.date}</div>
-    ${record.approvedBy?`<div class="apv-meta">核可人：${record.approvedBy}</div>`:''}
-    ${record.approvedAt?`<div class="apv-meta">核可時間：${record.approvedAt}</div>`:''}
-    ${record.rejectReason?`<div class="apv-meta" style="color:var(--red)">退件原因：${record.rejectReason}</div>`:''}
-    <div style="text-align:center;margin-top:8px"><button class="btn bp" onclick="form.reset()">🔄 新申請</button></div>
+    <div class="apv-meta" style="margin-top:4px">
+      ${record.department?'🏢 '+record.department+' ':''} ${record.phone?'📞 '+record.phone:''}
+    </div>
+    ${record.approvedBy?`<div class="apv-meta">✅ 核可人：${record.approvedBy}</div>`:''}
+    ${record.approvedAt?`<div class="apv-meta">⏰ 核可時間：${record.approvedAt.substring(0,16)}</div>`:''}
+    ${record.rejectReason?`<div class="apv-meta" style="color:var(--red)">❌ 退件原因：${record.rejectReason}</div>`:''}
+    ${analysisHtml}
+    <div style="text-align:center;margin-top:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn bp" onclick="goApply('in')">📥 新搬入申請</button>
+      <button class="btn br2" onclick="goApply('out')">📤 新搬出申請</button>
+      <button class="btn bo" onclick="ui.tab('records')">🗂️ 查看記錄</button>
+    </div>
   </div>`;
 }
 
@@ -1522,9 +1681,7 @@ function updateTs(){
   const d=new Date();
   const el=document.getElementById('ts-now');
   if(el) el.textContent=`${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`;
-  sv('f-applydate', today_str());
-  const vfd=document.getElementById('vf-date'); if(vfd&&!vfd.value) vfd.value=today_str();
-  const id=document.getElementById('insp-date'); if(id&&!id.value) id.value=today_str();
+  // Date inputs initialised once in init() — not every second (avoids reflow)
 }
 
 function updateDbInfo(){
@@ -1539,6 +1696,16 @@ function toast(msg,dur=3200){
   clearTimeout(el._t); el._t=setTimeout(()=>el.classList.remove('show'),dur);
 }
 
+
+// ─── Safe navigation helper: switch to Apply tab then set type ───
+function goApply(t) {
+  ui.tab('apply');
+  // Small delay so the pane is visible before manipulating DOM
+  setTimeout(function() {
+    if(appForm) appForm.setType(t);
+  }, 30);
+}
+
 // ═══════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════
@@ -1546,12 +1713,15 @@ function toast(msg,dur=3200){
   state.load();
   cfg.load();
   updateTs(); setInterval(updateTs,1000);
-  // Init form
+  // Init form — set date inputs ONCE here (not in setInterval)
   renderItems();
   state.applyFormType();
-  sv('f-date', today_str());
+  sv('f-date',     today_str());
+  sv('f-applydate',today_str());
   sv('f-reviewer', cfg.get().reviewers?.[0]||'Phea');
-  sv('f-approver', cfg.get().approvers?.[0]||'GA Mgr');
+  // viol & insp date inputs
+  const _vfd=document.getElementById('vf-date'); if(_vfd) _vfd.value=today_str();
+  const _idd=document.getElementById('insp-date'); if(_idd) _idd.value=today_str();
   // Load draft
   try {
     const draft=JSON.parse(localStorage.getItem('vrt_dorm_draft'));
@@ -1574,6 +1744,8 @@ function toast(msg,dur=3200){
   // Initial dashboard
   dash.render();
   updateDbInfo();
+  // Init inspection room editor (in settings)
+  settings.renderIRRooms();
 })();
 </script>
 </body>
