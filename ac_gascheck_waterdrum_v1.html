@@ -305,36 +305,68 @@
   .section-divider span { font-size: 11px; font-weight: 700; color: var(--slate-400); white-space: nowrap; }
   .section-divider::before, .section-divider::after { content: ''; flex: 1; height: 1px; background: var(--slate-200); }
   .filter-period-row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+
+/* Hide AC_NAV duplicate lang buttons - Water Drum has its own */
+.ac-nav { display: none !important; }
+#ac-cloud-panel { display: none !important; }
+#ac-toast { display: none !important; }
+
+/* Fix table column alignment */
+.table-wrap { overflow-x: auto; }
+.table-wrap table { table-layout: fixed; min-width: 860px; }
+.table-wrap table { min-width: 900px; }
+.table-wrap th, .table-wrap td { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.table-wrap th.date-col, .table-wrap td.date-cell { width: 46px; min-width: 46px; }
+.table-wrap th.time-col, .table-wrap td.time-cell { width: 90px; min-width: 90px; }
+.table-wrap th.qty-col,  .table-wrap td.qty-cell  { width: 70px; min-width: 70px; text-align: right; }
+.table-wrap th.price-col,.table-wrap td.price-cell { width: 90px; min-width: 90px; }
+.table-wrap th.ttl-col,  .table-wrap td.ttl-cell  { width: 100px; min-width: 100px; text-align: right; }
+.table-wrap th.usd-col,  .table-wrap td.usd-cell  { width: 80px; min-width: 80px; text-align: right; color: #2563eb; }
+.table-wrap th.act-col,  .table-wrap td.act-cell  { width: 42px; min-width: 42px; text-align: center; }
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.table-wrap table {
+  width: 100%; border-collapse: collapse;
+  table-layout: fixed; min-width: 820px;
+}
+.table-wrap th, .table-wrap td {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 6px 8px; border-bottom: 1px solid var(--slate-200,#e2e8f0);
+  font-size: 12px;
+}
+.table-wrap thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; font-size: 10px; font-weight: 700; }
+.col-date  { width: 44px; }
+.col-time  { width: 84px; }
+.col-qty   { width: 64px; text-align: right; }
+.col-price { width: 88px; }
+.col-ttl   { width: 100px; text-align: right; }
+.col-usd   { width: 76px; text-align: right; color: #2563eb; }
+.col-act   { width: 36px; text-align: center; }
 </style>
-  <!-- AC_GASCHECK Shared System -->
-  <link rel="stylesheet" href="./shared/ac_nav.css">
-  <script src="./shared/ac_config.js"></script>
-  <script src="./shared/ac_i18n.js"></script>
-  <script src="./shared/ac_date_engine.js"></script>
-  <script src="./shared/ac_cloud.js"></script>
-  <script src="./shared/ac_telegram.js"></script>
-  <script src="./shared/ac_nav.js"></script>
 </head>
 <body>
 
-<!-- HEADER -->
+<!-- HEADER — onboarding style -->
 <header class="header">
   <div class="header-inner">
     <div class="app-logo">
       <div class="app-icon">💧</div>
       <div>
-        <div class="app-title" id="app-title">Water Drum Record</div>
-        <div class="app-subtitle" id="app-subtitle">Factory & Staff House Tracking</div>
+        <div class="app-title" id="app-title" data-key="app_title">水桶管理</div>
+        <div class="app-subtitle" id="app-subtitle" data-key="app_subtitle">工廠及職員宿舍水桶追蹤</div>
       </div>
     </div>
-    <div class="header-actions">
-      <div class="lang-switcher">
-        <button class="lang-btn" onclick="setLang('zh')">中文</button>
-        <button class="lang-btn active" onclick="setLang('en')">EN</button>
-        <button class="lang-btn" onclick="setLang('km')">ខ្មែរ</button>
+    <div class="header-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-primary btn-sm" onclick="openAddModal()">＋ <span data-key="add_record">新增記錄</span></button>
+      <button class="btn btn-teal btn-sm" onclick="exportExcel()">⬇ <span data-key="export">匯出</span></button>
+      <!-- Lang switch — onboarding style, right side of header -->
+      <div class="lang-switch" style="display:flex;gap:3px;margin-left:4px">
+        <button id="lbZh" data-lang="zh" class="active" onclick="setLang('zh')"
+          style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);color:#e8f4ff;padding:4px 10px;cursor:pointer;border-radius:3px;font-size:12px;font-family:inherit;font-weight:700">中</button>
+        <button id="lbEn" data-lang="en" onclick="setLang('en')"
+          style="background:transparent;border:1px solid rgba(255,255,255,.3);color:#e8f4ff;padding:4px 10px;cursor:pointer;border-radius:3px;font-size:12px;font-family:inherit">EN</button>
+        <button id="lbKm" data-lang="km" onclick="setLang('km')"
+          style="background:transparent;border:1px solid rgba(255,255,255,.3);color:#e8f4ff;padding:4px 10px;cursor:pointer;border-radius:3px;font-size:10px;font-family:inherit">ក</button>
       </div>
-      <button class="btn btn-primary btn-sm" onclick="openAddModal()">＋ <span data-key="add_record">Add Record</span></button>
-      <button class="btn btn-teal btn-sm" onclick="exportExcel()">⬇ <span data-key="export">Export</span></button>
     </div>
   </div>
 </header>
@@ -363,7 +395,10 @@
         <span class="ctrl-label" data-key="month">Month</span>
         <select id="sel-month" onchange="loadMonthData()"></select>
       </div>
-      <button class="btn btn-ghost btn-sm" onclick="goToday()">📅 <span data-key="today">Today</span></button>
+      <button class="btn btn-ghost btn-sm" onclick="prevMonth()">◀</button>
+      <span id="period-label" style="font-size:13px;font-weight:700;color:var(--blue-700);min-width:100px;text-align:center">—</span>
+      <button class="btn btn-ghost" onclick="nextMonth()" style="padding:6px 10px;font-size:14px;font-weight:700">▶</button>
+      <button class="btn btn-secondary" onclick="goToday()">📅 <span data-key="today">Today</span></button>
       <button class="btn btn-ghost btn-sm" onclick="if(confirm(T('confirm_clear')))clearMonth()">🗑 <span data-key="clear_month">Clear Month</span></button>
       <div style="margin-left:auto;font-size:12px;color:var(--slate-400)" id="last-saved-label"></div>
     </div>
@@ -394,11 +429,13 @@
               <th class="section-factory" data-key="time">Time</th>
               <th class="section-factory" data-key="qty">Qty</th>
               <th class="section-factory" data-key="price">Price (Riels)</th>
-              <th class="section-factory" data-key="ttl">TTL (Riels)</th>
+              <th class="section-factory">TTL (KHR)</th>
+              <th class="section-factory" style="color:#2563eb">TTL (USD)</th>
               <th class="section-staff" data-key="time">Time</th>
               <th class="section-staff" data-key="qty">Qty</th>
               <th class="section-staff" data-key="price">Price (Riels)</th>
-              <th class="section-staff" data-key="ttl">TTL (Riels)</th>
+              <th class="section-staff">TTL (KHR)</th>
+              <th class="section-staff" style="color:#0d9488">TTL (USD)</th>
             </tr>
           </thead>
           <tbody id="table-body"></tbody>
@@ -448,7 +485,7 @@
         <div class="upload-text" data-key="click_upload">Click or drag Excel file here</div>
         <div class="upload-sub" data-key="supports_format">Supports .xlsx format matching the water drum record template</div>
       </div>
-      <input type="file" id="file-input" class="hidden-file" accept=".xlsx,.xls" onchange="handleFileSelect(event)">
+      <input type="file" id="file-input" class="hidden-file" accept=".xlsx,.xls,.xlsb" onchange="handleFileSelect(event)">
     </div>
     <div id="import-preview"></div>
   </div>
@@ -470,7 +507,29 @@
 
   <!-- ===== TELEGRAM TAB ===== -->
   <div class="tab-panel" id="panel-telegram">
-    <div class="telegram-section">
+    <!-- Default Price Settings -->
+<div style="background:white;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.08);padding:20px;margin-bottom:16px">
+  <div style="font-size:14px;font-weight:700;color:#1e3a5f;margin-bottom:14px">💰 預設單價設定 / Default Price Settings</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+    <div>
+      <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">🏭 工廠單價 Factory Price (Riels/drum)</label>
+      <input id="default-fac-price" type="number" value="2000" min="0"
+        style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px;font-family:inherit;outline:none;font-weight:600"
+        onchange="saveDefaultPrices()">
+    </div>
+    <div>
+      <label style="font-size:11px;font-weight:600;color:#64748b;display:block;margin-bottom:4px">🏠 宿舍單價 Staff House Price (Riels/drum)</label>
+      <input id="default-sta-price" type="number" value="2000" min="0"
+        style="width:100%;border:1px solid #d1d5db;border-radius:6px;padding:8px 10px;font-size:14px;font-family:inherit;outline:none;font-weight:600"
+        onchange="saveDefaultPrices()">
+    </div>
+  </div>
+  <div style="background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:10px;font-size:12px;color:#0369a1">
+    ℹ️ 設定後，新的每月記錄會自動帶入此單價。個別日期仍可手動修改。
+  </div>
+</div>
+
+<div class="telegram-section">
       <div class="chart-title">✈️ <span data-key="telegram_send">Send to Telegram Group</span></div>
       <div class="tg-info" data-key="tg_info">
         To send reports to Telegram, you need a Bot Token and Chat ID.<br>
@@ -649,7 +708,7 @@ const LANGS = {
     history_desc: '所有已儲存的月度記錄。點擊卡片查看詳情。',
     import_desc: '匯入符合水桶管理格式的Excel文件，按月份儲存。',
     click_upload: '點擊或拖曳Excel文件到此處',
-    supports_format: '支援符合水桶管理模板的.xlsx格式',
+    supports_format: '支援 .xlsx / .xlsb 格式（VRT 水桶記錄模板）',
     check_scope: '檢查範圍', all_months: '所有月份', refresh: '刷新',
     bot_token: 'Bot Token', chat_id: 'Chat ID', report_type: '報告類型',
     tg_monthly_summary: '月度摘要', tg_daily_report: '今日報告',
@@ -688,7 +747,7 @@ const LANGS = {
     history_desc: 'កំណត់ត្រាប្រចាំខែទាំងអស់ដែលបានរក្សាទុក។ ចុចដើម្បីមើលលម្អិត។',
     import_desc: 'នាំចូលឯកសារ Excel ដែលត្រូវនឹងទម្រង់កំណត់ត្រាធុងទឹក។',
     click_upload: 'ចុចឬអូសឯកសារ Excel មកទីនេះ',
-    supports_format: 'គាំទ្រទម្រង់ .xlsx ដែលត្រូវនឹងគំរូកំណត់ត្រាធុងទឹក',
+    supports_format: 'គាំទ្រ .xlsx / .xlsb ​ (VRT Water Drum template)',
     check_scope: 'ពិនិត្យវិសាល', all_months: 'គ្រប់ខែ', refresh: 'ធ្វើឱ្យស្រស់',
     bot_token: 'Bot Token', chat_id: 'Chat ID', report_type: 'ប្រភេទរបាយការណ៍',
     tg_monthly_summary: 'សង្ខេបប្រចាំខែ', tg_daily_report: 'របាយការណ៍ថ្ងៃនេះ',
@@ -720,13 +779,19 @@ function T(key) { return (LANGS[currentLang] || LANGS.en)[key] || key; }
 
 function setLang(lang) {
   currentLang = lang;
-  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.lang-btn').forEach(b => { if(b.textContent.trim() === {en:'EN',zh:'中文',km:'ខ្មែរ'}[lang]) b.classList.add('active'); });
+  // Onboarding-style: toggle active class on .lang-switch buttons
+  document.querySelectorAll('.lang-switch button').forEach(function(b) {
+    var isActive = b.getAttribute('data-lang') === lang;
+    b.classList.toggle('active', isActive);
+    b.style.background = isActive ? 'rgba(255,255,255,.2)' : 'transparent';
+    b.style.fontWeight  = isActive ? '700' : 'normal';
+  });
+  // Re-apply all data-key translations
   applyTranslations();
   loadMonthData();
-  if(document.getElementById('panel-analysis').classList.contains('active')) renderAnalysis();
-  if(document.getElementById('panel-history').classList.contains('active')) renderHistory();
-  if(document.getElementById('panel-alerts').classList.contains('active')) renderAlerts();
+  try { if (document.getElementById('panel-analysis').classList.contains('active')) renderAnalysis(); } catch(e){}
+  try { if (document.getElementById('panel-history').classList.contains('active'))  renderHistory();  } catch(e){}
+  try { if (document.getElementById('panel-alerts').classList.contains('active'))   renderAlerts();   } catch(e){}
 }
 
 function applyTranslations() {
@@ -754,7 +819,12 @@ function getAllKeys() {
   return Object.keys(localStorage).filter(k => k.startsWith('wdr_') && k !== 'wdr_last_saved' && k !== 'wdr_tg_config').sort();
 }
 function emptyRow(day) {
-  return { day, fTime:'', fQty:'', fPrice:'', fTtl:0, sTime:'', sQty:'', sPrice:'', sTtl:0, anomaly:[] };
+  return {
+    day:    day,
+    fTime:  '', fQty: '', fPrice: getDefaultFacPrice(), fTtl: 0,
+    sTime:  '', sQty: '', sPrice: getDefaultStaPrice(), sTtl: 0,
+    checkBy:'', supplier:'', invoice:'', note:'', anomaly:[]
+  };
 }
 function getDaysInMonth(year, month) { return new Date(year, month, 0).getDate(); }
 
@@ -800,6 +870,68 @@ let currentRows = [];
 let currentYear = new Date().getFullYear();
 let currentMonth = new Date().getMonth() + 1;
 
+
+// ── Period navigation ─────────────────────────────────────────
+function updatePeriodLabel() {
+  var el = document.getElementById('period-label');
+  if (!el) return;
+  var names = T('month_names');
+  var lbl = (names && names[currentMonth-1]) ? names[currentMonth-1] : ('0'+currentMonth).slice(-2);
+  el.textContent = lbl + ' ' + currentYear;
+}
+
+function prevMonth() {
+  if (currentMonth === 1) { currentYear--; currentMonth = 12; }
+  else { currentMonth--; }
+  var ys = document.getElementById('sel-year')  || document.getElementById('year-select');
+  var ms = document.getElementById('sel-month') || document.getElementById('month-select');
+  if (ys) ys.value = currentYear;
+  if (ms) ms.value = currentMonth;
+  if (typeof loadAndRender === 'function') loadAndRender();
+  else if (typeof loadMonthData === 'function') loadMonthData();
+}
+
+function nextMonth() {
+  if (currentMonth === 12) { currentYear++; currentMonth = 1; }
+  else { currentMonth++; }
+  var ys = document.getElementById('sel-year')  || document.getElementById('year-select');
+  var ms = document.getElementById('sel-month') || document.getElementById('month-select');
+  if (ys) ys.value = currentYear;
+  if (ms) ms.value = currentMonth;
+  if (typeof loadAndRender === 'function') loadAndRender();
+  else if (typeof loadMonthData === 'function') loadMonthData();
+}
+
+
+// ─── Default Price Management ────────────────────────────────
+function saveDefaultPrices() {
+  var fp = parseFloat(document.getElementById('default-fac-price')?.value || 2000);
+  var sp = parseFloat(document.getElementById('default-sta-price')?.value || 2000);
+  localStorage.setItem('wdr_default_fac_price', fp);
+  localStorage.setItem('wdr_default_sta_price', sp);
+  // Reload current month rows with new default price filled in
+  currentRows.forEach(function(row) {
+    if (!row.fQty && !row.fPrice) row.fPrice = fp;
+    if (!row.sQty && !row.sPrice) row.sPrice = sp;
+  });
+  renderTable();
+  showToast('✅ 預設單價已儲存', 'success');
+}
+
+function getDefaultFacPrice() {
+  return parseFloat(localStorage.getItem('wdr_default_fac_price') || 2000);
+}
+function getDefaultStaPrice() {
+  return parseFloat(localStorage.getItem('wdr_default_sta_price') || 2000);
+}
+
+function loadDefaultPriceUI() {
+  var fp = document.getElementById('default-fac-price');
+  var sp = document.getElementById('default-sta-price');
+  if (fp) fp.value = getDefaultFacPrice();
+  if (sp) sp.value = getDefaultStaPrice();
+}
+
 function goToday() {
   const now = new Date();
   document.getElementById('sel-year').value = now.getFullYear();
@@ -838,6 +970,7 @@ function renderTable() {
   const months = T('month_names');
   const now = new Date();
   const todayDay = (now.getFullYear()===currentYear && now.getMonth()+1===currentMonth) ? now.getDate() : -1;
+  const _rate = typeof WDR_CURRENCY!=='undefined' ? WDR_CURRENCY.getRate() : 4100;
 
   // Compute averages for anomaly detection
   const fPrices = currentRows.filter(r => r.fPrice).map(r => parseFloat(r.fPrice));
@@ -860,12 +993,14 @@ function renderTable() {
       <td class="date-cell">${row.day}${isToday?'<br><span style="font-size:9px;color:var(--blue-500)">▶</span>':''}${isAnomaly?'<span class="anomaly-flag">!</span>':''}</td>
       <td><input type="time" value="${row.fTime||''}" onchange="updateRow(${idx},'fTime',this.value)" ></td>
       <td><input type="number" min="0" value="${row.fQty||''}" placeholder="0" onchange="updateRow(${idx},'fQty',this.value)" style="width:60px"></td>
-      <td><input type="number" min="0" value="${row.fPrice||''}" placeholder="0" onchange="updateRow(${idx},'fPrice',this.value)" style="width:80px"></td>
-      <td><span class="ttl-value" id="fttl-${idx}">${fmtTtl(row.fTtl)}</span></td>
+      <td><input type="number" min="0" value="${row.fPrice||''}" placeholder="0" onchange="updateRow(${idx},'fPrice',this.value)" class="fPrice-inp" style="width:80px"></td>
+      <td><span class="ttl-value" id="fttl-${idx}">${fmtTtl(row.fTtl)}</span></td><td class="usd-cell" style="color:#1d4ed8;font-size:11px;text-align:right;font-family:monospace"><span id="fusd-${idx}">${row.fTtl>0?"$"+(row.fTtl/_rate).toFixed(2):"—"}</span></td>
+      <td style="color:#2563eb;font-size:11px;text-align:right">${row.fTtl>0?'$'+(row.fTtl/_rate).toFixed(2):'—'}</td>
       <td><input type="time" value="${row.sTime||''}" onchange="updateRow(${idx},'sTime',this.value)"></td>
       <td><input type="number" min="0" value="${row.sQty||''}" placeholder="0" onchange="updateRow(${idx},'sQty',this.value)" style="width:60px"></td>
-      <td><input type="number" min="0" value="${row.sPrice||''}" placeholder="0" onchange="updateRow(${idx},'sPrice',this.value)" style="width:80px"></td>
-      <td><span class="ttl-value" id="sttl-${idx}">${fmtTtl(row.sTtl)}</span></td>
+      <td><input type="number" min="0" value="${row.sPrice||''}" placeholder="0" onchange="updateRow(${idx},'sPrice',this.value)" class="sPrice-inp" style="width:80px"></td>
+      <td><span class="ttl-value" id="sttl-${idx}">${fmtTtl(row.sTtl)}</span></td><td class="usd-cell" style="color:#0f766e;font-size:11px;text-align:right;font-family:monospace"><span id="susd-${idx}">${row.sTtl>0?"$"+(row.sTtl/_rate).toFixed(2):"—"}</span></td>
+      <td style="color:#0d9488;font-size:11px;text-align:right">${row.sTtl>0?'$'+(row.sTtl/_rate).toFixed(2):'—'}</td>
       <td><button class="btn btn-ghost btn-sm" onclick="clearRow(${idx})" title="${T('clear')}">✕</button></td>
     </tr>`;
   });
@@ -880,11 +1015,13 @@ function renderTable() {
     <td></td>
     <td style="font-weight:700;color:var(--blue-700)">${totalFQty}</td>
     <td></td>
-    <td style="font-weight:700;color:var(--blue-700)">${totalFTtl.toLocaleString()}</td>
+    <td style="font-weight:700;color:var(--blue-700)">${totalFTtl.toLocaleString()} ៛</td>
+    <td style="font-weight:700;color:#2563eb">$${(totalFTtl/_rate).toFixed(2)}</td>
     <td></td>
     <td style="font-weight:700;color:var(--teal-700)">${totalSQty}</td>
     <td></td>
-    <td style="font-weight:700;color:var(--teal-700)">${totalSTtl.toLocaleString()}</td>
+    <td style="font-weight:700;color:var(--teal-700)">${totalSTtl.toLocaleString()} ៛</td>
+    <td style="font-weight:700;color:#0d9488">$${(totalSTtl/_rate).toFixed(2)}</td>
     <td></td>
   </tr>`;
   tbody.innerHTML = rows;
@@ -892,12 +1029,28 @@ function renderTable() {
 
 function updateRow(idx, field, value) {
   currentRows[idx][field] = value;
+  // Auto-fill default price if price field is empty when qty is entered
+  if (field === 'fQty' && !currentRows[idx].fPrice) {
+    currentRows[idx].fPrice = getDefaultFacPrice();
+    var pi = document.querySelector('#row-'+currentRows[idx].day+' .fPrice-inp');
+    if (pi) pi.value = currentRows[idx].fPrice;
+  }
+  if (field === 'sQty' && !currentRows[idx].sPrice) {
+    currentRows[idx].sPrice = getDefaultStaPrice();
+    var pi2 = document.querySelector('#row-'+currentRows[idx].day+' .sPrice-inp');
+    if (pi2) pi2.value = currentRows[idx].sPrice;
+  }
   currentRows[idx].fTtl = calcTtl(currentRows[idx].fQty, currentRows[idx].fPrice);
   currentRows[idx].sTtl = calcTtl(currentRows[idx].sQty, currentRows[idx].sPrice);
-  const fttl = document.getElementById(`fttl-${idx}`);
-  const sttl = document.getElementById(`sttl-${idx}`);
-  if(fttl) fttl.textContent = currentRows[idx].fTtl ? currentRows[idx].fTtl.toLocaleString() : '-';
-  if(sttl) sttl.textContent = currentRows[idx].sTtl ? currentRows[idx].sTtl.toLocaleString() : '-';
+  var rate = (typeof WDR_CURRENCY !== 'undefined' && WDR_CURRENCY.getRate) ? WDR_CURRENCY.getRate() : 4100;
+  var fttl  = document.getElementById('fttl-'+idx);
+  var sttl  = document.getElementById('sttl-'+idx);
+  var fusd  = document.getElementById('fusd-'+idx);
+  var susd  = document.getElementById('susd-'+idx);
+  if (fttl) fttl.textContent = currentRows[idx].fTtl ? currentRows[idx].fTtl.toLocaleString() : '—';
+  if (sttl) sttl.textContent = currentRows[idx].sTtl ? currentRows[idx].sTtl.toLocaleString() : '—';
+  if (fusd) fusd.textContent = currentRows[idx].fTtl > 0 ? '$'+(currentRows[idx].fTtl/rate).toFixed(2) : '—';
+  if (susd) susd.textContent = currentRows[idx].sTtl > 0 ? '$'+(currentRows[idx].sTtl/rate).toFixed(2) : '—';
   renderSummaryCards();
   autoSave();
 }
@@ -930,38 +1083,44 @@ function saveData(silent=false) {
 }
 
 function renderSummaryCards() {
-  const totalFQty = currentRows.reduce((a,r)=>a+(parseFloat(r.fQty)||0),0);
-  const totalFTtl = currentRows.reduce((a,r)=>a+r.fTtl,0);
-  const totalSQty = currentRows.reduce((a,r)=>a+(parseFloat(r.sQty)||0),0);
-  const totalSTtl = currentRows.reduce((a,r)=>a+r.sTtl,0);
-  const grand = totalFTtl + totalSTtl;
-  document.getElementById('summary-cards').innerHTML = `
-    <div class="summary-card blue">
-      <div class="card-label">${T('total_factory_qty')}</div>
-      <div class="card-value">${totalFQty}</div>
-      <div class="card-sub">${T('factory')}</div>
-    </div>
-    <div class="summary-card blue">
-      <div class="card-label">${T('total_factory_ttl')}</div>
-      <div class="card-value">${(totalFTtl/1000).toFixed(1)}K</div>
-      <div class="card-sub">Riels</div>
-    </div>
-    <div class="summary-card teal">
-      <div class="card-label">${T('total_staff_qty')}</div>
-      <div class="card-value">${totalSQty}</div>
-      <div class="card-sub">${T('staff_house')}</div>
-    </div>
-    <div class="summary-card teal">
-      <div class="card-label">${T('total_staff_ttl')}</div>
-      <div class="card-value">${(totalSTtl/1000).toFixed(1)}K</div>
-      <div class="card-sub">Riels</div>
-    </div>
-    <div class="summary-card amber">
-      <div class="card-label">${T('grand_total')}</div>
-      <div class="card-value">${(grand/1000).toFixed(1)}K</div>
-      <div class="card-sub">Riels</div>
-    </div>
-  `;
+  var fQty = currentRows.reduce(function(a,r){ return a + (parseFloat(r.fQty)||0); }, 0);
+  var fTtl = currentRows.reduce(function(a,r){ return a + (r.fTtl||0); }, 0);
+  var sQty = currentRows.reduce(function(a,r){ return a + (parseFloat(r.sQty)||0); }, 0);
+  var sTtl = currentRows.reduce(function(a,r){ return a + (r.sTtl||0); }, 0);
+  var grand = fTtl + sTtl;
+  var _exchRate = (typeof WDR_CURRENCY !== 'undefined' && WDR_CURRENCY && WDR_CURRENCY.getRate) ? WDR_CURRENCY.getRate() : 4100;
+  function khrFmt(n)  { return (n||0).toLocaleString() + ' ៛'; }
+  function usdFmt(n)  { return '$' + ((n||0) / rate).toFixed(2); }
+  function cardVal(khr) {
+    if (!khr) return '<span style="font-size:1.1em">0.0K ៛</span><div style="font-size:12px;color:#94a3b8;margin-top:2px">$0.00</div>';
+    return '<span style="font-size:1.1em">' + (khr/1000).toFixed(1) + 'K ៛</span>' +
+           '<div style="font-size:12px;color:#2563eb;margin-top:2px">' + usdFmt(khr) + '</div>';
+  }
+  var el = document.getElementById('summary-cards');
+  if (!el) return;
+  el.innerHTML =
+    '<div class="summary-card blue">' +
+      '<div class="card-label">' + T('total_factory_qty') + '</div>' +
+      '<div class="card-value" style="font-size:2em;line-height:1">' + fQty + '</div>' +
+      '<div class="card-sub">' + T('factory') + '</div>' +
+    '</div>' +
+    '<div class="summary-card blue">' +
+      '<div class="card-label">' + T('total_factory_ttl') + '</div>' +
+      '<div class="card-value" style="font-size:1.3em;line-height:1.3">' + cardVal(fTtl) + '</div>' +
+    '</div>' +
+    '<div class="summary-card teal">' +
+      '<div class="card-label">' + T('total_staff_qty') + '</div>' +
+      '<div class="card-value" style="font-size:2em;line-height:1">' + sQty + '</div>' +
+      '<div class="card-sub">' + T('staff_house') + '</div>' +
+    '</div>' +
+    '<div class="summary-card teal">' +
+      '<div class="card-label">' + T('total_staff_ttl') + '</div>' +
+      '<div class="card-value" style="font-size:1.3em;line-height:1.3">' + cardVal(sTtl) + '</div>' +
+    '</div>' +
+    '<div class="summary-card amber">' +
+      '<div class="card-label">' + T('grand_total') + '</div>' +
+      '<div class="card-value" style="font-size:1.3em;line-height:1.3">' + cardVal(grand) + '</div>' +
+    '</div>';
 }
 
 // ==================== EXPORT ====================
@@ -1252,78 +1411,159 @@ function handleFileSelect(e) {
 }
 
 function processExcelImport(file) {
-  const reader = new FileReader();
+  function xlTime(v) {
+    if (v == null || v === '') return '';
+    if (typeof v === 'string') return v.trim();
+    if (typeof v === 'number' && v > 0 && v < 1) {
+      var m = Math.round(v * 1440);
+      return String(Math.floor(m/60)).padStart(2,'0') + ':' + String(m%60).padStart(2,'0');
+    }
+    return String(v);
+  }
+  function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+
+  var reader = new FileReader();
   reader.onload = function(e) {
     try {
-      const wb = XLSX.read(e.target.result, {type:'binary'});
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, {header:1});
-      // Try to detect year/month from row 2
-      let year = new Date().getFullYear(), month = new Date().getMonth()+1;
-      if(raw[1]) {
-        const r1str = raw[1].join(' ');
-        const ym = r1str.match(/(\d{4})/);
-        if(ym) year = parseInt(ym[1]);
-        const monthNames = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
-        const mn = r1str.toLowerCase();
-        const mi = monthNames.findIndex(m => mn.includes(m));
-        if(mi >= 0) month = mi+1;
-        // Also try numeric month
-        const mm = r1str.match(/month[:\s]*(\d+)/i);
-        if(mm) month = parseInt(mm[1]);
-      }
-      // Find data rows (rows where first cell is a number 1-31)
-      const dataRows = [];
-      for(let i=0; i<raw.length; i++) {
-        const row = raw[i];
-        const day = parseInt(row[0]);
-        if(day >= 1 && day <= 31) {
-          dataRows.push({
-            day,
-            fTime: row[1]||'', fQty: row[2]||'', fPrice: row[3]||'',
-            fTtl: calcTtl(row[2], row[3]),
-            sTime: row[5]||'', sQty: row[6]||'', sPrice: row[7]||'',
-            sTtl: calcTtl(row[6], row[7]),
-            anomaly: []
+      var wb = XLSX.read(e.target.result, {type:'binary'});
+      var MON = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+      var allResults = [];
+      var yearDetected = new Date().getFullYear();
+
+      // Scan every sheet — collect all month sheets
+      wb.SheetNames.forEach(function(sn) {
+        var ws  = wb.Sheets[sn];
+        var raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+        // Detect year from title row (row 0)
+        var title = ((raw[0]||[]).join(' ')).toLowerCase();
+        var ym = title.match(/(\d{4})/);
+        if (ym) yearDetected = parseInt(ym[1]);
+        // Detect month from sheet name OR title
+        var snl = sn.toLowerCase().trim();
+        var mi  = MON.findIndex(function(m){ return snl===m||snl.startsWith(m); });
+        if (mi < 0) mi = MON.findIndex(function(m){ return title.includes(m); });
+        if (mi < 0) return; // skip non-month sheets
+
+        var rows = [];
+        for (var i = 0; i < raw.length; i++) {
+          var row = raw[i]; if (!row) continue;
+          var dRaw = row[0];
+          var day  = (typeof dRaw==='number'&&dRaw>=1&&dRaw<=31) ? Math.round(dRaw) : parseInt(dRaw);
+          if (!day || day<1 || day>31) continue;
+          var fQ = num(row[2]), fP = num(row[3]);
+          var sQ = num(row[10]), sP = num(row[11]);
+          var note = (typeof row[1]==='string'&&!/^\d/.test(row[1].trim())) ? row[1].trim() : '';
+          rows.push({
+            day:day, note:note,
+            fTime:xlTime(row[1]), fQty:fQ, fPrice:fP||getDefaultFacPrice(),
+            fTtl: num(row[4]) || fQ*fP,
+            sTime:xlTime(row[9]), sQty:sQ, sPrice:sP||getDefaultStaPrice(),
+            sTtl: num(row[12]) || sQ*sP,
+            anomaly:[]
           });
         }
+        if (rows.length) {
+          allResults.push({year:yearDetected, month:mi+1, sheetName:sn, rows:rows});
+        }
+      });
+
+      if (!allResults.length) {
+        showToast(T('import_error') + ' — No month data found in file.', 'error');
+        return;
       }
-      if(!dataRows.length) { showToast(T('import_error')+' No data rows found.', 'error'); return; }
-      // Show preview
-      const months = T('month_names');
-      document.getElementById('import-preview').innerHTML = `
-        <div class="table-wrap">
-          <div class="table-header-bar">
-            <div class="table-title">📥 Preview: ${months[month-1]} ${year} — ${dataRows.length} rows</div>
-            <div style="display:flex;gap:8px">
-              <button class="btn btn-primary" onclick="confirmImport(${year},${month},${JSON.stringify(dataRows).replace(/"/g,'&quot;')})">
-                ✅ ${T('import_success').replace('!','')} ${months[month-1]} ${year}
-              </button>
-            </div>
-          </div>
-          <div style="overflow-x:auto">
-            <table>
-              <thead><tr>
-                <th>${T('date')}</th>
-                <th>${T('time')} 🏭</th><th>${T('qty')} 🏭</th><th>${T('price')} 🏭</th><th>${T('ttl')} 🏭</th>
-                <th>${T('time')} 🏠</th><th>${T('qty')} 🏠</th><th>${T('price')} 🏠</th><th>${T('ttl')} 🏠</th>
-              </tr></thead>
-              <tbody>${dataRows.slice(0,15).map(r=>`<tr>
-                <td class="date-cell">${r.day}</td>
-                <td>${r.fTime}</td><td>${r.fQty}</td><td>${r.fPrice}</td><td>${(r.fTtl||0).toLocaleString()}</td>
-                <td>${r.sTime}</td><td>${r.sQty}</td><td>${r.sPrice}</td><td>${(r.sTtl||0).toLocaleString()}</td>
-              </tr>`).join('')}
-              ${dataRows.length>15?`<tr><td colspan="9" style="text-align:center;color:var(--slate-400);font-size:12px">...and ${dataRows.length-15} more rows</td></tr>`:''}
-              </tbody>
-            </table>
-          </div>
-        </div>`;
+
+      // Store results globally to avoid JSON-in-onclick issues
+      window._wdrImportResults = allResults;
+
+      var rate   = (typeof WDR_CURRENCY!=='undefined') ? WDR_CURRENCY.getRate() : 4100;
+      var months = T('month_names');
+      var parts  = [];
+
+      allResults.forEach(function(res, idx) {
+        var fTtl  = res.rows.reduce(function(s,r){return s+(r.fTtl||0);},0);
+        var sTtl  = res.rows.reduce(function(s,r){return s+(r.sTtl||0);},0);
+        var grand = fTtl + sTtl;
+        var mName = (months && months[res.month-1]) || ('Month '+res.month);
+        parts.push(
+          '<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:10px">' +
+            '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">' +
+              '<strong style="font-size:14px;color:#1e3a5f">📅 ' + mName + ' ' + res.year + '</strong>' +
+              '<span style="font-size:12px;color:#64748b">' + res.rows.length + ' rows</span>' +
+            '</div>' +
+            '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:10px;font-size:12px">' +
+              '<div style="background:#eff6ff;border-radius:8px;padding:8px;text-align:center">' +
+                '<div style="color:#6b7280;margin-bottom:2px">Factory</div>' +
+                '<strong style="color:#1d4ed8">' + fTtl.toLocaleString() + ' ៛</strong>' +
+                '<div style="color:#3b82f6">$' + (fTtl/rate).toFixed(2) + '</div>' +
+              '</div>' +
+              '<div style="background:#f0fdfa;border-radius:8px;padding:8px;text-align:center">' +
+                '<div style="color:#6b7280;margin-bottom:2px">Staff House</div>' +
+                '<strong style="color:#0d9488">' + sTtl.toLocaleString() + ' ៛</strong>' +
+                '<div style="color:#14b8a6">$' + (sTtl/rate).toFixed(2) + '</div>' +
+              '</div>' +
+              '<div style="background:#fefce8;border-radius:8px;padding:8px;text-align:center">' +
+                '<div style="color:#6b7280;margin-bottom:2px">Grand Total</div>' +
+                '<strong style="color:#92400e">' + grand.toLocaleString() + ' ៛</strong>' +
+                '<div style="color:#f59e0b">$' + (grand/rate).toFixed(2) + '</div>' +
+              '</div>' +
+            '</div>' +
+            '<button class="btn btn-primary btn-sm" onclick="wdrConfirmImportIdx(' + idx + ')"' +
+              ' style="margin-right:6px">✅ Import ' + mName + ' ' + res.year + '</button>' +
+          '</div>'
+        );
+      });
+
+      if (allResults.length > 1) {
+        parts.push(
+          '<button class="btn btn-primary" onclick="wdrImportAll()" style="width:100%;margin-top:4px">' +
+          '📥 Import All (' + allResults.length + ' months)</button>'
+        );
+      }
+      document.getElementById('import-preview').innerHTML = parts.join('');
     } catch(err) {
+      console.error('Import error:', err);
       showToast(T('import_error') + ' ' + err.message, 'error');
     }
   };
   reader.readAsBinaryString(file);
 }
+
+function wdrConfirmImportIdx(idx) {
+  var res = window._wdrImportResults && window._wdrImportResults[idx];
+  if (!res) { showToast('Import data not found', 'error'); return; }
+  saveMonthData(res.year, res.month, res.rows);
+  showToast('✅ Imported ' + res.sheetName + ' (' + res.rows.length + ' rows)', 'success');
+  if (res.year === currentYear && res.month === currentMonth) loadMonthData();
+  renderHistory();
+}
+
+function wdrImportAll() {
+  var all = window._wdrImportResults;
+  if (!all || !all.length) { showToast('No import data', 'error'); return; }
+  var total = 0;
+  all.forEach(function(res) {
+    saveMonthData(res.year, res.month, res.rows);
+    total += res.rows.length;
+  });
+  showToast('✅ Imported ' + all.length + ' months, ' + total + ' rows', 'success');
+  loadMonthData(); renderHistory();
+}
+
+
+function importAllMonths(allResults) {
+  if (typeof allResults === 'string') allResults = JSON.parse(allResults);
+  var count = 0;
+  allResults.forEach(function(res) {
+    saveMonthData(res.year, res.month, res.rows);
+    count += res.rows.length;
+  });
+  document.getElementById('import-preview').innerHTML =
+    '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px;text-align:center">'+
+    '✅ 已匯入 '+allResults.length+' 個月份，共 '+count+' 筆記錄</div>';
+  showToast('✅ 已匯入 '+allResults.length+' 個月份','success');
+  renderHistory();
+}
+
 
 function confirmImport(year, month, rows) {
   if(typeof rows === 'string') rows = JSON.parse(rows);
@@ -1506,6 +1746,7 @@ function showTab(name) {
   if(name === 'analysis') renderAnalysis();
   if(name === 'history') renderHistory();
   if(name === 'alerts') renderAlerts();
+  if(name === 'telegram' || name === 'settings') loadDefaultPriceUI();
 }
 
 // ==================== TOAST ====================
@@ -1530,86 +1771,34 @@ function init() {
   document.getElementById('add-modal').addEventListener('click', function(e) {
     if(e.target === this) closeModal('add-modal');
   });
+  setLang(currentLang);
+  loadDefaultPriceUI();
+  setLang(currentLang);
 }
 
 window.addEventListener('load', init);
-</script>
-<script>
 
-// ═══ CURRENCY MODULE ═══════════════════════════════════════════
-const WDR_CURRENCY = {
-  _rate: parseFloat(localStorage.getItem('wdr_exchange_rate') || '4100'),
-  _default: localStorage.getItem('wdr_default_currency') || 'KHR',
-  getRate() { return this._rate; },
-  setRate(r) { this._rate = parseFloat(r)||4100; localStorage.setItem('wdr_exchange_rate', this._rate); this.refreshDisplay(); },
-  getDefault() { return this._default; },
-  setDefault(c) { this._default = c; localStorage.setItem('wdr_default_currency', c); this.refreshDisplay(); },
-  toKHR(usd) { return Math.round(parseFloat(usd||0) * this._rate); },
-  toUSD(khr) { return (parseFloat(khr||0) / this._rate).toFixed(2); },
-  format(amount, currency) {
-    const c = currency || this._default;
-    if(c === 'USD') return '$' + parseFloat(amount).toFixed(2);
-    return parseFloat(amount).toLocaleString() + ' ៛';
-  },
-  formatBoth(khrAmount) {
-    const usd = this.toUSD(khrAmount);
-    return `${parseFloat(khrAmount).toLocaleString()} ៛ ($${usd})`;
-  },
-  refreshDisplay() {
-    // Update any currency display elements
-    document.querySelectorAll('[data-currency-display]').forEach(el => {
-      const raw = parseFloat(el.getAttribute('data-khr-value') || '0');
-      el.textContent = this.format(this._default === 'USD' ? this.toUSD(raw) : raw, this._default);
+// ─── Auto-backup every 5 minutes ─────────────────────────────
+setInterval(function() {
+  try {
+    var snap = JSON.stringify({
+      ts: new Date().toISOString(),
+      data: localStorage.getItem('wdr_data')
     });
-    // Update settings inputs
-    const ri = document.getElementById('wdr-exchange-rate');
-    if(ri) ri.value = this._rate;
-    const ci = document.getElementById('wdr-currency-default');
-    if(ci) ci.value = this._default;
-  },
-};
+    localStorage.setItem('ac_waterdrum_backup', snap);
+  } catch(e) {}
+}, 5 * 60 * 1000);
 
-
-(function(){
-  var INIT_NAV = function(){
-    try {
-      if(typeof AC_NAV==='undefined') return;
-      AC_NAV.inject('waterdrum',{
-        getRecords: function(){
-          try{
-            var mods = (typeof AC_CFG!=='undefined') ? AC_CFG.MODULES : [];
-            var mod  = mods.find(function(m){return m.id==='waterdrum';}) || {};
-            var raw  = localStorage.getItem(mod.lsKey||'');
-            if(!raw) return [];
-            var d = JSON.parse(raw);
-            if(Array.isArray(d)) return d;
-            if(d.records) return d.records;
-            return Object.values(d).filter(Array.isArray).reduce(function(a,b){return a.concat(b);}, []);
-          }catch(e){return [];}
-        },
-        onPull: function(recs){ console.log('Pulled waterdrum:', recs.length); }
-      });
-      if(typeof AC_CLOUD!=='undefined') setTimeout(function(){AC_CLOUD.updateBar();}, 500);
-    } catch(e) { console.warn('AC_NAV init failed:', e); }
-  };
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', INIT_NAV);
-  else INIT_NAV();
-})();
-
-// Initialize currency on page load
-(function initCurrency() {
-  const ri = document.getElementById('wdr-exchange-rate');
-  const ci = document.getElementById('wdr-currency-default');
-  const rp = document.getElementById('wdr-rate-preview');
-  if(ri) ri.value = WDR_CURRENCY.getRate();
-  if(ci) ci.value = WDR_CURRENCY.getDefault();
-  if(rp) rp.textContent = `1 USD = ${WDR_CURRENCY.getRate().toLocaleString()} KHR`;
-  // Update rate preview on change
-  if(ri) ri.addEventListener('input', () => {
-    if(rp) rp.textContent = `1 USD = ${parseFloat(ri.value||4100).toLocaleString()} KHR`;
-  });
-})();
-
+// Save on page unload
+window.addEventListener('beforeunload', function() {
+  try {
+    autoSave();
+    localStorage.setItem('ac_waterdrum_backup', JSON.stringify({
+      ts: new Date().toISOString(), data: localStorage.getItem('wdr_data')
+    }));
+  } catch(e) {}
+});
 </script>
+
 </body>
 </html>
