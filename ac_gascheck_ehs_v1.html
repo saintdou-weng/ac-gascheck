@@ -145,14 +145,6 @@ select.fi{cursor:pointer}textarea.fi{min-height:55px;resize:vertical}
 @media(max-width:600px){.kg{grid-template-columns:repeat(2,1fr)}.cr{grid-template-columns:1fr}.fgrid{grid-template-columns:1fr}.fgrid.c3{grid-template-columns:1fr 1fr}.fg:nth-child(n){border-right:none}}
 @media print{.topbar,.tabs,.br,.fb,.df{display:none!important}body{background:#fff}.main{max-width:100%;padding:0}}
 </style>
-  <!-- AC_GASCHECK Shared System -->
-  <link rel="stylesheet" href="./shared/ac_nav.css">
-  <script src="./shared/ac_config.js"></script>
-  <script src="./shared/ac_i18n.js"></script>
-  <script src="./shared/ac_date_engine.js"></script>
-  <script src="./shared/ac_cloud.js"></script>
-  <script src="./shared/ac_telegram.js"></script>
-  <script src="./shared/ac_nav.js"></script>
 </head>
 <body>
 <div class="topbar">
@@ -525,7 +517,7 @@ var de = (() => {
     const r=range();
     const fi=document.getElementById('df-from'),ti=document.getElementById('df-to');
     if(fi)fi.value=r.from; if(ti)ti.value=r.to;
-    dash.render();
+    if(typeof dash!=='undefined') dash.render();
   };
   return {set, range, fmt};
 })();
@@ -1103,7 +1095,7 @@ function updateTs(){const d=new Date();const p=n=>String(n).padStart(2,'0');cons
 /* ═══ INIT ═══ */
 (function init(){
   state.load();
-  updateTs();setInterval(updateTs,1000);
+  updateTs(); setInterval(updateTs,1000);
   sv('c-date',de.fmt(new Date()));
   de.set('month',document.querySelector('.pt .ptab'));
   updateDbInfo();
@@ -1111,32 +1103,6 @@ function updateTs(){const d=new Date();const p=n=>String(n).padStart(2,'0');cons
   wgate.renderBBatch();
 })();
 </script>
-<script>
-(function(){
-  var INIT_NAV = function(){
-    try {
-      if(typeof AC_NAV==='undefined') return;
-      AC_NAV.inject('ehs',{
-        getRecords: function(){
-          try{
-            var mods = (typeof AC_CFG!=='undefined') ? AC_CFG.MODULES : [];
-            var mod  = mods.find(function(m){return m.id==='ehs';}) || {};
-            var raw  = localStorage.getItem(mod.lsKey||'');
-            if(!raw) return [];
-            var d = JSON.parse(raw);
-            if(Array.isArray(d)) return d;
-            if(d.records) return d.records;
-            return Object.values(d).filter(Array.isArray).reduce(function(a,b){return a.concat(b);}, []);
-          }catch(e){return [];}
-        },
-        onPull: function(recs){ console.log('Pulled ehs:', recs.length); }
-      });
-      if(typeof AC_CLOUD!=='undefined') setTimeout(function(){AC_CLOUD.updateBar();}, 500);
-    } catch(e) { console.warn('AC_NAV init failed:', e); }
-  };
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', INIT_NAV);
-  else INIT_NAV();
-})();
-</script>
+
 </body>
 </html>
