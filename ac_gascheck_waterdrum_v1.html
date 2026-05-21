@@ -5,7 +5,70 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Water Drum Record 水桶管理 កំណត់ត្រាធុងទឹក</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+/* ── Currency Panel Functions ──────────────────────────────── */
+function toggleCurrencyPanel() {
+  var panel = document.getElementById('currency-panel');
+  if (!panel) return;
+  panel.classList.toggle('open');
+  if (panel.classList.contains('open')) {
+    // Populate with current values
+    var fp = document.getElementById('cp-fac-price');
+    var sp = document.getElementById('cp-sta-price');
+    var rp = document.getElementById('cp-rate');
+    var cp = document.getElementById('cp-currency');
+    if (fp) fp.value = getDefaultFacPrice();
+    if (sp) sp.value = getDefaultStaPrice();
+    var rate = (typeof WDR_CURRENCY !== 'undefined') ? WDR_CURRENCY.getRate() : 4100;
+    if (rp) rp.value = rate;
+    if (cp) cp.value = (typeof WDR_CURRENCY !== 'undefined') ? WDR_CURRENCY.getDefault() : 'KHR';
+    var prev = document.getElementById('cpanel-preview');
+    if (prev) prev.textContent = '1 USD = ' + parseInt(rate).toLocaleString() + ' KHR';
+  }
+}
+
+function updateCurrencyRate(val) {
+  var rate = parseInt(val) || 4100;
+  var prev = document.getElementById('cpanel-preview');
+  if (prev) prev.textContent = '1 USD = ' + rate.toLocaleString() + ' KHR';
+}
+
+function updateDisplayCurrency(val) {
+  if (typeof WDR_CURRENCY !== 'undefined') WDR_CURRENCY.setDefault(val);
+}
+
+function applyAndCloseCurrency() {
+  // Save prices
+  var fp = parseFloat((document.getElementById('cp-fac-price') || {value:'2000'}).value || 2000);
+  var sp = parseFloat((document.getElementById('cp-sta-price') || {value:'2000'}).value || 2000);
+  localStorage.setItem('wdr_default_fac_price', String(fp));
+  localStorage.setItem('wdr_default_sta_price', String(sp));
+  // Save rate
+  var rate = parseInt((document.getElementById('cp-rate') || {value:'4100'}).value || 4100);
+  if (typeof WDR_CURRENCY !== 'undefined') WDR_CURRENCY.setRate(rate);
+  else localStorage.setItem('wdr_exchange_rate', String(rate));
+  // Save currency
+  var cur = (document.getElementById('cp-currency') || {value:'KHR'}).value;
+  if (typeof WDR_CURRENCY !== 'undefined') WDR_CURRENCY.setDefault(cur);
+  // Close panel
+  var panel = document.getElementById('currency-panel');
+  if (panel) panel.classList.remove('open');
+  // Re-render
+  if (typeof renderSummaryCards === 'function') renderSummaryCards();
+  showToast && showToast('✅ 設定已套用');
+}
+
+// Close panel when clicking outside
+document.addEventListener('click', function(e) {
+  var panel = document.getElementById('currency-panel');
+  if (panel && panel.classList.contains('open')) {
+    if (!panel.contains(e.target) && !e.target.closest('[onclick*="toggleCurrencyPanel"]')) {
+      panel.classList.remove('open');
+    }
+  }
+});
+
+</script>
 <style>
   :root {
     --blue-50: #eff6ff;
@@ -57,7 +120,7 @@
   }
   /* HEADER */
   .header {
-    background: white;
+    background: linear-gradient(135deg,#e8f4ff 0%,#f0fdf4 100%);
     border-bottom: 1px solid var(--slate-200);
     box-shadow: var(--shadow-md);
     position: sticky; top: 0; z-index: 100;
@@ -341,9 +404,102 @@
 .col-ttl   { width: 100px; text-align: right; }
 .col-usd   { width: 76px; text-align: right; color: #2563eb; }
 .col-act   { width: 36px; text-align: center; }
+
+/* ── Water Drum table fix ─────────────────────────── */
+.table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+#main-table { table-layout: fixed; width: 100%; border-collapse: collapse; min-width: 780px; }
+#main-table th, #main-table td {
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  padding: 6px 6px; font-size: 12px; border-bottom: 1px solid #e2e8f0;
+}
+#main-table thead th { position: sticky; top: 0; z-index: 2; background: #f8fafc; }
+#main-table td:nth-child(3), #main-table td:nth-child(5),
+#main-table td:nth-child(6), #main-table td:nth-child(8),
+#main-table td:nth-child(10), #main-table td:nth-child(11) { text-align: right; }
+#main-table input[type="number"], #main-table input[type="time"] {
+  width: 100%; border: none; background: transparent; font-size: 11px;
+  padding: 2px 4px; outline: none; font-family: inherit;
+}
+#main-table input[type="number"]:focus, #main-table input[type="time"]:focus {
+  background: #eff6ff; border-radius: 4px;
+}
+
+
+/* ── Language switch — always visible ── */
+.lang-switch { display:flex; gap:4px; margin-left:4px; }
+.lang-switch button {
+  background:#ffffff; color:#334155;
+  border:1px solid #cbd5e1; border-radius:6px;
+  padding:4px 10px; font-size:12px; font-weight:600;
+  cursor:pointer; font-family:inherit; transition:.15s;
+}
+.lang-switch button:hover { background:#f1f5f9; }
+.lang-switch button.active {
+  background:#2563eb; color:#ffffff; border-color:#2563eb;
+}
+
+
+/* Period toggle buttons in main toolbar */
+.period-btn {
+  padding:5px 11px; border:none; background:transparent;
+  border-radius:5px; font-size:12px; font-weight:600;
+  cursor:pointer; color:var(--slate-500,#64748b);
+  transition:.15s; font-family:inherit;
+}
+.period-btn.active { background:#ffffff; color:var(--blue-600,#2563eb); box-shadow:0 1px 3px rgba(0,0,0,.12); }
+
+
+/* Currency Settings Panel */
+#currency-panel {
+  display:none; position:fixed; top:70px; right:16px; z-index:999;
+  background:#fff; border:1px solid #e2e8f0; border-radius:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.15); padding:20px; width:300px;
+}
+#currency-panel.open { display:block; }
+#currency-panel h3 { font-size:13px; font-weight:700; color:#1e3a5f; margin-bottom:14px; }
+.cpanel-row { margin-bottom:12px; }
+.cpanel-label { font-size:11px; font-weight:600; color:#64748b; margin-bottom:4px; display:block; }
+.cpanel-input { width:100%; border:1px solid #d1d5db; border-radius:6px; padding:8px 10px;
+  font-size:13px; font-family:inherit; outline:none; box-sizing:border-box; }
+.cpanel-input:focus { border-color:#2563eb; }
+#cpanel-preview { background:#f0fdf4; border:1px solid #86efac; border-radius:6px;
+  padding:6px 10px; font-size:12px; font-weight:600; color:#166534; margin-top:8px; }
+.cpanel-close { position:absolute; top:10px; right:12px; background:none; border:none;
+  font-size:18px; cursor:pointer; color:#94a3b8; }
+
 </style>
 </head>
 <body>
+<!-- Currency Settings Panel -->
+<div id="currency-panel">
+  <button class="cpanel-close" onclick="toggleCurrencyPanel()">✕</button>
+  <h3>💱 單價 & 匯率設定</h3>
+  <div class="cpanel-row">
+    <label class="cpanel-label">🏭 工廠預設單價 Factory Price (Riels/drum)</label>
+    <input class="cpanel-input" id="cp-fac-price" type="number" min="0" placeholder="2000"
+      oninput="saveDefaultPrices()">
+  </div>
+  <div class="cpanel-row">
+    <label class="cpanel-label">🏠 宿舍預設單價 Staff Price (Riels/drum)</label>
+    <input class="cpanel-input" id="cp-sta-price" type="number" min="0" placeholder="2000"
+      oninput="saveDefaultPrices()">
+  </div>
+  <div class="cpanel-row">
+    <label class="cpanel-label">💱 匯率 Exchange Rate (1 USD = ? KHR)</label>
+    <input class="cpanel-input" id="cp-rate" type="number" min="1" placeholder="4100"
+      oninput="updateCurrencyRate(this.value)">
+    <div id="cpanel-preview">1 USD = 4,100 KHR</div>
+  </div>
+  <div class="cpanel-row">
+    <label class="cpanel-label">💲 顯示貨幣 Display Currency</label>
+    <select class="cpanel-input" id="cp-currency"
+      onchange="updateDisplayCurrency(this.value)">
+      <option value="KHR">KHR (Riels ៛)</option>
+      <option value="USD">USD ($)</option>
+    </select>
+  </div>
+  <button onclick="applyAndCloseCurrency()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">✅ 套用</button>
+</div>
 
 <!-- HEADER — onboarding style -->
 <header class="header">
@@ -356,16 +512,14 @@
       </div>
     </div>
     <div class="header-actions" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="btn btn-secondary btn-sm" onclick="toggleCurrencyPanel()" title="單價/匯率設定" style="background:#f0fdf4;color:#166534;border-color:#86efac">💱</button>
       <button class="btn btn-primary btn-sm" onclick="openAddModal()">＋ <span data-key="add_record">新增記錄</span></button>
       <button class="btn btn-teal btn-sm" onclick="exportExcel()">⬇ <span data-key="export">匯出</span></button>
       <!-- Lang switch — onboarding style, right side of header -->
-      <div class="lang-switch" style="display:flex;gap:3px;margin-left:4px">
-        <button id="lbZh" data-lang="zh" class="active" onclick="setLang('zh')"
-          style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);color:#e8f4ff;padding:4px 10px;cursor:pointer;border-radius:3px;font-size:12px;font-family:inherit;font-weight:700">中</button>
-        <button id="lbEn" data-lang="en" onclick="setLang('en')"
-          style="background:transparent;border:1px solid rgba(255,255,255,.3);color:#e8f4ff;padding:4px 10px;cursor:pointer;border-radius:3px;font-size:12px;font-family:inherit">EN</button>
-        <button id="lbKm" data-lang="km" onclick="setLang('km')"
-          style="background:transparent;border:1px solid rgba(255,255,255,.3);color:#e8f4ff;padding:4px 10px;cursor:pointer;border-radius:3px;font-size:10px;font-family:inherit">ក</button>
+      <div class="lang-switch">
+        <button id="lbZh" data-lang="zh" class="active" onclick="setLang('zh')">中</button>
+        <button id="lbEn" data-lang="en" onclick="setLang('en')">EN</button>
+        <button id="lbKm" data-lang="km" onclick="setLang('km')">ក</button>
       </div>
     </div>
   </div>
@@ -388,6 +542,12 @@
   <div class="tab-panel active" id="panel-entry">
     <div class="controls-bar">
       <div class="ctrl-group">
+  <div class="period-toggle" style="display:flex;gap:2px;background:#f1f5f9;border-radius:7px;padding:3px;flex-shrink:0">
+    <button class="period-btn" id="pb-day" onclick="setMainPeriod('day',this)">日</button>
+    <button class="period-btn" id="pb-week" onclick="setMainPeriod('week',this)">週</button>
+    <button class="period-btn active" id="pb-month" onclick="setMainPeriod('month',this)">月</button>
+    <button class="period-btn" id="pb-year" onclick="setMainPeriod('year',this)">年</button>
+  </div>
         <span class="ctrl-label" data-key="year">Year</span>
         <select id="sel-year" onchange="loadMonthData()"></select>
       </div>
@@ -418,6 +578,19 @@
       </div>
       <div style="overflow-x:auto">
         <table id="main-table">
+      <colgroup>
+      <col style="width:50px"><!-- Date -->
+      <col style="width:88px"><!-- F Time -->
+      <col style="width:70px"><!-- F Qty -->
+      <col style="width:100px"><!-- F Price -->
+      <col style="width:110px"><!-- F TTL KHR -->
+      <col style="width:88px"><!-- S Time -->
+      <col style="width:70px"><!-- S Qty -->
+      <col style="width:100px"><!-- S Price -->
+      <col style="width:110px"><!-- S TTL KHR -->
+      <col style="width:44px"><!-- Action -->
+    </colgroup>
+      
           <thead>
             <tr>
               <th rowspan="2" style="background:var(--slate-100);color:var(--slate-600)" data-key="date">Date</th>
@@ -430,12 +603,10 @@
               <th class="section-factory" data-key="qty">Qty</th>
               <th class="section-factory" data-key="price">Price (Riels)</th>
               <th class="section-factory">TTL (KHR)</th>
-              <th class="section-factory" style="color:#2563eb">TTL (USD)</th>
               <th class="section-staff" data-key="time">Time</th>
               <th class="section-staff" data-key="qty">Qty</th>
               <th class="section-staff" data-key="price">Price (Riels)</th>
               <th class="section-staff">TTL (KHR)</th>
-              <th class="section-staff" style="color:#0d9488">TTL (USD)</th>
             </tr>
           </thead>
           <tbody id="table-body"></tbody>
@@ -650,127 +821,116 @@
 <div id="toast-container"></div>
 
 <script>
-// ==================== TRANSLATIONS ====================
 const LANGS = {
   en: {
-    app_title: 'Water Drum Record',
-    app_subtitle: 'Factory & Staff House Tracking',
-    tab_entry: 'Data Entry', tab_analysis: 'Analysis', tab_history: 'History',
-    tab_import: 'Import Excel', tab_alerts: 'Alerts', tab_telegram: 'Telegram',
-    add_record: 'Add Record', export: 'Export', save: 'Save', cancel: 'Cancel',
-    year: 'Year', month: 'Month', date: 'Date', time: 'Time', qty: 'Qty',
-    price: 'Price (Riels)', ttl: 'TTL (Riels)', action: 'Action',
-    factory: 'Factory', staff_house: 'Staff House',
-    today: 'Today', clear_month: 'Clear Month',
-    monthly_record: 'Monthly Record',
-    total_factory_qty: 'Factory Qty', total_factory_ttl: 'Factory Total',
-    total_staff_qty: 'Staff Qty', total_staff_ttl: 'Staff Total', grand_total: 'Grand Total',
-    view_by: 'View By', month_period: 'Month', quarter: 'Quarter', year_period: 'Year',
-    history_desc: 'All saved monthly records. Click a card to view details.',
-    import_desc: 'Import Excel files matching the water drum record format.',
-    click_upload: 'Click or drag Excel file here',
-    supports_format: 'Supports .xlsx format matching water drum record template',
-    check_scope: 'Check Scope', all_months: 'All Months', refresh: 'Refresh',
-    bot_token: 'Bot Token', chat_id: 'Chat ID', report_type: 'Report Type',
-    tg_monthly_summary: 'Monthly Summary', tg_daily_report: "Today's Report",
-    tg_anomaly_report: 'Anomaly Report', tg_full_month: 'Full Month Data',
-    select_period: 'Select Period', send_telegram: 'Send to Telegram',
-    preview_msg: 'Preview Message', telegram_send: 'Send to Telegram Group',
-    tg_info: 'To send reports to Telegram, you need a Bot Token and Chat ID.\n1. Create a bot via @BotFather and copy the token.\n2. Add the bot to your group. Send a message, then use getUpdates to find the chat_id.\n3. Enter both below and click Send.',
-    confirm_clear: 'Clear all data for this month?',
-    saved_ok: 'Data saved successfully!', sent_ok: 'Sent to Telegram!',
-    no_token: 'Please enter Bot Token and Chat ID first.',
-    no_data: 'No data for this period.',
-    anomaly_high_price: 'Unusually high price', anomaly_missing: 'Missing data days',
-    anomaly_qty_spike: 'Quantity spike', anomaly_price_inconsist: 'Price inconsistency',
-    rows_per_page: 'Rows', total_row: 'Total',
-    month_names: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
-    import_success: 'Imported successfully!', import_error: 'Import failed.',
-    delete: 'Delete', clear: 'Clear Row',
-    records: 'Records', days_data: 'Days with data',
-    no_alerts: '✅ No anomalies detected for selected period.',
-    preview_title: 'Message Preview',
-    all_good: 'All data looks normal.'
+    app_title:'Water Drum Record', app_subtitle:'Factory & Staff House Tracking',
+    tab_entry:'Data Entry', tab_analysis:'Analysis', tab_history:'History',
+    tab_import:'Import Excel', tab_alerts:'Alerts', tab_telegram:'Telegram',
+    add_record:'Add Record', export:'Export', save:'Save', cancel:'Cancel',
+    year:'Year', month:'Month', date:'Date', time:'Time', qty:'Qty',
+    price:'Price (Riels)', ttl:'TTL (Riels)', action:'Action',
+    factory:'Factory', staff_house:'Staff House',
+    today:'Today', clear_month:'Clear Month', monthly_record:'Monthly Record',
+    total_factory_qty:'Factory Qty', total_factory_ttl:'Factory Total',
+    total_staff_qty:'Staff Qty', total_staff_ttl:'Staff Total', grand_total:'Grand Total',
+    view_by:'View By', quarter:'Quarter', year_period:'Year',
+    history_desc:'All saved monthly records.',
+    import_desc:'Import Excel files matching the water drum record format.',
+    click_upload:'Click or drag Excel file here',
+    supports_format:'Supports .xlsx / .xlsb format',
+    import_success:'Import successful!', import_error:'Import error:',
+    no_data:'No data', no_alerts:'No alerts', all_good:'All records normal.',
+    saved_ok:'Saved', select_period:'Select period',
+    bot_token:'Bot Token', chat_id:'Chat ID', send_telegram:'Send Telegram',
+    sent_ok:'Sent!', no_token:'Please set Bot Token first', preview_msg:'Preview',
+    telegram_send:'Send via Telegram', tg_info:'Telegram Settings',
+    tg_daily_report:'Daily Report', tg_monthly_summary:'Monthly Summary',
+    tg_anomaly_report:'Anomaly Report', tg_full_month:'Full Month Data',
+    report_type:'Report Type', refresh:'Refresh',
+    check_scope:'Check Scope', days_data:'Days of Data',
+    anomaly_qty_spike:'Quantity spike detected',
+    anomaly_high_price:'Price higher than usual',
+    anomaly_missing:'Missing records',
+    anomaly_price_inconsist:'Inconsistent price',
+    confirm_clear:'Clear all data for this month?', clear:'Clear',
+    delete:'Delete', total_row:'TOTAL',
+    month_names:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+    all_months:'All Months',
   },
   zh: {
-    app_title: '水桶管理', app_subtitle: '工廠及職員宿舍水桶追蹤',
-    tab_entry: '數據輸入', tab_analysis: '分析', tab_history: '歷史記錄',
-    tab_import: '匯入Excel', tab_alerts: '異常提醒', tab_telegram: 'Telegram',
-    add_record: '新增記錄', export: '匯出', save: '儲存', cancel: '取消',
-    year: '年', month: '月', date: '日期', time: '時間', qty: '數量',
-    price: '單價 (瑞爾)', ttl: '合計 (瑞爾)', action: '操作',
-    factory: '工廠', staff_house: '員工宿舍',
-    today: '今天', clear_month: '清除本月',
-    monthly_record: '月度記錄',
-    total_factory_qty: '工廠數量', total_factory_ttl: '工廠合計',
-    total_staff_qty: '宿舍數量', total_staff_ttl: '宿舍合計', grand_total: '總計',
-    view_by: '查看方式', month_period: '月', quarter: '季', year_period: '年',
-    history_desc: '所有已儲存的月度記錄。點擊卡片查看詳情。',
-    import_desc: '匯入符合水桶管理格式的Excel文件，按月份儲存。',
-    click_upload: '點擊或拖曳Excel文件到此處',
-    supports_format: '支援 .xlsx / .xlsb 格式（VRT 水桶記錄模板）',
-    check_scope: '檢查範圍', all_months: '所有月份', refresh: '刷新',
-    bot_token: 'Bot Token', chat_id: 'Chat ID', report_type: '報告類型',
-    tg_monthly_summary: '月度摘要', tg_daily_report: '今日報告',
-    tg_anomaly_report: '異常報告', tg_full_month: '完整月度數據',
-    select_period: '選擇時期', send_telegram: '發送至Telegram',
-    preview_msg: '預覽訊息', telegram_send: '發送至Telegram群組',
-    tg_info: '發送報告至Telegram需要Bot Token和Chat ID。\n1. 通過@BotFather創建機器人並複製Token。\n2. 將機器人加入群組，發送一條訊息，然後使用getUpdates找到chat_id。\n3. 填入以下欄位並點擊發送。',
-    confirm_clear: '清除本月所有數據？',
-    saved_ok: '數據儲存成功！', sent_ok: '已發送至Telegram！',
-    no_token: '請先輸入Bot Token和Chat ID。',
-    no_data: '此時段無數據。',
-    anomaly_high_price: '單價異常偏高', anomaly_missing: '數據缺失天數',
-    anomaly_qty_spike: '數量異常', anomaly_price_inconsist: '單價不一致',
-    rows_per_page: '行數', total_row: '合計',
-    month_names: ['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
-    import_success: '匯入成功！', import_error: '匯入失敗。',
-    delete: '刪除', clear: '清除行',
-    records: '記錄', days_data: '有數據天數',
-    no_alerts: '✅ 選定時期內未發現異常。',
-    preview_title: '訊息預覽',
-    all_good: '所有數據正常。'
+    app_title:'水桶管理', app_subtitle:'工廠及職員宿舍水桶追蹤',
+    tab_entry:'數據輸入', tab_analysis:'分析', tab_history:'歷史記錄',
+    tab_import:'匯入Excel', tab_alerts:'異常提醒', tab_telegram:'Telegram',
+    add_record:'新增記錄', export:'匯出', save:'儲存', cancel:'取消',
+    year:'年', month:'月', date:'日期', time:'時間', qty:'數量',
+    price:'單價(瑞爾)', ttl:'合計(瑞爾)', action:'操作',
+    factory:'工廠', staff_house:'員工宿舍',
+    today:'今天', clear_month:'清除本月', monthly_record:'月度記錄',
+    total_factory_qty:'工廠數量', total_factory_ttl:'工廠合計',
+    total_staff_qty:'宿舍數量', total_staff_ttl:'宿舍合計', grand_total:'總計',
+    view_by:'查看方式', quarter:'季度', year_period:'年度',
+    history_desc:'所有已儲存的月度記錄。',
+    import_desc:'匯入符合水桶記錄格式的Excel文件。',
+    click_upload:'點擊或拖拽Excel文件到此',
+    supports_format:'支持 .xlsx / .xlsb 格式',
+    import_success:'匯入成功！', import_error:'匯入錯誤：',
+    no_data:'暫無數據', no_alerts:'無異常', all_good:'所有記錄正常。',
+    saved_ok:'已儲存', select_period:'選擇時段',
+    bot_token:'機器人Token', chat_id:'群組ID', send_telegram:'發送Telegram',
+    sent_ok:'已發送！', no_token:'請先設定Bot Token', preview_msg:'預覽',
+    telegram_send:'通過Telegram發送', tg_info:'Telegram設定',
+    tg_daily_report:'日報', tg_monthly_summary:'月度摘要',
+    tg_anomaly_report:'異常報告', tg_full_month:'完整月度數據',
+    report_type:'報告類型', refresh:'刷新',
+    check_scope:'檢查範圍', days_data:'數據天數',
+    anomaly_qty_spike:'數量異常偏高',
+    anomaly_high_price:'單價偏高',
+    anomaly_missing:'缺少記錄',
+    anomaly_price_inconsist:'單價不一致',
+    confirm_clear:'確定清除本月所有數據？', clear:'清除',
+    delete:'刪除', total_row:'合計',
+    month_names:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
+    all_months:'所有月份',
   },
   km: {
-    app_title: 'កំណត់ត្រាធុងទឹក', app_subtitle: 'តាមដានរោងចក្រ និងផ្ទះបុគ្គលិក',
-    tab_entry: 'បញ្ចូលទិន្នន័យ', tab_analysis: 'វិភាគ', tab_history: 'ប្រវត្តិ',
-    tab_import: 'នាំចូល Excel', tab_alerts: 'ការព្រមាន', tab_telegram: 'Telegram',
-    add_record: 'បន្ថែមកំណត់ត្រា', export: 'នាំចេញ', save: 'រក្សាទុក', cancel: 'បោះបង់',
-    year: 'ឆ្នាំ', month: 'ខែ', date: 'កាលបរិច្ឆេទ', time: 'ម៉ោង', qty: 'បរិមាណ',
-    price: 'តម្លៃ (រៀល)', ttl: 'សរុប (រៀល)', action: 'សកម្មភាព',
-    factory: 'រោងចក្រ', staff_house: 'ផ្ទះបុគ្គលិក',
-    today: 'ថ្ងៃនេះ', clear_month: 'លុបខែ',
-    monthly_record: 'កំណត់ត្រាប្រចាំខែ',
-    total_factory_qty: 'បរិមាណរោងចក្រ', total_factory_ttl: 'សរុបរោងចក្រ',
-    total_staff_qty: 'បរិមាណផ្ទះ', total_staff_ttl: 'សរុបផ្ទះ', grand_total: 'សរុបរួម',
-    view_by: 'មើលតាម', month_period: 'ខែ', quarter: 'ត្រីមាស', year_period: 'ឆ្នាំ',
-    history_desc: 'កំណត់ត្រាប្រចាំខែទាំងអស់ដែលបានរក្សាទុក។ ចុចដើម្បីមើលលម្អិត។',
-    import_desc: 'នាំចូលឯកសារ Excel ដែលត្រូវនឹងទម្រង់កំណត់ត្រាធុងទឹក។',
-    click_upload: 'ចុចឬអូសឯកសារ Excel មកទីនេះ',
-    supports_format: 'គាំទ្រ .xlsx / .xlsb ​ (VRT Water Drum template)',
-    check_scope: 'ពិនិត្យវិសាល', all_months: 'គ្រប់ខែ', refresh: 'ធ្វើឱ្យស្រស់',
-    bot_token: 'Bot Token', chat_id: 'Chat ID', report_type: 'ប្រភេទរបាយការណ៍',
-    tg_monthly_summary: 'សង្ខេបប្រចាំខែ', tg_daily_report: 'របាយការណ៍ថ្ងៃនេះ',
-    tg_anomaly_report: 'របាយការណ៍អសාធារណ', tg_full_month: 'ទិន្នន័យខែពេញ',
-    select_period: 'ជ្រើសរើសរយៈពេល', send_telegram: 'ផ្ញើទៅ Telegram',
-    preview_msg: 'មើលសារ', telegram_send: 'ផ្ញើទៅក្រុម Telegram',
-    tg_info: 'ដើម្បីផ្ញើរបាយការណ៍ទៅ Telegram ត្រូវការ Bot Token និង Chat ID។\n១. បង្កើត bot តាម @BotFather ហើយចម្លង token។\n២. បន្ថែម bot ទៅក្រុម ផ្ញើសារ រួចប្រើ getUpdates ដើម្បីរក chat_id។\n៣. បញ្ចូលទាំងពីរខាងក្រោម ហើយចុចផ្ញើ។',
-    confirm_clear: 'លុបទិន្នន័យទាំងអស់ក្នុងខែនេះ?',
-    saved_ok: 'រក្សាទុកទិន្នន័យដោយជោគជ័យ!', sent_ok: 'ផ្ញើទៅ Telegram ដោយជោគជ័យ!',
-    no_token: 'សូមបញ្ចូល Bot Token និង Chat ID ជាមុន។',
-    no_data: 'គ្មានទិន្នន័យសម្រាប់រយៈពេលនេះ។',
-    anomaly_high_price: 'តម្លៃខ្ពស់ជាងធម្មតា', anomaly_missing: 'ថ្ងៃខ្វះទិន្នន័យ',
-    anomaly_qty_spike: 'បរិមាណខ្ពស់ខ្លាំង', anomaly_price_inconsist: 'តម្លៃមិនស្រប',
-    rows_per_page: 'ជួរ', total_row: 'សរុប',
-    month_names: ['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'],
-    import_success: 'នាំចូលដោយជោគជ័យ!', import_error: 'នាំចូលបរាជ័យ។',
-    delete: 'លុប', clear: 'សម្អាតជួរ',
-    records: 'កំណត់ត្រា', days_data: 'ថ្ងៃដែលមានទិន្នន័យ',
-    no_alerts: '✅ គ្មានភាពខុសប្រក្រតីត្រូវបានរកឃើញ។',
-    preview_title: 'មើលសារជាមុន',
-    all_good: 'ទិន្នន័យទាំងអស់ធម្មតា។'
-  }
+    app_title:'ការគ្រប់គ្រងធុងទឹក', app_subtitle:'តាមដានធុងទឹកនៅរោងចក្រ',
+    tab_entry:'បញ្ចូលទិន្នន័យ', tab_analysis:'វិភាគ', tab_history:'ប្រវត្តិ',
+    tab_import:'នាំចូល Excel', tab_alerts:'ការជូនដំណឹង', tab_telegram:'Telegram',
+    add_record:'បន្ថែមកំណត់ត្រា', export:'នាំចេញ', save:'រក្សាទុក', cancel:'បោះបង់',
+    year:'ឆ្នាំ', month:'ខែ', date:'កាលបរិច្ឆេទ', time:'ម៉ោង', qty:'បរិមាណ',
+    price:'តម្លៃ(រៀល)', ttl:'សរុប(រៀល)', action:'សកម្មភាព',
+    factory:'រោងចក្រ', staff_house:'ផ្ទះបុគ្គលិក',
+    today:'ថ្ងៃនេះ', clear_month:'លុបខែ', monthly_record:'កំណត់ត្រាប្រចាំខែ',
+    total_factory_qty:'បរិមាណរោងចក្រ', total_factory_ttl:'សរុបរោងចក្រ',
+    total_staff_qty:'បរិមាណផ្ទះ', total_staff_ttl:'សរុបផ្ទះ', grand_total:'សរុបធំ',
+    view_by:'មើលតាម', quarter:'ត្រីមាស', year_period:'ឆ្នាំ',
+    history_desc:'កំណត់ត្រាទាំងអស់ដែលបានរក្សាទុក',
+    import_desc:'នាំចូលឯកសារ Excel',
+    click_upload:'ចុចឬអូសឯកសារ Excel មកទីនេះ',
+    supports_format:'គាំទ្រ .xlsx / .xlsb',
+    import_success:'នាំចូលបានជោគជ័យ!', import_error:'បញ្ហានាំចូល:',
+    no_data:'គ្មានទិន្នន័យ', no_alerts:'គ្មានការជូនដំណឹង', all_good:'ទិន្នន័យទាំងអស់ធម្មតា',
+    saved_ok:'រក្សាទុករួចហើយ', select_period:'ជ្រើសរើសរយៈពេល',
+    bot_token:'Bot Token', chat_id:'Chat ID', send_telegram:'ផ្ញើ Telegram',
+    sent_ok:'បានផ្ញើ!', no_token:'សូមដាក់ Bot Token', preview_msg:'មើលជាមុន',
+    telegram_send:'ផ្ញើតាម Telegram', tg_info:'ការកំណត់ Telegram',
+    tg_daily_report:'របាយការណ៍ប្រចាំថ្ងៃ', tg_monthly_summary:'សេចក្តីសង្ខេបប្រចាំខែ',
+    tg_anomaly_report:'របាយការណ៍មិនប្រក្រតី', tg_full_month:'ទិន្នន័យពេញខែ',
+    report_type:'ប្រភេទរបាយការណ៍', refresh:'ធ្វើថ្មី',
+    check_scope:'ពិនិត្យវិសាល', days_data:'ថ្ងៃទិន្នន័យ',
+    anomaly_qty_spike:'បរិមាណខ្ពស់ខុសធម្មតា',
+    anomaly_high_price:'តម្លៃខ្ពស់ជាងធម្មតា',
+    anomaly_missing:'ខ្វះកំណត់ត្រា',
+    anomaly_price_inconsist:'តម្លៃមិនស្ថិតស្ថេរ',
+    confirm_clear:'លុបទិន្នន័យទាំងអស់ក្នុងខែ?', clear:'លុប',
+    delete:'លុប', total_row:'សរុប',
+    month_names:['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'],
+    all_months:'គ្រប់ខែ',
+  },
 };
+
+// ==================== TRANSLATIONS ====================
+
 
 let currentLang = 'en';
 let analysisPeriod = 'month';
@@ -779,19 +939,16 @@ function T(key) { return (LANGS[currentLang] || LANGS.en)[key] || key; }
 
 function setLang(lang) {
   currentLang = lang;
-  // Onboarding-style: toggle active class on .lang-switch buttons
-  document.querySelectorAll('.lang-switch button').forEach(function(b) {
-    var isActive = b.getAttribute('data-lang') === lang;
-    b.classList.toggle('active', isActive);
-    b.style.background = isActive ? 'rgba(255,255,255,.2)' : 'transparent';
-    b.style.fontWeight  = isActive ? '700' : 'normal';
+  // Update button appearance
+  ['zh','en','km'].forEach(function(l) {
+    var btn = document.getElementById('lb'+l.charAt(0).toUpperCase()+l.slice(1));
+    if (!btn) return;
+    btn.style.background = (l===lang) ? 'rgba(255,255,255,.2)' : 'transparent';
+    btn.style.color      = (l===lang) ? '#fff' : 'rgba(255,255,255,.7)';
+    btn.style.fontWeight = (l===lang) ? '700' : 'normal';
   });
-  // Re-apply all data-key translations
   applyTranslations();
-  loadMonthData();
-  try { if (document.getElementById('panel-analysis').classList.contains('active')) renderAnalysis(); } catch(e){}
-  try { if (document.getElementById('panel-history').classList.contains('active'))  renderHistory();  } catch(e){}
-  try { if (document.getElementById('panel-alerts').classList.contains('active'))   renderAlerts();   } catch(e){}
+  if (typeof loadMonthData === 'function') loadMonthData();
 }
 
 function applyTranslations() {
@@ -905,10 +1062,13 @@ function nextMonth() {
 
 // ─── Default Price Management ────────────────────────────────
 function saveDefaultPrices() {
-  var fp = parseFloat(document.getElementById('default-fac-price')?.value || 2000);
-  var sp = parseFloat(document.getElementById('default-sta-price')?.value || 2000);
-  localStorage.setItem('wdr_default_fac_price', fp);
-  localStorage.setItem('wdr_default_sta_price', sp);
+  // Read from whichever input exists (panel or settings)
+  var fpEl = document.getElementById('cp-fac-price') || document.getElementById('default-fac-price');
+  var spEl = document.getElementById('cp-sta-price') || document.getElementById('default-sta-price');
+  var fp = parseFloat((fpEl || {value:'2000'}).value || '2000');
+  var sp = parseFloat((spEl || {value:'2000'}).value || '2000');
+  localStorage.setItem('wdr_default_fac_price', String(fp));
+  localStorage.setItem('wdr_default_sta_price', String(sp));
   // Reload current month rows with new default price filled in
   currentRows.forEach(function(row) {
     if (!row.fQty && !row.fPrice) row.fPrice = fp;
@@ -919,10 +1079,12 @@ function saveDefaultPrices() {
 }
 
 function getDefaultFacPrice() {
-  return parseFloat(localStorage.getItem('wdr_default_fac_price') || 2000);
+  var v = localStorage.getItem('wdr_default_fac_price');
+  return v ? parseFloat(v) : 2000;
 }
 function getDefaultStaPrice() {
-  return parseFloat(localStorage.getItem('wdr_default_sta_price') || 2000);
+  var v = localStorage.getItem('wdr_default_sta_price');
+  return v ? parseFloat(v) : 2000;
 }
 
 function loadDefaultPriceUI() {
@@ -994,13 +1156,11 @@ function renderTable() {
       <td><input type="time" value="${row.fTime||''}" onchange="updateRow(${idx},'fTime',this.value)" ></td>
       <td><input type="number" min="0" value="${row.fQty||''}" placeholder="0" onchange="updateRow(${idx},'fQty',this.value)" style="width:60px"></td>
       <td><input type="number" min="0" value="${row.fPrice||''}" placeholder="0" onchange="updateRow(${idx},'fPrice',this.value)" class="fPrice-inp" style="width:80px"></td>
-      <td><span class="ttl-value" id="fttl-${idx}">${fmtTtl(row.fTtl)}</span></td><td class="usd-cell" style="color:#1d4ed8;font-size:11px;text-align:right;font-family:monospace"><span id="fusd-${idx}">${row.fTtl>0?"$"+(row.fTtl/_rate).toFixed(2):"—"}</span></td>
-      <td style="color:#2563eb;font-size:11px;text-align:right">${row.fTtl>0?'$'+(row.fTtl/_rate).toFixed(2):'—'}</td>
+      <td><span class="ttl-value" id="fttl-${idx}">${fmtTtl(row.fTtl)}</span></td>
       <td><input type="time" value="${row.sTime||''}" onchange="updateRow(${idx},'sTime',this.value)"></td>
       <td><input type="number" min="0" value="${row.sQty||''}" placeholder="0" onchange="updateRow(${idx},'sQty',this.value)" style="width:60px"></td>
       <td><input type="number" min="0" value="${row.sPrice||''}" placeholder="0" onchange="updateRow(${idx},'sPrice',this.value)" class="sPrice-inp" style="width:80px"></td>
-      <td><span class="ttl-value" id="sttl-${idx}">${fmtTtl(row.sTtl)}</span></td><td class="usd-cell" style="color:#0f766e;font-size:11px;text-align:right;font-family:monospace"><span id="susd-${idx}">${row.sTtl>0?"$"+(row.sTtl/_rate).toFixed(2):"—"}</span></td>
-      <td style="color:#0d9488;font-size:11px;text-align:right">${row.sTtl>0?'$'+(row.sTtl/_rate).toFixed(2):'—'}</td>
+      <td><span class="ttl-value" id="sttl-${idx}">${fmtTtl(row.sTtl)}</span></td>
       <td><button class="btn btn-ghost btn-sm" onclick="clearRow(${idx})" title="${T('clear')}">✕</button></td>
     </tr>`;
   });
@@ -1668,9 +1828,10 @@ function loadTgConfig() {
   const ri = document.getElementById('wdr-exchange-rate');
   const ci = document.getElementById('wdr-currency-default');
   const rp = document.getElementById('wdr-rate-preview');
-  if(ri){ ri.value = WDR_CURRENCY.getRate(); }
-  if(ci){ ci.value = WDR_CURRENCY.getDefault(); }
-  if(rp){ rp.textContent = '1 USD = ' + WDR_CURRENCY.getRate().toLocaleString() + ' KHR'; }
+  var _wdrC = (typeof WDR_CURRENCY !== 'undefined') ? WDR_CURRENCY : {getRate:function(){return 4100;},getDefault:function(){return 'KHR';}};
+  if(ri){ ri.value = _wdrC.getRate(); }
+  if(ci){ ci.value = _wdrC.getDefault(); }
+  if(rp){ rp.textContent = '1 USD = ' + _wdrC.getRate().toLocaleString() + ' KHR'; }
 }
 
 function buildTelegramMessage(type, year, month) {
@@ -1760,6 +1921,85 @@ function showToast(msg, type='info') {
 }
 
 // ==================== INIT ====================
+
+function sendToTelegram() { if(typeof previewTelegramMessage==='function') previewTelegramMessage(); }
+function toggleCurrencyPanel() {
+  var p=document.getElementById('currency-panel');
+  if(p) p.classList.toggle('open');
+}
+function applyAndCloseCurrency() {
+  var fp=parseFloat((document.getElementById('cp-fac-price')||{value:'2000'}).value||2000);
+  var sp=parseFloat((document.getElementById('cp-sta-price')||{value:'2000'}).value||2000);
+  localStorage.setItem('wdr_default_fac_price',String(fp));
+  localStorage.setItem('wdr_default_sta_price',String(sp));
+  var r=parseInt((document.getElementById('cp-rate')||{value:'4100'}).value||4100);
+  if(typeof WDR_CURRENCY!=='undefined'){WDR_CURRENCY.setRate(r);}
+  var p=document.getElementById('currency-panel');
+  if(p) p.classList.remove('open');
+  if(typeof renderSummaryCards==='function') renderSummaryCards();
+  showToast('✅ 已套用');
+}
+
+// ── window: expose all onclick functions ──
+if(typeof T==="function") window.T=T;
+if(typeof applyAndCloseCurrency==="function") window.applyAndCloseCurrency=applyAndCloseCurrency;
+if(typeof applyTranslations==="function") window.applyTranslations=applyTranslations;
+if(typeof autoSave==="function") window.autoSave=autoSave;
+if(typeof buildTelegramMessage==="function") window.buildTelegramMessage=buildTelegramMessage;
+if(typeof calcTtl==="function") window.calcTtl=calcTtl;
+if(typeof clearMonth==="function") window.clearMonth=clearMonth;
+if(typeof clearRow==="function") window.clearRow=clearRow;
+if(typeof closeModal==="function") window.closeModal=closeModal;
+if(typeof confirmImport==="function") window.confirmImport=confirmImport;
+if(typeof deleteHistoryMonth==="function") window.deleteHistoryMonth=deleteHistoryMonth;
+if(typeof detectAnomalies==="function") window.detectAnomalies=detectAnomalies;
+if(typeof emptyRow==="function") window.emptyRow=emptyRow;
+if(typeof exportExcel==="function") window.exportExcel=exportExcel;
+if(typeof getAllKeys==="function") window.getAllKeys=getAllKeys;
+if(typeof getDaysInMonth==="function") window.getDaysInMonth=getDaysInMonth;
+if(typeof getDefaultFacPrice==="function") window.getDefaultFacPrice=getDefaultFacPrice;
+if(typeof getDefaultStaPrice==="function") window.getDefaultStaPrice=getDefaultStaPrice;
+if(typeof goToday==="function") window.goToday=goToday;
+if(typeof handleFileDrop==="function") window.handleFileDrop=handleFileDrop;
+if(typeof handleFileSelect==="function") window.handleFileSelect=handleFileSelect;
+if(typeof importAllMonths==="function") window.importAllMonths=importAllMonths;
+if(typeof init==="function") window.init=init;
+if(typeof loadDefaultPriceUI==="function") window.loadDefaultPriceUI=loadDefaultPriceUI;
+if(typeof loadMonthData==="function") window.loadMonthData=loadMonthData;
+if(typeof loadMonthDataRaw==="function") window.loadMonthDataRaw=loadMonthDataRaw;
+if(typeof loadTgConfig==="function") window.loadTgConfig=loadTgConfig;
+if(typeof nextMonth==="function") window.nextMonth=nextMonth;
+if(typeof openAddModal==="function") window.openAddModal=openAddModal;
+if(typeof populateSelects==="function") window.populateSelects=populateSelects;
+if(typeof prevMonth==="function") window.prevMonth=prevMonth;
+if(typeof previewTelegramMessage==="function") window.previewTelegramMessage=previewTelegramMessage;
+if(typeof processExcelImport==="function") window.processExcelImport=processExcelImport;
+if(typeof renderAlerts==="function") window.renderAlerts=renderAlerts;
+if(typeof renderAnalysis==="function") window.renderAnalysis=renderAnalysis;
+if(typeof renderHistory==="function") window.renderHistory=renderHistory;
+if(typeof renderSummaryCards==="function") window.renderSummaryCards=renderSummaryCards;
+if(typeof renderTable==="function") window.renderTable=renderTable;
+if(typeof saveData==="function") window.saveData=saveData;
+if(typeof saveDefaultPrices==="function") window.saveDefaultPrices=saveDefaultPrices;
+if(typeof saveModalRecord==="function") window.saveModalRecord=saveModalRecord;
+if(typeof saveMonthData==="function") window.saveMonthData=saveMonthData;
+if(typeof saveTgConfig==="function") window.saveTgConfig=saveTgConfig;
+if(typeof sendToTelegram==="function") window.sendToTelegram=sendToTelegram;
+if(typeof setAnalysisPeriod==="function") window.setAnalysisPeriod=setAnalysisPeriod;
+if(typeof setLang==="function") window.setLang=setLang;
+if(typeof setMainPeriod==="function") window.setMainPeriod=setMainPeriod;
+if(typeof showTab==="function") window.showTab=showTab;
+if(typeof showToast==="function") window.showToast=showToast;
+if(typeof storageKey==="function") window.storageKey=storageKey;
+if(typeof toggleCurrencyPanel==="function") window.toggleCurrencyPanel=toggleCurrencyPanel;
+if(typeof updateLastSaved==="function") window.updateLastSaved=updateLastSaved;
+if(typeof updatePeriodLabel==="function") window.updatePeriodLabel=updatePeriodLabel;
+if(typeof updateRow==="function") window.updateRow=updateRow;
+if(typeof viewHistoryMonth==="function") window.viewHistoryMonth=viewHistoryMonth;
+if(typeof wdrConfirmImportIdx==="function") window.wdrConfirmImportIdx=wdrConfirmImportIdx;
+if(typeof wdrImportAll==="function") window.wdrImportAll=wdrImportAll;
+if(typeof WDR_CURRENCY!=="undefined") window.WDR_CURRENCY=WDR_CURRENCY;
+
 function init() {
   populateSelects();
   loadMonthData();
@@ -1798,7 +2038,25 @@ window.addEventListener('beforeunload', function() {
     }));
   } catch(e) {}
 });
-</script>
 
+
+/* ── Main period: 日/週/月/年 ──────────────────────────────── */
+var mainPeriod = 'month';
+
+function setMainPeriod(p, btn) {
+  mainPeriod = p;
+  document.querySelectorAll('.period-btn').forEach(function(b){ b.classList.remove('active'); });
+  if (btn) btn.classList.add('active');
+  // Update month dropdown visibility
+  var ms = document.getElementById('sel-month') || document.getElementById('month-select');
+  if (ms) ms.closest && ms.closest('div') && (ms.closest('div').style.display = (p === 'year') ? 'none' : '');
+  // Reload data with new period filter
+  if (typeof loadMonthData === 'function') loadMonthData();
+  if (typeof renderSummaryCards === 'function') renderSummaryCards();
+}
+
+// Wrap renderSummaryCards to respect mainPeriod
+var _origRenderSummaryCards = null;
+</script>
 </body>
 </html>
