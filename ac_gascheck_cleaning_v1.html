@@ -97,7 +97,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 /* Dustbin Map */
 .map-wrap{position:relative;background:#F4FAF6;border:1px solid var(--bdr);border-radius:10px;overflow:hidden;margin-bottom:10px}
 .map-svg{width:100%;cursor:default}
-.map-zone{opacity:.06;cursor:default}
+.map-zone{opacity:1;cursor:pointer}
 .map-bin{cursor:pointer;transition:transform .15s}
 .map-bin:hover{transform:scale(1.25);transform-origin:center}
 .bin-tooltip{pointer-events:none}
@@ -146,6 +146,11 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 .cc { position: relative; height: 200px !important; max-height: 200px; overflow: hidden; }
 .cc canvas { max-height: 200px !important; }
 .cr { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+
+
+/* Map mobile responsive */
+#map-wrap, .map-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+#factory-map-svg { min-width: 700px; }
 
 </style>
   <!-- AC_GASCHECK Shared System -->
@@ -863,34 +868,34 @@ var binMap = (() => {
     const svg = document.getElementById('factory-map-svg');
     if(!svg) return;
     const zones = getZones();
-    let out = '<rect width="800" height="400" fill="#F5FBEF" rx="8"/><rect width="800" height="400" fill="none" stroke="#86EFAC" stroke-width="1" rx="8" opacity=".4"/>';
-    out += '<text x="400" y="18" text-anchor="middle" font-size="10" font-weight="700" fill="#166534" font-family="DM Sans,sans-serif" opacity=".5">VRT DUSTBIN LAYOUT MAP — Click zone to edit</text>';
-    out += '<rect x="5" y="185" width="780" height="2" fill="#16A34A" opacity=".12" rx="1"/>';
-    out += '<text x="400" y="183" text-anchor="middle" font-size="9" fill="#16A34A" opacity=".5" font-family="DM Sans,sans-serif">SEWING LINES</text>';
+    let out = '<rect width="800" height="400" fill="#D9EEE2" rx="8"/><rect width="800" height="400" fill="none" stroke="#7FA691" stroke-width="1.5" rx="8"/><rect width="800" height="400" fill="none" stroke="#86EFAC" stroke-width="1" rx="8" opacity=".4"/>';
+    out += '<text x="400" y="18" text-anchor="middle" font-size="11" font-weight="700" fill="#1A4D2E" font-family="DM Sans,sans-serif">VRT DUSTBIN LAYOUT MAP — Click zone to edit</text>';
+    out += '<rect x="5" y="185" width="780" height="2" fill="#2D7A5A" opacity=".5" rx="1"/>';
+    out += '<text x="400" y="183" text-anchor="middle" font-size="10" fill="#1A5C34" font-weight="700" font-family="DM Sans,sans-serif">SEWING LINES</text>';
 
     zones.forEach(z => {
       const total = Object.values(z.bins).reduce((s,v)=>s+v,0);
       out += `<g class="map-zone" onclick="binMap.editZone('${z.id}')" style="cursor:pointer">`;
-      out += `<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="${z.fill}" opacity=".18" rx="5"/>`;
-      out += `<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="none" stroke="${z.fill}" stroke-width="2" rx="5" opacity=".85"/>`;
-      out += `<text x="${z.x+z.w/2}" y="${z.y+12}" text-anchor="middle" font-size="9" font-weight="800" fill="${z.fill}" font-family="DM Sans,sans-serif" opacity=".95">${z.label}</text>`;
-      if(z.sub) out += `<text x="${z.x+z.w/2}" y="${z.y+22}" text-anchor="middle" font-size="7" fill="${z.fill}" opacity=".9" font-family="DM Sans,sans-serif" font-weight="600">${z.sub}</text>`;
+      out += `<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="${z.fill}" fill-opacity=".40" rx="5"/>`;
+      out += `<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="none" stroke="${z.fill}" stroke-width="2.5" rx="5" stroke-opacity=".85"/>`;
+      out += `<text x="${z.x+z.w/2}" y="${z.y+12}" text-anchor="middle" font-size="11" font-weight="800" fill="#1A3A28" font-family="DM Sans,sans-serif">${z.label}</text>`;
+      if(z.sub) out += `<text x="${z.x+z.w/2}" y="${z.y+22}" text-anchor="middle" font-size="7" fill="${z.fill}" font-family="DM Sans,sans-serif" font-weight="600" fill="#2D5A3D" font-size="9">${z.sub}</text>`;
       let bx = z.x+5; const by = z.y+z.h-22;
       Object.entries(z.bins).forEach(([no,qty])=>{
         const item=getItemByNo(no); if(!item||!qty) return;
-        out += `<circle cx="${bx+8}" cy="${by+8}" r="8" fill="${item.color}" opacity="1"/><text x="${bx+8}" y="${by+12}" text-anchor="middle" font-size="8" fill="#fff" font-family="DM Sans,sans-serif" font-weight="700">${qty}</text>`;
-        bx += 20;
+        out += `<circle cx="${bx+8}" cy="${by+8}" r="11" fill="${item.color}"/><text x="${bx+11}" y="${by+15}" text-anchor="middle" font-size="10" fill="#fff" font-family="DM Sans,sans-serif" font-weight="700">${qty}</text>`;
+        bx += 26;
       });
-      out += `<rect x="${z.x+z.w-20}" y="${z.y+2}" width="18" height="13" fill="${z.fill}" rx="3" opacity=".92"/>`;
-      out += `<text x="${z.x+z.w-11}" y="${z.y+11}" text-anchor="middle" font-size="8" fill="#fff" font-weight="700" font-family="DM Sans,sans-serif">${total}</text>`;
+      out += `<rect x="${z.x+z.w-22}" y="${z.y+2}" width="21" height="15" fill="${z.fill}" rx="4"/>`;
+      out += `<text x="${z.x+z.w-11}" y="${z.y+12}" text-anchor="middle" font-size="10" fill="#fff" font-weight="800" font-family="DM Sans,sans-serif">${total}</text>`;
       out += '</g>';
     });
 
     // Totals bar
     const totals = getTotals();
     const grand = Object.values(totals).reduce((s,v)=>s+v,0);
-    out += '<rect x="5" y="345" width="790" height="38" fill="#166534" opacity=".07" rx="5"/>';
-    out += '<text x="10" y="360" font-size="9" fill="#166534" font-weight="700" font-family="DM Sans,sans-serif">TOTAL:</text>';
+    out += '<rect x="5" y="345" width="790" height="38" fill="#2D7A5A" opacity=".18" rx="5"/>';
+    out += '<text x="10" y="362" font-size="11" fill="#1A4D2E" font-weight="800" font-family="DM Sans,sans-serif">TOTAL:</text>';
     let tx=65;
     BIN_ITEMS.forEach(item=>{
       const q=totals[item.no]||0; if(!q) return;
