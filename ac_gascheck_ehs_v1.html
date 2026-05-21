@@ -145,6 +145,14 @@ select.fi{cursor:pointer}textarea.fi{min-height:55px;resize:vertical}
 @media(max-width:600px){.kg{grid-template-columns:repeat(2,1fr)}.cr{grid-template-columns:1fr}.fgrid{grid-template-columns:1fr}.fgrid.c3{grid-template-columns:1fr 1fr}.fg:nth-child(n){border-right:none}}
 @media print{.topbar,.tabs,.br,.fb,.df{display:none!important}body{background:#fff}.main{max-width:100%;padding:0}}
 </style>
+  <!-- AC_GASCHECK Shared System (./shared/ must exist in repo) -->
+  <link rel="stylesheet" href="./shared/ac_nav.css">
+  <script src="./shared/ac_config.js"></script>
+  <script src="./shared/ac_i18n.js"></script>
+  <script src="./shared/ac_date_engine.js"></script>
+  <script src="./shared/ac_cloud.js"></script>
+  <script src="./shared/ac_telegram.js"></script>
+  <script src="./shared/ac_nav.js"></script>
 </head>
 <body>
 <div class="topbar">
@@ -1093,6 +1101,23 @@ function updateDbInfo(){const db=state.db();const el=document.getElementById('db
 function updateTs(){const d=new Date();const p=n=>String(n).padStart(2,'0');const el=document.getElementById('ts-now');if(el)el.textContent=`${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;}
 
 /* ═══ INIT ═══ */
+
+// ── Expose all modules to window scope (required for inline onclick) ──
+window.i18n     = i18n;
+window.de       = de;
+window.state    = state;
+window.api      = api;
+window.chs      = chs;
+window.ui       = ui;
+window.dash     = dash;
+window.wint     = wint;
+window.wgate    = wgate;
+window.chem     = chem;
+window.trend    = trend;
+window.importer = importer;
+window.cfg      = cfg;
+window.dataMgmt = dataMgmt;
+
 (function init(){
   state.load();
   updateTs(); setInterval(updateTs,1000);
