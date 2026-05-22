@@ -138,6 +138,7 @@ select.bi{cursor:pointer}
   <div class="tab" onclick="switchTab('report')">📊 <span data-i18n="tab-report">報表分析</span></div>
   <div class="tab" onclick="switchTab('history')">📋 <span data-i18n="tab-hist">歷史記錄</span></div>
   <div class="tab" onclick="switchTab('import')">📥 <span data-i18n="tab-import">歷史匯入</span></div>
+  <div class="tab" onclick="switchTab('tg')">✈ Telegram/雲端</div>
 </div>
 
 <div class="main">
@@ -355,9 +356,65 @@ select.bi{cursor:pointer}
 </div><!-- /main -->
 <div id="toast"></div>
 
+<!-- TELEGRAM / GAS TAB -->
+<div id="tab-tg" class="tab-content">
+  <div class="sec">
+    <div class="sec-head">⚙️ 設定 / Settings</div>
+    <div style="padding:16px;max-width:560px">
+
+      <!-- Cloud badge row -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
+        <span style="font-size:12px;font-weight:700;color:var(--dim)">雲端狀態</span>
+        <div id="cloud-badge" style="font-size:9px;font-weight:700;padding:3px 9px;border-radius:20px;border:1px solid;cursor:pointer"
+          onclick="cfg.togglePanel()">☁ GAS</div>
+      </div>
+
+      <!-- GAS URL -->
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--dim);margin-bottom:5px">GAS Web App URL</label>
+        <input id="cfg-gas" class="period-select" type="text"
+          placeholder="https://script.google.com/macros/s/…/exec"
+          style="width:100%;font-family:monospace;font-size:10px;box-sizing:border-box">
+      </div>
+
+      <!-- Bot Token -->
+      <div style="margin-bottom:12px">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--dim);margin-bottom:5px">Telegram Bot Token</label>
+        <input id="cfg-token" class="period-select" type="text"
+          placeholder="8619620911:AAH..."
+          style="width:100%;font-family:monospace;font-size:10px;box-sizing:border-box">
+      </div>
+
+      <!-- Chat ID -->
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:11px;font-weight:700;color:var(--dim);margin-bottom:5px">Telegram Chat ID</label>
+        <input id="cfg-chat" class="period-select" type="text"
+          placeholder="-4002295659"
+          style="width:100%;font-family:monospace;font-size:10px;box-sizing:border-box">
+      </div>
+
+      <!-- Action buttons -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
+        <button onclick="cfg.save()" class="btn" style="background:#2D7A5A;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 儲存設定</button>
+        <button onclick="cfg.testTg()" class="btn" style="background:#0369a1;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit">📤 測試 Telegram</button>
+        <button onclick="cfg.testGas()" class="btn" style="background:#64748b;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit">🔌 測試 GAS</button>
+      </div>
+
+      <!-- Cloud push/pull -->
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <button onclick="cloud.push('internal')" class="btn" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit">☁ 上傳資料</button>
+        <button onclick="cloud.pull('internal')" class="btn" style="background:#475569;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit">⬇ 下載資料</button>
+      </div>
+
+      <div id="cfg-status" style="font-size:12px;color:var(--dim)"></div>
+    </div>
+  </div>
+</div>
+</div>
+
 <script>
 /* ========== CONFIG ========== */
-const GAS_URL  = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID_HERE/exec';
+const CFG_KEY = 'vrt_ehs_cfg_v1';
 const TG_BOT   = '8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM';
 const TG_GROUP = '-4002295659';
 const PAUL_UID = '5026942575';
@@ -392,15 +449,15 @@ function setLang(l){
 
 /* ========== TABS ========== */
 function switchTab(id){
-  document.querySelectorAll('.tab-content').forEach(el=>el.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
-  document.getElementById('tab-'+id).classList.add('active');
-  const tabs=document.querySelectorAll('.tab');
-  const idx=['modA','modB','report','history','import'].indexOf(id);
-  if(tabs[idx])tabs[idx].classList.add('active');
-  if(id==='modB')renderBAnalysis();
-  if(id==='report')renderReport();
-  if(id==='history')queryHistory();
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
+  var tabBtn=document.querySelector('.tab[onclick*="'+id+'"]');
+  var tabPane=document.getElementById('tab-'+id);
+  if(tabBtn) tabBtn.classList.add('active');
+  if(tabPane) tabPane.classList.add('active');
+  else{console.error('Missing tab pane: tab-'+id);return;}
+  if(id === 'tg') { try { cfg.load(); } catch(e){} }
+  if(id==='tg') cfg.load();
 }
 
 /* ========== LOCAL STORAGE ========== */
@@ -1151,7 +1208,7 @@ async function fetchGAS(payload){
 function sendTG(text,chatId){
   fetch('https://api.telegram.org/bot'+TG_BOT+'/sendMessage',{
     method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({chat_id:chatId,text,parse_mode:'Markdown'})
+    body:JSON.stringify({chat_id:chatId,text,parse_mode:'HTML'})
   }).catch(()=>{});
 }
 
@@ -1187,6 +1244,161 @@ function getWeek(d){
   renderAAnalysis();
   renderBAnalysis();
 })();
+
+
+
+/* ═══════════════════════════════════════════════════════════════
+   CFG MODULE — copied from ac_gascheck_dormitory_v1 architecture
+   ═══════════════════════════════════════════════════════════════ */
+var cfg = (() => {
+  let _cfg = {};
+  const load = () => {
+    try { _cfg = JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e) {}
+    if(!_cfg.gasUrl)   _cfg.gasUrl   = '';
+    if(!_cfg.botToken) _cfg.botToken = TG_BOT  || '8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM';
+    if(!_cfg.chatId)   _cfg.chatId   = TG_GROUP || '-4002295659';
+    // Populate settings inputs
+    var g = document.getElementById('cfg-gas');
+    var b = document.getElementById('cfg-token');
+    var c = document.getElementById('cfg-chat');
+    if(g) g.value = _cfg.gasUrl;
+    if(b) b.value = _cfg.botToken;
+    if(c) c.value = _cfg.chatId;
+    updateCloudBadge();
+  };
+  const save = () => {
+    var g = document.getElementById('cfg-gas');
+    var b = document.getElementById('cfg-token');
+    var c = document.getElementById('cfg-chat');
+    _cfg.gasUrl   = g ? g.value.trim() : _cfg.gasUrl;
+    _cfg.botToken = b ? b.value.trim() : _cfg.botToken;
+    _cfg.chatId   = c ? c.value.trim() : _cfg.chatId;
+    localStorage.setItem(CFG_KEY, JSON.stringify(_cfg));
+    updateCloudBadge();
+    showToast('✅ 設定已儲存');
+    var el = document.getElementById('cfg-status');
+    if(el) { el.textContent = '✅ 已儲存 '+new Date().toLocaleTimeString(); el.style.color='#16a34a'; }
+  };
+  const get = () => _cfg;
+  const togglePanel = () => { switchTab('tg'); };
+  const testTg = async () => {
+    const res = await tgPost({ text: '✅ VRT EHS 廢棄物管理系統 Telegram 測試成功！' });
+    var ok = res && res.ok;
+    var el = document.getElementById('cfg-status');
+    if(el) { el.textContent = ok ? '✅ Telegram 連接成功' : '❌ Telegram 失敗：'+(res&&res.description||''); el.style.color = ok?'#16a34a':'#dc2626'; }
+    showToast(ok ? '✅ Telegram OK' : '❌ Telegram 失敗');
+  };
+  const testGas = async () => {
+    try {
+      var d = await gasGet({action:'ping'});
+      var ok = d.ok !== false;
+      var el = document.getElementById('cfg-status');
+      if(el) { el.textContent = ok ? '✅ GAS 連接成功' : '⚠ '+d.message; el.style.color = ok?'#16a34a':'#f59e0b'; }
+      showToast(ok ? '✅ GAS OK' : '⚠ '+d.message);
+      updateCloudBadge(ok);
+    } catch(e) {
+      var el = document.getElementById('cfg-status');
+      if(el) { el.textContent = '❌ GAS 失敗：'+e.message; el.style.color='#dc2626'; }
+      showToast('❌ GAS 失敗：'+e.message);
+      updateCloudBadge(false);
+    }
+  };
+  return { load, save, get, togglePanel, testTg, testGas };
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   FETCH HELPERS — dormitory architecture
+   ═══════════════════════════════════════════════════════════════ */
+var tgPost = async (body) => {
+  var c = cfg.get();
+  var token  = c.botToken || TG_BOT;
+  var chatId = c.chatId   || TG_GROUP;
+  var payload = Object.assign({chat_id: chatId, parse_mode: 'HTML'}, body);
+  try {
+    var r = await fetch('https://api.telegram.org/bot'+token+'/sendMessage', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    return await r.json();
+  } catch(e) { return null; }
+};
+
+var gasGet = async (params) => {
+  var url = cfg.get().gasUrl;
+  if(!url) throw new Error('GAS URL 未設定');
+  var qs = new URLSearchParams(Object.assign({}, params, {_t: Date.now()})).toString();
+  var r  = await fetch(url+'?'+qs, {redirect:'follow'});
+  return r.json();
+};
+
+var gasPost = async (payload) => {
+  var url = cfg.get().gasUrl;
+  if(!url) throw new Error('GAS URL 未設定');
+  var body = new URLSearchParams({payload: JSON.stringify(payload)});
+  var r = await fetch(url, {method:'POST', body, redirect:'follow', headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+  return r.json();
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   CLOUD MODULE
+   ═══════════════════════════════════════════════════════════════ */
+var cloud = (() => {
+  const push = async (type) => {
+    var url = cfg.get().gasUrl;
+    if(!url) { showToast('請先設定 GAS URL'); return; }
+    showToast('☁ 上傳中…');
+    var db = loadLocal();
+    var data = type === 'gate' ? db.gate : db.internal;
+    try {
+      var r = await gasPost({action:'cloudPush', type:type||'internal', rows:data, ts:new Date().toISOString()});
+      var ok = r && r.ok !== false;
+      showToast(ok ? '✅ 已上傳 '+data.length+' 筆' : '❌ 上傳失敗：'+(r&&r.error||''));
+      updateCloudBadge(ok);
+    } catch(e) { showToast('❌ '+e.message); updateCloudBadge(false); }
+  };
+  const pull = async (type) => {
+    var url = cfg.get().gasUrl;
+    if(!url) { showToast('請先設定 GAS URL'); return; }
+    showToast('⬇ 下載中…');
+    try {
+      var r = await gasGet({action:'cloudPull', type:type||'internal'});
+      if(r && Array.isArray(r.rows)) {
+        var db = loadLocal();
+        if(type === 'gate') db.gate = r.rows; else db.internal = r.rows;
+        saveLocal(db);
+        wint.renderABatch(); wgate.renderBBatch();
+        renderAAnalysis(); renderBAnalysis();
+        showToast('✅ 已下載 '+r.rows.length+' 筆');
+        updateCloudBadge(true);
+      } else { showToast('❌ '+(r&&r.error||'無資料')); updateCloudBadge(false); }
+    } catch(e) { showToast('❌ '+e.message); updateCloudBadge(false); }
+  };
+  return { push, pull };
+})();
+
+function updateCloudBadge(ok) {
+  var el  = document.getElementById('cloud-badge');
+  var url = cfg.get().gasUrl;
+  if(!el) return;
+  if(!url) {
+    el.style.cssText += ';background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.5)';
+    el.textContent = '☁ GAS';
+  } else if(ok === false) {
+    el.style.cssText += ';background:rgba(214,65,65,.2);border-color:rgba(214,65,65,.4);color:#f87171';
+    el.textContent = '☁ 失敗';
+  } else {
+    el.style.cssText += ';background:rgba(46,139,87,.2);border-color:rgba(46,139,87,.4);color:#4ade80';
+    el.textContent = '☁ 連接';
+  }
+}
+
+window.cfg   = cfg;
+window.cloud = cloud;
+window.tgPost = tgPost;
+window.gasGet = gasGet;
+window.gasPost = gasPost;
+window.updateCloudBadge = updateCloudBadge;
 </script>
 
 <datalist id="b-namelist">
