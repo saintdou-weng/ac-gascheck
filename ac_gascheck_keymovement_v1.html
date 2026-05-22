@@ -201,14 +201,7 @@ table tr:last-child td { border-bottom: none; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
   <!-- AC_GASCHECK Shared System -->
-  <link rel="stylesheet" href="./shared/ac_nav.css">
-  <script src="./shared/ac_config.js"></script>
-  <script src="./shared/ac_i18n.js"></script>
-  <script src="./shared/ac_date_engine.js"></script>
-  <script src="./shared/ac_cloud.js"></script>
-  <script src="./shared/ac_telegram.js"></script>
-  <script src="./shared/ac_nav.js"></script>
-</head>
+              </head>
 <body>
 
 <!-- TOP BAR -->
@@ -584,19 +577,7 @@ table tr:last-child td { border-bottom: none; }
 <div class="toast" id="toast"></div>
 
 <!-- CONFIRM MODAL -->
-<div class="modal-bg" id="confirm-modal">
-  <div class="modal">
-    <div class="modal-header">
-      <span class="modal-title" id="confirm-title">確認</span>
-      <button class="modal-close" onclick="closeModal('confirm-modal')">✕</button>
-    </div>
-    <p id="confirm-msg" style="margin-bottom:20px;color:var(--text2)"></p>
-    <div class="btn-group">
-      <button class="btn btn-danger" onclick="confirmAction()">確認</button>
-      <button class="btn btn-outline" onclick="closeModal('confirm-modal')">取消</button>
-    </div>
-  </div>
-</div>
+<!-- confirm modal removed: using native confirm() -->
 
 <script>
 // ==================== I18N ====================
@@ -679,15 +660,15 @@ function setLang(l) {
 function t(k) { return I18N[lang][k] || I18N['zh'][k] || k; }
 
 // ==================== DATA ====================
-let records = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
+var records = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
+window.records = records; // explicit global
 let listPeriod = 'all', dashPeriod = 'month', analyticsPeriod = 'month';
-let confirmCb = null;
 let editId = null;
 const DEPTS = ['倉庫','裁剪','車間','成品','馬克','品管','外籍宿舍','當地宿舍','辦公室','行政中心'];
 const DEPT_COLORS = {'倉庫':'#3498db','裁剪':'#e67e22','車間':'#9b59b6','成品':'#27ae60','馬克':'#e91e63','品管':'#00bcd4','外籍宿舍':'#ff5722','當地宿舍':'#795548','辦公室':'#607d8b','行政中心':'#f44336'};
 const KEY_ICONS = {'一般鑰匙':'🗝️','卡片鑰匙':'💳','摩托車鑰匙':'🏍️','汽車鑰匙':'🚗','捲簾門鑰匙':'🔄','掛鎖鑰匙':'🔒','密碼鎖':'🔢','設備鑰匙':'⚙️','宿舍門鑰匙':'🚪','辦公室門鑰匙':'🚪'};
 
-function saveData() { localStorage.setItem('vrt_keys', JSON.stringify(records)); }
+function saveData() { localStorage.setItem('vrt_keys', JSON.stringify(records)); window.records = records; }
 
 // ==================== SECTION NAV ====================
 function showSection(s) {
@@ -797,7 +778,11 @@ function setReturnNow(id) {
 
 // ==================== LIST ====================
 function filterRecords() {
-  let rs = [...records];
+  // Always read fresh from localStorage to guarantee post-delete accuracy
+  var fresh = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
+  records = fresh;
+  window.records = fresh;
+  let rs = [...fresh];
   const now = new Date();
   if(listPeriod !== 'all') {
     rs = rs.filter(r => {
@@ -838,7 +823,6 @@ function renderList() {
   let html = `<table>
     <thead><tr>
       <th><input type="checkbox" id="chk-all" onclick="toggleAllCheck()"></th>
-      <th>${t('col_no')}</th>
       <th>${t('col_issue_date')}</th>
       <th>${t('col_issue_time')}</th>
       <th>${t('col_key_no')}</th>
@@ -862,8 +846,7 @@ function renderList() {
     const icon = KEY_ICONS[r.key_type] || '🗝️';
     html += `<tr>
       <td><input type="checkbox" class="row-chk" value="${r.id}"></td>
-      <td>${i+1}</td>
-      <td>${r.issue_date||''}</td>
+            <td>${r.issue_date||''}</td>
       <td>${r.issue_time||''}</td>
       <td><b>${r.key_no||''}</b></td>
       <td><span class="dept-badge dept-${r.dept}" style="background:${deptColor}">${r.dept||''}</span></td>
@@ -913,21 +896,40 @@ function toggleAllCheck() {
 }
 
 function deleteSelected() {
-  const selected = [...document.querySelectorAll('.row-chk:checked')].map(c => c.value);
+  var selected = Array.from(document.querySelectorAll('.row-chk:checked')).map(function(c) { return c.value; });
   if(!selected.length) { showToast('請選擇要刪除的記錄', 'warn'); return; }
-  openConfirm(`確認刪除 ${selected.length} 筆記錄?`, () => {
-    records = records.filter(r => !selected.includes(r.id));
-    saveData(); renderList(); renderAnomalyBadge();
-    showToast('已刪除 ' + selected.length + ' 筆', 'success');
-  });
+  if(!confirm('確認刪除 '+selected.length+' 筆記錄？')) return;
+  var data = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
+  data = data.filter(function(x) { return !selected.includes(String(x.id)); });
+  localStorage.setItem('vrt_keys', JSON.stringify(data));
+  records = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
+  window.records = records;
+  renderList();
+  renderDashboard();
+  if(typeof renderAnalytics==='function') renderAnalytics();
+  if(typeof renderAnomalies==='function') renderAnomalies();
+  renderAnomalyBadge();
+  showToast('已刪除 '+selected.length+' 筆', 'success');
 }
 
 function promptDelete(id) {
-  openConfirm('確認刪除此記錄?', () => {
-    records = records.filter(r => r.id !== id);
-    saveData(); renderList(); renderAnomalyBadge();
-    showToast('已刪除', 'success');
-  });
+  if(!confirm('確認刪除此記錄？')) return;
+  // 1. Read from localStorage
+  var data = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
+  // 2. Filter out the deleted record
+  data = data.filter(function(x) { return String(x.id) !== String(id); });
+  // 3. Write back to localStorage
+  localStorage.setItem('vrt_keys', JSON.stringify(data));
+  // 4. Reload fresh from localStorage (ensures no stale cache)
+  records = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
+  window.records = records;
+  // 5. Render with updated data
+  renderList();
+  renderDashboard();
+  if(typeof renderAnalytics==='function') renderAnalytics();
+  if(typeof renderAnomalies==='function') renderAnomalies();
+  renderAnomalyBadge();
+  showToast('已刪除', 'success');
 }
 
 // ==================== DASHBOARD ====================
@@ -1376,20 +1378,16 @@ function renderSettings() {
 }
 
 function clearAllData() {
-  openConfirm('⚠️ 確認清除所有數據? 此操作不可恢復！', () => {
-    records = []; saveData(); renderAnomalyBadge();
-    showToast('已清除所有數據', 'warn');
-  });
+  if(!confirm('⚠️ 確認清除所有數據？此操作不可恢復！')) return;
+  records = [];
+  saveData();
+  renderList();
+  renderAnomalyBadge();
+  showToast('已清除所有數據', 'warn');
 }
 
 // ==================== MODAL ====================
-function openConfirm(msg, cb) {
-  document.getElementById('confirm-msg').textContent = msg;
-  confirmCb = cb;
-  document.getElementById('confirm-modal').classList.add('open');
-}
-function confirmAction() { if(confirmCb) confirmCb(); closeModal('confirm-modal'); }
-function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+function closeModal(id){ var el=document.getElementById(id); if(el) el.classList.remove("open"); }
 
 // ==================== TOAST ====================
 let toastTimer;
@@ -1454,39 +1452,67 @@ function loadDemoData() {
   saveData();
 }
 
-window.addEventListener('DOMContentLoaded', () => {
+window.addEventListener('DOMContentLoaded', function() {
   loadDemoData();
   initForm();
   renderAll();
   renderAnomalyBadge();
+
 });
+
+/* ── window scope ── */
+window.clearAllData = clearAllData;
+window.clearForm = clearForm;
+window.closeModal = closeModal;
+window.collectForm = collectForm;
+window.deleteImportMonth = deleteImportMonth;
+window.deleteSelected = deleteSelected;
+window.editRecord = editRecord;
+window.exportAllData = exportAllData;
+window.exportExcel = exportExcel;
+window.filterByPeriod = filterByPeriod;
+window.filterRecords = filterRecords;
+window.getAnomalies = getAnomalies;
+window.getHoursOutstanding = getHoursOutstanding;
+window.getOverdueRecords = getOverdueRecords;
+window.getStatus = getStatus;
+window.getTgSettings = getTgSettings;
+window.handleImportDrop = handleImportDrop;
+window.handleImportFile = handleImportFile;
+window.initForm = initForm;
+window.loadDemoData = loadDemoData;
+window.parseDate = parseDate;
+window.processImportFile = processImportFile;
+window.promptDelete = promptDelete;
+window.renderAll = renderAll;
+window.renderAnalytics = renderAnalytics;
+window.renderAnomalies = renderAnomalies;
+window.renderAnomalyBadge = renderAnomalyBadge;
+window.renderDashAnomalies = renderDashAnomalies;
+window.renderDashboard = renderDashboard;
+window.renderDeptChart = renderDeptChart;
+window.renderImportHistory = renderImportHistory;
+window.renderList = renderList;
+window.renderOutstandingTable = renderOutstandingTable;
+window.renderSettings = renderSettings;
+window.renderTrendChart = renderTrendChart;
+window.saveData = saveData;
+window.saveRecord = saveRecord;
+window.saveTgSettings = saveTgSettings;
+window.setAnalyticsPeriod = setAnalyticsPeriod;
+window.setDashPeriod = setDashPeriod;
+window.setLang = setLang;
+window.setListPeriod = setListPeriod;
+window.setReturnNow = setReturnNow;
+window.showSection = showSection;
+window.showToast = showToast;
+window.t = t;
+window.toggleAllCheck = toggleAllCheck;
+window.updateRecord = updateRecord;
 </script>
-<script>
-(function(){
-  var INIT_NAV = function(){
-    try {
-      if(typeof AC_NAV==='undefined') return;
-      AC_NAV.inject('keymovement',{
-        getRecords: function(){
-          try{
-            var mods = (typeof AC_CFG!=='undefined') ? AC_CFG.MODULES : [];
-            var mod  = mods.find(function(m){return m.id==='keymovement';}) || {};
-            var raw  = localStorage.getItem(mod.lsKey||'');
-            if(!raw) return [];
-            var d = JSON.parse(raw);
-            if(Array.isArray(d)) return d;
-            if(d.records) return d.records;
-            return Object.values(d).filter(Array.isArray).reduce(function(a,b){return a.concat(b);}, []);
-          }catch(e){return [];}
-        },
-        onPull: function(recs){ console.log('Pulled keymovement:', recs.length); }
-      });
-      if(typeof AC_CLOUD!=='undefined') setTimeout(function(){AC_CLOUD.updateBar();}, 500);
-    } catch(e) { console.warn('AC_NAV init failed:', e); }
-  };
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', INIT_NAV);
-  else INIT_NAV();
-})();
-</script>
+
+</body>
+</html>
+});
 </body>
 </html>
