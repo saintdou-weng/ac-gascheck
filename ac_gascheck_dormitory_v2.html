@@ -811,7 +811,7 @@ var cfg = (() => {
   let _cfg = {};
   const load = () => {
     try { _cfg=JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e){}
-    if(!_cfg.gasUrl)    _cfg.gasUrl='';
+    if(!_cfg.gasUrl)    _cfg.gasUrl=localStorage.getItem('ac_gascheck_gas_url')||'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
     if(!_cfg.botToken)  _cfg.botToken=localStorage.getItem('ac_gascheck_tg_token')||'8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
     if(!_cfg.chatId)    _cfg.chatId=localStorage.getItem('ac_gascheck_tg_chat')||'-5113064563';
     if(!_cfg.approverTgId) _cfg.approverTgId='5026942575';
@@ -834,6 +834,7 @@ var cfg = (() => {
     _cfg.botToken  = gv('cfg-token');
     _cfg.chatId    = gv('cfg-chat');
     _cfg.approverTgId = gv('cfg-apvid');
+    if(_cfg.gasUrl) localStorage.setItem('ac_gascheck_gas_url',_cfg.gasUrl);
     localStorage.setItem(CFG_KEY, JSON.stringify(_cfg));
     updateCloudBadge();
     toast('✅ 設定已儲存');
@@ -982,8 +983,10 @@ var cloud = (() => {
     try {
       const r=await gasGet({action:'pull',tool:'dormitory'});
       if(r.ok!==false&&Array.isArray(r.records)) {
-        state.db().records=r.records; state.save();
-        toast(`✅ 下載完成 (${r.records.length}筆)`); dash.render();
+        const local=state.db().records||[];
+        const merged=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(local,r.records,'id','updatedAt').list:r.records;
+        state.db().records=merged; state.save();
+        toast(`✅ 下載完成 (${r.records.length}筆，合併後 ${merged.length}筆)`); dash.render();
       } else { toast('❌ 下載失敗: '+(r.error||'')); }
       updateCloudBadge(r.ok!==false);
     } catch(e){ toast('❌ '+e.message); updateCloudBadge(false); }
@@ -1771,14 +1774,15 @@ function goApply(t) {
       weather:false,
       photo:true,
       importSchema:{"name": ["姓名", "name", "ឈ្មោះ"], "gender": ["性別", "gender", "ភេទ"], "idNo": ["身分證", "idno", "id", "អត្តសញ្ញាណប័ណ្ណ"], "department": ["部門", "dept", "department", "នាយកដ្ឋាន"], "roomNo": ["房號", "room", "roomno", "បន្ទប់"], "date": ["日期", "date", "ថ្ងៃ"], "reason": ["原因", "reason", "មូលហេតុ"]},
-    read(){ try{ const raw=localStorage.getItem('vrt_dorm_draft'); if(!raw) return [];
+    read(){ try{ const raw=localStorage.getItem('vrt_dorm_hub_v2'); if(!raw) return [];
         const d=JSON.parse(raw); if(Array.isArray(d)) return d;
+        if(Array.isArray(d.records)) return d.records;
         for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])) return d[k];
         return []; }catch(e){ return []; } },
-    write(list){ try{ const raw=localStorage.getItem('vrt_dorm_draft'); let d=raw?JSON.parse(raw):null;
-        if(Array.isArray(d)||d===null){ localStorage.setItem('vrt_dorm_draft',JSON.stringify(list)); return; }
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])){ d[k]=list; localStorage.setItem('vrt_dorm_draft',JSON.stringify(d)); return; }
-        d.records=list; localStorage.setItem('vrt_dorm_draft',JSON.stringify(d)); }catch(e){ localStorage.setItem('vrt_dorm_draft',JSON.stringify(list)); } },
+    write(list){ try{ const raw=localStorage.getItem('vrt_dorm_hub_v2'); let d=raw?JSON.parse(raw):null;
+        if(Array.isArray(d)||d===null){ localStorage.setItem('vrt_dorm_hub_v2',JSON.stringify({records:list})); return; }
+        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])){ d[k]=list; localStorage.setItem('vrt_dorm_hub_v2',JSON.stringify(d)); return; }
+        d.records=list; localStorage.setItem('vrt_dorm_hub_v2',JSON.stringify(d)); }catch(e){ localStorage.setItem('vrt_dorm_hub_v2',JSON.stringify({records:list})); } },
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();

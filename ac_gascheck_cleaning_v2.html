@@ -601,9 +601,10 @@ var state = (() => {
 
 /* ═══ API MODULE ═══ */
 var api = (() => {
+  const _GAS_DEFAULT = 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
   const _TG_TOKEN_DEFAULT = '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
   const _TG_CHAT_DEFAULT = '-5113064563';
-  var cfg = () => state.db().cfg || {};
+  var cfg = () => { const c=state.db().cfg || {}; if(!c.gasUrl)c.gasUrl=localStorage.getItem('ac_gascheck_gas_url')||_GAS_DEFAULT; return c; };
   const post = async (payload) => {
     const c=cfg(); if(!c.gasUrl) return {ok:false};
     const body=new URLSearchParams({payload:JSON.stringify(payload)});
@@ -727,7 +728,7 @@ var rec = (() => {
     };
     state.db().records.push(record);
     state.save();
-    try { await api.post({action:'cleaningSave',data:record}); record.synced=true; state.save(); } catch(e){}
+    try { const cloudRes=await api.post({action:'push',tool:'cleaning',records:[record]}); if(cloudRes&&cloudRes.ok!==false){record.synced=true;state.save();} } catch(e){}
     ui.toast('✅ 記錄已儲存');
     clear();
   };
@@ -791,12 +792,7 @@ var hist = (() => {
     const db=state.db();
     ui.toast('☁ 上傳中…');
     try {
-      const res = await api.post({
-        action:'cleaningUpload',
-        records:db.records, cleaners:db.cleaners, checkers:db.checkers,
-        bins:db.bins, locations:db.locations, slots:db.slots,
-        sixsRecords:db.sixsRecords
-      });
+      const res = await api.post({action:'push',tool:'cleaning',records:db.records});
       if(res&&res.ok!==false){
         db.records.forEach(r=>r.synced=true);
         state.save(); query(); ui.toast(`☁ 已上傳 (${db.records.length}筆)`);
@@ -806,13 +802,11 @@ var hist = (() => {
   const downloadCloud = async () => {
     ui.toast('⬇ 下載中…');
     try {
-      const res = await api.get({action:'cleaningDownload'});
-      if(res&&res.ok!==false){
+      const res = await api.get({action:'pull',tool:'cleaning'});
+      if(res&&res.ok!==false&&Array.isArray(res.records)){
         const db=state.db();
         /* 安全合併：ID 聯集 + updatedAt 比對，本地資料永不消失 */
-        const _mg=(k)=>{ if(!Array.isArray(res[k]))return;
-          db[k]=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(db[k]||[],res[k],'id','updatedAt').list:(db[k]||[]); };
-        ['records','cleaners','checkers','bins','locations','slots','sixsRecords'].forEach(_mg);
+        db.records=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(db.records||[],res.records,'id','updatedAt').list:(db.records||[]).concat(res.records);
         state.save();
         state.populate(); dash.render(); query();
         binMap.render(); renderStaff(); updateDbInfo();
@@ -1171,11 +1165,12 @@ var areas = (() => {
 var cfg = (() => {
   const load = () => {
     const c=state.db().cfg||{};
-    sv('cfg-gas',c.gasUrl||''); sv('cfg-token',c.botToken||''); sv('cfg-chat',c.chatId||'');
+    sv('cfg-gas',c.gasUrl||localStorage.getItem('ac_gascheck_gas_url')||''); sv('cfg-token',c.botToken||''); sv('cfg-chat',c.chatId||'');
     renderStaff(); renderSlotTags();
   };
   const save = () => {
     state.db().cfg={gasUrl:gv('cfg-gas'),botToken:gv('cfg-token'),chatId:gv('cfg-chat')};
+    if(gv('cfg-gas')) localStorage.setItem('ac_gascheck_gas_url',gv('cfg-gas'));
     state.save(); ui.toast('✅ 設定已儲存');
   };
   const testTg = async () => {
@@ -1319,7 +1314,7 @@ function renderSlotTags(){
 }
 
 function slot_del(i){state.db().slots.splice(i,1);state.save();renderSlotTags();renderSlots();}
-function delRec(id){if(!confirm('確定刪除？'))return;state.db().records=state.db().records.filter(r=>r.id!==id);state.save();hist.query();}
+function delRec(id){if(!confirm('確定刪除？'))return;state.db().records=state.db().records.filter(r=>r.id!==id);state.save();hist.query();api.post({action:'delete',tool:'cleaning',id:id}).catch(function(){});}
 function delBin(id){if(!confirm('確定刪除？'))return;state.db().bins=state.db().bins.filter(b=>b.id!==id);state.save();binMap.render();}
 function delArea(id){if(!confirm('確定刪除地點？'))return;state.db().locations=state.db().locations.filter(l=>l.id!==id);state.save();areas.render();state.populate();}
 function calcSixsScore(){sixs.calcScore();sixs.updateHeader();}

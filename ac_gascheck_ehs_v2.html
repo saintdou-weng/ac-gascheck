@@ -1277,7 +1277,7 @@ var cfg = (() => {
   let _cfg = {};
   const load = () => {
     try { _cfg = JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e) {}
-    if(!_cfg.gasUrl)   _cfg.gasUrl   = '';
+    if(!_cfg.gasUrl)   _cfg.gasUrl   = localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
     if(!_cfg.botToken) _cfg.botToken = TG_BOT  || '8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM';
     if(!_cfg.chatId)   _cfg.chatId   = TG_GROUP || '-4002295659';
     // Populate settings inputs
@@ -1296,6 +1296,7 @@ var cfg = (() => {
     _cfg.gasUrl   = g ? g.value.trim() : _cfg.gasUrl;
     _cfg.botToken = b ? b.value.trim() : _cfg.botToken;
     _cfg.chatId   = c ? c.value.trim() : _cfg.chatId;
+    if(_cfg.gasUrl) localStorage.setItem('ac_gascheck_gas_url',_cfg.gasUrl);
     localStorage.setItem(CFG_KEY, JSON.stringify(_cfg));
     updateCloudBadge();
     showToast('✅ 設定已儲存');
@@ -1367,14 +1368,21 @@ var gasPost = async (payload) => {
    CLOUD MODULE
    ═══════════════════════════════════════════════════════════════ */
 var cloud = (() => {
+  const mergeRows = (local, remote) => {
+    const map=new Map();
+    (local||[]).forEach(r=>{if(!r)return;const k=String(r.id||((r.date||'')+'|'+(r.time||'')+'|'+(r.module||'')));map.set(k,r);});
+    (remote||[]).forEach(r=>{if(!r)return;const k=String(r.id||((r.date||'')+'|'+(r.time||'')+'|'+(r.module||''))),old=map.get(k);if(!old)map.set(k,r);else{const ot=String(old.updatedAt||''),nt=String(r.updatedAt||'');if(nt&&(!ot||nt>ot))map.set(k,Object.assign({},old,r));}});
+    return Array.from(map.values());
+  };
   const push = async (type) => {
     var url = cfg.get().gasUrl;
     if(!url) { showToast('請先設定 GAS URL'); return; }
     showToast('☁ 上傳中…');
     var db = loadLocal();
-    var data = type === 'gate' ? db.gate : db.internal;
+    var data = type === 'gate' ? db.gate : type === 'monthly' ? db.monthly : db.internal;
+    var records = (data||[]).map((r,i)=>Object.assign({},r,{id:r.id||((type||'internal')+'_'+(r.date||'')+'_'+(r.time||'')+'_'+i),module:type||'internal',updatedAt:r.updatedAt||_localTS()}));
     try {
-      var r = await gasPost({action:'cloudPush', type:type||'internal', rows:data, ts:_localTS()});
+      var r = await gasPost({action:'push', tool:'ehs', records:records});
       var ok = r && r.ok !== false;
       showToast(ok ? '✅ 已上傳 '+data.length+' 筆' : '❌ 上傳失敗：'+(r&&r.error||''));
       updateCloudBadge(ok);
@@ -1385,14 +1393,16 @@ var cloud = (() => {
     if(!url) { showToast('請先設定 GAS URL'); return; }
     showToast('⬇ 下載中…');
     try {
-      var r = await gasGet({action:'cloudPull', type:type||'internal'});
-      if(r && Array.isArray(r.rows)) {
+      var r = await gasGet({action:'pull', tool:'ehs'});
+      if(r && Array.isArray(r.records)) {
         var db = loadLocal();
-        if(type === 'gate') db.gate = r.rows; else db.internal = r.rows;
+        var rows=r.records.filter(x=>!x.module||x.module===(type||'internal'));
+        if(type === 'gate') db.gate = mergeRows(db.gate,rows); else if(type === 'monthly') db.monthly = mergeRows(db.monthly,rows); else db.internal = mergeRows(db.internal,rows);
         saveLocal(db);
-        wint.renderABatch(); wgate.renderBBatch();
+        if(typeof renderABatch==='function') renderABatch();
+        if(typeof renderBBatch==='function') renderBBatch();
         renderAAnalysis(); renderBAnalysis();
-        showToast('✅ 已下載 '+r.rows.length+' 筆');
+        showToast('✅ 已下載 '+rows.length+' 筆');
         updateCloudBadge(true);
       } else { showToast('❌ '+(r&&r.error||'無資料')); updateCloudBadge(false); }
     } catch(e) { showToast('❌ '+e.message); updateCloudBadge(false); }

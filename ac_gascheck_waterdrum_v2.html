@@ -5,7 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Water Drum Record 水桶管理 កំណត់ត្រាធុងទឹក</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script>
 /* ── Currency Panel Functions ──────────────────────────────── */
 function toggleCurrencyPanel() {
   var panel = document.getElementById('currency-panel');
@@ -629,7 +630,7 @@ document.addEventListener('click', function(e) {
       </div>
       <div class="ctrl-group">
         <select id="an-year" onchange="renderAnalysis()"></select>
-        <select id="an-month" onchange="renderAnalysis()" id="an-month-sel"></select>
+        <select id="an-month" onchange="renderAnalysis()"></select>
       </div>
     </div>
     <div id="analysis-content"></div>
@@ -2081,14 +2082,12 @@ var _origRenderSummaryCards = null;
       weather:false,
       photo:true,
       importSchema:{"year": ["年", "year", "ឆ្នាំ"], "month": ["月", "month", "ខែ"], "zone": ["區域", "zone", "តំបន់"], "name": ["名稱", "name", "ឈ្មោះ"], "reading_start": ["期初", "start", "readingstart", "ដើមគ្រា"], "reading_end": ["期末", "end", "readingend", "ចុងគ្រា"], "notes": ["備註", "note", "ចំណាំ"]},
-    read(){ try{ const raw=localStorage.getItem('wdr_data'); if(!raw) return [];
-        const d=JSON.parse(raw); if(Array.isArray(d)) return d;
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])) return d[k];
-        return []; }catch(e){ return []; } },
-    write(list){ try{ const raw=localStorage.getItem('wdr_data'); let d=raw?JSON.parse(raw):null;
-        if(Array.isArray(d)||d===null){ localStorage.setItem('wdr_data',JSON.stringify(list)); return; }
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])){ d[k]=list; localStorage.setItem('wdr_data',JSON.stringify(d)); return; }
-        d.records=list; localStorage.setItem('wdr_data',JSON.stringify(d)); }catch(e){ localStorage.setItem('wdr_data',JSON.stringify(list)); } },
+    read(){ try{
+        return getAllKeys().reduce((out,k)=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/),rows=JSON.parse(localStorage.getItem(k)||'[]');if(!m||!Array.isArray(rows))return out;return out.concat(rows.map(row=>Object.assign({},row,{id:'wdr_'+m[1]+'_'+m[2]+'_'+row.day,date:m[1]+'-'+m[2]+'-'+String(row.day).padStart(2,'0'),year:+m[1],month:+m[2],updatedAt:localStorage.getItem('wdr_last_saved')||''})));},[]);
+      }catch(e){ return []; } },
+    write(list){ try{
+        const buckets={};(list||[]).forEach(r=>{const d=String(r.date||'');const y=String(r.year||d.slice(0,4)),m=String(r.month||d.slice(5,7)).padStart(2,'0');if(!/^\d{4}$/.test(y)||!/^(0[1-9]|1[0-2])$/.test(m))return;const row=Object.assign({},r.row||r);delete row.id;delete row.date;delete row.year;delete row.month;delete row.updatedAt;delete row.zone;buckets[y+'_'+m]=buckets[y+'_'+m]||[];const ix=buckets[y+'_'+m].findIndex(x=>String(x.day)===String(row.day));if(ix>=0)buckets[y+'_'+m][ix]=row;else buckets[y+'_'+m].push(row);});Object.keys(buckets).forEach(k=>{buckets[k].sort((a,b)=>(+a.day||0)- (+b.day||0));const p=k.split('_');saveMonthData(+p[0],+p[1],buckets[k]);});
+      }catch(e){ console.warn('water cloud write failed',e); } },
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();

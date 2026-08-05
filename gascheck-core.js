@@ -269,30 +269,35 @@ const CLOUD = GC.cloud = {
    */
   async upload(tool, localList, opt) {
     opt = opt || {};
-    let toSend = localList;
+    const toCloud = typeof opt.toCloud === 'function' ? opt.toCloud : (r => r);
+    const fromCloud = typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r);
+    const localCloudList = (localList || []).map(toCloud);
+    let toSend = localCloudList;
     // 先拉雲端合併 → 保證不覆蓋他人資料
     try {
       const d = await CLOUD.get({ action: 'pull', tool });
       const cloudList = (d && d.data && d.data.list) || (d && d.list) || [];
       if (cloudList.length) {
-        toSend = CLOUD.merge(localList, cloudList, opt.idKey, opt.tsKey).list;
+        toSend = CLOUD.merge(localCloudList, cloudList, opt.idKey, opt.tsKey).list;
       }
     } catch (e) { /* 拉不到就直接送本地，不阻擋 */ }
 
+    const extra = typeof opt.extra === 'function' ? (opt.extra() || {}) : (opt.extra || {});
     const res = await CLOUD.post(Object.assign({
       type: 'save', tool, updatedAt: U.now(), list: toSend
-    }, opt.extra || {}));
-    return { res, list: toSend };
+    }, extra));
+    return { res, list: toSend.map(fromCloud) };
   },
 
   /** 下載 + 安全合併（回傳合併後清單，不直接覆蓋） */
   async download(tool, localList, opt) {
     opt = opt || {};
     const d = await CLOUD.get({ action: 'pull', tool });
-    const cloudList = (d && d.data && d.data.list) || (d && d.list) || [];
-    if (!cloudList.length) return { list: localList, stat: null, empty: true };
+    const rawCloudList = (d && d.data && d.data.list) || (d && d.list) || [];
+    const cloudList = (rawCloudList || []).map(typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r));
+    if (!cloudList.length) return { list: localList, stat: null, empty: true, response: d };
     const m = CLOUD.merge(localList, cloudList, opt.idKey, opt.tsKey);
-    return { list: m.list, stat: m.stat, empty: false };
+    return { list: m.list, stat: m.stat, empty: false, response: d };
   },
 
   /**
@@ -879,6 +884,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
       const r = await CLOUD.download(opt.tool, local, { idKey: opt.idKey, tsKey: opt.tsKey });
       if (r.empty) GC.toast('⚠ ' + I18.t('gc.noCloud'), 'warning');
       else {
+        if (opt.onRemote) opt.onRemote(r.response || {});
         if (opt.setList) opt.setList(r.list);
         GC.toast('⬇ ' + I18.t('gc.downloaded') + ' — ' +
           r.stat.added + ' ' + I18.t('gc.added') + ' / ' +
@@ -920,6 +926,7 @@ GC.attach = function (cfg) {
   const bar = document.createElement('div');
   bar.className = 'gc-bar';
   bar.innerHTML = `
+    <div class="gc-quick" id="gcQuick"></div>
     <button type="button" class="gc-bar-toggle" id="gcBarToggle" title="AC GASCheck">
       <span class="gc-bar-ic">☁️</span>
       <span class="gc-bar-tx">${U.escapeHtml(C.title || C.tool)}</span>
@@ -959,12 +966,18 @@ GC.attach = function (cfg) {
     onChange: m => { period = m; refresh(); }
   });
 
-  GC.mountCloudButtons('#gcCloud', {
+  const cloudOpt = {
     tool: C.tool, idKey: C.idField, tsKey: 'updatedAt',
+    toCloud: C.toCloud,
+    fromCloud: C.fromCloud,
     getList: () => C.read() || [],
     setList: list => C.write(list),
+    onRemote: d => { if (C.onRemote) C.onRemote(d || {}); },
     onDone: () => { refresh(); if (C.onSync) C.onSync(); }
-  });
+  };
+  // 固定列直接顯示上傳／下載，避免按鈕只藏在設定面板內看不到。
+  GC.mountCloudButtons('#gcQuick', cloudOpt);
+  GC.mountCloudButtons('#gcCloud', cloudOpt);
 
   if (C.importSchema) {
     GC.import.mount('#gcImport', {
@@ -1029,7 +1042,9 @@ GC.attach = function (cfg) {
 
 /* ── 面板樣式 ── */
 const BAR_CSS = `
-.gc-bar{position:fixed;right:14px;bottom:14px;z-index:9500;font-family:inherit}
+.gc-bar{position:fixed;right:14px;bottom:14px;z-index:9500;font-family:inherit;display:flex;align-items:center;gap:6px}
+.gc-quick{display:inline-flex;align-items:center;gap:4px;padding:4px;border-radius:24px;background:rgba(255,255,255,.96);box-shadow:0 4px 16px rgba(26,62,120,.22);border:1px solid #D8DCE6}
+.gc-quick .gc-cloud-btn{padding:7px 10px;font-size:11px}
 .gc-bar-toggle{display:flex;align-items:center;gap:7px;padding:10px 16px;border:0;border-radius:24px;
   background:#1A3E78;color:#fff;font:600 13px/1 inherit;cursor:pointer;box-shadow:0 4px 16px rgba(26,62,120,.34)}
 .gc-bar-toggle:hover{background:#153268}
@@ -1050,6 +1065,7 @@ const BAR_CSS = `
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
 @media(max-width:480px){
   .gc-bar{right:10px;bottom:10px}
+  .gc-quick .gc-cloud-btn{padding:7px 9px}
   .gc-bar-tx{display:none}
   .gc-panel{width:calc(100vw - 20px)}
 }

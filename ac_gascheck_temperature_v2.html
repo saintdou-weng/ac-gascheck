@@ -72,6 +72,7 @@ input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--pr
 .cb{padding:18px;}
 /* CTRL BAR */
 .cbar{background:var(--card);border-radius:var(--r);padding:13px 18px;margin-bottom:16px;box-shadow:var(--shadow-sm);border:1px solid var(--border);display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.rec-weather{display:flex;align-items:center;gap:7px;flex:1 1 300px;min-width:260px}.rec-weather .gc-weather{gap:4px}.rec-weather .gc-wx-btn{min-width:42px;padding:4px 6px}.rec-weather .gc-wx-ic{font-size:15px}.rec-weather .gc-wx-tx{font-size:9px}
 .clbl{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
 /* STAT CARDS */
 .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;}
@@ -195,13 +196,6 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-  <link rel="stylesheet" href="./shared/ac_nav.css">
-  <script src="./shared/ac_config.js"></script>
-  <script src="./shared/ac_i18n.js"></script>
-  <script src="./shared/ac_date_engine.js"></script>
-  <script src="./shared/ac_cloud.js"></script>
-  <script src="./shared/ac_telegram.js"></script>
-  <script src="./shared/ac_nav.js"></script>
 <script src="./gascheck-core.js"></script>
 </head>
 <body>
@@ -236,9 +230,9 @@ tbody tr:hover{background:var(--bg);}
     <span class="clbl" id="i-date">日期</span>
     <input type="date" id="dash-date" style="width:155px" onchange="renderDash()">
     <div class="ptog">
-      <button class="pbtn on" id="dbam" onclick="setDP('morning')" id="i-am">早上</button>
-      <button class="pbtn" id="dbpm" onclick="setDP('afternoon')" id="i-pm">下午</button>
-      <button class="pbtn" id="dball" onclick="setDP('all')" id="i-all">全天</button>
+      <button class="pbtn on" id="dbam" onclick="setDP('morning')">早上</button>
+      <button class="pbtn" id="dbpm" onclick="setDP('afternoon')">下午</button>
+      <button class="pbtn" id="dball" onclick="setDP('all')">全天</button>
     </div>
     <button class="btn bp sm ml" onclick="showTab('rec')" id="i-addrec">＋ 新增記錄</button>
   </div>
@@ -255,7 +249,8 @@ tbody tr:hover{background:var(--bg);}
       <button class="pbtn on" id="rbam" onclick="setRP('morning')">早上</button>
       <button class="pbtn" id="rbpm" onclick="setRP('afternoon')">下午</button>
     </div>
-    <input type="text" id="rec-note" style="width:180px" placeholder="備註（可選）" id="i-note-ph">
+    <div class="rec-weather"><span class="clbl">🌤️ 天氣 Weather</span><div id="rec-wx"></div></div>
+    <input type="text" id="rec-note" style="width:180px" placeholder="備註（可選）">
     <button class="btn bp ml" onclick="saveAllRec()" id="i-saveall">💾 全部儲存</button>
     <button class="btn bg" onclick="clearRI()" id="i-clear">清除</button>
   </div>
@@ -417,7 +412,7 @@ tbody tr:hover{background:var(--bg);}
         <div class="cb">
           <div class="fg" style="margin-bottom:10px"><label>GAS Web App URL</label><input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/..." oninput="saveGAScfg()"></div>
           <div class="flw" style="gap:6px">
-            <div class="fl" style="gap:5px"><div class="syncdt sd-idle" id="sdot"></div><span class="sm-t muted" id="sstatus" id="i-idle">未連接</span></div>
+            <div class="fl" style="gap:5px"><div class="syncdt sd-idle" id="sdot"></div><span class="sm-t muted" id="sstatus">未連接</span></div>
             <button class="btn bg sm" onclick="testGAS()" id="i-testcon">🔗 測試</button>
             <button class="btn bp sm" onclick="syncUp()" id="i-syncup">⬆ 上傳</button>
             <button class="btn bg sm" onclick="syncDown()" id="i-pull">⬇ 拉取</button>
@@ -520,7 +515,7 @@ tbody tr:hover{background:var(--bg);}
   <p id="cf-msg" style="color:var(--text2);margin-bottom:8px"></p>
   <div class="mact">
     <button class="btn bg" onclick="closeMod('cf-over')" id="i-cancel3">取消</button>
-    <button class="btn bd" id="cf-ok" id="i-confirm">確認</button>
+    <button class="btn bd" id="cf-ok">確認</button>
   </div>
 </div></div>
 
@@ -658,8 +653,8 @@ const getTH=()=>{try{const d=localStorage.getItem(LSTH);return d?JSON.parse(d):J
 const setTH=t=>localStorage.setItem(LSTH,JSON.stringify(t));
 const getTG=()=>{try{const d=localStorage.getItem(LSTG);return d?JSON.parse(d):{tok:'',chat:''};}catch{return {tok:'',chat:''};}}
 const setTG=c=>localStorage.setItem(LSTG,JSON.stringify(c));
-const getGAS=()=>{try{const d=localStorage.getItem(LSGAS);const p=d?JSON.parse(d):{url:''};return (p&&p.url)?p:{url:GAS_DEFAULT_URL};}catch{return {url:GAS_DEFAULT_URL};}}
-const setGAS=c=>localStorage.setItem(LSGAS,JSON.stringify(c));
+const getGAS=()=>{try{const shared=localStorage.getItem('ac_gascheck_gas_url');if(shared)return {url:shared};const d=localStorage.getItem(LSGAS);const p=d?JSON.parse(d):{url:''};return (p&&p.url)?p:{url:GAS_DEFAULT_URL};}catch{return {url:GAS_DEFAULT_URL};}}
+const setGAS=c=>{localStorage.setItem(LSGAS,JSON.stringify(c||{}));if(c&&c.url)localStorage.setItem('ac_gascheck_gas_url',c.url);};
 
 // ══════════════════════════════════════════
 // STATUS HELPERS
@@ -727,7 +722,7 @@ function applyI18n(){
     'i-tgtype':'tgtype','i-tgdate':'tgdate','i-tgd':'tgd','i-tga':'tga','i-tgf':'tgf',
     'i-prev':'prev','i-send':'send',
     // GAS
-    'i-testcon':'testcon','i-syncup':'syncup','i-pull':'pull','i-idle':'idle',
+    'i-testcon':'testcon','i-syncup':'syncup','i-pull':'pull',
     // Import/export
     'i-imp':'imp','i-exp':'exp','i-exl':'exl','i-ejson':'ejson',
     // Danger
@@ -742,7 +737,7 @@ function applyI18n(){
     'i-edittit':'edittit','i-redate':'date','i-reper':'per','i-rezon':'zone','i-renote':'note','i-rewx':'wx',
     'i-retmp':'clbl_tmp','i-rehum':'clbl_hum',
     // Confirm modal
-    'i-conftit':'conftit','i-confirm':'confirm',
+    'i-conftit':'conftit','cf-ok':'confirm',
   };
   Object.entries(MAP).forEach(([id,k])=>{
     const el=document.getElementById(id);if(el&&T(k)!==k)el.textContent=T(k);
@@ -852,7 +847,7 @@ function renderDash(){
       const ts=tSt(r.t), hs=hSt(r.h);
       const tv=r.t!==''&&!isNaN(r.t), hv=r.h!==''&&!isNaN(r.h);
       return `<div class="zp">
-        <div class="zplbl">${lbl}</div>
+        <div class="zplbl">${lbl}${r.wx?` · ${_wxLabel(r.wx)}`:''}</div>
         <div class="zmet">
           ${tv?`<div><div class="zval ${ts?ts.tc:''}">${(+r.t).toFixed(1)}</div><div class="zunit">°C</div>${ts?`<span class="bdg ${ts.cls}" style="margin-top:3px">${T(ts.k)}</span>`:''}
           <div class="tbar"><div class="needle" style="left:${tPct(r.t)}%"></div></div></div>`:''}
@@ -904,6 +899,9 @@ function renderRec(){
   const zones=getZ().filter(z=>z.on);
   document.getElementById('rec-plbl').textContent=`📅 ${rd.value} · ${RP==='morning'?T('am'):T('pm')}`;
 
+  const wxExisting=getR().find(r=>r.d===rd.value&&r.p===RP&&r.wx);
+  _mountRecWx(wxExisting?wxExisting.wx:'');
+
   document.getElementById('rec-zgrid').innerHTML=zones.map(z=>`
     <div class="rzcard">
       <div class="rzlbl">
@@ -947,6 +945,7 @@ function saveAllRec(){
   const rd=document.getElementById('rec-date');
   const sel=rd.value;if(!sel){toast('請選擇日期','err');return;}
   const note=document.getElementById('rec-note').value;
+  const wx=window._recWxCtl?window._recWxCtl.get():'';
   const zones=getZ().filter(z=>z.on);
   let recs=getR();const newRecs=[];
   zones.forEach(z=>{
@@ -955,7 +954,7 @@ function saveAllRec(){
     if((t===''||t===undefined)&&(h===''||h===undefined))return;
     recs=recs.filter(r=>!(r.d===sel&&r.p===RP&&r.z===z.id));
     const rec={id:'r'+Date.now()+Math.random().toString(36).slice(2,5),z:z.id,d:sel,p:RP,
-      t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',note,ts:_localTS()};
+      t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',wx,note,ts:_localTS(),updatedAt:_localTS()};
     recs.push(rec);newRecs.push(rec);
   });
   setR(recs);toast(T('saved'),'ok');renderTodayCard(sel);updBadge();
@@ -972,7 +971,7 @@ function renderTodayCard(date){
   tb.innerHTML=`<div class="twrap"><table><thead><tr><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('wxcol')}</th><th>${T('clbl_stat')}</th></tr></thead>
   <tbody>${recs.map(r=>{const z=zones.find(z=>z.id===r.z);const ts=tSt(r.t),hs=hSt(r.h);
     return `<tr><td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${z?z.col:'#ccc'};display:inline-block"></span>${z?znm(z):'?'}</span></td>
-    <td>${r.p==='morning'?T('am'):T('pm')}</td>
+    <td>${r.p==='morning'?T('am'):T('pm')} ${r.wx?_wxLabel(r.wx):''}</td>
     <td class="${ts?ts.tc:''}">${r.t!==''?r.t+'°C':'--'}</td>
     <td class="${hs?hs.tc:''}">${r.h!==''?r.h+'%':'--'}</td>
         <td style="white-space:nowrap">${_wxLabel(r.wx)}</td>
@@ -1235,16 +1234,16 @@ function saveZone(){
       km:document.getElementById('zm-km').value.trim()||zones[i].km,
       col:document.getElementById('zm-col').value,
       desc:document.getElementById('zm-desc').value.trim(),
-      on:document.getElementById('zm-act').checked};
+      on:document.getElementById('zm-act').checked,updatedAt:_localTS()};
   }else{
     if(zones.length>=10){toast('最多10個區域','err');return;}
     zones.push({id:'z'+Date.now().toString(36),zh,en,km:document.getElementById('zm-km').value.trim(),
-      col:document.getElementById('zm-col').value,desc:document.getElementById('zm-desc').value.trim(),on:document.getElementById('zm-act').checked});
+      col:document.getElementById('zm-col').value,desc:document.getElementById('zm-desc').value.trim(),on:document.getElementById('zm-act').checked,updatedAt:_localTS()});
   }
-  setZ(zones);closeMod('zm-over');toast(T('saved'),'ok');renderZones();popSelects();
+  setZ(zones);closeMod('zm-over');toast(T('saved'),'ok');renderAll();syncZoneConfig('merge');
 }
 
-function delZone(id){confirmAction(T('cdelzone'),()=>{setZ(getZ().filter(z=>z.id!==id));setR(getR().filter(r=>r.z!==id));toast(T('deleted'),'inf');renderZones();popSelects();});}
+function delZone(id){confirmAction(T('cdelzone'),()=>{const old=getR().filter(r=>r.z===id).map(r=>r.id);setZ(getZ().filter(z=>z.id!==id));setR(getR().filter(r=>r.z!==id));old.forEach(gasDelete);toast(T('deleted'),'inf');renderAll();syncZoneConfig('replace');});}
 function resetZones(){confirmAction(T('crstzone'),()=>{setZ(JSON.parse(JSON.stringify(DZ)));toast('已重置','inf');popSelects();renderZones();});}
 
 // ══════════════════════════════════════════
@@ -1353,6 +1352,13 @@ function _mountWx(val){
   if(window._wxCtl){ window._wxCtl.set(val||''); return; }
   window._wxCtl=GC.weather.mount(el,{value:val||'',onChange:()=>{}});
 }
+window._recWxCtl=null;
+function _mountRecWx(val){
+  const el=document.getElementById('rec-wx'); if(!el) return;
+  if(typeof GC==='undefined'||!GC.weather){ setTimeout(()=>_mountRecWx(val),200); return; }
+  if(window._recWxCtl){ window._recWxCtl.set(val||''); return; }
+  window._recWxCtl=GC.weather.mount(el,{value:val||'',onChange:()=>{}});
+}
 function _wxLabel(k){
   if(!k) return '';
   if(typeof GC!=='undefined'&&GC.weather) return GC.weather.label(k);
@@ -1458,7 +1464,19 @@ function importXL(evt){
         } else if(typeof r1raw==='string'){
           const m=String(r1raw).match(/\d{4}/);if(m)year=+m[0];
         }
-        const zm=[{cols:[1,2,3,4],id:zones[0]?.id},{cols:[6,7,8,9],id:zones[1]?.id},{cols:[11,12,13,14],id:zones[2]?.id}];
+        // 依匯出表頭尋找每個區域的四欄；找不到時才依順序回退，支援新增第 4、5…區域。
+        const head=rows[1]||[];
+        const norm=s=>String(s||'').toLowerCase().replace(/[\s_\-()（）:：%]/g,'');
+        const zm=zones.filter(z=>z.on).map((z,zi)=>{
+          const zn=[norm(z.en),norm(z.zh)].filter(Boolean);
+          let start=-1;
+          for(let ci=1;ci<head.length;ci++){
+            const h=norm(head[ci]);
+            if(zn.some(n=>n&&h.indexOf(n)>=0)&&h.indexOf('morningtemp')>=0){start=ci;break;}
+          }
+          if(start<0)start=1+zi*4;
+          return {cols:[start,start+1,start+2,start+3],id:z.id};
+        });
         for(let ri=6;ri<rows.length;ri++){
           const row=rows[ri];
           const dayRaw=numCell(row[0]);
@@ -1493,8 +1511,12 @@ function importJSON(evt){
   const reader=new FileReader();
   reader.onload=e=>{
     try{const d=JSON.parse(e.target.result);
-      if(d.records)setR(d.records);if(d.zones)setZ(d.zones);if(d.thresholds)setTH(d.thresholds);
-      toast(T('impok'),'ok');renderAll();updBadge();
+      const merge=(a,b,key)=>{const m=new Map((a||[]).map(x=>[String(x&&x[key]||''),x]));(b||[]).forEach(x=>{const k=String(x&&x[key]||'');if(!k||!m.has(k))m.set(k,x);else{const o=m.get(k),ot=String(o.updatedAt||o.ts||''),nt=String(x.updatedAt||x.ts||'');if(nt&&nt>ot)m.set(k,Object.assign({},o,x));}});return Array.from(m.values());};
+      if(d.records)setR(merge(getR(),d.records,'id'));
+      if(d.zones)setZ(merge(getZ(),d.zones,'id'));
+      if(d.thresholds)setTH(Object.assign({},getTH(),d.thresholds));
+      toast(T('impok')+'（已合併，未刪除本機較多資料）','ok');renderAll();updBadge();
+      if(d.zones)syncZoneConfig('merge');
     }catch(ex){toast('JSON匯入失敗','err');}
   };
   reader.readAsText(file);evt.target.value='';
@@ -1583,8 +1605,11 @@ function enrichRec(r){
     zoneEn:      z.en,
     temperature: r.t!==''&&r.t!==undefined?r.t:'',
     humidity:    r.h!==''&&r.h!==undefined?r.h:'',
+    weather:     r.wx||r.weather||'',
     note:        r.note||'',
-    submittedAt: r.ts||_localTS()
+    photos:      r.photos||[],
+    submittedAt: r.ts||r.updatedAt||_localTS(),
+    updatedAt:   r.updatedAt||r.ts||_localTS()
   };
 }
 
@@ -1599,9 +1624,18 @@ function normalizeRec(r){
     p:    r.period||'',
     t:    isNaN(t)?'':t,
     h:    isNaN(h)?'':h,
+    wx:   r.weather||r.wx||'',
     note: r.note||'',
-    ts:   r.submittedAt||''
+    photos:Array.isArray(r.photos)?r.photos:[],
+    ts:   r.submittedAt||r.updatedAt||'',
+    updatedAt:r.updatedAt||r.submittedAt||''
   };
+}
+
+function mergeTempZones(local,remote){
+  const m=new Map((local||[]).map(z=>[String(z.id),z]));
+  (remote||[]).forEach(z=>{if(!z||!z.id)return;const k=String(z.id),old=m.get(k);if(!old)m.set(k,z);else{const ot=String(old.updatedAt||''),nt=String(z.updatedAt||'');if(nt&&(!ot||nt>ot))m.set(k,Object.assign({},old,z));}});
+  return Array.from(m.values());
 }
 
 // 測試 GAS 連線
@@ -1637,7 +1671,7 @@ async function syncUp(){
   document.getElementById('sstatus').textContent='上傳中...';
   try{
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempSync',records:recs.map(enrichRec),zones:getZ(),full:true})});
+      body:JSON.stringify({type:'tempSync',records:recs.map(enrichRec),zones:getZ(),zonesMode:'merge',full:true})});
     document.getElementById('sdot').className='syncdt sd-ok';
     document.getElementById('sstatus').textContent='✅ 已連接';
     toast('✅ 已送出 '+recs.length+' 筆（no-cors模式，資料已送達GAS）','ok');
@@ -1659,13 +1693,14 @@ async function syncDown(){
     const d=await r.json();
     if(d.ok&&d.records){
       const cloudRecs=d.records.map(normalizeRec);
-      const cloudIds=new Set(cloudRecs.map(r=>r.id));
-      const onlyLocal=getR().filter(r=>!cloudIds.has(r.id));
-      const merged=[...cloudRecs,...onlyLocal];
+      const mergeResult=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(getR(),cloudRecs,'id','updatedAt'):null;
+      const merged=mergeResult?mergeResult.list:[...cloudRecs,...getR()];
+      const localKept=mergeResult&&mergeResult.stat?mergeResult.stat.kept:0;
+      if(Array.isArray(d.zones))setZ(mergeTempZones(getZ(),d.zones));
       setR(merged);
       document.getElementById('sdot').className='syncdt sd-ok';
       document.getElementById('sstatus').textContent='✅ 已連接';
-      toast(`拉取成功：雲端 ${cloudRecs.length} 筆，本機獨有 ${onlyLocal.length} 筆`,'ok');
+      toast(`拉取成功：雲端 ${cloudRecs.length} 筆，本機保留 ${localKept} 筆`,'ok');
       renderAll();
     } else throw new Error(d.error||'fail');
   }catch(ex){
@@ -1681,7 +1716,7 @@ async function gasAutoSync(newRecs){
   try{
     // no-cors: GAS CORS 限制，用 fire-and-forget 模式
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempSync',records:newRecs.map(enrichRec),zones:getZ()})});
+      body:JSON.stringify({type:'tempSync',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'merge'})});
     document.getElementById('sdot').className='syncdt sd-ok';
     document.getElementById('sstatus').textContent='✅ 已同步';
   }catch(ex){
@@ -1695,11 +1730,11 @@ async function gasBulkSync(newRecs){
   const url=getGAS().url;if(!url)return;
   try{
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempImport',records:newRecs.map(enrichRec),zones:getZ()})});
+      body:JSON.stringify({type:'tempImport',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'merge'})});
     if(true){
       document.getElementById('sdot').className='syncdt sd-ok';
       document.getElementById('sstatus').textContent='✅ 已同步';
-      toast(`☁️ 雲端匯入完成：新增 ${d.added} 筆，跳過重複 ${d.skipped} 筆`,'ok');
+      toast(`☁️ 雲端匯入已送出：${newRecs.length} 筆`,'ok');
     } else {
       document.getElementById('sdot').className='syncdt sd-err';
       toast('☁️ 雲端匯入失敗: '+(d.error||''),'err');
@@ -1716,8 +1751,14 @@ async function gasDelete(id){
   const url=getGAS().url;if(!url)return;
   try{
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempDelete',id})});
+      body:JSON.stringify({type:'tempDelete',tool:'temperature',id})});
   }catch(ex){console.warn('gasDelete failed:',ex.message);}
+}
+
+async function syncZoneConfig(mode){
+  const url=getGAS().url;if(!url)return;
+  try{await fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify({action:'push',tool:'temperature',records:[],zones:getZ(),zonesMode:mode||'merge'})});}
+  catch(ex){console.warn('syncZoneConfig failed:',ex.message);}
 }
 
 // 啟動時從雲端拉取（靜默合併）
@@ -1726,13 +1767,15 @@ async function gasPullOnInit(){
   try{
     const r=await fetch(url+'?type=tempList',{method:'GET',redirect:'follow'});
     const d=await r.json();
-    if(d.ok&&d.records&&d.records.length>0){
+    if(d.ok&&Array.isArray(d.records)){
       const cloudRecs=d.records.map(normalizeRec);
-      const cloudIds=new Set(cloudRecs.map(r=>r.id));
       const local=getR();
-      const onlyLocal=local.filter(r=>!cloudIds.has(r.id));
-      const merged=[...cloudRecs,...onlyLocal];
-      if(merged.length!==local.length){
+      const merged=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(local,cloudRecs,'id','updatedAt').list:[...cloudRecs,...local];
+      const oldZones=getZ();
+      const mergedZones=Array.isArray(d.zones)?mergeTempZones(oldZones,d.zones):oldZones;
+      const zonesChanged=JSON.stringify(mergedZones)!==JSON.stringify(oldZones);
+      if(Array.isArray(d.zones))setZ(mergedZones);
+      if(merged.length!==local.length||zonesChanged){
         setR(merged);
         renderAll();
         toast(`☁️ 已從雲端同步 ${cloudRecs.length} 筆記錄`,'inf');
@@ -1867,7 +1910,11 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       weatherField:'wx',
       photoField:'photos',
       photo:true,
-      importSchema:{"date": ["日期", "date", "ថ្ងៃ"], "zone": ["區域", "zone", "tʼ", " តំបន់"], "temperature": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "humidity": ["濕度", "humidity", "សំណើម"], "notes": ["備註", "note", "notes", "ចំណាំ"]},
+      toCloud:enrichRec,
+      fromCloud:normalizeRec,
+      extra:()=>({zones:getZ(),zonesMode:'merge'}),
+      onRemote:(d)=>{if(d&&Array.isArray(d.zones)){const z=mergeTempZones(getZ(),d.zones);if(JSON.stringify(z)!==JSON.stringify(getZ())){setZ(z);renderAll();}}},
+      importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "note": ["備註", "note", "notes", "ចំណាំ"]},
     read(){ try{ const raw=localStorage.getItem('vrt_th_r'); if(!raw) return [];
         const d=JSON.parse(raw); if(Array.isArray(d)) return d;
         for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])) return d[k];

@@ -285,13 +285,6 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
 }
 </style>
   <!-- AC_GASCHECK Shared System -->
-  <link rel="stylesheet" href="./shared/ac_nav.css">
-  <script src="./shared/ac_config.js"></script>
-  <script src="./shared/ac_i18n.js"></script>
-  <script src="./shared/ac_date_engine.js"></script>
-  <script src="./shared/ac_cloud.js"></script>
-  <script src="./shared/ac_telegram.js"></script>
-  <script src="./shared/ac_nav.js"></script>
 <script src="./gascheck-core.js"></script>
 </head>
 <body>
@@ -650,7 +643,7 @@ function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2
 // CONFIG — 連接現有 GAS
 // ════════════════════════════════
 // ⚠️ 部署 Asset GAS 後，將下方 URL 替換為新的部署 URL
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbwmg4lR3Ksng1g6zSkJHd2QNTgN_kC_bnkKrIn85VYPYfrGlhmuibuDaPdM0HOvgyml/exec';
+const GAS_URL = localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
 
 // ════════════════════════════════
 // USERS (同 PO 系統角色，另加 GA 同仁)
@@ -710,14 +703,28 @@ async function gasCall(params){
   }catch(e){setSdot('err');console.error('GAS error:',e);return null}
 }
 
+async function standardGAS(payload){
+  const body=new URLSearchParams({payload:JSON.stringify(payload)});
+  const r=await fetch(GAS_URL,{method:'POST',body,headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+  return r.json();
+}
+
+function assetCloudRecords(){
+  const now=_localTS();
+  return assets.map(a=>{if(!a.id)a.id=a.code;if(!a.updatedAt)a.updatedAt=now;return a;});
+}
+
 async function loadFromGAS(){
   setSdot('spin');
   toast(lang==='zh'?'讀取資料中…':'Loading…','info');
-  const d=await gasCall({action:'getAssets'});
-  if(d&&d.ok){
-    assets=d.assets||[];
-    cnts=d.counters||{AOA:1,AHA:1};
-    pending=d.pending||[];
+  let d=null;
+  try { d=await gasCall({action:'pull',tool:'asset'}); } catch(e) {}
+  if(d&&d.ok&&Array.isArray(d.records)){
+    const local=assetCloudRecords();
+    assets=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(local,d.records,'id','updatedAt').list:local.concat(d.records);
+    assets=assets.map(a=>Object.assign({id:a.id||a.code,updatedAt:a.updatedAt||_localTS()},a));
+    try { cnts=JSON.parse(localStorage.getItem('vrt_c7')||'{}'); } catch(e) { cnts={}; }
+    try { pending=JSON.parse(localStorage.getItem('vrt_p7')||'[]'); } catch(e) { pending=[]; }
     // Ensure counters are ahead of existing codes
     assets.forEach(a=>{
       if(a.code){
@@ -737,9 +744,15 @@ async function loadFromGAS(){
 }
 
 async function saveToGAS(){
-  const d=await gasCall({action:'saveAssets',data:JSON.stringify({assets,counters:cnts,pending})});
+  let d=null;
+  try { d=await standardGAS({action:'push',tool:'asset',records:assetCloudRecords()}); } catch(e) { console.warn('standard asset push failed',e); }
   if(!d||!d.ok) saveLocal(); // fallback to localStorage
   else saveLocal(); // also save locally as cache
+}
+
+async function deleteAssetFromGAS(id){
+  try { return await standardGAS({action:'delete',tool:'asset',id}); }
+  catch(e) { console.warn('standard asset delete failed',e); return null; }
 }
 
 // ════════════════════════════════
@@ -1091,13 +1104,6 @@ async function saveAsset(){
   closeM('m-form');render();
   toast(lang==='zh'?'儲存中…':'Saving…','info');
   await saveToGAS();
-  // Trigger Telegram notification (addAsset=new / updateAsset=edit)
-  const notifyData={...data,createdBy:currentUser.name,editBy:currentUser.name};
-  if(isNew){
-    await gasCall({action:'addAsset',data:JSON.stringify(notifyData)});
-  }else{
-    await gasCall({action:'updateAsset',data:JSON.stringify(notifyData)});
-  }
   toast(isNew?`${lang==='zh'?'新增完成':'Added'}: ${data.code} ✓`:`${lang==='zh'?'已更新':'Updated'} ✓`,'ok');
 }
 async function doDelete(){
@@ -1107,7 +1113,7 @@ async function doDelete(){
   assets=assets.filter(a=>a.code!==delCode);delete photos[delCode];
   closeM('m-form');render();
   await saveToGAS();
-  await gasCall({action:'deleteAsset',code:delCode,by:currentUser.name});
+  await deleteAssetFromGAS(delCode);
   toast(`${lang==='zh'?'已刪除':'Deleted'}: ${delCode}`);
 }
 
@@ -1213,8 +1219,7 @@ async function submitReq(){
   });
   closeM('m-req');render();
   toast(lang==='zh'?'申請已提交 ✓':'Submitted ✓','info');
-  // Send to GAS which will also notify Telegram
-  await gasCall({action:'submitAssetRequest',data:JSON.stringify(req)});
+  // 申請先保留在本機待審清單；資產主檔仍由標準 push 同步。
   await saveToGAS();
 }
 
@@ -1804,22 +1809,9 @@ async function doImport(){
   saveLocal(); // immediate local backup
   toast(zh?`正在寫入雲端 ${newAssets.length} 筆…`:`Writing ${newAssets.length} to cloud…`,'info');
 
-  // Use bulk importAssets action to avoid URL length limit
   let success=0, failed=0;
-  try{
-    const res=await gasCall({action:'importAssets',data:JSON.stringify({assets:newAssets,by:currentUser.name})});
-    if(res&&res.ok){
-      success=res.count||newAssets.length;
-    }else{
-      // Fallback: save-all batch
-      const r2=await saveToGAS();
-      success=newAssets.length;
-    }
-  }catch(e){
-    console.error('Import error:',e);
-    failed=newAssets.length;
-    await saveToGAS(); // fallback attempt
-  }
+  try { await saveToGAS(); success=newAssets.length; }
+  catch(e){ console.error('Import error:',e); failed=newAssets.length; }
 
   toast(zh?`✓ 匯入完成：${success} 筆${failed?`，${failed} 筆失敗`:''}`:`✓ Imported: ${success}${failed?`, ${failed} failed`:''}`,failed?'err':'ok');
   importData=[];
@@ -2025,6 +2017,8 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       groupLabel:'Category',
       weather:false,
       photo:true,
+      toCloud:r=>Object.assign({},r,{id:r.id||r.code,updatedAt:r.updatedAt||_localTS()}),
+      fromCloud:r=>Object.assign({},r,{id:r.id||r.code}),
       importSchema:{"code": ["編號", "code", "資產編號", "លេខកូដ"], "name": ["名稱", "name", "品名", "ឈ្មោះ"], "category": ["類別", "category", "ប្រភេទ"], "zone": ["區域", "zone", "តំបន់"], "status": ["狀態", "status", "ស្ថានភាព"], "quantity": ["數量", "qty", "quantity", "បរិមាណ"], "unit": ["單位", "unit", "ឯកតា"], "location": ["位置", "location", "ទីតាំង"]},
     read(){ try{ const raw=localStorage.getItem('vrt_a7'); if(!raw) return [];
         const d=JSON.parse(raw); if(Array.isArray(d)) return d;

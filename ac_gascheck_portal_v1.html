@@ -112,31 +112,31 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;
 <!-- Modules -->
 <div class="sec" id="sec-mods">管理模組</div>
 <div class="mod-grid">
-  <a class="mb" href="ac_gascheck_asset_v1.html">
+  <a class="mb" href="ac_gascheck_asset_v2.html">
     <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#2563EB;border-radius:3px 0 0 3px"></div>
     <div class="mb-ic">📦</div><div><div class="mb-zh" id="n-asset">資產管理</div><div class="mb-en" id="s-asset">Asset Management</div></div><div class="mb-arr">↗</div>
   </a>
-  <a class="mb" href="ac_gascheck_dormitory_v1.html">
+  <a class="mb" href="ac_gascheck_dormitory_v2.html">
     <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#5B4FCF;border-radius:3px 0 0 3px"></div>
     <div class="mb-ic">🏠</div><div><div class="mb-zh" id="n-dorm">宿舍管理</div><div class="mb-en" id="s-dorm">Dormitory Hub</div></div><div class="mb-arr">↗</div>
   </a>
-  <a class="mb" href="ac_gascheck_cleaning_v1.html">
+  <a class="mb" href="ac_gascheck_cleaning_v2.html">
     <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#2D7A5A;border-radius:3px 0 0 3px"></div>
     <div class="mb-ic">🧹</div><div><div class="mb-zh" id="n-clean">清潔管理</div><div class="mb-en" id="s-clean">Cleaning Mgmt</div></div><div class="mb-arr">↗</div>
   </a>
-  <a class="mb" href="ac_gascheck_keymovement_v1.html">
+  <a class="mb" href="ac_gascheck_keymovement_v2.html">
     <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#E8640A;border-radius:3px 0 0 3px"></div>
     <div class="mb-ic">🔑</div><div><div class="mb-zh" id="n-key">鑰匙管理</div><div class="mb-en" id="s-key">Key Movement</div></div><div class="mb-arr">↗</div>
   </a>
-  <a class="mb" href="ac_gascheck_ehs_v1.html">
+  <a class="mb" href="ac_gascheck_ehs_v2.html">
     <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#B36010;border-radius:3px 0 0 3px"></div>
     <div class="mb-ic">♻️</div><div><div class="mb-zh" id="n-ehs">EHS 環境</div><div class="mb-en" id="s-ehs">EHS Environment</div></div><div class="mb-arr">↗</div>
   </a>
-  <a class="mb" href="ac_gascheck_waterdrum_v1.html">
+  <a class="mb" href="ac_gascheck_waterdrum_v2.html">
     <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#0891B2;border-radius:3px 0 0 3px"></div>
     <div class="mb-ic">💧</div><div><div class="mb-zh" id="n-water">水桶管理</div><div class="mb-en" id="s-water">Water Drum</div></div><div class="mb-arr">↗</div>
   </a>
-  <a class="mb full" href="ac_gascheck_temperature_v1.html">
+  <a class="mb full" href="ac_gascheck_temperature_v2.html">
     <div style="position:absolute;left:0;top:0;bottom:0;width:3px;background:#4F6EF7;border-radius:3px 0 0 3px"></div>
     <div class="mb-ic">🌡️</div><div><div class="mb-zh" id="n-temp">溫度記錄</div><div class="mb-en" id="s-temp">Temperature &amp; Humidity</div></div><div class="mb-arr">↗</div>
   </a>
@@ -266,27 +266,77 @@ function applyLang() {
 
 // ── Local record count ────────────────────────────────────────
 var MODS = [
-  {id:'asset',       lsKey:'vrt_asset_v1'     },
+  {id:'asset',       lsKey:'vrt_a7'           },
   {id:'dormitory',   lsKey:'vrt_dorm_hub_v2'  },
   {id:'cleaning',    lsKey:'vrt_clean_hub_v2' },
   {id:'keymovement', lsKey:'vrt_keys'          },
   {id:'ehs',         lsKey:'vrt_ehs_hub_v2'   },
   {id:'waterdrum',   lsKey:'wdr_data'          },
-  {id:'temperature', lsKey:'vrt_temp_db'       },
+  {id:'temperature', lsKey:'vrt_th_r'          },
 ];
+
+// 入口頁的 Push/Pull 也必須遵守「合併，不以少覆多」；不同模組的資料結構在這裡統一轉換。
+function portalRecords(m){
+  try{
+    if(m.id==='waterdrum') return Object.keys(localStorage).filter(function(k){return /^wdr_\d{4}_\d{2}$/.test(k);}).reduce(function(a,k){
+      var mm=k.match(/^wdr_(\d{4})_(\d{2})$/), rows=JSON.parse(localStorage.getItem(k)||'[]');
+      return a.concat((Array.isArray(rows)?rows:[]).map(function(r){return Object.assign({},r,{id:'wdr_'+mm[1]+'_'+mm[2]+'_'+r.day,date:mm[1]+'-'+mm[2]+'-'+String(r.day).padStart(2,'0'),year:+mm[1],month:+mm[2]});}));
+    },[]);
+    var raw=localStorage.getItem(m.lsKey); if(!raw)return [];
+    var d=JSON.parse(raw);
+    if(m.id==='ehs') return ['gate','internal','monthly'].reduce(function(a,k){return a.concat((Array.isArray(d[k])?d[k]:[]).map(function(r){return Object.assign({module:k},r);}));},[]);
+    if(Array.isArray(d))return d;
+    return d&&Array.isArray(d.records)?d.records:[];
+  }catch(e){return []}
+}
+function portalCloudRecord(m,r){
+  if(m.id!=='temperature')return r;
+  return {id:r.id,date:r.d||r.date,period:r.p||r.period,zoneId:r.z||r.zoneId,zoneName:r.zoneName||'',zoneEn:r.zoneEn||'',temperature:r.t!==undefined?r.t:r.temperature,humidity:r.h!==undefined?r.h:r.humidity,weather:r.wx||r.weather||'',note:r.note||r.notes||'',submittedAt:r.ts||r.submittedAt||r.updatedAt||'',updatedAt:r.updatedAt||r.ts||r.submittedAt||''};
+}
+function portalLocalRecord(m,r){
+  if(m.id!=='temperature')return r;
+  if(r.d!==undefined||r.z!==undefined)return r;
+  return {id:r.id||('r'+Date.now()+Math.random().toString(36).slice(2,6)),d:String(r.date||'').slice(0,10),p:r.period||'morning',z:r.zoneId||r.zone||'',t:r.temperature!==''&&r.temperature!==undefined?Number(r.temperature):'',h:r.humidity!==''&&r.humidity!==undefined?Number(r.humidity):'',wx:r.weather||r.wx||'',note:r.note||r.notes||'',ts:r.submittedAt||r.updatedAt||'',updatedAt:r.updatedAt||r.submittedAt||''};
+}
+function portalMerge(local,remote,m){
+  var map={},order=[];
+  function key(r){return String(r&&r.id||((r&&r.date)||'')+'|'+((r&&r.zoneId)||r&&r.z||'')+'|'+((r&&r.period)||r&&r.p||''));}
+  (local||[]).forEach(function(r){var k=key(r);if(!map[k])order.push(k);map[k]=r;});
+  (remote||[]).map(function(r){return portalLocalRecord(m,r);}).forEach(function(r){var k=key(r);if(!map[k]){map[k]=r;order.push(k);return;}var old=map[k],ot=String(old.updatedAt||old.ts||''),nt=String(r.updatedAt||r.ts||'');if(nt&&(!ot||nt>ot))map[k]=Object.assign({},old,r);});
+  return order.map(function(k){return map[k];});
+}
+function portalWrite(m,list){
+  if(m.id==='waterdrum'){
+    // 水桶模組以 wdr_YYYY_MM 分月儲存；入口頁同步時也寫回同一格式，避免只顯示統計而無法真正還原。
+    var buckets={};
+    (list||[]).forEach(function(r){
+      var date=String(r.date||''), y=String(r.year||date.slice(0,4)), mo=String(r.month||date.slice(5,7)).padStart(2,'0');
+      if(!/^\d{4}$/.test(y)||!/^(0[1-9]|1[0-2])$/.test(mo))return;
+      var row=Object.assign({},r); ['id','date','year','month','updatedAt'].forEach(function(k){delete row[k];});
+      var key=y+'_'+mo; (buckets[key]||(buckets[key]=[])).push(row);
+    });
+    Object.keys(buckets).forEach(function(key){
+      var map={}; buckets[key].forEach(function(row){map[String(row.day)]=row;});
+      var rows=Object.keys(map).sort(function(a,b){return (+a||0)-(+b||0);}).map(function(day){return map[day];});
+      localStorage.setItem('wdr_'+key,JSON.stringify(rows));
+    });
+    localStorage.setItem('wdr_last_saved',new Date().toISOString());
+    return;
+  }
+  if(m.id==='ehs'){
+    var d={gate:[],internal:[],monthly:[]};(list||[]).forEach(function(r){var k=['gate','internal','monthly'].indexOf(r.module)>=0?r.module:'gate';var c=Object.assign({},r);delete c.module;d[k].push(c);});localStorage.setItem(m.lsKey,JSON.stringify(d));return;
+  }
+  var raw=localStorage.getItem(m.lsKey),d=raw?JSON.parse(raw):null;
+  if(m.id==='dormitory'||m.id==='cleaning'){d=d&&typeof d==='object'&&!Array.isArray(d)?d:{};d.records=list;localStorage.setItem(m.lsKey,JSON.stringify(d));return;}
+  localStorage.setItem(m.lsKey,JSON.stringify(list));
+}
 function getCount() {
   return MODS.reduce(function(s,m){
-    try{
-      var raw=localStorage.getItem(m.lsKey); if(!raw) return s;
-      var d=JSON.parse(raw);
-      if(Array.isArray(d)) return s+d.length;
-      if(d.records&&Array.isArray(d.records)) return s+d.records.length;
-      return s+Object.values(d).filter(Array.isArray).reduce(function(a,b){return a+b.length;},0);
-    }catch(e){return s;}
+    return s+portalRecords(m).length;
   },0);
 }
 function updateStats(meta) {
-  var sy=MODS.filter(function(m){return !!localStorage.getItem(m.lsKey);}).length;
+  var sy=MODS.filter(function(m){return portalRecords(m).length>0;}).length;
   document.getElementById('s-recs').textContent=getCount()||'—';
   document.getElementById('s-sync').textContent=sy ? sy+'/7' : '—';
   var ts=(meta||{}).lastPush||(meta||{}).lastPull;
@@ -367,7 +417,7 @@ function pushAll() {
   var ok=0, fail=0, i=0;
   function next(){
     if(i>=MODS.length){
-      var meta={lastPush:new Date().toISOString()};
+      var meta={lastPush:new Date().toLocaleString('sv-SE')};
       var cur=JSON.parse(localStorage.getItem(META_KEY)||'{}');
       localStorage.setItem(META_KEY,JSON.stringify(Object.assign(cur,meta)));
       updateCloudLabel(true); updateStats(meta);
@@ -377,11 +427,9 @@ function pushAll() {
     }
     var m=MODS[i++];
     try{
-      var raw=localStorage.getItem(m.lsKey); if(!raw){next();return;}
-      var d=JSON.parse(raw);
-      var recs=Array.isArray(d)?d:(d.records?d.records:Object.values(d).filter(Array.isArray).reduce(function(a,b){return a.concat(b);},[]));
+      var recs=portalRecords(m).map(function(r){return portalCloudRecord(m,r);});
       if(!recs.length){next();return;}
-      gasPost({action:'push',tool:m.id,records:recs,recordCount:recs.length,updatedAt:new Date().toISOString()})
+      gasPost({action:'push',tool:m.id,records:recs,recordCount:recs.length,updatedAt:new Date().toLocaleString('sv-SE')})
         .then(function(r){
           if(r.ok!==false){ok++;log('✓ push:'+m.id+' '+recs.length+'筆','ok');}
           else{fail++;log('✗ push:'+m.id+':'+(r.error||''),'err');}
@@ -411,8 +459,9 @@ function pullAll() {
       .then(function(r){return r.json();})
       .then(function(d){
         if(d.ok!==false&&Array.isArray(d.records)&&d.records.length){
-          localStorage.setItem(m.lsKey,JSON.stringify(d.records));
-          ok++;log('✓ pull:'+m.id+' '+d.records.length+'筆','ok');
+          var merged=portalMerge(portalRecords(m),d.records,m);
+          portalWrite(m,merged);
+          ok++;log('✓ pull:'+m.id+' '+d.records.length+'筆，合併後 '+merged.length+'筆','ok');
         }
         next();
       })
@@ -554,10 +603,10 @@ function sendTgMenu() {
     '📊 本地記錄: '+cnt+' 筆\n'+
     '🏭 Vantage River Textiles · SHV';
   var buttons=[
-    [{text:'📦 Asset',     url:BASE_URL+'ac_gascheck_asset_v1.html'       },{text:'🏠 Dorm',  url:BASE_URL+'ac_gascheck_dormitory_v1.html'}],
-    [{text:'🧹 Cleaning',  url:BASE_URL+'ac_gascheck_cleaning_v1.html'    },{text:'🔑 Key',   url:BASE_URL+'ac_gascheck_keymovement_v1.html'}],
-    [{text:'♻️ EHS',       url:BASE_URL+'ac_gascheck_ehs_v1.html'         },{text:'💧 Water', url:BASE_URL+'ac_gascheck_waterdrum_v1.html'}],
-    [{text:'🌡️ Temp',      url:BASE_URL+'ac_gascheck_temperature_v1.html' },{text:'🏠 Portal',url:BASE_URL+'ac_gascheck_portal_v1.html'}],
+    [{text:'📦 Asset',     url:BASE_URL+'ac_gascheck_asset_v2.html'       },{text:'🏠 Dorm',  url:BASE_URL+'ac_gascheck_dormitory_v2.html'}],
+    [{text:'🧹 Cleaning',  url:BASE_URL+'ac_gascheck_cleaning_v2.html'    },{text:'🔑 Key',   url:BASE_URL+'ac_gascheck_keymovement_v2.html'}],
+    [{text:'♻️ EHS',       url:BASE_URL+'ac_gascheck_ehs_v2.html'         },{text:'💧 Water', url:BASE_URL+'ac_gascheck_waterdrum_v2.html'}],
+    [{text:'🌡️ Temp',      url:BASE_URL+'ac_gascheck_temperature_v2.html' },{text:'🏠 Portal',url:BASE_URL+'ac_gascheck_portal_v1.html'}],
   ];
   function sendDirect(){
     fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/sendMessage',{
