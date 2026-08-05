@@ -52,6 +52,14 @@ const U = GC.util = {
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   },
+  /** 把可能被序列化成字串的陣列還原（Sheet 讀回的 photos 常是 JSON 字串）*/
+  asArray(v) {
+    if (Array.isArray(v)) return v;
+    if (typeof v === 'string' && v.trim().charAt(0) === '[') {
+      try { const a = JSON.parse(v); return Array.isArray(a) ? a : []; } catch (e) { return []; }
+    }
+    return v ? [v] : [];
+  },
   uid(prefix) {
     return (prefix || 'id') + '_' + Date.now().toString(36) +
            Math.random().toString(36).slice(2, 7);
@@ -287,6 +295,26 @@ const CLOUD = GC.cloud = {
     return { list: m.list, stat: m.stat, empty: false };
   },
 
+  /**
+   * 即時上傳單張照片到 Drive，回傳連結（可選用：存檔前先轉換大照片）
+   * @returns {Promise<string>} Drive 連結，失敗回原 dataUrl
+   */
+  async uploadPhoto(dataUrl, tool, recId, idx) {
+    if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:image') !== 0) return dataUrl;
+    try {
+      const r = await CLOUD.post({ action: 'uploadPhoto', dataUrl, tool, recId, idx: idx || 0 });
+      return (r && r.ok && (r.url || (r.data && r.data.url))) || dataUrl;
+    } catch (e) { return dataUrl; }
+  },
+
+  /** 批次：把一組照片裡的 base64 換成 Drive 連結 */
+  async uploadPhotos(photos, tool, recId) {
+    if (!Array.isArray(photos)) return photos;
+    const out = [];
+    for (let i = 0; i < photos.length; i++) out.push(await CLOUD.uploadPhoto(photos[i], tool, recId, i));
+    return out;
+  },
+
   /** Telegram 通知（HTML 模式 + escape） */
   async notify(text) {
     return CLOUD.post({ type: 'notify', parse_mode: 'HTML', text });
@@ -334,7 +362,7 @@ const PHOTO = GC.photo = {
     const el = typeof mountEl === 'string' ? document.querySelector(mountEl) : mountEl;
     if (!el) return null;
     opt = opt || {};
-    let photos = (opt.photos || []).slice();
+    let photos = U.asArray(opt.photos).slice();
     const max = opt.max || 4;
     const id = U.uid('ph');
 
@@ -409,6 +437,7 @@ const PHOTO = GC.photo = {
 
   /** 表格用小縮圖 */
   cell(photos) {
+    photos = U.asArray(photos);
     if (!photos || !photos.length) return `<span class="gc-dim">—</span>`;
     return `<span class="gc-photo-cell" data-photos='${U.escapeHtml(JSON.stringify(photos))}'>📷 ${photos.length}</span>`;
   }
@@ -966,7 +995,7 @@ GC.attach = function (cfg) {
     ];
     if (C.photo)
       cards.push({ label: I18.t('gc.photo'),
-        value: view.filter(r => { const p = r[C.photoField]; return p && p.length; }).length,
+        value: view.filter(r => { const p = U.asArray(r[C.photoField]); return p && p.length; }).length,
         color: '#16653A' });
     if (C.weather)
       cards.push({ label: I18.t('gc.weather'),
