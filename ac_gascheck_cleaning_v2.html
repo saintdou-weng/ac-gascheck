@@ -471,23 +471,57 @@ var i18n = (() => {
       't-map':'ផែនទី','t-sixs':'6S','t-areas':'តំបន់','t-cfg':'ការកំណត់',
       'p-d':'ថ្ងៃ','p-w':'សប្តាហ៍','p-m':'ខែ','p-y':'ឆ្នាំ','btn-refresh':'ផ្ទុក',
       'k-total':'កំណត់ត្រា','k-pass':'អត្រាជាប់','k-anom':'មិនប្រក្រតី','k-locs':'ទីតាំង',
-      'no-rec':'រកមិនឃើញ','rec-title':'បន្ថែម','f-date':'កាលបរិច្ឆេទ','f-loc':'ទីតាំង',
-      'f-cleaner':'អ្នកសំអាត','f-checker':'អ្នកត្រួត','f-photo':'📷 រូបថត','f-photo-n':'ចំនួនរូបថត','btn-save':'រក្សា','btn-clear':'លុប',
-      'btn-query':'ស្វែងរក','map-title':'ផែនទី','add-area':'បន្ថែមទីតាំង',
-      'btn-confirm':'យល់ព្រម','btn-cancel':'បោះបង់','btn-save-cfg':'រក្សា',
+      'ch-trend':'និន្នាការ ៧ ថ្ងៃ','ch-items':'អត្រាជាប់តាមធាតុ','recent-title':'កំណត់ត្រាថ្មីៗ',
+      'th-date':'កាលបរិច្ឆេទ','th-loc':'ទីតាំង','th-cleaner':'អ្នកសំអាត','th-checker':'អ្នកត្រួតពិនិត្យ',
+      'th-slots':'ពេលវេលា','th-items':'ចំណុចត្រួតពិនិត្យ','th-status':'ស្ថានភាព','th-note':'កំណត់សម្គាល់',
+      'no-rec':'រកមិនឃើញ','rec-title':'កត់ត្រាការសម្អាតថ្មី','rec-hint':'* ត្រូវបំពេញ',
+      'f-date':'កាលបរិច្ឆេទ','f-loc':'ទីតាំង','f-shift':'វេន','f-cleaner':'អ្នកសំអាត',
+      'f-checker':'អ្នកត្រួតពិនិត្យ','f-photo':'📷 រូបថត','f-photo-n':'ចំនួនរូបថត',
+      'slots-title':'ពេលវេលាសម្អាត','chk-title':'ចំណុចត្រួតពិនិត្យ','chk-hint':'ចុចដើម្បីប្តូរ',
+      'note-title':'កំណត់សម្គាល់ / ភាពមិនប្រក្រតី','btn-save':'រក្សាទុក','btn-tg':'Telegram','btn-clear':'លុប',
+      'fl-loc':'ទីតាំង','fl-all':'ទាំងអស់','fl-status':'ស្ថានភាព','fl-month':'ខែ','fl-search':'ស្វែងរក',
+      'btn-query':'ស្វែងរក','btn-upload':'ផ្ទុកឡើង','btn-download':'ទាញយក',
+      'map-title':'ផែនទីទីតាំងធុងសំរាម','bin-mgmt':'ការគ្រប់គ្រងធុងសំរាម',
+      'th-area':'តំបន់','th-bin-type':'ប្រភេទ','th-bin-loc':'ទីតាំង','th-bin-resp':'អ្នកទទួលខុសត្រូវ',
+      'th-bin-freq':'ភាពញឹកញាប់','th-bin-last':'សម្អាតចុងក្រោយ','add-bin':'បន្ថែមធុងសំរាម',
+      'f-area':'តំបន់','f-bin-type':'ប្រភេទធុង','f-bin-freq':'ភាពញឹកញាប់','f-bin-loc':'ពិពណ៌នាទីតាំង',
+      'f-bin-resp':'អ្នកទទួលខុសត្រូវ','btn-add-bin':'បន្ថែម','loc-label':'ទីតាំង',
+      's6-score':'/ ១០០ ពិន្ទុ','s6-info':'ព័ត៌មានត្រួតពិនិត្យ','f-observer':'អ្នកសង្កេត',
+      'btn-save-6s':'រក្សាទុក 6S','btn-reset':'កំណត់ឡើងវិញ','s6-history':'ប្រវត្តិ 6S',
+      'add-area':'បន្ថែមទីតាំង','f-area-name':'ឈ្មោះទីតាំង','f-area-type':'ប្រភេទ','f-area-resp':'អ្នកទទួលខុសត្រូវ',
+      'btn-confirm':'បញ្ជាក់','btn-cancel':'បោះបង់','cfg-conn':'ការកំណត់ការតភ្ជាប់',
+      'btn-save-cfg':'រក្សាទុកការកំណត់','btn-test-tg':'សាកល្បង Telegram','btn-test-gas':'សាកល្បង GAS',
+      'staff-cfg':'បញ្ជីបុគ្គលិក','cleaners':'អ្នកសម្អាត','checkers':'អ្នកត្រួតពិនិត្យ',
+      'slots-cfg':'ការកំណត់ពេលវេលាសម្អាត','btn-add-slot':'បន្ថែម','btn-reset-slot':'កំណត់ម៉ោងដើម',
+      'data-mgmt':'ការគ្រប់គ្រងទិន្នន័យ','export-all':'នាំចេញ JSON ទាំងអស់','restore':'ស្តារបម្រុងទុក','clear-all':'លុបទាំងអស់',
       'ci-smell':'ក្លិន','ci-light':'អំពូល','ci-floor':'ជាន់','ci-door':'ទ្វារ','ci-corner':'ជ្រុង','ci-ceiling':'ពិដាន',
       'pass':'✓ ជាប់','fail':'✗ ធ្លាក់',
     }
   };
-  let _l = 'zh';
+  let _l = (() => {
+    try {
+      const saved = localStorage.getItem('gc_lang') || localStorage.getItem('vrt_clean_lang') || 'zh';
+      return D[saved] ? saved : 'zh';
+    } catch(e) { return 'zh'; }
+  })();
   const set = (l) => {
+    if(!D[l]) l='zh';
     _l = l;
+    try { localStorage.setItem('vrt_clean_lang', l); } catch(e) {}
+    if(typeof GC!=='undefined' && GC.i18n && GC.i18n.lang!==l) GC.i18n.set(l);
     document.querySelectorAll('.lb').forEach((b,i) => b.classList.toggle('on', ['zh','en','km'][i]===l));
     const d = D[l]||D.zh;
-    document.querySelectorAll('[data-i]').forEach(el => { const k=el.getAttribute('data-i'); if(d[k]!==undefined) el.textContent=d[k]; });
+    document.querySelectorAll('[data-i]').forEach(el => {
+      const k=el.getAttribute('data-i');
+      const fallback = l==='km' ? (D.en[k]!==undefined ? D.en[k] : D.zh[k]) : D.zh[k];
+      if(d[k]!==undefined || fallback!==undefined) el.textContent=d[k]!==undefined ? d[k] : fallback;
+    });
     state.populate();
   };
-  const t = (k) => (D[_l]||D.zh)[k] || (D.zh)[k] || k;
+  const t = (k) => {
+    const d=D[_l]||D.zh;
+    return d[k]!==undefined ? d[k] : (_l==='km' && D.en[k]!==undefined ? D.en[k] : (D.zh[k]!==undefined ? D.zh[k] : k));
+  };
   const get = () => _l;
   return { set, t, get };
 })();
@@ -1335,7 +1369,10 @@ function updateTs(){
 /* ═══ INIT ═══ */
 (function init(){
   const run=()=>{
-    state.load(); state.resetChk(); updateTs(); setInterval(updateTs,1000);
+    state.load();
+    const initialLang = i18n.get();
+    i18n.set(initialLang);
+    state.resetChk(); updateTs(); setInterval(updateTs,1000);
     const today=de.fmt(new Date()); sv('r-date',today); sv('s6-date',today);
     const q=document.getElementById('insp-quarter'); if(q){const m=new Date().getMonth()+1;q.value=m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';}
     state.populate(); renderStaff();renderSlotTags();de.set('month',document.querySelector('.pt .ptab'));updateDbInfo();
