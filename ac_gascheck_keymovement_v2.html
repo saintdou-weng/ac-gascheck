@@ -156,7 +156,9 @@ table tr:last-child td { border-bottom: none; }
 .dept-行政中心 { background: var(--dept-admin); }
 
 /* CHART SECTION */
-.chart-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.chart-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
+.chart-grid .card-body{position:relative;height:270px;min-height:270px;overflow:hidden}
+.chart-grid .card-body canvas{display:block!important;width:100%!important;height:230px!important;max-height:230px!important}
 @media(max-width:768px){ .chart-grid { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; } }
 
 /* IMPORT SECTION */
@@ -680,7 +682,7 @@ function setLang(l) {
 function t(k) { return I18N[lang][k] || I18N['zh'][k] || k; }
 
 // ==================== DATA ====================
-var records = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
+var records = [];
 window.records = records; // explicit global
 let listPeriod = 'all', dashPeriod = 'month', analyticsPeriod = 'month';
 let editId = null;
@@ -1015,7 +1017,7 @@ function renderDeptChart() {
   const colors = labels.map(d => DEPT_COLORS[d]);
   if(deptChart) deptChart.destroy();
   const ctx = document.getElementById('deptChart').getContext('2d');
-  deptChart = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:2, borderColor:'#fff' }] }, options:{ plugins:{ legend:{ position:'right', labels:{ font:{ size:11 } } } }, cutout:'60%' } });
+  deptChart = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:2, borderColor:'#fff' }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{ size:11 } } } }, cutout:'60%' } });
 }
 
 function renderTrendChart() {
@@ -1032,7 +1034,7 @@ function renderTrendChart() {
   trendChart = new Chart(ctx, { type:'line', data:{ labels: months.map(m=>m.label), datasets:[
     { label:'發出', data:issued, borderColor:'#e8640a', backgroundColor:'rgba(232,100,10,0.1)', tension:0.4, fill:true },
     { label:'歸還', data:ret, borderColor:'#2e8b6e', backgroundColor:'rgba(46,139,110,0.1)', tension:0.4, fill:true }
-  ]}, options:{ plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } } });
+  ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } } });
 }
 
 function renderDashAnomalies() {
@@ -1097,7 +1099,7 @@ function renderAnalytics() {
   if(aCharts.dept) aCharts.dept.destroy();
   aCharts.dept = new Chart(document.getElementById('analyticsDeptChart').getContext('2d'), {
     type:'bar', data:{ labels:dLabels, datasets:[{ data:dLabels.map(d=>deptCounts[d]), backgroundColor:dLabels.map(d=>DEPT_COLORS[d]), borderRadius:6 }] },
-    options:{ plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,ticks:{stepSize:1}} } }
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,ticks:{stepSize:1}} } }
   });
 
   // Key type chart
@@ -1107,7 +1109,7 @@ function renderAnalytics() {
   if(aCharts.type) aCharts.type.destroy();
   aCharts.type = new Chart(document.getElementById('analyticsTypeChart').getContext('2d'), {
     type:'pie', data:{ labels:tLabels, datasets:[{ data:tLabels.map(k=>typeCounts[k]), backgroundColor:['#3498db','#e67e22','#9b59b6','#27ae60','#e91e63','#f39c12','#1abc9c','#e74c3c','#95a5a6','#2c3e50'], borderWidth:2, borderColor:'#fff' }] },
-    options:{ plugins:{ legend:{ position:'right', labels:{ font:{size:10} } } } }
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{size:10} } } } }
   });
 
   // Monthly trend
@@ -1117,7 +1119,7 @@ function renderAnalytics() {
   if(aCharts.month) aCharts.month.destroy();
   aCharts.month = new Chart(document.getElementById('analyticsMonthChart').getContext('2d'), {
     type:'line', data:{ labels:months6.map(m=>m.label), datasets:[{ label:'發出', data:monthIssued, borderColor:'#1a3a5c', backgroundColor:'rgba(26,58,92,0.1)', fill:true, tension:0.4 }] },
-    options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
   });
 
   // Duration chart
@@ -1134,7 +1136,7 @@ function renderAnalytics() {
   if(aCharts.duration) aCharts.duration.destroy();
   aCharts.duration = new Chart(document.getElementById('analyticsDurationChart').getContext('2d'), {
     type:'bar', data:{ labels:durLabels, datasets:[{ label:'平均時長(h)', data:durData.map(v=>+v.toFixed(1)), backgroundColor:'rgba(46,139,110,0.7)', borderRadius:6 }] },
-    options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
   });
 
   // Dept summary table
@@ -1480,11 +1482,14 @@ function loadDemoData() {
 }
 
 window.addEventListener('DOMContentLoaded', function() {
-  loadDemoData();
-  initForm();
-  renderAll();
-  renderAnomalyBadge();
-
+  const run=function(){
+    try{const raw=localStorage.getItem('vrt_keys');records=raw?JSON.parse(raw):[];if(!Array.isArray(records))records=[];window.records=records;}catch(e){records=[];window.records=records;}
+    loadDemoData();
+    initForm();
+    renderAll();
+    renderAnomalyBadge();
+  };
+  if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 });
 
 /* ── window scope ── */

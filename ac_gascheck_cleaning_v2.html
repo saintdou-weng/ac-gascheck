@@ -143,8 +143,8 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 @media print{.topbar,.tabs,.br,.fb,.df{display:none!important}body{background:#fff}.main{max-width:100%;padding:0}}
 
 /* Fix chart container height — prevent infinite stretch */
-.cc { position: relative; height: 200px !important; max-height: 200px; overflow: hidden; }
-.cc canvas { max-height: 200px !important; }
+.cc { position: relative; height:230px !important; min-height:230px; max-height:230px; overflow:hidden; }
+.cc canvas { display:block!important; width:100%!important; height:180px!important; max-height:180px!important; }
 .cr { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
 
 
@@ -1334,19 +1334,13 @@ function updateTs(){
 
 /* ═══ INIT ═══ */
 (function init(){
-  state.load();
-  state.resetChk();
-  updateTs(); setInterval(updateTs,1000);
-  // Set today
-  const today=de.fmt(new Date());
-  sv('r-date',today); sv('s6-date',today);
-  // Set quarter
-  const q=document.getElementById('insp-quarter');
-  if(q){const m=new Date().getMonth()+1;q.value=m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';}
-  state.populate();
-  renderStaff(); renderSlotTags();
-  de.set('month', document.querySelector('.pt .ptab'));
-  updateDbInfo();
+  const run=()=>{
+    state.load(); state.resetChk(); updateTs(); setInterval(updateTs,1000);
+    const today=de.fmt(new Date()); sv('r-date',today); sv('s6-date',today);
+    const q=document.getElementById('insp-quarter'); if(q){const m=new Date().getMonth()+1;q.value=m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';}
+    state.populate(); renderStaff();renderSlotTags();de.set('month',document.querySelector('.pt .ptab'));updateDbInfo();
+  };
+  if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 })();
 
 /* ── window scope: expose all onclick targets ── */

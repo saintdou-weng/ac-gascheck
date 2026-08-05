@@ -87,9 +87,9 @@ select.bi{cursor:pointer}
 .stat-card{background:var(--col);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;text-align:center}
 .stat-val{font-size:22px;font-weight:700;color:var(--accent)}
 .stat-lbl{font-size:10px;color:var(--dim);margin-top:2px}
-/* CHART */
-.chart-wrap{padding:12px;position:relative}
-.chart-wrap canvas{max-height:240px}
+/* CHART — 固定父容器，避免 Chart.js 在資料少／視窗變化時反覆縮放 */
+.chart-wrap{height:280px;min-height:280px;padding:12px;position:relative;overflow:hidden}
+.chart-wrap canvas{display:block;width:100%!important;height:100%!important;max-height:none}
 /* HISTORY TABLE */
 .htable-wrap{overflow-x:auto}
 .htable{width:100%;border-collapse:collapse;font-size:12px;min-width:600px}
@@ -597,7 +597,7 @@ function renderAAnalysis(){
       {label:'Fabric (kg)',data:fabric,backgroundColor:'rgba(16,185,129,.7)',stack:'s'},
       {label:'Core (kg)',data:core,backgroundColor:'rgba(245,158,11,.7)',stack:'s'},
     ]},
-    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:'kg'}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:'kg'}}}}
   });
 
   const tP=plastic.reduce((a,b)=>a+b,0);const tF=fabric.reduce((a,b)=>a+b,0);const tC=core.reduce((a,b)=>a+b,0);
@@ -671,7 +671,7 @@ function renderBAnalysis(){
       {label:'SONYAPICH',data:sonData,backgroundColor:'rgba(220,38,38,.7)'},
       {label:'目標/週期',data:labels.map(()=>SUP_TARGET),type:'line',borderColor:'#f59e0b',borderDash:[5,5],pointRadius:0,borderWidth:2,fill:false}
     ]},
-    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,title:{display:true,text:'趟數'}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,title:{display:true,text:'趟數'}}}}
   });
 
   const totalTrips=filterRecs.length;
@@ -758,7 +758,7 @@ function renderReport(){
   if(chartR1Inst)chartR1Inst.destroy();
   chartR1Inst=new Chart(document.getElementById('chartR1').getContext('2d'),{
     type:'bar',data:{labels:mLabels,datasets:[{label:'Total (kg)',data:mTotals,backgroundColor:'rgba(16,185,129,.7)'}]},
-    options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'kg'}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'kg'}}}}
   });
 
   // Chart 2 — gate trips monthly
@@ -775,7 +775,7 @@ function renderReport(){
       {label:'K.S.W.M',data:kswmM,backgroundColor:'rgba(37,99,235,.7)'},
       {label:'SONYAPICH',data:sonM,backgroundColor:'rgba(220,38,38,.7)'},
     ]},
-    options:{responsive:true,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,title:{display:true,text:'趟'}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,title:{display:true,text:'趟'}}}}
   });
 
   // Comparison table
@@ -1243,29 +1243,15 @@ function getWeek(d){
 
 /* ========== INIT ========== */
 (function init(){
-  setLang('zh');
-  buildYearSelect('a-p-year',renderAAnalysis);
-  buildMonthSelect('a-p-month',renderAAnalysis);
-  buildYearSelect('b-p-year',renderBAnalysis);
-  buildMonthSelect('b-p-month',renderBAnalysis);
-  buildYearSelect('r-year',renderReport);
-  buildMonthSelect('r-month',renderReport);
-  buildYearSelect('h-year',queryHistory);
-  const hy=document.getElementById('h-year');
-  // Add "全部" option to h-year
-  const allOpt=document.createElement('option');allOpt.value='';allOpt.textContent='全年份';
-  hy.insertBefore(allOpt,hy.firstChild);
-  // Live clock
-  function tick(){
-    const now=new Date();
-    document.getElementById('ts-sub').textContent='Vantage River Textiles · '+now.toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
-  }
-  tick();setInterval(tick,30000);
-  // Add 2 default rows
-  addARow();addBRow();
-  // Initial renders
-  renderAAnalysis();
-  renderBAnalysis();
+  const run=()=>{
+    setLang('zh'); buildYearSelect('a-p-year',renderAAnalysis); buildMonthSelect('a-p-month',renderAAnalysis);
+    buildYearSelect('b-p-year',renderBAnalysis); buildMonthSelect('b-p-month',renderBAnalysis);
+    buildYearSelect('r-year',renderReport); buildMonthSelect('r-month',renderReport); buildYearSelect('h-year',queryHistory);
+    const hy=document.getElementById('h-year'); const allOpt=document.createElement('option');allOpt.value='';allOpt.textContent='全年份';hy.insertBefore(allOpt,hy.firstChild);
+    const tick=()=>{const now=new Date();document.getElementById('ts-sub').textContent='Vantage River Textiles · '+now.toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});};
+    tick();setInterval(tick,30000); addARow();addBRow(); renderAAnalysis();renderBAnalysis();
+  };
+  if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 })();
 
 

@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>AC GASCHECK Portal</title>
+<script src="./gascheck-core.js"></script>
 <style>
 :root{--acc:#F97316;--nv:#0F1E3D;--nv2:#1A3458;--gold:#FCD34D;--w:#fff;--mt:rgba(255,255,255,.62);--r:12px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -278,7 +279,7 @@ var MODS = [
 // 入口頁的 Push/Pull 也必須遵守「合併，不以少覆多」；不同模組的資料結構在這裡統一轉換。
 function portalRecords(m){
   try{
-    if(m.id==='waterdrum') return Object.keys(localStorage).filter(function(k){return /^wdr_\d{4}_\d{2}$/.test(k);}).reduce(function(a,k){
+    if(m.id==='waterdrum') return ((typeof GC!=='undefined'&&GC.storage)?GC.storage.keys('wdr_'):Object.keys(localStorage)).filter(function(k){return /^wdr_\d{4}_\d{2}$/.test(k);}).reduce(function(a,k){
       var mm=k.match(/^wdr_(\d{4})_(\d{2})$/), rows=JSON.parse(localStorage.getItem(k)||'[]');
       return a.concat((Array.isArray(rows)?rows:[]).map(function(r){return Object.assign({},r,{id:'wdr_'+mm[1]+'_'+mm[2]+'_'+r.day,date:mm[1]+'-'+mm[2]+'-'+String(r.day).padStart(2,'0'),year:+mm[1],month:+mm[2]});}));
     },[]);
@@ -320,7 +321,8 @@ function portalWrite(m,list){
       var rows=Object.keys(map).sort(function(a,b){return (+a||0)-(+b||0);}).map(function(day){return map[day];});
       localStorage.setItem('wdr_'+key,JSON.stringify(rows));
     });
-    localStorage.setItem('wdr_last_saved',new Date().toISOString());
+    var now=new Date();
+    localStorage.setItem('wdr_last_saved',now.getFullYear()+'-'+pad(now.getMonth()+1)+'-'+pad(now.getDate())+' '+pad(now.getHours())+':'+pad(now.getMinutes())+':'+pad(now.getSeconds()));
     return;
   }
   if(m.id==='ehs'){
@@ -499,8 +501,8 @@ function fixWebhook() {
       toast(t('wh_ok'), 6000);
       log('✓ setWebhook OK → …'+gasUrl.slice(-40),'ok');
       log('  desc: '+(d.description||''),'info');
-      // Also save the GAS URL
-      if(!GAS_URL){ GAS_URL=gasUrl; localStorage.setItem(GAS_KEY,gasUrl); updateCloudLabel(true); }
+      // 以這次實際設定的網址為準，避免頁面仍握著舊部署網址。
+      GAS_URL=gasUrl; localStorage.setItem(GAS_KEY,gasUrl); updateCloudLabel(true);
     } else {
       toast(t('wh_fail')+'\n'+(d.description||''), 6000);
       log('✗ setWebhook fail: '+(d.description||d.error||JSON.stringify(d)),'err');
@@ -528,6 +530,7 @@ function checkWebhook() {
       var url  = r.url || '';
       var pend = r.pending_update_count || 0;
       var err  = r.last_error_message  || '';
+      var expected=(GAS_URL||document.getElementById('gasInput').value.trim()).replace(/\/$/,'');
       var good = url.length>0 && url.indexOf('/exec')>=0;
 
       if(!url){
@@ -545,6 +548,13 @@ function checkWebhook() {
       else       log('  Pending: 0 ✓','info');
       if(err)    log('  LastErr: '+err,'err');
       else       log('  LastErr: none ✓','info');
+      if(expected && url.replace(/\/$/,'')!==expected){
+        log('⚠ 實際 Webhook 與目前輸入的 GAS URL 不一致','err');
+        log('  Expected: …'+expected.slice(-55),'warn');
+        log('  Actual:   …'+url.slice(-55),'warn');
+      } else if(expected && url){
+        log('✓ Webhook 與目前 GAS URL 一致','ok');
+      }
     })
     .catch(function(e){
       toast('❌ '+e.message);
@@ -650,16 +660,19 @@ function pad(n){return String(n).padStart(2,'0');}
 
 // ── Init ─────────────────────────────────────────────────────
 (function init(){
-  if(GAS_URL){
-    document.getElementById('gasInput').value=GAS_URL;
-    document.getElementById('btnPush').disabled=false;
-    document.getElementById('btnPull').disabled=false;
-    document.getElementById('btnWH').disabled=false;
-  }
-  document.querySelectorAll('.lb').forEach(function(b,i){b.classList.toggle('on',['zh','en','km'][i]===LANG);});
-  applyLang();
-  updateStats(JSON.parse(localStorage.getItem(META_KEY)||'{}'));
-  if(GAS_URL) setTimeout(fetchStatus,800);
+  var run=function(){
+    if(GAS_URL){
+      document.getElementById('gasInput').value=GAS_URL;
+      document.getElementById('btnPush').disabled=false;
+      document.getElementById('btnPull').disabled=false;
+      document.getElementById('btnWH').disabled=false;
+    }
+    document.querySelectorAll('.lb').forEach(function(b,i){b.classList.toggle('on',['zh','en','km'][i]===LANG);});
+    applyLang();
+    updateStats(JSON.parse(localStorage.getItem(META_KEY)||'{}'));
+    if(GAS_URL) setTimeout(fetchStatus,800);
+  };
+  if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 })();
 </script>
 </body>

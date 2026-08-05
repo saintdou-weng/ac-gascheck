@@ -980,7 +980,8 @@ function loadMonthDataRaw(year, month) {
   return s ? JSON.parse(s) : null;
 }
 function getAllKeys() {
-  return Object.keys(localStorage).filter(k => k.startsWith('wdr_') && k !== 'wdr_last_saved' && k !== 'wdr_tg_config').sort();
+  const keys=(typeof GC!=='undefined'&&GC.storage)?GC.storage.keys('wdr_'):Object.keys(localStorage);
+  return keys.filter(k => k.startsWith('wdr_') && k !== 'wdr_last_saved' && k !== 'wdr_tg_config').sort();
 }
 function emptyRow(day) {
   return {
@@ -1828,7 +1829,6 @@ function loadTgConfig() {
   const s = localStorage.getItem('wdr_tg_config');
   const c = s ? JSON.parse(s) : {};
   // Use GASCHECK platform defaults if not set
-  const gasCheck = JSON.parse(localStorage.getItem('ac_gascheck_gas_url') ? '{}' : '{}');
   document.getElementById('tg-token').value = c.token || '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
   document.getElementById('tg-chat').value  = c.chat  || '-5113064563';
   // Apply currency settings
@@ -2023,7 +2023,9 @@ function init() {
   setLang(currentLang);
 }
 
-window.addEventListener('load', init);
+window.addEventListener('load', function(){
+  if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(init);else init();
+});
 
 // ─── Auto-backup every 5 minutes ─────────────────────────────
 setInterval(function() {

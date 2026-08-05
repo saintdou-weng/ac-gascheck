@@ -133,7 +133,8 @@ tbody tr:hover{background:var(--bg);}
 .riw span{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3);pointer-events:none;}
 .riw input{padding-right:32px;}
 /* CHARTS */
-.chc{position:relative;height:270px;}
+.chc{position:relative;height:270px!important;min-height:270px;overflow:hidden;}
+.chc canvas{display:block!important;width:100%!important;height:100%!important;max-height:none;}
 .cgrid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;}
 /* ANOMALY */
 .aitm{display:flex;gap:11px;align-items:flex-start;padding:11px 15px;border-radius:var(--r);margin-bottom:8px;border-left:4px solid var(--border);}
@@ -1923,7 +1924,9 @@ function init(){
   // 啟動時靜默從雲端拉取最新資料
   setTimeout(gasPullOnInit, 800);
 }
-window.addEventListener('load',init);
+window.addEventListener('load',function(){
+  if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(init);else init();
+});
 </script><script>
 // AC_GASCHECK Platform TG Defaults
 var AC_TG_TOKEN_DEFAULT = '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';

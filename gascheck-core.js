@@ -73,6 +73,142 @@ const U = GC.util = {
 };
 
 /* ═══════════════════════════════════════════════════════════
+   0.5 STORAGE — 業務資料放 IndexedDB；localStorage 只留小設定
+   IndexedDB 是瀏覽器內建資料庫，容量通常遠大於 localStorage。
+   為了不破壞既有模組，攔截指定業務 key 的 get/set/removeItem；模組仍可用
+   原本同步寫法，實際內容會存到 IndexedDB。第一次開啟會自動搬移舊資料。
+   ═══════════════════════════════════════════════════════════ */
+const STORAGE = GC.storage = (() => {
+  const DB_NAME = 'ac_gascheck_data_v1', STORE = 'kv';
+  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_th_z|vrt_th_r|vrt_keys|vrt_waste_v3|vrt_dorm_hub_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|ac_waterdrum_backup)$/;
+  const storageProto = typeof Storage !== 'undefined' ? Storage.prototype : null;
+  const native = storageProto ? {
+    get: storageProto.getItem,
+    set: storageProto.setItem,
+    remove: storageProto.removeItem,
+    key: storageProto.key,
+    length: Object.getOwnPropertyDescriptor(storageProto, 'length')
+  } : null;
+  const cache = new Map();
+  const enabled = !!storageProto && typeof indexedDB !== 'undefined' && !!global.localStorage;
+  let db = null;
+
+  const isDataKey = key => DATA_KEY_RE.test(String(key || ''));
+  const localKeys = () => {
+    const out = [];
+    if (!native || !global.localStorage) return out;
+    try {
+      const n = native && native.length && native.length.get ? native.length.get.call(global.localStorage) : global.localStorage.length;
+      for (let i = 0; i < n; i++) {
+        const k = native.key.call(global.localStorage, i);
+        if (k) out.push(k);
+      }
+    } catch (e) {}
+    return out;
+  };
+  const request = req => new Promise((resolve, reject) => {
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('IndexedDB request failed'));
+  });
+  const openDb = () => new Promise((resolve, reject) => {
+    const req = indexedDB.open(DB_NAME, 1);
+    req.onupgradeneeded = () => {
+      const d = req.result;
+      if (!d.objectStoreNames.contains(STORE)) d.createObjectStore(STORE, { keyPath: 'key' });
+    };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error || new Error('IndexedDB unavailable'));
+  });
+  const readAll = async () => {
+    const tx = db.transaction(STORE, 'readonly');
+    return request(tx.objectStore(STORE).getAll());
+  };
+  const put = (key, value) => {
+    if (!db) return Promise.reject(new Error('IndexedDB not ready'));
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).put({ key: String(key), value: String(value) });
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error || new Error('IndexedDB write failed'));
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted'));
+    });
+  };
+  const remove = key => {
+    if (!db) return Promise.resolve(true);
+    const tx = db.transaction(STORE, 'readwrite');
+    tx.objectStore(STORE).delete(String(key));
+    return new Promise((resolve, reject) => {
+      tx.oncomplete = () => resolve(true);
+      tx.onerror = () => reject(tx.error || new Error('IndexedDB delete failed'));
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB delete aborted'));
+    });
+  };
+
+  const ready = (async () => {
+    if (!enabled) return false;
+    db = await openDb();
+    const rows = await readAll();
+    (rows || []).forEach(row => {
+      if (row && row.key != null) cache.set(String(row.key), String(row.value == null ? '' : row.value));
+    });
+    // 舊版本資料只有在成功寫入 IndexedDB 後才移除，避免搬移中斷造成遺失。
+    for (const key of localKeys()) {
+      if (!isDataKey(key)) continue;
+      const raw = native && native.get ? native.get.call(global.localStorage, key) : null;
+      if (!cache.has(key) && raw != null) {
+        await put(key, raw);
+        cache.set(key, raw);
+      }
+      if (cache.has(key)) {
+        try { if (native && native.remove) native.remove.call(global.localStorage, key); } catch (e) {}
+      }
+    }
+    return true;
+  })().catch(err => {
+    console.warn('[AC GASCHECK] IndexedDB unavailable; localStorage fallback:', err.message);
+    db = null;
+    return false;
+  });
+
+  function getSync(key) {
+    key = String(key || '');
+    if (cache.has(key)) return cache.get(key);
+    try { return native && native.get ? native.get.call(global.localStorage, key) : null; } catch (e) { return null; }
+  }
+  function setSync(key, value) {
+    key = String(key || ''); value = String(value == null ? '' : value);
+    if (!isDataKey(key) || !enabled) { if (native && native.set) native.set.call(global.localStorage, key, value); return; }
+    cache.set(key, value);
+    ready.then(ok => ok ? put(key, value) : (native && native.set ? native.set.call(global.localStorage, key, value) : null)).catch(() => {});
+  }
+  function removeSync(key) {
+    key = String(key || '');
+    if (!isDataKey(key) || !enabled) { if (native && native.remove) native.remove.call(global.localStorage, key); return; }
+    cache.delete(key);
+    ready.then(ok => ok ? remove(key) : (native && native.remove ? native.remove.call(global.localStorage, key) : null)).catch(() => {});
+  }
+  function keys(prefix) {
+    const out = new Set(cache.keys());
+    localKeys().forEach(k => { if (isDataKey(k)) out.add(k); });
+    return Array.from(out).filter(k => !prefix || k.indexOf(prefix) === 0).sort();
+  }
+
+  // 讓舊模組不必全部改成 async/await；只有業務資料 key 走 IndexedDB。
+  if (enabled && storageProto) {
+    storageProto.getItem = function (key) {
+      return this === global.localStorage && isDataKey(key) ? getSync(key) : native.get.call(this, key);
+    };
+    storageProto.setItem = function (key, value) {
+      return this === global.localStorage && isDataKey(key) ? setSync(key, value) : native.set.call(this, key, value);
+    };
+    storageProto.removeItem = function (key) {
+      return this === global.localStorage && isDataKey(key) ? removeSync(key) : native.remove.call(this, key);
+    };
+  }
+  return { ready, isDataKey, getSync, setSync, removeSync, keys };
+})();
+
+/* ═══════════════════════════════════════════════════════════
    1. I18N — 繁中 / English / ខ្មែរ
    ═══════════════════════════════════════════════════════════ */
 const BASE_DICT = {
@@ -92,7 +228,8 @@ const BASE_DICT = {
     'gc.noData':'尚無資料','gc.export':'匯出','gc.search':'搜尋',
     'gc.weather':'天氣','gc.sunny':'晴','gc.cloudy':'多雲','gc.rain':'雨',
     'gc.heavyRain':'大雨','gc.storm':'雷雨','gc.hot':'酷熱','gc.humid':'潮濕',
-    'gc.confirm':'確認','gc.cancel':'取消','gc.save':'儲存','gc.delete':'刪除','gc.close':'關閉'
+    'gc.confirm':'確認','gc.cancel':'取消','gc.save':'儲存','gc.delete':'刪除','gc.close':'關閉',
+    'gc.cloudTools':'雲端工具','gc.indexedDb':'資料庫：IndexedDB'
   },
   en: {
     'gc.upload':'Upload','gc.download':'Download','gc.sync':'Syncing…',
@@ -110,7 +247,8 @@ const BASE_DICT = {
     'gc.noData':'No data','gc.export':'Export','gc.search':'Search',
     'gc.weather':'Weather','gc.sunny':'Sunny','gc.cloudy':'Cloudy','gc.rain':'Rain',
     'gc.heavyRain':'Heavy Rain','gc.storm':'Storm','gc.hot':'Hot','gc.humid':'Humid',
-    'gc.confirm':'Confirm','gc.cancel':'Cancel','gc.save':'Save','gc.delete':'Delete','gc.close':'Close'
+    'gc.confirm':'Confirm','gc.cancel':'Cancel','gc.save':'Save','gc.delete':'Delete','gc.close':'Close',
+    'gc.cloudTools':'Cloud Tools','gc.indexedDb':'Storage: IndexedDB'
   },
   km: {
     'gc.upload':'ផ្ទុកឡើង','gc.download':'ទាញយក','gc.sync':'កំពុងធ្វើសមកាលកម្ម…',
@@ -128,7 +266,8 @@ const BASE_DICT = {
     'gc.noData':'គ្មានទិន្នន័យ','gc.export':'នាំចេញ','gc.search':'ស្វែងរក',
     'gc.weather':'អាកាសធាតុ','gc.sunny':'មេឃស្រឡះ','gc.cloudy':'មានពពក','gc.rain':'ភ្លៀង',
     'gc.heavyRain':'ភ្លៀងខ្លាំង','gc.storm':'ព្យុះ','gc.hot':'ក្ដៅ','gc.humid':'សើម',
-    'gc.confirm':'បញ្ជាក់','gc.cancel':'បោះបង់','gc.save':'រក្សាទុក','gc.delete':'លុប','gc.close':'បិទ'
+    'gc.confirm':'បញ្ជាក់','gc.cancel':'បោះបង់','gc.save':'រក្សាទុក','gc.delete':'លុប','gc.close':'បិទ',
+    'gc.cloudTools':'ឧបករណ៍ Cloud','gc.indexedDb':'ការផ្ទុក៖ IndexedDB'
   }
 };
 
@@ -918,6 +1057,12 @@ GC.attach = function (cfg) {
        photo:    bool      是否顯示照片統計
        gasUrl
      } */
+  cfg = cfg || {};
+  if (!cfg.__storageReady && STORAGE && STORAGE.ready) {
+    const next = Object.assign({}, cfg, { __storageReady: true });
+    STORAGE.ready.then(() => GC.attach(next));
+    return { refresh: () => {}, getPeriod: () => 'month' };
+  }
   const C = Object.assign({
     dateField: 'date', idField: 'id', groupField: null,
     weather: false, photo: false, importSchema: null,
@@ -927,21 +1072,15 @@ GC.attach = function (cfg) {
 
   if (C.gasUrl) CLOUD.setUrl(C.gasUrl);
 
-  /* ── 面板 DOM ── */
+  /* ── 面板 DOM：固定放在模組內容頂端，不再使用浮動按鈕 ── */
   const bar = document.createElement('div');
-  bar.className = 'gc-bar';
+  bar.className = 'gc-tools-card';
   bar.innerHTML = `
-    <div class="gc-quick" id="gcQuick"></div>
-    <button type="button" class="gc-bar-toggle" id="gcBarToggle" title="AC GASCheck">
-      <span class="gc-bar-ic">☁️</span>
-      <span class="gc-bar-tx">${U.escapeHtml(C.title || C.tool)}</span>
-      <span class="gc-bar-caret">▾</span>
-    </button>
     <div class="gc-panel" id="gcPanel">
       <div class="gc-panel-head">
-        <span class="gc-panel-title">☁️ ${U.escapeHtml(C.title || C.tool)}</span>
+        <span class="gc-panel-title">☁️ <span data-i="gc.cloudTools">${U.escapeHtml(I18.t('gc.cloudTools'))}</span></span>
+        <span class="gc-storage-badge" data-i="gc.indexedDb">${U.escapeHtml(I18.t('gc.indexedDb'))}</span>
         <span id="gcLangSw"></span>
-        <button type="button" class="gc-panel-x" id="gcPanelX">✕</button>
       </div>
       <div class="gc-panel-body">
         <div class="gc-sec">
@@ -960,7 +1099,21 @@ GC.attach = function (cfg) {
         </div>` : ''}
       </div>
     </div>`;
-  document.body.appendChild(bar);
+  const contentMount = document.querySelector('.main, .content, .page, .wrap') || document.body;
+  if (contentMount.firstChild) contentMount.insertBefore(bar, contentMount.firstChild);
+  else contentMount.appendChild(bar);
+
+  // 在各模組原有分頁列加入同一個普通分頁按鈕，取代右上／右下浮動的工具圖示。
+  const nav = document.querySelector('.tabs, .nav-tabs, #tab-bar, .nav, .znav');
+  if (nav && !nav.querySelector('.gc-tab-trigger')) {
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.className = 'gc-tab-trigger';
+    trigger.innerHTML = '☁️ <span data-i="gc.cloudTools">' + U.escapeHtml(I18.t('gc.cloudTools')) + '</span>';
+    trigger.setAttribute('aria-controls', 'gcPanel');
+    trigger.onclick = () => bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    nav.appendChild(trigger);
+  }
 
   /* ── 元件掛載 ── */
   GC.i18n.mountSwitcher('#gcLangSw');
@@ -980,8 +1133,6 @@ GC.attach = function (cfg) {
     onRemote: d => { if (C.onRemote) C.onRemote(d || {}); },
     onDone: () => { refresh(); if (C.onSync) C.onSync(); }
   };
-  // 固定列直接顯示上傳／下載，避免按鈕只藏在設定面板內看不到。
-  GC.mountCloudButtons('#gcQuick', cloudOpt);
   GC.mountCloudButtons('#gcCloud', cloudOpt);
 
   if (C.importSchema) {
@@ -1032,13 +1183,9 @@ GC.attach = function (cfg) {
     I18.apply(bar);
   }
 
-  /* ── 開合 ── */
+  /* ── 分頁內工具列：面板保持可見，避免智慧匯入／雲端按鈕被藏起來 ── */
   const panel = bar.querySelector('#gcPanel');
-  bar.querySelector('#gcBarToggle').onclick = () => {
-    panel.classList.toggle('open');
-    if (panel.classList.contains('open')) refresh();
-  };
-  bar.querySelector('#gcPanelX').onclick = () => panel.classList.remove('open');
+  if (panel) panel.classList.add('open');
   window.addEventListener('gc:langchange', refresh);
 
   refresh();
@@ -1047,32 +1194,25 @@ GC.attach = function (cfg) {
 
 /* ── 面板樣式 ── */
 const BAR_CSS = `
-.gc-bar{position:fixed;right:16px;top:86px;z-index:9500;font-family:inherit;display:flex;align-items:center;gap:6px}
-.gc-quick{display:inline-flex;align-items:center;gap:4px;padding:4px;border-radius:24px;background:rgba(255,255,255,.96);box-shadow:0 4px 16px rgba(26,62,120,.22);border:1px solid #D8DCE6}
-.gc-quick .gc-cloud-btn{padding:7px 10px;font-size:11px}
-.gc-bar-toggle{display:flex;align-items:center;gap:7px;padding:10px 16px;border:0;border-radius:24px;
-  background:#1A3E78;color:#fff;font:600 13px/1 inherit;cursor:pointer;box-shadow:0 4px 16px rgba(26,62,120,.34)}
-.gc-bar-toggle:hover{background:#153268}
-.gc-bar-ic{font-size:15px}
-.gc-bar-caret{font-size:10px;opacity:.75}
-.gc-panel{position:absolute;right:0;top:52px;width:min(390px,calc(100vw - 28px));
-  background:#fff;border:1px solid #D8DCE6;border-radius:13px;box-shadow:0 12px 44px rgba(15,20,32,.2);
-  display:none;max-height:min(76vh,600px);overflow:hidden;flex-direction:column}
+.gc-tools-card{display:block;width:100%;max-width:1400px;margin:0 0 16px;font-family:inherit;scroll-margin-top:12px}
+.gc-tab-trigger{display:inline-flex;align-items:center;gap:5px;margin-left:8px;padding:9px 13px;border:1px solid rgba(26,62,120,.25);border-radius:8px;background:#fff;color:#1A3E78;font:600 12px/1 inherit;cursor:pointer;white-space:nowrap;transition:.15s}
+.gc-tab-trigger:hover{background:#EBF0FA;border-color:#1A3E78;color:#153268}
+.gc-panel{position:static;width:100%;background:#fff;border:1px solid #D8DCE6;border-radius:13px;box-shadow:0 4px 18px rgba(15,20,32,.1);display:flex;max-height:none;overflow:visible;flex-direction:column}
 .gc-panel.open{display:flex}
-.gc-panel-head{display:flex;align-items:center;gap:9px;padding:12px 14px;border-bottom:1px solid #EEF1F6;background:#F7F8FA}
+.gc-panel-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid #EEF1F6;background:#F7F8FA;border-radius:13px 13px 0 0}
 .gc-panel-title{font-weight:700;font-size:13px;color:#1A3E78;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.gc-panel-x{border:0;background:transparent;font-size:15px;color:#8892A8;cursor:pointer;padding:2px 4px;line-height:1}
-.gc-panel-x:hover{color:#B91C1C}
-.gc-panel-body{padding:14px;overflow-y:auto;flex:1}
-.gc-sec{margin-bottom:17px}
+.gc-storage-badge{font-size:10px;color:#16653A;background:#E8F7EE;border:1px solid #BCE7CB;border-radius:12px;padding:3px 8px;white-space:nowrap}
+.gc-panel-body{display:grid;grid-template-columns:minmax(220px,1.2fr) minmax(190px,.8fr) minmax(240px,1.2fr);gap:14px;padding:14px;overflow:visible}
+.gc-sec{min-width:0;margin:0}
 .gc-sec:last-child{margin-bottom:0}
 .gc-sec-t{font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px}
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
-@media(max-width:480px){
-  .gc-bar{right:10px;top:72px}
-  .gc-quick .gc-cloud-btn{padding:7px 9px}
-  .gc-bar-tx{display:none}
-  .gc-panel{width:calc(100vw - 20px)}
+@media(max-width:900px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-sec:last-child{grid-column:1/-1}}
+@media(max-width:560px){
+  .gc-panel-body{grid-template-columns:1fr}
+  .gc-sec:last-child{grid-column:auto}
+  .gc-tab-trigger{margin:6px 0 0 4px;padding:8px 10px}
+  .gc-storage-badge{order:3}
 }
 `;
 (function(){

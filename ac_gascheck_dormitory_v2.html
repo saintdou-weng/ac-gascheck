@@ -77,7 +77,8 @@ body{font-family:'DM Sans','Noto Sans TC','Noto Sans Khmer',sans-serif;backgroun
 .kv{font-size:24px;font-weight:700;color:var(--tx);line-height:1}
 .kl{font-size:9px;color:var(--dim);font-weight:600;letter-spacing:.5px;text-transform:uppercase;margin-top:3px}
 .cr{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
-.cc{background:var(--sur);border:1px solid var(--bdr2);border-radius:12px;padding:12px}
+.cc{background:var(--sur);border:1px solid var(--bdr2);border-radius:12px;padding:12px;height:230px;min-height:230px;position:relative;overflow:hidden}
+.cc canvas{display:block!important;width:100%!important;height:180px!important;max-height:180px!important}
 .ct{font-size:10px;font-weight:700;color:var(--tx2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
 
 /* FORM */
@@ -1719,42 +1720,27 @@ function goApply(t) {
 // INIT
 // ═══════════════════════════════════════════════════════════════
 (function init(){
-  state.load();
-  cfg.load();
-  updateTs(); setInterval(updateTs,1000);
-  // Init form — set date inputs ONCE here (not in setInterval)
-  renderItems();
-  state.applyFormType();
-  sv('f-date',     today_str());
-  sv('f-applydate',today_str());
-  sv('f-reviewer', cfg.get().reviewers?.[0]||'Phea');
-  // viol & insp date inputs
-  const _vfd=document.getElementById('vf-date'); if(_vfd) _vfd.value=today_str();
-  const _idd=document.getElementById('insp-date'); if(_idd) _idd.value=today_str();
-  // Load draft
-  try {
-    const draft=JSON.parse(localStorage.getItem('vrt_dorm_draft'));
-    if(draft){
-      state.setFType(draft.type||'in');
-      ['name','gender','id','dept','pos','phone','reason','applicant'].forEach(f=>sv('f-'+f,draft[f]||''));
-      if(draft.room) sv('f-room',draft.room);
-      if(draft.items) state.setItems(draft.items);
-    }
-  } catch(e){}
-  // Init inspection
-  insp.renderTable();
-  // Init date engines with current period label
-  de.set('month', document.querySelector('#pane-dash .dnp[data-p="month"]'));
-  inspDE.set('day', document.querySelector('#pane-insp .dnp[data-p="day"]'));
-  recDE.set('month', document.querySelector('#pane-records .dnp[data-p="month"]'));
-  // Set inspection quarter
-  const q=cfg.get().quarter||'Q1';
-  const iq=document.getElementById('insp-q'); if(iq)iq.value=q;
-  // Initial dashboard
-  dash.render();
-  updateDbInfo();
-  // Init inspection room editor (in settings)
-  settings.renderIRRooms();
+  const run=()=>{
+    state.load();
+    cfg.load();
+    updateTs(); setInterval(updateTs,1000);
+    renderItems();
+    state.applyFormType();
+    sv('f-date',today_str()); sv('f-applydate',today_str()); sv('f-reviewer',cfg.get().reviewers?.[0]||'Phea');
+    const _vfd=document.getElementById('vf-date'); if(_vfd) _vfd.value=today_str();
+    const _idd=document.getElementById('insp-date'); if(_idd) _idd.value=today_str();
+    try {
+      const draft=JSON.parse(localStorage.getItem('vrt_dorm_draft'));
+      if(draft){state.setFType(draft.type||'in');['name','gender','id','dept','pos','phone','reason','applicant'].forEach(f=>sv('f-'+f,draft[f]||''));if(draft.room)sv('f-room',draft.room);if(draft.items)state.setItems(draft.items);}
+    } catch(e){}
+    insp.renderTable();
+    de.set('month',document.querySelector('#pane-dash .dnp[data-p="month"]'));
+    inspDE.set('day',document.querySelector('#pane-insp .dnp[data-p="day"]'));
+    recDE.set('month',document.querySelector('#pane-records .dnp[data-p="month"]'));
+    const q=cfg.get().quarter||'Q1'; const iq=document.getElementById('insp-q'); if(iq)iq.value=q;
+    dash.render(); updateDbInfo(); settings.renderIRRooms();
+  };
+  if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 })();
 </script>
 
