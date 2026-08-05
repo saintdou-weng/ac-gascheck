@@ -463,11 +463,80 @@ const T = {
     'import-title':'នាំចូលទិន្នន័យប្រវត្តិ',
   }
 };
+
+/* EHS 舊版頁面有不少直接寫在 HTML／圖表 render 裡的文字，原本只有分頁有翻譯，
+   所以切到 English 後仍會看到大量中文。以下只處理介面文字節點，不碰使用者填入的資料。 */
+const EHS_LABELS = [
+  ['VRT 廢棄物回收管理系統','VRT Waste Recycling Management System','ប្រព័ន្ធគ្រប់គ្រងការកែច្នៃសំណល់ VRT'],
+  ['Vantage River Textiles · Sihanoukville','Vantage River Textiles · Sihanoukville','Vantage River Textiles · Sihanoukville'],
+  ['模組A 內部','Module A Internal','មូឌុល A ខាងក្នុង'],['模組B 大門','Module B Gate','មូឌុល B ច្រកទ្វារ'],
+  ['報表分析','Report','របាយការណ៍'],['歷史記錄','History','ប្រវត្តិ'],['歷史匯入','Import','នាំចូល'],
+  ['Telegram/雲端','Telegram / Cloud','Telegram / Cloud'],
+  ['模組A — 內部廢料','Module A — Internal Recycling','មូឌុល A — ការកែច្នៃខាងក្នុង'],
+  ['模組B — 大門 & 供應商趟數','Module B — Gate & Supplier Trips','មូឌុល B — ច្រកទ្វារ និងចំនួនជើងអ្នកផ្គត់ផ្គង់'],
+  ['批次填寫 — 上月回收記錄','Batch Entry — Last Month Recycling','បំពេញជាក្រុម — កំណត់ត្រាកែច្នៃខែមុន'],
+  ['批次填寫 — 大門出入記錄','Batch Entry — Gate Records','បំពេញជាក្រុម — កំណត់ត្រាចូលចេញច្រកទ្វារ'],
+  ['一次填多行，統一提交','Enter multiple rows, then submit once','បញ្ចូលជួរច្រើន រួចដាក់ស្នើតែម្តង'],
+  ['日期 Date *','Date *','កាលបរិច្ឆេទ *'],['塑膠 Plastic (kg)','Plastic (kg)','ប្លាស្ទិក (kg)'],
+  ['裁切碎布 Fabric (kg)','Fabric (kg)','ក្រណាត់ (kg)'],['紙管 Core (kg)','Core (kg)','ស្នូលក្រដាស (kg)'],
+  ['合計 Total (kg)','Total (kg)','សរុប (kg)'],['備註 Remark','Remark','ចំណាំ'],
+  ['日期 *','Date *','កាលបរិច្ឆេទ *'],['姓名 *','Name *','ឈ្មោះ *'],['供應商 *','Supplier *','អ្នកផ្គត់ផ្គង់ *'],
+  ['車牌','Vehicle No.','លេខយានយន្ត'],['固體','Solid','រឹង'],['工業','Industrial','ឧស្សាហកម្ម'],
+  ['重量(kg)','Weight (kg)','ទម្ងន់ (kg)'],['Time In *','Time In *','ពេលចូល *'],['Time Out','Time Out','ពេលចេញ'],
+  ['Gate Keeper','Gate Keeper','អ្នកយាមច្រក'],['備註','Remark','ចំណាំ'],['新增一行','Add Row','បន្ថែមជួរ'],
+  ['清除全部','Clear All','លុបទាំងអស់'],['本月大門記錄','This Month Gate Records','កំណត់ត្រាច្រកទ្វារខែនេះ'],
+  ['綜合報表分析','Consolidated Report','របាយការណ៍សង្ខេប'],['歷史記錄查詢','History Query','ស្វែងរកប្រវត្តិ'],
+  ['歷史資料匯入','Historical Data Import','នាំចូលទិន្នន័យប្រវត្តិ'],['連線設定','Connection Settings','ការកំណត់ការតភ្ជាប់'],
+  ['GAS Web App URL','GAS Web App URL','GAS Web App URL'],['Telegram Bot Token','Telegram Bot Token','Telegram Bot Token'],
+  ['Telegram Chat ID','Telegram Chat ID','Telegram Chat ID'],['儲存設定','Save Settings','រក្សាទុកការកំណត់'],
+  ['測試 Telegram','Test Telegram','សាកល្បង Telegram'],['測試 GAS','Test GAS','សាកល្បង GAS'],
+  ['上傳資料','Upload Data','ផ្ទុកទិន្នន័យឡើង'],['下載資料','Download Data','ទាញយកទិន្នន័យ'],
+  ['月','Month','ខែ'],['週','Week','សប្ដាហ៍'],['年','Year','ឆ្នាំ'],['日','Day','ថ្ងៃ'],
+  ['總趟數','Total Trips','ចំនួនជើងសរុប'],['異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី'],
+  ['供應商達標','Suppliers Meeting Target','អ្នកផ្គត់ផ្គង់ដល់គោលដៅ'],['回收次數','Recycling Count','ចំនួនកែច្នៃ'],
+  ['內部廢料 (kg)','Internal Recycling (kg)','សំណល់កែច្នៃខាងក្នុង (kg)'],['大門趟數','Gate Trips','ចំនួនជើងច្រកទ្វារ']
+].map(x=>({zh:x[0],en:x[1],km:x[2]}));
+const EHS_PARTS = [
+  ['模組A','Module A','មូឌុល A'],['模組B','Module B','មូឌុល B'],['內部廢料','Internal Recycling','សំណល់កែច្នៃខាងក្នុង'],
+  ['大門','Gate','ច្រកទ្វារ'],['供應商','Supplier','អ្នកផ្គត់ផ្គង់'],['趟數','Trips','ចំនួនជើង'],['本月','This Month','ខែនេះ'],
+  ['合計','Total','សរុប'],['回收次數','Recycling Count','ចំនួនកែច្នៃ'],['異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី'],
+  ['目標','Target','គោលដៅ'],['達標','Target Met','ដល់គោលដៅ'],['未達標','Below Target','មិនដល់គោលដៅ'],['送審','Submit for Review','ដាក់ស្នើពិនិត្យ'],
+  ['等待核可','Waiting for Approval','កំពុងរង់ចាំអនុម័ត'],['清除全部','Clear All','លុបទាំងអស់'],
+  ['共','Total','សរុប'],['筆','records','កំណត់ត្រា'],['趟','trips','ជើង'],['狀態','Status','ស្ថានភាព'],
+  ['等待','Waiting','រង់ចាំ'],['核可','Approval','អនុម័ត'],['內部','Internal','ខាងក្នុង'],['出入','Entry / Exit','ចូល / ចេញ'],
+  ['廢料','Recycling','សំណល់'],['資料','Data','ទិន្នន័យ'],['設定','Settings','ការកំណត់'],['天','days','ថ្ងៃ']
+].map(x=>({zh:x[0],en:x[1],km:x[2]}));
+function applyEhsStaticLanguage(){
+  if(!document.body)return;
+  const exact=new Map(); EHS_LABELS.forEach(x=>[x.zh,x.en,x.km].forEach(v=>exact.set(v,x[lang])));
+  const nodes=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+  let n;
+  while(n=nodes.nextNode()){
+    const p=n.parentElement;
+    if(!p||p.tagName==='SCRIPT'||p.tagName==='STYLE')continue;
+    const raw=n.nodeValue, trimmed=raw.trim();
+    if(exact.has(trimmed)){n.nodeValue=raw.replace(trimmed,exact.get(trimmed));continue;}
+    let out=raw;
+    EHS_PARTS.forEach(x=>[x.zh,x.en,x.km].forEach((v,i)=>{if(v!==x[lang])out=out.split(v).join(x[lang]);}));
+    if(out!==raw)n.nodeValue=out;
+  }
+}
+window.applyEhsStaticLanguage=applyEhsStaticLanguage;
 function setLang(l){
   lang=l;
   document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.textContent.trim()===({zh:'中',en:'EN',km:'ខ្មែរ'}[l])));
   document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(T[l]&&T[l][k])el.textContent=T[l][k];});
+  if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==l)GC.i18n.set(l);
+  setTimeout(applyEhsStaticLanguage,0);
 }
+function startEhsLanguageObserver(){
+  applyEhsStaticLanguage();
+  if(typeof MutationObserver==='undefined'||!document.body)return;
+  const _ehsObserver=new MutationObserver(()=>{if(lang!=='zh')applyEhsStaticLanguage();});
+  _ehsObserver.observe(document.body,{subtree:true,childList:true,characterData:true});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startEhsLanguageObserver);
+else startEhsLanguageObserver();
 
 /* ========== TABS ========== */
 function switchTab(id){

@@ -356,6 +356,21 @@ const I18 = GC.i18n = {
 };
 GC.t = (k, f) => I18.t(k, f);
 
+/* 各舊模組本來都有自己的語言按鈕。共用列不再重複建立第二組按鈕，
+   但會在使用者點擊舊模組按鈕時同步核心的三語文字。 */
+(function hookLegacyLanguageButtons(){
+  const selector = '.lang-btn, .lb, .lbtn, .lang-switch button, .lang-toggle button';
+  document.addEventListener('click', e => {
+    const b = e.target && e.target.closest ? e.target.closest(selector) : null;
+    if (!b) return;
+    const raw = String(b.dataset.lang || b.textContent || '').trim().toLowerCase();
+    const lang = raw === 'en' || raw === 'english' ? 'en' :
+      (raw === 'km' || raw.indexOf('ខ្មែរ') >= 0 || raw.indexOf('ក') >= 0 ? 'km' :
+        (raw === 'zh' || raw.indexOf('中') >= 0 || raw.indexOf('中文') >= 0 ? 'zh' : ''));
+    if (lang) setTimeout(() => { if (I18.lang !== lang) I18.set(lang); }, 0);
+  }, true);
+})();
+
 /* ═══════════════════════════════════════════════════════════
    2. CLOUD — 安全合併，永不被少量資料覆蓋
    ═══════════════════════════════════════════════════════════ */
@@ -997,13 +1012,15 @@ const CSS = `
 .gc-cloud-btn:hover{background:#EBF0FA;border-color:#1A3E78}
 .gc-cloud-btn:disabled{opacity:.45;cursor:not-allowed}
 
-.gc-action-strip{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:10px 12px;margin-bottom:10px;background:#F7F9FC;border:1px solid #D8DCE6;border-radius:12px;box-shadow:0 3px 12px rgba(15,20,32,.08)}
+.gc-action-strip{display:flex;align-items:center;gap:7px;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;padding:10px 12px;margin-bottom:10px;background:#F7F9FC;border:1px solid #D8DCE6;border-radius:12px;box-shadow:0 3px 12px rgba(15,20,32,.08);scrollbar-width:thin}
+.gc-action-strip>*{flex-shrink:0}
 .gc-action-heading{font-size:12px;font-weight:800;color:#1A3E78;white-space:nowrap;margin-right:2px}
 .gc-action-label{font-size:11px;font-weight:700;color:#5A6478;white-space:nowrap;margin-left:4px}
 .gc-action-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1px solid #C9D3E3;background:#fff;border-radius:8px;font:700 12px/1 inherit;color:#1A3E78;cursor:pointer;white-space:nowrap;transition:.15s}
 .gc-action-btn:hover{background:#EBF0FA;border-color:#1A3E78}
 .gc-action-btn:disabled{opacity:.5;cursor:not-allowed}
 .gc-tg-btn{color:#0876A8;border-color:#B8DDEC}
+.gc-import-btn{color:#7D4E00;border-color:#F1D49A;background:#FFFDF5}
 .gc-send-btn{color:#16653A;border-color:#BCE7CB;background:#F4FFF7}
 .gc-action-strip #gcTopCloud{display:inline-flex}
 .gc-action-strip .gc-cloud-btn{padding:7px 10px}
@@ -1014,6 +1031,12 @@ const CSS = `
 .gc-mode-btn.on{background:#1A3E78;color:#fff;border-color:#1A3E78}
 .gc-action-status{font-size:11px;color:#16653A;min-width:60px;white-space:nowrap}
 .gc-cloud-info{padding:10px 11px;background:#EEF3FF;border-left:3px solid #4E6FFF;border-radius:7px;color:#4A5472;font-size:11px;line-height:1.45}
+.gc-import-modal{display:none;position:fixed;inset:0;z-index:10001;align-items:center;justify-content:center;padding:18px;background:rgba(15,20,32,.48)}
+.gc-import-modal.open{display:flex}
+.gc-import-dialog{width:min(560px,94vw);max-height:90vh;overflow:auto;background:#fff;border-radius:14px;box-shadow:0 18px 55px rgba(0,0,0,.3);padding:0}
+.gc-import-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;border-bottom:1px solid #EEF1F6;color:#1A3E78}
+.gc-import-close{border:0;background:transparent;color:#8892A8;font-size:18px;cursor:pointer;padding:2px 5px}
+.gc-import-dialog #gcImport{padding:15px}
 
 @media(max-width:640px){
   .gc-bar-row{grid-template-columns:74px 1fr 38px}
@@ -1175,7 +1198,8 @@ GC.attach = function (cfg) {
     <div class="gc-action-strip" id="gcActionStrip">
       <span class="gc-action-heading">☁️ <span data-i="gc.quickActions">${U.escapeHtml(I18.t('gc.quickActions'))}</span></span>
       <div id="gcTopCloud"></div>
-      <button type="button" class="gc-action-btn gc-tg-btn" data-gc-telegram>✈️ <span data-i="gc.telegram">${U.escapeHtml(I18.t('gc.telegram'))}</span></button>
+      <button type="button" class="gc-action-btn gc-tg-btn" data-gc-send>✈️ <span data-i="gc.telegram">${U.escapeHtml(I18.t('gc.telegram'))}</span></button>
+      ${C.importSchema ? `<button type="button" class="gc-action-btn gc-import-btn" data-gc-import>📥 <span data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</span></button>` : ''}
       <span class="gc-action-label" data-i="gc.period">${U.escapeHtml(I18.t('gc.period'))}</span>
       <div id="gcQuickPeriod"></div>
       <span class="gc-action-label" data-i="gc.mode">${U.escapeHtml(I18.t('gc.mode'))}</span>
@@ -1184,19 +1208,16 @@ GC.attach = function (cfg) {
         <button type="button" class="gc-mode-btn" data-gc-mode="review">🔎 <span data-i="gc.review">${U.escapeHtml(I18.t('gc.review'))}</span></button>
         <button type="button" class="gc-mode-btn" data-gc-mode="approval">✅ <span data-i="gc.approval">${U.escapeHtml(I18.t('gc.approval'))}</span></button>
       </div>
-      <button type="button" class="gc-action-btn gc-send-btn" data-gc-send>📤 <span data-i="gc.sendTelegram">${U.escapeHtml(I18.t('gc.sendTelegram'))}</span></button>
       <span class="gc-action-status" id="gcTelegramState" aria-live="polite"></span>
     </div>
     <div class="gc-panel" id="gcPanel">
       <div class="gc-panel-head">
         <span class="gc-panel-title">☁️ <span data-i="gc.cloudTools">${U.escapeHtml(I18.t('gc.cloudTools'))}</span></span>
         <span class="gc-storage-badge" data-i="gc.indexedDb">${U.escapeHtml(I18.t('gc.indexedDb'))}</span>
-        <span id="gcLangSw"></span>
       </div>
       <div class="gc-panel-body">
         <div class="gc-sec">
           <div class="gc-sec-t" data-i="gc.dashboard">${U.escapeHtml(I18.t('gc.dashboard'))}</div>
-          <div id="gcPeriod" style="margin-bottom:10px"></div>
           <div id="gcDash"></div>
         </div>
         <div class="gc-sec">
@@ -1204,41 +1225,24 @@ GC.attach = function (cfg) {
           <div class="gc-cloud-info" data-i="gc.directHint">${U.escapeHtml(I18.t('gc.directHint'))}</div>
           <div class="gc-note" id="gcCloudNote"></div>
         </div>
-        ${C.importSchema ? `<div class="gc-sec">
-          <div class="gc-sec-t" data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</div>
-          <div id="gcImport"></div>
-        </div>` : ''}
       </div>
-    </div>`;
+    </div>
+    ${C.importSchema ? `<div class="gc-import-modal" id="gcImportModal" aria-hidden="true">
+      <div class="gc-import-dialog" role="dialog" aria-modal="true" aria-label="${U.escapeHtml(I18.t('gc.smartImport'))}">
+        <div class="gc-import-head"><strong>📥 <span data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</span></strong><button type="button" class="gc-import-close" data-gc-import-close>✕</button></div>
+        <div id="gcImport"></div>
+      </div>
+    </div>` : ''}`;
   const contentMount = document.querySelector('.main, .content, .page, .wrap') || document.body;
   if (contentMount.firstChild) contentMount.insertBefore(bar, contentMount.firstChild);
   else contentMount.appendChild(bar);
 
-  // 在各模組原有分頁列加入同一個普通分頁按鈕，取代右上／右下浮動的工具圖示。
-  const nav = document.querySelector('.tabs, .nav-tabs, #tab-bar, .nav, .znav');
-  if (nav && !nav.querySelector('.gc-tab-trigger')) {
-    const trigger = document.createElement('button');
-    trigger.type = 'button';
-    trigger.className = 'gc-tab-trigger';
-    trigger.innerHTML = '☁️ <span data-i="gc.cloudTools">' + U.escapeHtml(I18.t('gc.cloudTools')) + '</span>';
-    trigger.setAttribute('aria-controls', 'gcPanel');
-    trigger.onclick = () => bar.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    nav.appendChild(trigger);
-  }
-
   /* ── 元件掛載 ── */
-  GC.i18n.mountSwitcher('#gcLangSw');
-
   let period = 'month';
   let mode = 'summary';
-  let quickPeriod = null;
-  const panelPeriod = GC.period.mount('#gcPeriod', {
+  const quickPeriod = GC.period.mount('#gcQuickPeriod', {
     value: period,
-    onChange: m => { period = m; if (quickPeriod) quickPeriod.set(m); refresh(); }
-  });
-  quickPeriod = GC.period.mount('#gcQuickPeriod', {
-    value: period,
-    onChange: m => { period = m; if (panelPeriod) panelPeriod.set(m); refresh(); }
+    onChange: m => { period = m; refresh(); }
   });
   bar.querySelectorAll('[data-gc-mode]').forEach(btn => {
     btn.onclick = () => {
@@ -1260,11 +1264,9 @@ GC.attach = function (cfg) {
   GC.mountCloudButtons('#gcTopCloud', cloudOpt);
 
   const sendTelegram = bar.querySelector('[data-gc-send]');
-  const telegramBtn = bar.querySelector('[data-gc-telegram]');
   const telegramState = bar.querySelector('#gcTelegramState');
   async function sendCurrentTelegram() {
     if (sendTelegram) sendTelegram.disabled = true;
-    if (telegramBtn) telegramBtn.disabled = true;
     if (telegramState) telegramState.textContent = I18.t('gc.sync');
     try {
       await GC.telegram.send(GC.telegram.buildText(C, period, mode));
@@ -1275,12 +1277,26 @@ GC.attach = function (cfg) {
       GC.toast('❌ ' + I18.t('gc.upFail') + ': ' + e.message, 'error');
     }
     if (sendTelegram) sendTelegram.disabled = false;
-    if (telegramBtn) telegramBtn.disabled = false;
   }
   if (sendTelegram) sendTelegram.onclick = sendCurrentTelegram;
-  if (telegramBtn) telegramBtn.onclick = sendCurrentTelegram;
 
   if (C.importSchema) {
+    const importModal = bar.querySelector('#gcImportModal');
+    const closeImport = () => {
+      if (!importModal) return;
+      importModal.classList.remove('open');
+      importModal.setAttribute('aria-hidden', 'true');
+    };
+    const openImport = () => {
+      if (!importModal) return;
+      importModal.classList.add('open');
+      importModal.setAttribute('aria-hidden', 'false');
+    };
+    const importButton = bar.querySelector('[data-gc-import]');
+    const closeButton = bar.querySelector('[data-gc-import-close]');
+    if (importButton) importButton.onclick = openImport;
+    if (closeButton) closeButton.onclick = closeImport;
+    if (importModal) importModal.onclick = e => { if (e.target === importModal) closeImport(); };
     GC.import.mount('#gcImport', {
       schema: C.importSchema,
       onData: (rows, meta) => {
@@ -1293,6 +1309,7 @@ GC.attach = function (cfg) {
         });
         C.write(cur);
         refresh();
+        closeImport();
         GC.toast(`✅ ${rows.length} ${I18.t('gc.imported')} — ${meta.fileName}`, 'success');
         if (C.onImport) C.onImport(rows);
       }
@@ -1339,20 +1356,18 @@ GC.attach = function (cfg) {
 
 /* ── 面板樣式 ── */
 const BAR_CSS = `
-.gc-tools-card{display:block;width:100%;max-width:1400px;margin:0 0 16px;font-family:inherit;scroll-margin-top:12px}
-.gc-tab-trigger{display:inline-flex;align-items:center;gap:5px;margin-left:8px;padding:9px 13px;border:1px solid rgba(26,62,120,.25);border-radius:8px;background:#fff;color:#1A3E78;font:600 12px/1 inherit;cursor:pointer;white-space:nowrap;transition:.15s}
-.gc-tab-trigger:hover{background:#EBF0FA;border-color:#1A3E78;color:#153268}
+.gc-tools-card{display:block;width:100%;max-width:none;margin:0 0 16px;font-family:inherit;scroll-margin-top:12px}
 .gc-panel{position:static;width:100%;background:#fff;border:1px solid #D8DCE6;border-radius:13px;box-shadow:0 4px 18px rgba(15,20,32,.1);display:flex;max-height:none;overflow:visible;flex-direction:column}
 .gc-panel.open{display:flex}
 .gc-panel-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid #EEF1F6;background:#F7F8FA;border-radius:13px 13px 0 0}
 .gc-panel-title{font-weight:700;font-size:13px;color:#1A3E78;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gc-storage-badge{font-size:10px;color:#16653A;background:#E8F7EE;border:1px solid #BCE7CB;border-radius:12px;padding:3px 8px;white-space:nowrap}
-.gc-panel-body{display:grid;grid-template-columns:minmax(220px,1.2fr) minmax(190px,.8fr) minmax(240px,1.2fr);gap:14px;padding:14px;overflow:visible}
+.gc-panel-body{display:grid;grid-template-columns:minmax(260px,1.2fr) minmax(260px,.8fr);gap:14px;padding:14px;overflow:visible}
 .gc-sec{min-width:0;margin:0}
 .gc-sec:last-child{margin-bottom:0}
 .gc-sec-t{font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px}
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
-@media(max-width:900px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-sec:last-child{grid-column:1/-1}}
+@media(max-width:900px){.gc-action-strip{flex-wrap:wrap;overflow:visible;white-space:normal}.gc-panel-body{grid-template-columns:1fr 1fr}.gc-sec:last-child{grid-column:1/-1}}
 @media(max-width:560px){
   .gc-action-strip{align-items:stretch}
   .gc-action-heading,.gc-action-label{width:100%;margin-left:0}
@@ -1360,7 +1375,6 @@ const BAR_CSS = `
   .gc-action-strip .gc-cloud-btn,.gc-action-strip .gc-pd-btn,.gc-mode-btn,.gc-action-btn{flex:1;justify-content:center}
   .gc-panel-body{grid-template-columns:1fr}
   .gc-sec:last-child{grid-column:auto}
-  .gc-tab-trigger{margin:6px 0 0 4px;padding:8px 10px}
   .gc-storage-badge{order:3}
 }
 `;
@@ -1371,7 +1385,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '2.1';
+GC.version = '2.2';
 global.GC = GC;
 global.GASCheckCore = GC;
 
