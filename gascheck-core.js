@@ -16,6 +16,15 @@
 
 const GC = {};
 
+/* 使用者指定的固定入口：頁面不再要求每個模組重填 GAS URL／Chat ID。 */
+const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
+const DEFAULT_CHAT_ID = '-5113064563';
+try {
+  // 只保存小設定；大量業務內容由下方 IndexedDB layer 接管。
+  localStorage.setItem('ac_gascheck_gas_url', DEFAULT_GAS_URL);
+  localStorage.setItem('ac_gascheck_chat_id', DEFAULT_CHAT_ID);
+} catch (e) {}
+
 /* ═══════════════════════════════════════════════════════════
    0. UTIL — 日期（一律 local getters）
    ═══════════════════════════════════════════════════════════ */
@@ -80,7 +89,7 @@ const U = GC.util = {
    ═══════════════════════════════════════════════════════════ */
 const STORAGE = GC.storage = (() => {
   const DB_NAME = 'ac_gascheck_data_v1', STORE = 'kv';
-  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_th_z|vrt_th_r|vrt_keys|vrt_waste_v3|vrt_dorm_hub_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|ac_waterdrum_backup)$/;
+  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_th_z|vrt_th_r|vrt_keys|vrt_waste_v3|vrt_dorm_hub_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_default_fac_price|wdr_default_sta_price|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
   const storageProto = typeof Storage !== 'undefined' ? Storage.prototype : null;
   const native = storageProto ? {
     get: storageProto.getItem,
@@ -229,7 +238,12 @@ const BASE_DICT = {
     'gc.weather':'天氣','gc.sunny':'晴','gc.cloudy':'多雲','gc.rain':'雨',
     'gc.heavyRain':'大雨','gc.storm':'雷雨','gc.hot':'酷熱','gc.humid':'潮濕',
     'gc.confirm':'確認','gc.cancel':'取消','gc.save':'儲存','gc.delete':'刪除','gc.close':'關閉',
-    'gc.cloudTools':'雲端工具','gc.indexedDb':'資料庫：IndexedDB'
+    'gc.cloudTools':'雲端工具','gc.indexedDb':'資料庫：IndexedDB',
+    'gc.telegram':'Telegram','gc.sendTelegram':'發送 Telegram','gc.period':'摘要期間',
+    'gc.summary':'摘要','gc.review':'審查','gc.approval':'Approval','gc.quickActions':'快速操作',
+    'gc.directHint':'上方按鈕可直接同步、匯入與發送，不需填網址／Token／Chat ID',
+    'gc.sentTelegram':'Telegram 已發送','gc.noApproval':'沒有待審查／待核可資料',
+    'gc.pendingApproval':'待審查／待核可','gc.mode':'訊息類型'
   },
   en: {
     'gc.upload':'Upload','gc.download':'Download','gc.sync':'Syncing…',
@@ -248,7 +262,12 @@ const BASE_DICT = {
     'gc.weather':'Weather','gc.sunny':'Sunny','gc.cloudy':'Cloudy','gc.rain':'Rain',
     'gc.heavyRain':'Heavy Rain','gc.storm':'Storm','gc.hot':'Hot','gc.humid':'Humid',
     'gc.confirm':'Confirm','gc.cancel':'Cancel','gc.save':'Save','gc.delete':'Delete','gc.close':'Close',
-    'gc.cloudTools':'Cloud Tools','gc.indexedDb':'Storage: IndexedDB'
+    'gc.cloudTools':'Cloud Tools','gc.indexedDb':'Storage: IndexedDB',
+    'gc.telegram':'Telegram','gc.sendTelegram':'Send to Telegram','gc.period':'Summary period',
+    'gc.summary':'Summary','gc.review':'Review','gc.approval':'Approval','gc.quickActions':'Quick actions',
+    'gc.directHint':'Use the buttons above to sync, import and send; no URL/token/chat ID entry is needed',
+    'gc.sentTelegram':'Telegram sent','gc.noApproval':'No pending review/approval records',
+    'gc.pendingApproval':'Pending review/approval','gc.mode':'Message type'
   },
   km: {
     'gc.upload':'ផ្ទុកឡើង','gc.download':'ទាញយក','gc.sync':'កំពុងធ្វើសមកាលកម្ម…',
@@ -267,7 +286,12 @@ const BASE_DICT = {
     'gc.weather':'អាកាសធាតុ','gc.sunny':'មេឃស្រឡះ','gc.cloudy':'មានពពក','gc.rain':'ភ្លៀង',
     'gc.heavyRain':'ភ្លៀងខ្លាំង','gc.storm':'ព្យុះ','gc.hot':'ក្ដៅ','gc.humid':'សើម',
     'gc.confirm':'បញ្ជាក់','gc.cancel':'បោះបង់','gc.save':'រក្សាទុក','gc.delete':'លុប','gc.close':'បិទ',
-    'gc.cloudTools':'ឧបករណ៍ Cloud','gc.indexedDb':'ការផ្ទុក៖ IndexedDB'
+    'gc.cloudTools':'ឧបករណ៍ Cloud','gc.indexedDb':'ការផ្ទុក៖ IndexedDB',
+    'gc.telegram':'Telegram','gc.sendTelegram':'ផ្ញើទៅ Telegram','gc.period':'រយៈពេលសង្ខេប',
+    'gc.summary':'សង្ខេប','gc.review':'ពិនិត្យ','gc.approval':'Approval','gc.quickActions':'សកម្មភាពរហ័ស',
+    'gc.directHint':'ប្រើប៊ូតុងខាងលើដើម្បីធ្វើសមកាលកម្ម នាំចូល និងផ្ញើ ដោយមិនចាំបាច់បញ្ចូល URL/token/chat ID',
+    'gc.sentTelegram':'បានផ្ញើ Telegram','gc.noApproval':'គ្មានទិន្នន័យកំពុងរង់ចាំពិនិត្យ/អនុម័ត',
+    'gc.pendingApproval':'កំពុងរង់ចាំពិនិត្យ/អនុម័ត','gc.mode':'ប្រភេទសារ'
   }
 };
 
@@ -336,8 +360,8 @@ GC.t = (k, f) => I18.t(k, f);
    2. CLOUD — 安全合併，永不被少量資料覆蓋
    ═══════════════════════════════════════════════════════════ */
 const CLOUD = GC.cloud = {
-  gasUrl: '',
-  setUrl(u) { CLOUD.gasUrl = u || ''; },
+  gasUrl: DEFAULT_GAS_URL,
+  setUrl(u) { CLOUD.gasUrl = u || DEFAULT_GAS_URL; },
 
   /**
    * 核心：合併兩份陣列，絕不遺失本地資料
@@ -973,6 +997,24 @@ const CSS = `
 .gc-cloud-btn:hover{background:#EBF0FA;border-color:#1A3E78}
 .gc-cloud-btn:disabled{opacity:.45;cursor:not-allowed}
 
+.gc-action-strip{display:flex;align-items:center;gap:7px;flex-wrap:wrap;padding:10px 12px;margin-bottom:10px;background:#F7F9FC;border:1px solid #D8DCE6;border-radius:12px;box-shadow:0 3px 12px rgba(15,20,32,.08)}
+.gc-action-heading{font-size:12px;font-weight:800;color:#1A3E78;white-space:nowrap;margin-right:2px}
+.gc-action-label{font-size:11px;font-weight:700;color:#5A6478;white-space:nowrap;margin-left:4px}
+.gc-action-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1px solid #C9D3E3;background:#fff;border-radius:8px;font:700 12px/1 inherit;color:#1A3E78;cursor:pointer;white-space:nowrap;transition:.15s}
+.gc-action-btn:hover{background:#EBF0FA;border-color:#1A3E78}
+.gc-action-btn:disabled{opacity:.5;cursor:not-allowed}
+.gc-tg-btn{color:#0876A8;border-color:#B8DDEC}
+.gc-send-btn{color:#16653A;border-color:#BCE7CB;background:#F4FFF7}
+.gc-action-strip #gcTopCloud{display:inline-flex}
+.gc-action-strip .gc-cloud-btn{padding:7px 10px}
+.gc-action-strip .gc-period{gap:4px}
+.gc-action-strip .gc-pd-btn{padding:7px 10px;border-radius:8px;font-size:11px}
+.gc-mode{display:inline-flex;gap:4px;flex-wrap:wrap}
+.gc-mode-btn{display:inline-flex;align-items:center;gap:4px;padding:7px 9px;border:1px solid #D8DCE6;background:#fff;border-radius:8px;font:600 11px/1 inherit;color:#5A6478;cursor:pointer;white-space:nowrap}
+.gc-mode-btn.on{background:#1A3E78;color:#fff;border-color:#1A3E78}
+.gc-action-status{font-size:11px;color:#16653A;min-width:60px;white-space:nowrap}
+.gc-cloud-info{padding:10px 11px;background:#EEF3FF;border-left:3px solid #4E6FFF;border-radius:7px;color:#4A5472;font-size:11px;line-height:1.45}
+
 @media(max-width:640px){
   .gc-bar-row{grid-template-columns:74px 1fr 38px}
   .gc-dash-cards{grid-template-columns:repeat(auto-fit,minmax(108px,1fr))}
@@ -1041,6 +1083,59 @@ GC.mountCloudButtons = function (mountEl, opt) {
   };
 };
 
+/* ═══════════════════════════════════════════════════════════
+   10.5 TELEGRAM — 直接摘要／審查／Approval
+   Telegram token 留在 GAS，瀏覽器只呼叫固定 Web App URL。
+   ═══════════════════════════════════════════════════════════ */
+GC.telegram = {
+  pending(record) {
+    if (!record) return false;
+    const vals = [record.status, record.approvalStatus, record.reviewStatus,
+      record.approval, record.approved, record.review];
+    return vals.some(v => v === false || /pending|待審|待核|待批|review|approval|審查|核可|未完成/i.test(String(v || '')));
+  },
+  buildText(cfg, period, mode) {
+    cfg = cfg || {};
+    const all = typeof cfg.read === 'function' ? (cfg.read() || []) : [];
+    const list = Array.isArray(all) ? all : [];
+    const view = PERIOD.filter(list, period || 'month', cfg.dateField || 'date');
+    const pending = view.filter(GC.telegram.pending);
+    const periodLabels = {
+      day: I18.t('gc.today'), week: I18.t('gc.thisWeek'), month: I18.t('gc.thisMonth'),
+      year: I18.t('gc.thisYear'), all: I18.t('gc.all')
+    };
+    const modeLabels = { summary: I18.t('gc.summary'), review: I18.t('gc.review'), approval: I18.t('gc.approval') };
+    const title = U.escapeHtml(cfg.title || cfg.tool || 'AC GASCHECK');
+    const lines = [
+      '♻️ <b>' + title + '</b>',
+      '📅 ' + U.escapeHtml(periodLabels[period] || period || I18.t('gc.thisMonth')),
+      '📊 ' + U.escapeHtml(I18.t('gc.records')) + ': <b>' + view.length + '</b> / ' +
+        U.escapeHtml(I18.t('gc.total')) + ': ' + list.length,
+      '🧾 ' + U.escapeHtml(I18.t('gc.mode')) + ': ' + U.escapeHtml(modeLabels[mode] || modeLabels.summary)
+    ];
+    if (cfg.groupField) {
+      const groups = GC.dash.groupBy(view, r => r && r[cfg.groupField]).slice(0, 8);
+      if (groups.length) {
+        lines.push('━━━━━━━━━━━━━━━━');
+        groups.forEach(g => lines.push('• ' + U.escapeHtml(g.label) + ': ' + g.value));
+      }
+    }
+    if (mode === 'review' || mode === 'approval') {
+      lines.push('━━━━━━━━━━━━━━━━');
+      lines.push('⏳ ' + U.escapeHtml(I18.t('gc.pendingApproval')) + ': <b>' + pending.length + '</b>');
+      if (!pending.length) lines.push('✅ ' + U.escapeHtml(I18.t('gc.noApproval')));
+    }
+    lines.push('━━━━━━━━━━━━━━━━', '⏰ ' + U.ymdhms());
+    return lines.join('\n');
+  },
+  async send(text) {
+    if (!text) throw new Error('No Telegram text');
+    const res = await CLOUD.post({ action: 'telegram', text: text });
+    if (!res || res.ok === false) throw new Error((res && res.error) || 'Telegram request failed');
+    return res;
+  }
+};
+
 
 /* ═══════════════════════════════════════════════════════════
    11. ATTACH — 通用掛載面板（不動模組內部程式碼）
@@ -1070,12 +1165,28 @@ GC.attach = function (cfg) {
     photoField:   'photos'
   }, cfg || {});
 
-  if (C.gasUrl) CLOUD.setUrl(C.gasUrl);
+  // 固定使用已確認可用的 Web App 入口；模組內舊的 gasUrl 只保留相容性，不再要求使用者手動設定。
+  CLOUD.setUrl(DEFAULT_GAS_URL);
 
   /* ── 面板 DOM：固定放在模組內容頂端，不再使用浮動按鈕 ── */
   const bar = document.createElement('div');
   bar.className = 'gc-tools-card';
   bar.innerHTML = `
+    <div class="gc-action-strip" id="gcActionStrip">
+      <span class="gc-action-heading">☁️ <span data-i="gc.quickActions">${U.escapeHtml(I18.t('gc.quickActions'))}</span></span>
+      <div id="gcTopCloud"></div>
+      <button type="button" class="gc-action-btn gc-tg-btn" data-gc-telegram>✈️ <span data-i="gc.telegram">${U.escapeHtml(I18.t('gc.telegram'))}</span></button>
+      <span class="gc-action-label" data-i="gc.period">${U.escapeHtml(I18.t('gc.period'))}</span>
+      <div id="gcQuickPeriod"></div>
+      <span class="gc-action-label" data-i="gc.mode">${U.escapeHtml(I18.t('gc.mode'))}</span>
+      <div class="gc-mode" id="gcQuickMode">
+        <button type="button" class="gc-mode-btn on" data-gc-mode="summary">📄 <span data-i="gc.summary">${U.escapeHtml(I18.t('gc.summary'))}</span></button>
+        <button type="button" class="gc-mode-btn" data-gc-mode="review">🔎 <span data-i="gc.review">${U.escapeHtml(I18.t('gc.review'))}</span></button>
+        <button type="button" class="gc-mode-btn" data-gc-mode="approval">✅ <span data-i="gc.approval">${U.escapeHtml(I18.t('gc.approval'))}</span></button>
+      </div>
+      <button type="button" class="gc-action-btn gc-send-btn" data-gc-send>📤 <span data-i="gc.sendTelegram">${U.escapeHtml(I18.t('gc.sendTelegram'))}</span></button>
+      <span class="gc-action-status" id="gcTelegramState" aria-live="polite"></span>
+    </div>
     <div class="gc-panel" id="gcPanel">
       <div class="gc-panel-head">
         <span class="gc-panel-title">☁️ <span data-i="gc.cloudTools">${U.escapeHtml(I18.t('gc.cloudTools'))}</span></span>
@@ -1090,7 +1201,7 @@ GC.attach = function (cfg) {
         </div>
         <div class="gc-sec">
           <div class="gc-sec-t">☁️ <span data-i="gc.upload">${U.escapeHtml(I18.t('gc.upload'))}</span> / <span data-i="gc.download">${U.escapeHtml(I18.t('gc.download'))}</span></div>
-          <div id="gcCloud"></div>
+          <div class="gc-cloud-info" data-i="gc.directHint">${U.escapeHtml(I18.t('gc.directHint'))}</div>
           <div class="gc-note" id="gcCloudNote"></div>
         </div>
         ${C.importSchema ? `<div class="gc-sec">
@@ -1119,9 +1230,21 @@ GC.attach = function (cfg) {
   GC.i18n.mountSwitcher('#gcLangSw');
 
   let period = 'month';
-  GC.period.mount('#gcPeriod', {
+  let mode = 'summary';
+  let quickPeriod = null;
+  const panelPeriod = GC.period.mount('#gcPeriod', {
     value: period,
-    onChange: m => { period = m; refresh(); }
+    onChange: m => { period = m; if (quickPeriod) quickPeriod.set(m); refresh(); }
+  });
+  quickPeriod = GC.period.mount('#gcQuickPeriod', {
+    value: period,
+    onChange: m => { period = m; if (panelPeriod) panelPeriod.set(m); refresh(); }
+  });
+  bar.querySelectorAll('[data-gc-mode]').forEach(btn => {
+    btn.onclick = () => {
+      mode = btn.dataset.gcMode || 'summary';
+      bar.querySelectorAll('[data-gc-mode]').forEach(x => x.classList.toggle('on', x === btn));
+    };
   });
 
   const cloudOpt = {
@@ -1133,7 +1256,29 @@ GC.attach = function (cfg) {
     onRemote: d => { if (C.onRemote) C.onRemote(d || {}); },
     onDone: () => { refresh(); if (C.onSync) C.onSync(); }
   };
-  GC.mountCloudButtons('#gcCloud', cloudOpt);
+  // 雲端按鈕固定放在頁面頂部快捷列，避免跑到頁面底部或被浮動圖示遮住。
+  GC.mountCloudButtons('#gcTopCloud', cloudOpt);
+
+  const sendTelegram = bar.querySelector('[data-gc-send]');
+  const telegramBtn = bar.querySelector('[data-gc-telegram]');
+  const telegramState = bar.querySelector('#gcTelegramState');
+  async function sendCurrentTelegram() {
+    if (sendTelegram) sendTelegram.disabled = true;
+    if (telegramBtn) telegramBtn.disabled = true;
+    if (telegramState) telegramState.textContent = I18.t('gc.sync');
+    try {
+      await GC.telegram.send(GC.telegram.buildText(C, period, mode));
+      if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
+      GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
+    } catch (e) {
+      if (telegramState) telegramState.textContent = '✕ ' + e.message;
+      GC.toast('❌ ' + I18.t('gc.upFail') + ': ' + e.message, 'error');
+    }
+    if (sendTelegram) sendTelegram.disabled = false;
+    if (telegramBtn) telegramBtn.disabled = false;
+  }
+  if (sendTelegram) sendTelegram.onclick = sendCurrentTelegram;
+  if (telegramBtn) telegramBtn.onclick = sendCurrentTelegram;
 
   if (C.importSchema) {
     GC.import.mount('#gcImport', {
@@ -1177,7 +1322,7 @@ GC.attach = function (cfg) {
 
     GC.dash.render('#gcDash', { cards, bars });
 
-    const note = document.getElementById('gcCloudNote');
+    const note = bar.querySelector('#gcCloudNote');
     if (note) note.textContent =
       `${I18.t('gc.total')}: ${all.length} ｜ tool=${C.tool}`;
     I18.apply(bar);
@@ -1189,7 +1334,7 @@ GC.attach = function (cfg) {
   window.addEventListener('gc:langchange', refresh);
 
   refresh();
-  return { refresh, getPeriod: () => period };
+  return { refresh, getPeriod: () => period, sendTelegram: sendCurrentTelegram };
 };
 
 /* ── 面板樣式 ── */
@@ -1209,6 +1354,10 @@ const BAR_CSS = `
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
 @media(max-width:900px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-sec:last-child{grid-column:1/-1}}
 @media(max-width:560px){
+  .gc-action-strip{align-items:stretch}
+  .gc-action-heading,.gc-action-label{width:100%;margin-left:0}
+  .gc-action-strip #gcTopCloud,.gc-action-strip .gc-cloud-btns,.gc-action-strip .gc-period,.gc-mode{width:100%}
+  .gc-action-strip .gc-cloud-btn,.gc-action-strip .gc-pd-btn,.gc-mode-btn,.gc-action-btn{flex:1;justify-content:center}
   .gc-panel-body{grid-template-columns:1fr}
   .gc-sec:last-child{grid-column:auto}
   .gc-tab-trigger{margin:6px 0 0 4px;padding:8px 10px}
@@ -1222,7 +1371,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '2.0';
+GC.version = '2.1';
 global.GC = GC;
 global.GASCheckCore = GC;
 
