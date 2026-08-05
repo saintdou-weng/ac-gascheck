@@ -880,7 +880,9 @@ GC.attach = function (cfg) {
      } */
   const C = Object.assign({
     dateField: 'date', idField: 'id', groupField: null,
-    weather: false, photo: false, importSchema: null
+    weather: false, photo: false, importSchema: null,
+    weatherField: 'weather',   // 各模組欄位名可能不同（如 temperature 用 'wx'）
+    photoField:   'photos'
   }, cfg || {});
 
   if (C.gasUrl) CLOUD.setUrl(C.gasUrl);
@@ -964,10 +966,11 @@ GC.attach = function (cfg) {
     ];
     if (C.photo)
       cards.push({ label: I18.t('gc.photo'),
-        value: view.filter(r => r.photos && r.photos.length).length, color: '#16653A' });
+        value: view.filter(r => { const p = r[C.photoField]; return p && p.length; }).length,
+        color: '#16653A' });
     if (C.weather)
       cards.push({ label: I18.t('gc.weather'),
-        value: view.filter(r => r.weather).length, color: '#7D4E00' });
+        value: view.filter(r => r[C.weatherField]).length, color: '#7D4E00' });
 
     const bars = C.groupField
       ? { title: C.groupLabel || C.groupField,

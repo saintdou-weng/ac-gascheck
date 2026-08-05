@@ -536,6 +536,11 @@ select.fi{cursor:pointer}
 
 <div id="toast"></div>
 <script>
+/* ── 本地時間戳（不用 toISOString，避免 UTC+7 時區偏移）── */
+function _localTS(){const d=new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
+function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 // ═══════════════════════════════════════════════════════════════
 // STORAGE KEY & DEFAULTS
 // ═══════════════════════════════════════════════════════════════
@@ -965,7 +970,7 @@ var cloud = (() => {
     toast('☁ 上傳中…');
     const db=state.db();
     try {
-      const r=await gasPost({action:'push',tool:'dormitory',records:db.records,recordCount:db.records.length,updatedAt:new Date().toISOString()});
+      const r=await gasPost({action:'push',tool:'dormitory',records:db.records,recordCount:db.records.length,updatedAt:_localTS()});
       toast(r.ok!==false?`✅ 上傳完成 (${db.records.length}筆)`:'❌ 上傳失敗: '+(r.error||''));
       updateCloudBadge(r.ok!==false);
     } catch(e){ toast('❌ '+e.message); updateCloudBadge(false); }
@@ -1070,7 +1075,7 @@ var dash = (() => {
     const days=[],ins=[],outs=[];
     const startD=new Date(from),endD=new Date(to);
     for(let d=new Date(startD);d<=endD;d.setDate(d.getDate()+1)){
-      const ds=d.toISOString().split('T')[0];
+      const ds=_localTS().split('T')[0];
       days.push(ds.slice(5));
       ins.push(db.records.filter(r=>r.type==='搬入'&&(r.timestamp||'').startsWith(ds)).length);
       outs.push(db.records.filter(r=>r.type==='搬出'&&(r.timestamp||'').startsWith(ds)).length);
@@ -1129,7 +1134,7 @@ var appForm = (() => {
     btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span>提交中…';
 
     const now = new Date();
-    const ts  = now.toISOString().replace('T',' ').substring(0,19);
+    const ts  = _localTS().replace('T',' ').substring(0,19);
     const record = {
       id: Date.now().toString(36)+Math.random().toString(36).slice(2,5),
       timestamp: ts,
@@ -1321,7 +1326,7 @@ var roster = (() => {
     if(!confirm('確定將 '+idNo+' 從在住名單移除？（僅移除本地顯示，不影響申請記錄）'))return;
     const db=state.db();
     // Add a local move-out record to remove from roster
-    db.records.push({id:Date.now().toString(36),timestamp:new Date().toISOString(),type:'搬出',status:'已核可',idNo,name:'(手動移除)',roomNo:'',date:today_str(),reason:'手動移除'});
+    db.records.push({id:Date.now().toString(36),timestamp:_localTS(),type:'搬出',status:'已核可',idNo,name:'(手動移除)',roomNo:'',date:today_str(),reason:'手動移除'});
     state.save(); load(); toast('✅ 已移除');
   };
   const exportXL = () => {
@@ -1348,7 +1353,7 @@ var roster = (() => {
       const db=state.db();
       rows.forEach(row=>{
         db.records.push({id:Date.now().toString(36)+Math.random().toString(36).slice(2,4),
-          timestamp:new Date().toISOString(),type:'搬入',status:'已核可',
+          timestamp:_localTS(),type:'搬入',status:'已核可',
           name:row.Name||row['姓名']||'',gender:row.Gender||row['性別']||'',
           idNo:row.ID||row['工號']||'',department:row.Dept||row['部門']||'',
           roomNo:row.Room||row['房號']||'',date:row.MoveIn||row['搬入日期']||'',phone:row.Phone||row['電話']||''
@@ -1467,7 +1472,7 @@ var insp = (() => {
     const q=gv('insp-q');
     if(!inspector||!date){toast('⚠️ 請填寫巡查員和日期');return;}
     const record={
-      id:Date.now().toString(36),timestamp:new Date().toISOString(),
+      id:Date.now().toString(36),timestamp:_localTS(),
       date,quarter:q,location:state.getInspLoc(),inspector,
       data:JSON.parse(JSON.stringify(_data)),anomalies:countAnomalies()
     };
@@ -1539,7 +1544,7 @@ var viol = (() => {
     const name=gv('vf-name').trim();
     if(!name){toast('⚠️ 請填寫姓名');return;}
     const record={
-      id:Date.now().toString(36),timestamp:new Date().toISOString(),
+      id:Date.now().toString(36),timestamp:_localTS(),
       name,idNo:gv('vf-id'),roomNo:gv('vf-room'),date:gv('vf-date'),
       type:gv('vf-type'),level:gv('vf-level'),desc:gv('vf-desc'),
       recordedBy:gv('vf-by'),action:gv('vf-action')
@@ -1617,7 +1622,7 @@ var records = (() => {
   const approve = (id) => {
     const db=state.db(); const r=db.records.find(r=>r.id===id);
     if(!r)return; if(!confirm(`確定核可 ${r.name} 的申請？`))return;
-    r.status='已核可'; r.approvedBy=gv('cfg-apvid')||'GA Mgr'; r.approvedAt=new Date().toISOString();
+    r.status='已核可'; r.approvedBy=gv('cfg-apvid')||'GA Mgr'; r.approvedAt=_localTS();
     state.save(); query(); dash.render(); toast('✅ 已核可');
     tgPost({text:`✅ <b>宿舍申請已核可</b>\n👤 ${r.name} (${r.idNo})\n🛏 房號：${r.roomNo}\n📅 ${r.date}`});
   };
@@ -1625,7 +1630,7 @@ var records = (() => {
     const db=state.db(); const r=db.records.find(r=>r.id===id);
     if(!r)return;
     const reason=prompt('退件原因（選填）'); if(reason===null)return;
-    r.status='已退件'; r.rejectReason=reason; r.approvedAt=new Date().toISOString();
+    r.status='已退件'; r.rejectReason=reason; r.approvedAt=_localTS();
     state.save(); query(); dash.render(); toast('❌ 已退件');
     tgPost({text:`❌ <b>宿舍申請已退件</b>\n👤 ${r.name} (${r.idNo})\n📝 原因：${reason||'—'}`});
   };

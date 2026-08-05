@@ -115,6 +115,21 @@ select.bi{cursor:pointer}
 /* RESPONSIVE */
 @media(max-width:600px){.sup-grid{grid-template-columns:1fr}}
 @media print{.topbar,.tabs,.btn-row,.lang-toggle,#toast,.no-print{display:none!important}body{background:#fff}.main{max-width:none;padding:0}}
+
+.ph-row-btn{border:1px solid #D8DCE6;background:#fff;border-radius:6px;padding:4px 9px;
+  font-size:12px;cursor:pointer;color:#1A3E78;white-space:nowrap;font-family:inherit}
+.ph-row-btn:hover{background:#EBF0FA;border-color:#1A3E78}
+#rowPhotoOv{position:fixed;inset:0;background:rgba(15,20,32,.5);z-index:9800;
+  display:none;align-items:center;justify-content:center;padding:20px}
+#rowPhotoOv.open{display:flex}
+.rp-box{background:#fff;border-radius:12px;width:min(440px,100%);box-shadow:0 12px 40px rgba(0,0,0,.28)}
+.rp-head{padding:13px 16px;border-bottom:1px solid #EEF1F6;display:flex;justify-content:space-between;align-items:center}
+.rp-title{font-weight:700;font-size:14px;color:#1A3E78}
+.rp-x{border:0;background:transparent;font-size:17px;cursor:pointer;color:#8892A8}
+.rp-body{padding:16px}
+.rp-foot{padding:12px 16px;border-top:1px solid #EEF1F6;text-align:right}
+.rp-ok{border:0;background:#1A3E78;color:#fff;padding:8px 20px;border-radius:7px;
+  font:600 13px/1 inherit;cursor:pointer}
 </style>
 <script src="./gascheck-core.js"></script>
 </head>
@@ -179,6 +194,7 @@ select.bi{cursor:pointer}
             <th>紙管 Core (kg)</th>
             <th>合計 Total (kg)</th>
             <th>備註 Remark</th>
+            <th>📷</th>
             <th></th>
           </tr>
         </thead>
@@ -414,6 +430,11 @@ select.bi{cursor:pointer}
 </div>
 
 <script>
+/* ── 本地時間戳（不用 toISOString，避免 UTC+7 時區偏移）── */
+function _localTS(){const d=new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
+function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 /* ========== CONFIG ========== */
 const CFG_KEY = 'vrt_ehs_cfg_v1';
 const TG_BOT   = '8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM';
@@ -859,7 +880,7 @@ function exportHistoryExcel(){
   if(!historyData.length){showToast('無資料');return;}
   const ws=XLSX.utils.json_to_sheet(historyData);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'VRT_Waste');
-  XLSX.writeFile(wb,'VRT_Waste_Export_'+new Date().toISOString().slice(0,10)+'.xlsx');
+  XLSX.writeFile(wb,'VRT_Waste_Export_'+_localYMD()+'.xlsx');
   showToast('✅ 已下載');
 }
 
@@ -867,7 +888,7 @@ function exportHistoryExcel(){
 let aRows=[];
 function addARow(){
   const id='A-'+Date.now()+'-'+Math.floor(Math.random()*9999);
-  aRows.push({id,date:'',plastic:0,fabric:0,core:0,total:0,remark:''});
+  aRows.push({id,date:'',plastic:0,fabric:0,core:0,total:0,remark:'',photos:[]});
   renderABatch();
 }
 function removeARow(id){
@@ -885,6 +906,7 @@ function renderABatch(){
       <td><input class="bi" type="number" placeholder="0" value="${r.core||''}" min="0" onchange="updateARow('${r.id}','core',this.value);calcATotal('${r.id}',this)"></td>
       <td><input class="bi total-cell" type="number" id="a-total-${r.id}" value="${r.total||''}" readonly></td>
       <td><input class="bi" type="text" placeholder="備註..." value="${r.remark||''}" onchange="updateARow('${r.id}','remark',this.value)"></td>
+      <td><button class="ph-row-btn" onclick="openRowPhotos('a','${r.id}')">${(r.photos&&r.photos.length)?'📷'+r.photos.length:'📷'}</button></td>
       <td><button class="del-row-btn" onclick="removeARow('${r.id}')">✕</button></td>
     </tr>`).join('');
 }
@@ -908,12 +930,12 @@ async function submitModA(){
   if(!valid.length){showToast('⚠️ 請至少填寫一行有效記錄（日期 + 重量）');return;}
   const btn=document.getElementById('a-submit-btn');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 提交中...';
-  const now=new Date().toISOString();
+  const now=_localTS();
   const ld=loadLocal();
   const newRecs=valid.map(r=>({
     id:'A-'+Date.now()+'-'+Math.random().toString(36).slice(2),
     date:r.date,plastic_kg:+r.plastic||0,fabric_kg:+r.fabric||0,core_kg:+r.core||0,
-    total_kg:+r.total||0,remark:r.remark||'',submitted_at:now
+    total_kg:+r.total||0,remark:r.remark||'',photos:r.photos||[],submitted_at:now,updatedAt:now
   }));
   ld.internal=[...ld.internal,...newRecs];
   saveLocal(ld);
@@ -930,7 +952,7 @@ async function submitModA(){
 let bRows=[];
 function addBRow(){
   const id='B-'+Date.now()+'-'+Math.floor(Math.random()*9999);
-  bRows.push({id,date:'',name:'',supplier:'',car:'',solid:false,industrial:false,kg:'',timein:'',timeout:'',gate:'',remark:''});
+  bRows.push({id,date:'',name:'',supplier:'',car:'',solid:false,industrial:false,kg:'',timein:'',timeout:'',gate:'',remark:'',photos:[]});
   renderBBatch();
 }
 function removeBRow(id){bRows=bRows.filter(r=>r.id!==id);renderBBatch();}
@@ -976,7 +998,7 @@ async function submitModB(){
   if(!valid.length){showToast('⚠️ 請至少填寫一行有效記錄（日期 + 供應商）');return;}
   const btn=document.getElementById('b-submit-btn');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 提交中...';
-  const now=new Date().toISOString();
+  const now=_localTS();
   const ld=loadLocal();
   const newRecs=valid.map(r=>{
     const dur=calcDuration(r.timein,r.timeout);
@@ -1025,7 +1047,7 @@ async function submitMonthlyApproval(){
   const kN=moRecs.filter(r=>r.supplier==='K.S.W.M').length;
   const sN=moRecs.filter(r=>r.supplier==='SONYAPICH').length;
   const reportId='RPT-'+yr+String(mo).padStart(2,'0')+'-'+Date.now();
-  const report={reportId,year:yr,month:mo,kswm_trips:kN,sonyapich_trips:sN,status:'pending',submitted_at:new Date().toISOString()};
+  const report={reportId,year:yr,month:mo,kswm_trips:kN,sonyapich_trips:sN,status:'pending',submitted_at:_localTS()};
   ld.monthly=[...(ld.monthly||[]),report];
   saveLocal(ld);
   const msg=`📋 *VRT廢棄物月報送審*\n報告ID: \`${reportId}\`\n月份: ${yr}年${mo}月\nK.S.W.M: ${kN}趟 (目標${SUP_TARGET})\nSONYAPICH: ${sN}趟 (目標${SUP_TARGET})\n狀態: 等待核可`;
@@ -1185,7 +1207,7 @@ async function submitBatchImport(){
   const btn=document.getElementById('import-submit-btn');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 匯入中...';
   const ld=loadLocal();
-  const now=new Date().toISOString();
+  const now=_localTS();
   importRows.forEach(r=>{
     const id='IMP-'+Date.now()+'-'+Math.random().toString(36).slice(2);
     if(importType==='gate')ld.gate.push({...r,id,submitted_at:now});
@@ -1352,7 +1374,7 @@ var cloud = (() => {
     var db = loadLocal();
     var data = type === 'gate' ? db.gate : db.internal;
     try {
-      var r = await gasPost({action:'cloudPush', type:type||'internal', rows:data, ts:new Date().toISOString()});
+      var r = await gasPost({action:'cloudPush', type:type||'internal', rows:data, ts:_localTS()});
       var ok = r && r.ok !== false;
       showToast(ok ? '✅ 已上傳 '+data.length+' 筆' : '❌ 上傳失敗：'+(r&&r.error||''));
       updateCloudBadge(ok);
@@ -1434,6 +1456,50 @@ window.updateCloudBadge = updateCloudBadge;
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();
+</script>
+
+<div id="rowPhotoOv">
+  <div class="rp-box">
+    <div class="rp-head">
+      <span class="rp-title" id="rpTitle">📷 照片 Photos</span>
+      <button class="rp-x" onclick="closeRowPhotos()">✕</button>
+    </div>
+    <div class="rp-body"><div id="rpMount"></div></div>
+    <div class="rp-foot"><button class="rp-ok" onclick="closeRowPhotos()">確定 OK</button></div>
+  </div>
+</div>
+<script>
+/* ── 批次列照片：每列獨立照片集 ── */
+var _rpCtl=null, _rpTarget=null;
+function openRowPhotos(which,id){
+  if(typeof GC==='undefined'||!GC.photo){ alert('元件載入中，請稍候再試'); return; }
+  var arr = which==='a' ? aRows : bRows;
+  var row = arr.find(function(r){return r.id===id;});
+  if(!row) return;
+  if(!Array.isArray(row.photos)) row.photos=[];
+  _rpTarget={which:which,id:id};
+  var mount=document.getElementById('rpMount');
+  mount.innerHTML='';
+  _rpCtl=GC.photo.mount(mount,{photos:row.photos,max:4,onChange:function(p){ row.photos=p; }});
+  document.getElementById('rpTitle').textContent='📷 '+(which==='a'?'廢料 Waste':'進出場 Gate');
+  document.getElementById('rowPhotoOv').classList.add('open');
+}
+function closeRowPhotos(){
+  document.getElementById('rowPhotoOv').classList.remove('open');
+  if(_rpTarget && _rpCtl){
+    /* 直接取控制器現值寫回，不依賴 onChange 是否觸發 */
+    var arr2=_rpTarget.which==='a'?aRows:bRows;
+    var row2=arr2.find(function(r){return r.id===_rpTarget.id;});
+    if(row2) row2.photos=_rpCtl.get();
+  }
+  if(_rpTarget){
+    if(_rpTarget.which==='a' && typeof renderABatch==='function') renderABatch();
+    if(_rpTarget.which==='b' && typeof renderBBatch==='function') renderBBatch();
+  }
+  _rpCtl=null; _rpTarget=null;
+}
+window.openRowPhotos=openRowPhotos;
+window.closeRowPhotos=closeRowPhotos;
 </script>
 </body>
 </html>

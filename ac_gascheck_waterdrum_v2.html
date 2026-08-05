@@ -822,6 +822,11 @@ document.addEventListener('click', function(e) {
 <div id="toast-container"></div>
 
 <script>
+/* ── 本地時間戳（不用 toISOString，避免 UTC+7 時區偏移）── */
+function _localTS(){const d=new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
+function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 const LANGS = {
   en: {
     app_title:'Water Drum Record', app_subtitle:'Factory & Staff House Tracking',
@@ -967,7 +972,7 @@ function applyTranslations() {
 function storageKey(year, month) { return `wdr_${year}_${String(month).padStart(2,'0')}`; }
 function saveMonthData(year, month, rows) {
   localStorage.setItem(storageKey(year, month), JSON.stringify(rows));
-  localStorage.setItem('wdr_last_saved', new Date().toISOString());
+  localStorage.setItem('wdr_last_saved', _localTS());
 }
 function loadMonthDataRaw(year, month) {
   const s = localStorage.getItem(storageKey(year, month));
@@ -2023,7 +2028,7 @@ window.addEventListener('load', init);
 setInterval(function() {
   try {
     var snap = JSON.stringify({
-      ts: new Date().toISOString(),
+      ts: _localTS(),
       data: localStorage.getItem('wdr_data')
     });
     localStorage.setItem('ac_waterdrum_backup', snap);
@@ -2035,7 +2040,7 @@ window.addEventListener('beforeunload', function() {
   try {
     autoSave();
     localStorage.setItem('ac_waterdrum_backup', JSON.stringify({
-      ts: new Date().toISOString(), data: localStorage.getItem('wdr_data')
+      ts: _localTS(), data: localStorage.getItem('wdr_data')
     }));
   } catch(e) {}
 });

@@ -501,6 +501,7 @@ tbody tr:hover{background:var(--bg);}
   </div>
   <div class="g2" style="margin-bottom:11px">
     <div class="fg"><label id="i-rezon">區域</label><select id="re-zon"></select></div>
+    <div class="fg" style="grid-column:1/-1"><label id="i-rewx">🌤️ 天氣 Weather</label><div id="re-wx"></div></div>
     <div class="fg"><label id="i-renote">備註</label><input type="text" id="re-note"></div>
   </div>
   <div class="g2" style="margin-bottom:11px">
@@ -534,7 +535,7 @@ zh:{
   'tab-dash':'儀表板','tab-rec':'記錄','tab-hist':'歷史','tab-anal':'分析','tab-zones':'區域','tab-alert':'異常','tab-set':'設定',
   am:'早上 08:00~09:00',pm:'下午 15:30~16:30',all:'全天',
   cold:'過冷',cool:'涼爽',ok:'正常',warm:'偏熱',hot:'過熱',dry:'偏乾',humid:'偏濕',vhum:'過濕',
-  date:'日期',zone:'區域',per:'時段',note:'備註',act:'操作',
+  date:'日期',zone:'區域',per:'時段',note:'備註',act:'操作',wx:'🌤️ 天氣', wxcol:'天氣',
   allz:'全部區域',allp:'全部時段',allsev:'全部等級',crit:'嚴重',warn:'警告',
   addrec:'＋ 新增記錄',saveall:'💾 全部儲存',clr:'清除',clrtoday:'清除今日',
   cancel:'取消',save:'儲存',edit:'編輯',del:'刪除',prev:'👁 預覽',send:'📤 發送',
@@ -568,7 +569,7 @@ en:{
   'tab-dash':'Dashboard','tab-rec':'Record','tab-hist':'History','tab-anal':'Analysis','tab-zones':'Zones','tab-alert':'Alerts','tab-set':'Settings',
   am:'Morning 08:00~09:00',pm:'Afternoon 15:30~16:30',all:'All Day',
   cold:'Cold',cool:'Cool',ok:'Normal',warm:'Warm',hot:'Hot',dry:'Dry',humid:'Humid',vhum:'Very Humid',
-  date:'Date',zone:'Zone',per:'Period',note:'Notes',act:'Actions',
+  date:'Date',zone:'Zone',per:'Period',note:'Notes',act:'Actions',wx:'🌤️ Weather', wxcol:'Weather',
   allz:'All Zones',allp:'All Periods',allsev:'All Severity',crit:'Critical',warn:'Warning',
   addrec:'＋ Add Record',saveall:'💾 Save All',clr:'Clear',clrtoday:'Clear Today',
   cancel:'Cancel',save:'Save',edit:'Edit',del:'Delete',prev:'👁 Preview',send:'📤 Send',
@@ -602,7 +603,7 @@ km:{
   'tab-dash':'ផ្ទាំងគ្រប់គ្រង','tab-rec':'កំណត់ត្រា','tab-hist':'ប្រវត្តិ','tab-anal':'វិភាគ','tab-zones':'តំបន់','tab-alert':'ព្រមាន','tab-set':'ការកំណត់',
   am:'ព្រឹក 08:00~09:00',pm:'រសៀល 15:30~16:30',all:'ថ្ងៃទាំងមូល',
   cold:'ត្រជាក់',cool:'ត្រជាក់ស្រួល',ok:'ធម្មតា',warm:'កក្តៅ',hot:'ក្តៅខ្លាំង',dry:'ស្ងួត',humid:'សើម',vhum:'សើមខ្លាំង',
-  date:'កាលបរិច្ឆេទ',zone:'តំបន់',per:'វេលា',note:'កំណត់ចំណាំ',act:'ប្រតិបត្តិការ',
+  date:'កាលបរិច្ឆេទ',zone:'តំបន់',per:'វេលា',note:'កំណត់ចំណាំ',act:'ប្រតិបត្តិការ',wx:'🌤️ អាកាសធាតុ', wxcol:'អាកាសធាតុ',
   allz:'គ្រប់តំបន់',allp:'គ្រប់វេលា',allsev:'គ្រប់កម្រិត',crit:'ធ្ងន់ធ្ងរ',warn:'ព្រមាន',
   addrec:'＋ បន្ថែម',saveall:'💾 រក្សាទុក',clr:'លុបចោល',clrtoday:'លុបថ្ងៃនេះ',
   cancel:'បោះបង់',save:'រក្សាទុក',edit:'កែ',del:'លុប',prev:'👁 មើល',send:'📤 ផ្ញើ',
@@ -738,7 +739,7 @@ function applyI18n(){
     'i-cancel':'cancel','i-cancel2':'cancel','i-cancel3':'cancel',
     'i-save':'save','i-save2':'save',
     // Record edit modal
-    'i-edittit':'edittit','i-redate':'date','i-reper':'per','i-rezon':'zone','i-renote':'note',
+    'i-edittit':'edittit','i-redate':'date','i-reper':'per','i-rezon':'zone','i-renote':'note','i-rewx':'wx',
     'i-retmp':'clbl_tmp','i-rehum':'clbl_hum',
     // Confirm modal
     'i-conftit':'conftit','i-confirm':'confirm',
@@ -779,7 +780,7 @@ function tick(){
 // ══════════════════════════════════════════
 // DATE UTILS
 // ══════════════════════════════════════════
-const today=()=>new Date().toISOString().slice(0,10);
+const today=()=>_localTS().slice(0,10);
 const wkKey=d=>{const dt=new Date(d),j1=new Date(dt.getFullYear(),0,1),w=Math.ceil(((dt-j1)/86400000+j1.getDay()+1)/7);return `${dt.getFullYear()}-W${String(w).padStart(2,'0')}`;};
 const moKey=d=>d.slice(0,7);
 const yrKey=d=>d.slice(0,4);
@@ -954,7 +955,7 @@ function saveAllRec(){
     if((t===''||t===undefined)&&(h===''||h===undefined))return;
     recs=recs.filter(r=>!(r.d===sel&&r.p===RP&&r.z===z.id));
     const rec={id:'r'+Date.now()+Math.random().toString(36).slice(2,5),z:z.id,d:sel,p:RP,
-      t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',note,ts:new Date().toISOString()};
+      t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',note,ts:_localTS()};
     recs.push(rec);newRecs.push(rec);
   });
   setR(recs);toast(T('saved'),'ok');renderTodayCard(sel);updBadge();
@@ -968,12 +969,13 @@ function renderTodayCard(date){
   if(!recs.length){tc.style.display='none';return;}
   tc.style.display='block';
   const zones=getZ();
-  tb.innerHTML=`<div class="twrap"><table><thead><tr><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('clbl_stat')}</th></tr></thead>
+  tb.innerHTML=`<div class="twrap"><table><thead><tr><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('wxcol')}</th><th>${T('clbl_stat')}</th></tr></thead>
   <tbody>${recs.map(r=>{const z=zones.find(z=>z.id===r.z);const ts=tSt(r.t),hs=hSt(r.h);
     return `<tr><td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${z?z.col:'#ccc'};display:inline-block"></span>${z?znm(z):'?'}</span></td>
     <td>${r.p==='morning'?T('am'):T('pm')}</td>
     <td class="${ts?ts.tc:''}">${r.t!==''?r.t+'°C':'--'}</td>
     <td class="${hs?hs.tc:''}">${r.h!==''?r.h+'%':'--'}</td>
+        <td style="white-space:nowrap">${_wxLabel(r.wx)}</td>
     <td>${ts&&ts.k!=='ok'?`<span class="bdg ${ts.cls}">${T(ts.k)}</span>`:''} ${hs&&hs.k!=='ok'?`<span class="bdg ${hs.cls}">${T(hs.k)}</span>`:''}</td>
     </tr>`;}).join('')}</tbody></table></div>`;
 }
@@ -1009,7 +1011,7 @@ function navHist(dir){
     else if(HV==='week'){dt.setDate(dt.getDate()+n*7);}
     else if(HV==='month'){dt.setMonth(dt.getMonth()+n);}
     else if(HV==='year'){dt.setFullYear(dt.getFullYear()+n);}
-    return dt.toISOString().slice(0,10);
+    return _localYMD(dt);
   };
   f.value=shift(f.value,dir);
   t.value=shift(t.value,dir);
@@ -1064,8 +1066,8 @@ function renderHist(){
 
 function renderHistTbl(recs,zones){
   const total=recs.length,start=(HP-1)*PER_PAGE,page=recs.slice(start,start+PER_PAGE);
-  document.getElementById('h-thead').innerHTML=`<tr><th>${T('clbl_date')}</th><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('clbl_stat')}</th><th>${T('clbl_note')}</th><th>${T('act')}</th></tr>`;
-  if(!page.length){document.getElementById('h-tbody').innerHTML=`<tr class="nodata-row"><td colspan="8">${T('nodata')}</td></tr>`;document.getElementById('h-pagi').innerHTML='';return;}
+  document.getElementById('h-thead').innerHTML=`<tr><th>${T('clbl_date')}</th><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('wxcol')}</th><th>${T('clbl_stat')}</th><th>${T('clbl_note')}</th><th>${T('act')}</th></tr>`;
+  if(!page.length){document.getElementById('h-tbody').innerHTML=`<tr class="nodata-row"><td colspan="9">${T('nodata')}</td></tr>`;document.getElementById('h-pagi').innerHTML='';return;}
   document.getElementById('h-tbody').innerHTML=page.map(r=>{
     const z=zones.find(z=>z.id===r.z),ts=tSt(r.t),hs=hSt(r.h),an=isAnom(r),cr=isCrit(r);
     return `<tr style="${cr?'background:var(--hot-bg)':an?'background:var(--warm-bg)':''}">
@@ -1074,6 +1076,7 @@ function renderHistTbl(recs,zones){
       <td>${r.p==='morning'?T('am').slice(0,2):T('pm').slice(0,2)}</td>
       <td class="${ts?ts.tc:''}">${r.t!==''?r.t+'°C':'--'}</td>
       <td class="${hs?hs.tc:''}">${r.h!==''?r.h+'%':'--'}</td>
+      <td style="white-space:nowrap">${_wxLabel(r.wx)}</td>
       <td>${ts&&ts.k!=='ok'?`<span class="bdg ${ts.cls}">${T(ts.k)}</span>`:''} ${hs&&hs.k!=='ok'?`<span class="bdg ${hs.cls}">${T(hs.k)}</span>`:''} ${cr?'🔴':an?'⚠️':''}</td>
       <td class="muted">${r.note||''}</td>
       <td style="white-space:nowrap"><button class="btn bg xs" onclick="openREmod('${r.id}')">✏️</button> <button class="btn bd xs" onclick="delRec('${r.id}')">🗑</button></td>
@@ -1330,7 +1333,30 @@ function popREmod(id){
   document.getElementById('re-tmp').value='';
   document.getElementById('re-hum').value='';
   document.getElementById('re-note').value='';
+  _mountWx('');
   openMod('re-over');
+}
+
+/* ── 本地日期 YYYY-MM-DD（不用 toISOString，避免 UTC+7 時區偏移）── */
+function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
+
+/* ── 本地時間戳（不用 toISOString）── */
+function _localTS(){const d=new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
+
+/* ── 天氣選擇器：掛載 / 設值 ── */
+window._wxCtl=null;
+function _mountWx(val){
+  const el=document.getElementById('re-wx'); if(!el) return;
+  if(typeof GC==='undefined'||!GC.weather){ setTimeout(()=>_mountWx(val),200); return; }
+  if(window._wxCtl){ window._wxCtl.set(val||''); return; }
+  window._wxCtl=GC.weather.mount(el,{value:val||'',onChange:()=>{}});
+}
+function _wxLabel(k){
+  if(!k) return '';
+  if(typeof GC!=='undefined'&&GC.weather) return GC.weather.label(k);
+  return k;
 }
 
 function openREmod(id){
@@ -1344,6 +1370,7 @@ function openREmod(id){
   document.getElementById('re-tmp').value=r.t!==''?r.t:'';
   document.getElementById('re-hum').value=r.h!==''?r.h:'';
   document.getElementById('re-note').value=r.note||'';
+  _mountWx(r.wx||'');
   openMod('re-over');
 }
 
@@ -1353,9 +1380,9 @@ function saveREedit(){
   let recs=getR();
   if(id){
     const i=recs.findIndex(r=>r.id===id);
-    if(i>=0)recs[i]={...recs[i],d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',note:document.getElementById('re-note').value,ts:new Date().toISOString()};
+    if(i>=0)recs[i]={...recs[i],d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',wx:(window._wxCtl?window._wxCtl.get():(recs[i].wx||'')),note:document.getElementById('re-note').value,ts:_localTS(),updatedAt:_localTS()};
   }else{
-    recs.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,5),d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',note:document.getElementById('re-note').value,ts:new Date().toISOString()});
+    recs.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,5),d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',wx:(window._wxCtl?window._wxCtl.get():''),note:document.getElementById('re-note').value,ts:_localTS(),updatedAt:_localTS()});
   }
   setR(recs);closeMod('re-over');toast(T('saved'),'ok');renderAll();updBadge();
   // 雲端同步
@@ -1395,7 +1422,7 @@ function exportXL(){
 
 function exportJSON(){
   const a=document.createElement('a');
-  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify({zones:getZ(),records:getR(),thresholds:getTH(),exported:new Date().toISOString()},null,2));
+  a.href='data:application/json;charset=utf-8,'+encodeURIComponent(JSON.stringify({zones:getZ(),records:getR(),thresholds:getTH(),exported:_localTS()},null,2));
   a.download='VRT_TH_'+today()+'.json';a.click();toast(T('expok'),'ok');
 }
 
@@ -1445,7 +1472,7 @@ function importXL(evt){
               if(tv===''&&hv==='')return;
               const key=ds+'|'+p+'|'+z.id;
               if(existIds.has(key)){skipped++;return;}
-              const nrec={id:'r'+Date.now()+Math.random().toString(36).slice(2,6),z:z.id,d:ds,p,t:tv,h:hv,note:'',ts:new Date().toISOString()};
+              const nrec={id:'r'+Date.now()+Math.random().toString(36).slice(2,6),z:z.id,d:ds,p,t:tv,h:hv,note:'',ts:_localTS()};
               recs.push(nrec);newRecs.push(nrec);
               existIds.add(key);added++;
             });
@@ -1557,7 +1584,7 @@ function enrichRec(r){
     temperature: r.t!==''&&r.t!==undefined?r.t:'',
     humidity:    r.h!==''&&r.h!==undefined?r.h:'',
     note:        r.note||'',
-    submittedAt: r.ts||new Date().toISOString()
+    submittedAt: r.ts||_localTS()
   };
 }
 
@@ -1782,7 +1809,7 @@ function renderAll(){
 function init(){
   const td=today();
   ['dash-date','rec-date','tg-date'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=td;});
-  const d30=new Date();d30.setDate(d30.getDate()-30);const d30s=d30.toISOString().slice(0,10);
+  const d30=new Date();d30.setDate(d30.getDate()-30);const d30s=_localYMD(d30);
   ['hfrom','afrom','alfrom'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=d30s;});
   ['hto','ato','alto'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=td;});
   popSelects();applyI18n();renderDash();updBadge();renderHNavLabel();
@@ -1832,11 +1859,13 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       tool:'temperature',
       title:'Temperature 溫濕度',
       gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec',
-      dateField:'date',
+      dateField:'d',
       idField:'id',
-      groupField:'zone',
+      groupField:'z',
       groupLabel:'Zone',
       weather:true,
+      weatherField:'wx',
+      photoField:'photos',
       photo:true,
       importSchema:{"date": ["日期", "date", "ថ្ងៃ"], "zone": ["區域", "zone", "tʼ", " តំបន់"], "temperature": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "humidity": ["濕度", "humidity", "សំណើម"], "notes": ["備註", "note", "notes", "ចំណាំ"]},
     read(){ try{ const raw=localStorage.getItem('vrt_th_r'); if(!raw) return [];

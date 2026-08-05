@@ -641,6 +641,11 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
 <div class="toast" id="toast"></div>
 
 <script>
+/* ── 本地時間戳（不用 toISOString，避免 UTC+7 時區偏移）── */
+function _localTS(){const d=new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
+function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2,'0');
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 // ════════════════════════════════
 // CONFIG — 連接現有 GAS
 // ════════════════════════════════
@@ -743,7 +748,7 @@ async function saveToGAS(){
 function genCode(t){const n=cnts[t];cnts[t]++;return t+String(n).padStart(3,'0')}
 function sbadge(k){return`<span class="bdg ${ST_CLS[k]||'b-std'}">${lang==='zh'?(ST_ZH[k]||k):(ST_EN[k]||k)}</span>`}
 function zbadge(z){return`<span class="bdg ${ZN_CLS[z]||'b-fac'}">${lang==='zh'?(ZN_ZH[z]||z):(ZN_EN[z]||z)}</span>`}
-function today(){return new Date().toISOString().slice(0,10)}
+function today(){return _localYMD()}
 function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show '+type;setTimeout(()=>el.className='toast',3200)}
 function closeM(id){document.getElementById(id).classList.add('hidden')}
 function openM(id){document.getElementById(id).classList.remove('hidden')}
