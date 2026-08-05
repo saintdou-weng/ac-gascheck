@@ -635,7 +635,9 @@ let LANG='zh', DP='morning', RP='morning', HV='month', AV='month', HP=1;
 const PER_PAGE=30;
 let editZID=null, cfCB=null;
 const GAS_DEFAULT_URL='https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
-const LSZ='vrt_th_z', LSR='vrt_th_r', LSTH='vrt_th_th', LSTG='vrt_th_tg', LSGAS='vrt_th_gas';
+const LSZ='vrt_th_z', LSR='vrt_th_r', LSTH='vrt_th_th', LSTG='vrt_th_tg', LSGAS='vrt_th_gas', LSLANG='vrt_th_lang';
+
+try { LANG=localStorage.getItem(LSLANG)||'zh'; } catch(e) {}
 
 const DZ=[
   {id:'za',zh:'A廠車間',en:'Building A Workshop',km:'អគារ A (រោងចក្រ)',col:'#4f6ef7',desc:'',on:true},
@@ -647,8 +649,58 @@ const DTH={t:{cold:18,cool:23,warm:32,hot:35},h:{dry:40,humid:80,vhum:90}};
 const T=k=>(D[LANG]||D.zh)[k]||(D.zh[k]||k);
 const getZ=()=>{try{const d=localStorage.getItem(LSZ);return d?JSON.parse(d):JSON.parse(JSON.stringify(DZ));}catch{return JSON.parse(JSON.stringify(DZ));}};
 const setZ=z=>localStorage.setItem(LSZ,JSON.stringify(z));
-const getR=()=>{try{const d=localStorage.getItem(LSR);return d?JSON.parse(d):[];}catch{return [];}};
-const setR=r=>localStorage.setItem(LSR,JSON.stringify(r));
+
+// 溫度資料一個「日期＋時段＋區域」只應有一筆；下載合併時先去重，避免雲端歷史重複資料把 localStorage 撐爆。
+function tempStoredList(d){
+  if(Array.isArray(d))return d;
+  if(!d||typeof d!=='object')return [];
+  for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k]))return d[k];
+  return Object.values(d).filter(Array.isArray).reduce((a,b)=>a.concat(b),[]);
+}
+function tempRecordKey(r){
+  if(!r||typeof r!=='object')return '';
+  const d=String(r.d!==undefined?r.d:(r.date||'')).slice(0,10);
+  const p=String(r.p!==undefined?r.p:(r.period||'')).toLowerCase();
+  const z=String(r.z!==undefined?r.z:(r.zoneId||r.zone||''));
+  if(d||p||z)return 'slot:'+d+'|'+p+'|'+z;
+  return r.id?'id:'+String(r.id):'';
+}
+function compactTempRecords(list){
+  const map=new Map();
+  (Array.isArray(list)?list:[]).forEach(raw=>{
+    if(!raw||typeof raw!=='object')return;
+    const isLong=raw.date!==undefined||raw.zoneId!==undefined||raw.temperature!==undefined||raw.humidity!==undefined;
+    const r=isLong?normalizeRec(raw):raw;
+    const k=tempRecordKey(r); if(!k)return;
+    const old=map.get(k);
+    if(!old){map.set(k,r);return;}
+    const ot=String(old.updatedAt||old.ts||''),nt=String(r.updatedAt||r.ts||'');
+    map.set(k,nt&&(!ot||nt>ot)?Object.assign({},old,r):Object.assign({},r,old));
+  });
+  return Array.from(map.values());
+}
+function tempStorageRecord(r){
+  const out={id:r.id||'',z:r.z||'',d:r.d||'',p:r.p||'',t:r.t!==undefined?r.t:'',h:r.h!==undefined?r.h:'',wx:r.wx||'',note:String(r.note||'').slice(0,2000),ts:r.ts||'',updatedAt:r.updatedAt||''};
+  const photos=Array.isArray(r.photos)?r.photos.filter(p=>typeof p==='string'&&!/^data:image\//i.test(p)&&p.length<=4096):[];
+  if(photos.length)out.photos=photos;
+  return out;
+}
+function persistTempRecords(list){
+  const safe=compactTempRecords(list).map(tempStorageRecord), json=JSON.stringify(safe);
+  let oldRaw=''; try{oldRaw=localStorage.getItem(LSR)||'';}catch(e){}
+  try{localStorage.setItem(LSR,json);return safe;}
+  catch(first){
+    try{
+      // 先移除同一個舊值再寫入精簡資料，避免瀏覽器在替換大字串時暫時超過配額。
+      localStorage.removeItem(LSR); localStorage.setItem(LSR,json); return safe;
+    }catch(second){
+      try{if(oldRaw)localStorage.setItem(LSR,oldRaw);}catch(restore){}
+      throw new Error('本機儲存空間不足，已保留原資料；請先匯出備份或清除舊照片');
+    }
+  }
+}
+const getR=()=>{try{const d=localStorage.getItem(LSR);return d?compactTempRecords(tempStoredList(JSON.parse(d))):[];}catch{return [];}};
+const setR=r=>persistTempRecords(r);
 const getTH=()=>{try{const d=localStorage.getItem(LSTH);return d?JSON.parse(d):JSON.parse(JSON.stringify(DTH));}catch{return JSON.parse(JSON.stringify(DTH));}};
 const setTH=t=>localStorage.setItem(LSTH,JSON.stringify(t));
 const getTG=()=>{try{const d=localStorage.getItem(LSTG);return d?JSON.parse(d):{tok:'',chat:''};}catch{return {tok:'',chat:''};}}
@@ -692,10 +744,20 @@ const znm=z=>LANG==='en'?z.en:LANG==='km'?z.km:z.zh;
 // LANGUAGE
 // ══════════════════════════════════════════
 function setLang(l){
+  if(!D[l])return;
   LANG=l;
+  try{localStorage.setItem(LSLANG,l);}catch(e){}
   document.querySelectorAll('.lbtn').forEach(b=>b.classList.toggle('on',b.textContent.trim()===(l==='zh'?'中文':l==='en'?'EN':'ខ្មែរ')));
+  if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==l)GC.i18n.set(l);
   applyI18n(); renderAll();
 }
+window.addEventListener('gc:langchange',e=>{
+  const l=e&&e.detail&&e.detail.lang;
+  if(!D[l]||l===LANG)return;
+  LANG=l; try{localStorage.setItem(LSLANG,l);}catch(ex){}
+  document.querySelectorAll('.lbtn').forEach(b=>b.classList.toggle('on',b.textContent.trim()===(l==='zh'?'中文':l==='en'?'EN':'ខ្មែរ')));
+  applyI18n(); renderAll();
+});
 function applyI18n(){
   // Map of elementId → translation key (or [key, isPH] for placeholders)
   const MAP={
@@ -1855,6 +1917,7 @@ function init(){
   const d30=new Date();d30.setDate(d30.getDate()-30);const d30s=_localYMD(d30);
   ['hfrom','afrom','alfrom'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=d30s;});
   ['hto','ato','alto'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=td;});
+  if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==LANG)GC.i18n.set(LANG);
   popSelects();applyI18n();renderDash();updBadge();renderHNavLabel();
   setInterval(tick,1000);tick();
   // 啟動時靜默從雲端拉取最新資料
@@ -1919,10 +1982,7 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
         const d=JSON.parse(raw); if(Array.isArray(d)) return d;
         for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])) return d[k];
         return []; }catch(e){ return []; } },
-    write(list){ try{ const raw=localStorage.getItem('vrt_th_r'); let d=raw?JSON.parse(raw):null;
-        if(Array.isArray(d)||d===null){ localStorage.setItem('vrt_th_r',JSON.stringify(list)); return; }
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])){ d[k]=list; localStorage.setItem('vrt_th_r',JSON.stringify(d)); return; }
-        d.records=list; localStorage.setItem('vrt_th_r',JSON.stringify(d)); }catch(e){ localStorage.setItem('vrt_th_r',JSON.stringify(list)); } },
+    write(list){ setR(list); },
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();

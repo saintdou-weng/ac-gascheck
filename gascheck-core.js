@@ -867,7 +867,10 @@ GC.mountCloudButtons = function (mountEl, opt) {
     up.disabled = true;
     try {
       const local = opt.getList ? opt.getList() : [];
-      const { res, list } = await CLOUD.upload(opt.tool, local, { idKey: opt.idKey, tsKey: opt.tsKey, extra: opt.extra });
+      const { res, list } = await CLOUD.upload(opt.tool, local, {
+        idKey: opt.idKey, tsKey: opt.tsKey, extra: opt.extra,
+        toCloud: opt.toCloud, fromCloud: opt.fromCloud
+      });
       if (res && res.ok !== false) {
         if (opt.setList) opt.setList(list);
         GC.toast('☁ ' + I18.t('gc.uploaded') + ' (' + list.length + ')', 'success');
@@ -881,7 +884,9 @@ GC.mountCloudButtons = function (mountEl, opt) {
     down.disabled = true;
     try {
       const local = opt.getList ? opt.getList() : [];
-      const r = await CLOUD.download(opt.tool, local, { idKey: opt.idKey, tsKey: opt.tsKey });
+      const r = await CLOUD.download(opt.tool, local, {
+        idKey: opt.idKey, tsKey: opt.tsKey, fromCloud: opt.fromCloud
+      });
       if (r.empty) GC.toast('⚠ ' + I18.t('gc.noCloud'), 'warning');
       else {
         if (opt.onRemote) opt.onRemote(r.response || {});
@@ -1042,7 +1047,7 @@ GC.attach = function (cfg) {
 
 /* ── 面板樣式 ── */
 const BAR_CSS = `
-.gc-bar{position:fixed;right:14px;bottom:14px;z-index:9500;font-family:inherit;display:flex;align-items:center;gap:6px}
+.gc-bar{position:fixed;right:16px;top:86px;z-index:9500;font-family:inherit;display:flex;align-items:center;gap:6px}
 .gc-quick{display:inline-flex;align-items:center;gap:4px;padding:4px;border-radius:24px;background:rgba(255,255,255,.96);box-shadow:0 4px 16px rgba(26,62,120,.22);border:1px solid #D8DCE6}
 .gc-quick .gc-cloud-btn{padding:7px 10px;font-size:11px}
 .gc-bar-toggle{display:flex;align-items:center;gap:7px;padding:10px 16px;border:0;border-radius:24px;
@@ -1050,7 +1055,7 @@ const BAR_CSS = `
 .gc-bar-toggle:hover{background:#153268}
 .gc-bar-ic{font-size:15px}
 .gc-bar-caret{font-size:10px;opacity:.75}
-.gc-panel{position:absolute;right:0;bottom:52px;width:min(390px,calc(100vw - 28px));
+.gc-panel{position:absolute;right:0;top:52px;width:min(390px,calc(100vw - 28px));
   background:#fff;border:1px solid #D8DCE6;border-radius:13px;box-shadow:0 12px 44px rgba(15,20,32,.2);
   display:none;max-height:min(76vh,600px);overflow:hidden;flex-direction:column}
 .gc-panel.open{display:flex}
@@ -1064,7 +1069,7 @@ const BAR_CSS = `
 .gc-sec-t{font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px}
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
 @media(max-width:480px){
-  .gc-bar{right:10px;bottom:10px}
+  .gc-bar{right:10px;top:72px}
   .gc-quick .gc-cloud-btn{padding:7px 9px}
   .gc-bar-tx{display:none}
   .gc-panel{width:calc(100vw - 20px)}

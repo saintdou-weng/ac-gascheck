@@ -328,6 +328,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
     <div class="lang-sw">
       <button class="lsw-btn on" id="lt-zh" onclick="setLang('zh')">中文</button>
       <button class="lsw-btn" id="lt-en" onclick="setLang('en')">EN</button>
+      <button class="lsw-btn" id="lt-km" onclick="setLang('km')">ខ្មែរ</button>
     </div>
     <div class="user-pill">
       <span class="udot" id="uhdr-dot"></span>
@@ -650,7 +651,7 @@ const GAS_URL = localStorage.getItem('ac_gascheck_gas_url') || 'https://script.g
 // ════════════════════════════════
 const RICONS={applicant:'🔵',verifier:'🟡',approver:'🔴'};
 const RDOT={applicant:'ude',verifier:'udv',approver:'uda'};
-const RLABELS={applicant:{zh:'申請人',en:'Applicant'},verifier:{zh:'審查人',en:'Verifier'},approver:{zh:'核可人',en:'Approver'}};
+const RLABELS={applicant:{zh:'申請人',en:'Applicant',km:'អ្នកដាក់ពាក្យ'},verifier:{zh:'審查人',en:'Verifier',km:'អ្នកត្រួតពិនិត្យ'},approver:{zh:'核可人',en:'Approver',km:'អ្នកអនុម័ត'}};
 
 let users=[
   {id:'u1',name:'Jenny',role:'applicant',pin:'1111'},
@@ -667,9 +668,11 @@ const CATS=['辦公家具 Office Furniture','鐵櫃/文件櫃 Metal Cabinet','�
 const ST_KEYS=['active','standby','repair','disposed','lent'];
 const ST_ZH={active:'使用中',standby:'備用',repair:'維修中',disposed:'報廢',lent:'外借'};
 const ST_EN={active:'In Use',standby:'Standby',repair:'Repair',disposed:'Disposed',lent:'Lent Out'};
+const ST_KM={active:'កំពុងប្រើ',standby:'បម្រុង',repair:'ជួសជុល',disposed:'បោះបង់',lent:'ខ្ចី'};
 const ST_CLS={active:'b-act',standby:'b-std',repair:'b-rep',disposed:'b-dis',lent:'b-len'};
 const ZN_ZH={factory:'工廠',expat:'外藉宿舍',local:'當地宿舍'};
 const ZN_EN={factory:'Factory',expat:'Expat Dorm',local:'Local Dorm'};
+const ZN_KM={factory:'រោងចក្រ',expat:'ផ្ទះស្នាក់នៅជនបរទេស',local:'ផ្ទះស្នាក់នៅក្នុងស្រុក'};
 const ZN_CLS={factory:'b-fac',expat:'b-exp',local:'b-loc'};
 
 // ════════════════════════════════
@@ -759,8 +762,8 @@ async function deleteAssetFromGAS(id){
 // UTILS
 // ════════════════════════════════
 function genCode(t){const n=cnts[t];cnts[t]++;return t+String(n).padStart(3,'0')}
-function sbadge(k){return`<span class="bdg ${ST_CLS[k]||'b-std'}">${lang==='zh'?(ST_ZH[k]||k):(ST_EN[k]||k)}</span>`}
-function zbadge(z){return`<span class="bdg ${ZN_CLS[z]||'b-fac'}">${lang==='zh'?(ZN_ZH[z]||z):(ZN_EN[z]||z)}</span>`}
+function sbadge(k){const sl=lang==='zh'?ST_ZH:lang==='km'?ST_KM:ST_EN;return`<span class="bdg ${ST_CLS[k]||'b-std'}">${sl[k]||k}</span>`}
+function zbadge(z){const zl=lang==='zh'?ZN_ZH:lang==='km'?ZN_KM:ZN_EN;return`<span class="bdg ${ZN_CLS[z]||'b-fac'}">${zl[z]||z}</span>`}
 function today(){return _localYMD()}
 function toast(msg,type=''){const el=document.getElementById('toast');el.textContent=msg;el.className='toast show '+type;setTimeout(()=>el.className='toast',3200)}
 function closeM(id){document.getElementById(id).classList.add('hidden')}
@@ -774,25 +777,29 @@ function setSdot(s){const el=document.getElementById('sdot');if(el)el.className=
 // LANGUAGE
 // ════════════════════════════════
 function setLang(l){
+  if(!['zh','en','km'].includes(l))return;
   lang=l;
+  if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==l)GC.i18n.set(l);
   document.getElementById('lt-zh').classList.toggle('on',l==='zh');
   document.getElementById('lt-en').classList.toggle('on',l==='en');
+  document.getElementById('lt-km').classList.toggle('on',l==='km');
   // Zone labels
-  const zl=l==='zh'?ZN_ZH:ZN_EN;
-  document.getElementById('zt-all-t').textContent=l==='zh'?'全部':'All';
+  const zl=l==='zh'?ZN_ZH:l==='km'?ZN_KM:ZN_EN;
+  document.getElementById('zt-all-t').textContent=l==='zh'?'全部':l==='km'?'ទាំងអស់':'All';
   document.getElementById('zt-fac-t').textContent=zl.factory;
   document.getElementById('zt-exp-t').textContent=zl.expat;
   document.getElementById('zt-loc-t').textContent=zl.local;
   // Header
-  document.getElementById('h-out').textContent=l==='zh'?'登出':'Logout';
-  document.getElementById('l-tot').textContent=l==='zh'?'共':'Total';
-  document.getElementById('l-items').textContent=l==='zh'?'筆':'records';
-  document.getElementById('l-add').textContent=l==='zh'?'新增':'Add';
-  document.getElementById('l-imp').textContent=l==='zh'?'匯入':'Import';
-  document.getElementById('l-exp').textContent=l==='zh'?'匯出':'Export';
-  document.getElementById('l-log').textContent=l==='zh'?'日誌':'Log';
-  document.getElementById('l-print').textContent=l==='zh'?'標簽':'Labels';
-  document.getElementById('l-clr').textContent=l==='zh'?'清除':'Clear';
+  const km=l==='km';
+  document.getElementById('h-out').textContent=l==='zh'?'登出':km?'ចាកចេញ':'Logout';
+  document.getElementById('l-tot').textContent=l==='zh'?'共':km?'សរុប':'Total';
+  document.getElementById('l-items').textContent=l==='zh'?'筆':km?'កំណត់ត្រា':'records';
+  document.getElementById('l-add').textContent=l==='zh'?'新增':km?'បន្ថែម':'Add';
+  document.getElementById('l-imp').textContent=l==='zh'?'匯入':km?'នាំចូល':'Import';
+  document.getElementById('l-exp').textContent=l==='zh'?'匯出':km?'នាំចេញ':'Export';
+  document.getElementById('l-log').textContent=l==='zh'?'日誌':km?'កំណត់ហេតុ':'Log';
+  document.getElementById('l-print').textContent=l==='zh'?'標簽':km?'ស្លាក':'Labels';
+  document.getElementById('l-clr').textContent=l==='zh'?'清除':km?'សម្អាត':'Clear';
   // Print modal
   const mpt=document.getElementById('m-print-t');if(mpt)mpt.textContent=l==='zh'?'🏷️ 打印標簽 Print Labels':'🏷️ Print Labels';
   const ltl=document.getElementById('lbl-type-label');if(ltl)ltl.textContent=l==='zh'?'標簽類型 Type：':'Label Type:';
@@ -826,7 +833,7 @@ function setLang(l){
 }
 
 function rebuildSelects(){
-  const sl=lang==='zh'?ST_ZH:ST_EN;
+  const sl=lang==='zh'?ST_ZH:lang==='km'?ST_KM:ST_EN;
   const fc=document.getElementById('f-cat'),fc2=document.getElementById('f-c2');
   if(fc){const v=fc.value;fc.innerHTML=`<option value="">${lang==='zh'?'全部類別':'All Categories'}</option>`;CATS.forEach(c=>fc.add(new Option(c,c)));fc.value=v}
   if(fc2){const v=fc2.value;fc2.innerHTML='';CATS.forEach(c=>fc2.add(new Option(c,c)));fc2.value=v||CATS[0]}
@@ -1127,11 +1134,11 @@ function openDetail(code){
   if(p)html+=`<img src="${p}" class="dphoto" onclick="lightbox('${p}')">`;
   if(canEdit()&&a.status!=='disposed'){
     html+=`<div style="margin-bottom:13px"><div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;margin-bottom:6px">⚡ ${lang==='zh'?'快速狀態':'Quick Status'}</div><div class="sts-chips">`;
-    ST_KEYS.forEach(k=>{const sl=lang==='zh'?ST_ZH:ST_EN;const on=k===a.status;html+=`<button class="sts-chip" onclick="quickSt('${code}','${k}')" style="${on?'background:#1d4ed8;color:#fff;border-color:#1d4ed8':'background:#f8fafc;border-color:#cbd5e1;color:#475569'}">${sl[k]}</button>`});
+    ST_KEYS.forEach(k=>{const sl=lang==='zh'?ST_ZH:lang==='km'?ST_KM:ST_EN;const on=k===a.status;html+=`<button class="sts-chip" onclick="quickSt('${code}','${k}')" style="${on?'background:#1d4ed8;color:#fff;border-color:#1d4ed8':'background:#f8fafc;border-color:#cbd5e1;color:#475569'}">${sl[k]}</button>`});
     html+=`</div></div>`;
   }
   const rows=[
-    [lang==='zh'?'品名':'Name',a.name,true],[lang==='zh'?'區域':'Zone',lang==='zh'?ZN_ZH[a.zone]:ZN_EN[a.zone],false],
+    [lang==='zh'?'品名':lang==='km'?'ឈ្មោះ':'Name',a.name,true],[lang==='zh'?'區域':lang==='km'?'តំបន់':'Zone',lang==='zh'?ZN_ZH[a.zone]:lang==='km'?ZN_KM[a.zone]:ZN_EN[a.zone],false],
     [lang==='zh'?'類別':'Category',a.category,false],[lang==='zh'?'狀態':'Status',sbadge(a.status),false],
     [lang==='zh'?'品牌':'Brand',a.brand||'—',false],[lang==='zh'?'型號':'Model',a.model||'—',false],
     [lang==='zh'?'顏色':'Color',a.color||'—',false],[lang==='zh'?'尺寸':'Size',a.size||'—',false],
@@ -1152,7 +1159,7 @@ function openDetail(code){
 }
 async function quickSt(code,k){
   if(!canEdit())return;
-  const sl=lang==='zh'?ST_ZH:ST_EN;
+  const sl=lang==='zh'?ST_ZH:lang==='km'?ST_KM:ST_EN;
   assets=assets.map(a=>{if(a.code!==code)return a;return{...a,status:k,history:[...(a.history||[]),{type:'edit',date:today(),desc:`${lang==='zh'?'狀態':'Status'} → ${sl[k]} by ${currentUser.name}`}]}});
   render();openDetail(code);toast(`→ ${sl[k]}`,'ok');await saveToGAS();
 }
