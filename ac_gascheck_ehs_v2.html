@@ -1197,9 +1197,13 @@ function excelDateToISO(v){
   }
   // MM/DD/YYYY or MM/DD/YY
   if(/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(s)){const p=s.split('/');const y=p[2].length===2?'20'+p[2]:p[2];return y+'-'+p[0].padStart(2,'0')+'-'+p[1].padStart(2,'0');}
+  // 純年份（如 2026）不是序號，不可當日期解析
+  if(/^\d{4}$/.test(s))return'';
   // Excel serial number
+  // 門檻改用 1990-01-01 的序號 32874：低於此值多半是年份或普通數字，
+  // 舊版用 n>1000 會把 2026 當成序號 → 解析成 1905-07-18。
   const n=parseFloat(v);
-  if(!isNaN(n)&&n>1000){
+  if(!isNaN(n)&&n>=32874&&n<=80000){
     const d=new Date(Math.round((n-25569)*86400*1000));
     if(!isNaN(d.getTime()))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }

@@ -1119,6 +1119,23 @@ const CSS = `
 .gc-imp-ok{color:#059669;font-weight:700}
 .gc-imp-bad{color:#DC2626;font-weight:700}
 .gc-imp-note{margin-top:7px;padding-top:7px;border-top:1px solid #EEF1F6;color:#B45309}
+
+/* 手機版：工具卡不可壓縮或遮擋模組原有按鈕 */
+@media(max-width:600px){
+  .gc-tools-card{margin:0 0 10px;padding:0 8px;box-sizing:border-box}
+  .gc-panel{border-radius:10px}
+  .gc-action-strip{gap:6px;padding:8px}
+  .gc-action-strip button,.gc-cloud-btn{min-height:38px;font-size:12px}
+  .gc-pd-btn{min-height:34px;padding:6px 11px}
+  .gc-lang-btn{min-height:32px}
+  /* 彈窗在手機上留出可點擊的關閉區 */
+  .gc-tg-box{max-height:82vh}
+  .gc-tg-foot{position:sticky;bottom:0;background:#fff;border-radius:0 0 13px 13px}
+  .gc-tg-send,.gc-tg-cancel{min-height:42px;flex:1}
+}
+/* 任何情況下工具卡都不得覆蓋其他元素 */
+.gc-tools-card{position:relative;z-index:1}
+.gc-tools-card *{max-width:100%}
 .gc-toast-box{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none}
 .gc-toast{background:#1A2035;color:#fff;padding:10px 19px;border-radius:8px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.24);animation:gcIn .25s ease;max-width:88vw}
 .gc-toast.success{background:#16653A}.gc-toast.error{background:#B91C1C}.gc-toast.warning{background:#7D4E00}
