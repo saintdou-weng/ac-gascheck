@@ -237,7 +237,9 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
 @media(max-width:768px){
   .twrap{display:none}.stats{grid-template-columns:repeat(2,1fr)}
   .fg2,.fg4{grid-template-columns:1fr}.role-grid{grid-template-columns:1fr}
+  .main{min-width:0;overflow-x:hidden}.toolbar{overflow-x:auto;flex-wrap:nowrap;-webkit-overflow-scrolling:touch}
 }
+.btn-add,.btn-sm,.bx,.btn-pri,.btn-sec,.btn-ok,.btn-rej,.btn-del,.mcls,.lbl-opt{touch-action:manipulation;min-height:38px}
 @media(min-width:769px){.cgrid{display:none}}
 .hidden{display:none!important}
 .nodata{text-align:center;padding:50px 20px;color:var(--tx3)}
@@ -712,12 +714,21 @@ async function standardGAS(payload){
   return r.json();
 }
 
+function assetPhotoValue(v){
+  if(Array.isArray(v))return typeof v[0]==='string'?v[0]:'';
+  return typeof v==='string'?v:'';
+}
 function assetCloudRecords(){
   const now=_localTS();
-  return assets.map(a=>{if(!a.id)a.id=a.code;if(!a.updatedAt)a.updatedAt=now;return a;});
+  return assets.map(a=>{
+    if(!a.id)a.id=a.code;if(!a.updatedAt)a.updatedAt=now;
+    return Object.assign({},a,{photos:assetPhotoValue(photos[a.code])||assetPhotoValue(a.photos)});
+  });
 }
 
 async function loadFromGAS(){
+  // Read local cache first so a temporary or empty GAS response cannot hide mobile data.
+  loadLocal();
   setSdot('spin');
   toast(lang==='zh'?'讀取資料中…':'Loading…','info');
   let d=null;
@@ -726,6 +737,7 @@ async function loadFromGAS(){
     const local=assetCloudRecords();
     assets=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(local,d.records,'id','updatedAt').list:local.concat(d.records);
     assets=assets.map(a=>Object.assign({id:a.id||a.code,updatedAt:a.updatedAt||_localTS()},a));
+    assets.forEach(a=>{const p=assetPhotoValue(a.photos);if(p&&a.code)photos[a.code]=p;});
     try { cnts=JSON.parse(localStorage.getItem('vrt_c7')||'{}'); } catch(e) { cnts={}; }
     try { pending=JSON.parse(localStorage.getItem('vrt_p7')||'[]'); } catch(e) { pending=[]; }
     // Ensure counters are ahead of existing codes
@@ -1963,12 +1975,14 @@ async function clearAllData(){
 // LOCAL STORAGE (cache / fallback)
 // ════════════════════════════════
 function saveLocal(){
-  try{localStorage.setItem('vrt_a7',JSON.stringify(assets));localStorage.setItem('vrt_c7',JSON.stringify(cnts));localStorage.setItem('vrt_p7',JSON.stringify(pending));localStorage.setItem('vrt_lang',lang)}catch(e){}
+  try{localStorage.setItem('vrt_a7',JSON.stringify(assets));localStorage.setItem('vrt_c7',JSON.stringify(cnts));localStorage.setItem('vrt_p7',JSON.stringify(pending));localStorage.setItem('vrt_photos',JSON.stringify(photos));localStorage.setItem('vrt_lang',lang)}catch(e){}
 }
 function loadLocal(){
   try{
-    const a=localStorage.getItem('vrt_a7'),c=localStorage.getItem('vrt_c7'),p=localStorage.getItem('vrt_p7'),l=localStorage.getItem('vrt_lang');
+    const a=localStorage.getItem('vrt_a7'),c=localStorage.getItem('vrt_c7'),p=localStorage.getItem('vrt_p7'),ph=localStorage.getItem('vrt_photos'),l=localStorage.getItem('vrt_lang');
     if(a)assets=JSON.parse(a);if(c)cnts=JSON.parse(c);if(p)pending=JSON.parse(p);if(l)lang=l;
+    if(ph){const saved=JSON.parse(ph);if(saved&&typeof saved==='object')photos=saved;}
+    assets.forEach(a=>{const p=assetPhotoValue(a.photos);if(p&&a.code&&!photos[a.code])photos[a.code]=p;});
   }catch(e){}
 }
 
@@ -2028,13 +2042,15 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       fromCloud:r=>Object.assign({},r,{id:r.id||r.code}),
       importSchema:{"code": ["編號", "code", "資產編號", "លេខកូដ"], "name": ["名稱", "name", "品名", "ឈ្មោះ"], "category": ["類別", "category", "ប្រភេទ"], "zone": ["區域", "zone", "តំបន់"], "status": ["狀態", "status", "ស្ថានភាព"], "quantity": ["數量", "qty", "quantity", "បរិមាណ"], "unit": ["單位", "unit", "ឯកតា"], "location": ["位置", "location", "ទីតាំង"]},
     read(){ try{ const raw=localStorage.getItem('vrt_a7'); if(!raw) return [];
-        const d=JSON.parse(raw); if(Array.isArray(d)) return d;
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])) return d[k];
-        return []; }catch(e){ return []; } },
+        const d=JSON.parse(raw); const list=Array.isArray(d)?d:(['records','list','items','data','rows'].map(k=>Array.isArray(d[k])?d[k]:null).find(Boolean)||[]);
+        let savedPhotos={};try{savedPhotos=JSON.parse(localStorage.getItem('vrt_photos')||'{}')||{};}catch(e){}
+        return list.map(a=>Object.assign({},a,{photos:assetPhotoValue(savedPhotos[a.code])||assetPhotoValue(a.photos)}));
+      }catch(e){ return []; } },
     write(list){ try{ const raw=localStorage.getItem('vrt_a7'); let d=raw?JSON.parse(raw):null;
-        if(Array.isArray(d)||d===null){ localStorage.setItem('vrt_a7',JSON.stringify(list)); return; }
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])){ d[k]=list; localStorage.setItem('vrt_a7',JSON.stringify(d)); return; }
-        d.records=list; localStorage.setItem('vrt_a7',JSON.stringify(d)); }catch(e){ localStorage.setItem('vrt_a7',JSON.stringify(list)); } },
+        const nextPhotos=Object.assign({},photos);(list||[]).forEach(a=>{const p=assetPhotoValue(a.photos);if(p&&a.code)nextPhotos[a.code]=p;});photos=nextPhotos;
+        if(Array.isArray(d)||d===null){ localStorage.setItem('vrt_a7',JSON.stringify(list));localStorage.setItem('vrt_photos',JSON.stringify(nextPhotos)); return; }
+        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])){ d[k]=list; localStorage.setItem('vrt_a7',JSON.stringify(d));localStorage.setItem('vrt_photos',JSON.stringify(nextPhotos)); return; }
+        d.records=list; localStorage.setItem('vrt_a7',JSON.stringify(d));localStorage.setItem('vrt_photos',JSON.stringify(nextPhotos)); }catch(e){ localStorage.setItem('vrt_a7',JSON.stringify(list)); } },
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();

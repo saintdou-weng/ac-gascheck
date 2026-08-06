@@ -253,6 +253,7 @@ tbody tr:hover{background:var(--bg);}
     <div class="rec-weather"><span class="clbl">🌤️ 天氣 Weather</span><div id="rec-wx"></div></div>
     <input type="text" id="rec-note" style="width:180px" placeholder="備註（可選）">
     <button class="btn bp ml" onclick="saveAllRec()" id="i-saveall">💾 全部儲存</button>
+    <button class="btn bg sm" onclick="syncUp()" id="i-upload-after-save" disabled>⬆ 上傳</button>
     <button class="btn bg" onclick="clearRI()" id="i-clear">清除</button>
   </div>
   <div class="sm-t muted mb8" id="rec-plbl" style="margin-bottom:10px;"></div>
@@ -785,7 +786,7 @@ function applyI18n(){
     'i-tgtype':'tgtype','i-tgdate':'tgdate','i-tgd':'tgd','i-tga':'tga','i-tgf':'tgf',
     'i-prev':'prev','i-send':'send',
     // GAS
-    'i-testcon':'testcon','i-syncup':'syncup','i-pull':'pull',
+    'i-testcon':'testcon','i-syncup':'syncup','i-upload-after-save':'syncup','i-pull':'pull',
     // Import/export
     'i-imp':'imp','i-exp':'exp','i-exl':'exl','i-ejson':'ejson',
     // Danger
@@ -1020,9 +1021,17 @@ function saveAllRec(){
       t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',wx,note,ts:_localTS(),updatedAt:_localTS()};
     recs.push(rec);newRecs.push(rec);
   });
-  setR(recs);toast(T('saved'),'ok');renderTodayCard(sel);updBadge();
-  // 自動同步到雲端（非阻塞，GAS 會自動發 Telegram 通知）
-  if(newRecs.length>0) gasAutoSync(newRecs);
+  setR(recs);toast(newRecs.length?T('saved')+' · '+T('syncup'):T('saved'),'ok');renderTodayCard(sel);updBadge();
+  // 儲存先落本機 IndexedDB；由使用者確認後按「上傳」，避免半完成資料自動送出。
+  if(newRecs.length) window._tempPendingUpload=true;
+  updateTempUploadButton();
+}
+
+function updateTempUploadButton(){
+  const b=document.getElementById('i-upload-after-save');
+  if(!b)return;
+  b.disabled=!window._tempPendingUpload;
+  b.title=window._tempPendingUpload?T('syncup'):T('saved');
 }
 
 function renderTodayCard(date){
@@ -1634,6 +1643,36 @@ function buildTGmsg(type,date){
     m+=now;return m;
   }
 }
+// 共用上方 Telegram 按鈕使用的詳細報告：保留每個日期、區域、時段、溫度、濕度與狀態，
+// 不再只送「za / zb」分組筆數。訊息上限前保留完整列，避免 Telegram 拒收過長內容。
+function buildTGPeriodMsg(period,mode){
+  const all=getR();
+  const view=(typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'d'):all.slice();
+  const periodName={day:'Today / 今日',week:'This Week / 本週',month:'This Month / 本月',year:'This Year / 今年',all:'All / 全部'}[period]||period;
+  const modeName={summary:'Summary / 摘要',review:'Review / 審查',approval:'Approval / 核可'}[mode]||'Summary / 摘要';
+  const lines=['🌡️ <b>VRT Temperature & Humidity / 溫濕度</b>','📅 '+periodName,'🧾 Message type / 訊息類型: '+modeName,'━━━━━━━━━━━━━━━━'];
+  if(!view.length){lines.push('No records / 暫無記錄','⏰ '+new Date().toLocaleString());return lines.join('\n');}
+  const zones=getZ();
+  const dates=[...new Set(view.map(r=>String(r.d||'').slice(0,10)).filter(Boolean))].sort();
+  let count=0;
+  dates.forEach(date=>{
+    lines.push('📆 <b>'+date+'</b>');
+    view.filter(r=>String(r.d||'').slice(0,10)===date).sort((a,b)=>String(a.z).localeCompare(String(b.z))||String(a.p).localeCompare(String(b.p))).forEach(r=>{
+      if(count>=90)return;
+      const z=zones.find(x=>x.id===r.z);
+      const name=z?((z.en||z.zh||z.id)+' / '+(z.zh||z.en||z.id)):String(r.z||'?');
+      const per=r.p==='morning'?'Morning / 早上':'Afternoon / 下午';
+      const ts=tSt(r.t),hs=hSt(r.h);
+      const status=[ts&&T(ts.k),hs&&T(hs.k)].filter(Boolean).join(' / ')||T('ok');
+      lines.push('🏭 '+name+' | '+per+' | 🌡️ '+(r.t!==''&&r.t!=null?r.t+'°C':'--')+' | 💧 '+(r.h!==''&&r.h!=null?r.h+'%':'--')+' | '+status+(r.wx?' | '+_wxLabel(r.wx):''));
+      count++;
+    });
+  });
+  const anomalies=view.filter(isAnom).length;
+  lines.push('━━━━━━━━━━━━━━━━','⚠️ Anomaly / 異常: '+anomalies+' | 📋 Records / 記錄: '+view.length,'⏰ '+new Date().toLocaleString());
+  const out=lines.join('\n');
+  return out.length>3900?out.slice(0,3860)+'\n… (more records omitted / 其餘記錄略)':out;
+}
 function prevTG(){const msg=buildTGmsg(document.getElementById('tg-type').value,document.getElementById('tg-date').value||today());const p=document.getElementById('tg-prev');p.textContent=msg;p.style.display='block';}
 async function sendTG(){
   const cfg=getTG();if(!cfg.tok||!cfg.chat){toast('請設定 Bot Token 和 Chat ID','err');return;}
@@ -1737,6 +1776,8 @@ async function syncUp(){
       body:JSON.stringify({type:'tempSync',records:recs.map(enrichRec),zones:getZ(),zonesMode:'merge',full:true})});
     document.getElementById('sdot').className='syncdt sd-ok';
     document.getElementById('sstatus').textContent='✅ 已連接';
+    window._tempPendingUpload=false;
+    updateTempUploadButton();
     toast('✅ 已送出 '+recs.length+' 筆（no-cors模式，資料已送達GAS）','ok');
   }catch(ex){
     document.getElementById('sdot').className='syncdt sd-err';
@@ -1919,7 +1960,7 @@ function init(){
   ['hfrom','afrom','alfrom'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=d30s;});
   ['hto','ato','alto'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=td;});
   if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==LANG)GC.i18n.set(LANG);
-  popSelects();applyI18n();renderDash();updBadge();renderHNavLabel();
+  popSelects();applyI18n();renderDash();updBadge();renderHNavLabel();updateTempUploadButton();
   setInterval(tick,1000);tick();
   // 啟動時靜默從雲端拉取最新資料
   setTimeout(gasPullOnInit, 800);
@@ -1978,6 +2019,7 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       photo:true,
       toCloud:enrichRec,
       fromCloud:normalizeRec,
+      telegramBuilder:({period,mode})=>buildTGPeriodMsg(period,mode),
       extra:()=>({zones:getZ(),zonesMode:'merge'}),
       onRemote:(d)=>{if(d&&Array.isArray(d.zones)){const z=mergeTempZones(getZ(),d.zones);if(JSON.stringify(z)!==JSON.stringify(getZ())){setZ(z);renderAll();}}},
       importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "note": ["備註", "note", "notes", "ចំណាំ"]},

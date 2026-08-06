@@ -445,7 +445,12 @@ const SUP_TARGET = 4;
 const LOCAL_KEY  = 'vrt_waste_v3';
 
 /* ========== i18n ========== */
-let lang = 'zh';
+let lang = (() => {
+  try {
+    const saved = localStorage.getItem('vrt_ehs_lang') || localStorage.getItem('gc_lang') || 'zh';
+    return ['zh','en','km'].includes(saved) ? saved : 'zh';
+  } catch (e) { return 'zh'; }
+})();
 const T = {
   zh:{
     'tab-a':'模組A 內部','tab-b':'模組B 大門','tab-report':'報表分析','tab-hist':'歷史記錄','tab-import':'歷史匯入',
@@ -506,34 +511,63 @@ const EHS_PARTS = [
   ['等待','Waiting','រង់ចាំ'],['核可','Approval','អនុម័ត'],['內部','Internal','ខាងក្នុង'],['出入','Entry / Exit','ចូល / ចេញ'],
   ['廢料','Recycling','សំណល់'],['資料','Data','ទិន្នន័យ'],['設定','Settings','ការកំណត់'],['天','days','ថ្ងៃ']
 ].map(x=>({zh:x[0],en:x[1],km:x[2]}));
+EHS_PARTS.push(
+  {zh:'Telegram/雲端',en:'Telegram / Cloud',km:'Telegram / Cloud'},
+  {zh:'快速操作',en:'Quick actions',km:'សកម្មភាពរហ័ស'},
+  {zh:'智慧匯入',en:'Smart Import',km:'នាំចូលឆ្លាតវៃ'},
+  {zh:'摘要期間',en:'Summary period',km:'រយៈពេលសង្ខេប'},
+  {zh:'審查',en:'Review',km:'ពិនិត្យ'},
+  {zh:'Approval',en:'Approval',km:'អនុម័ត'}
+);
+const EHS_EXACT = new Map();
+EHS_LABELS.forEach(x=>[x.zh,x.en,x.km].forEach(v=>EHS_EXACT.set(v,x)));
+const EHS_ORIGINAL_TEXT = new WeakMap();
+let _ehsApplying = false;
+let _ehsTimer = 0;
 function applyEhsStaticLanguage(){
-  if(!document.body)return;
-  const exact=new Map(); EHS_LABELS.forEach(x=>[x.zh,x.en,x.km].forEach(v=>exact.set(v,x[lang])));
-  const nodes=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-  let n;
-  while(n=nodes.nextNode()){
-    const p=n.parentElement;
-    if(!p||p.tagName==='SCRIPT'||p.tagName==='STYLE')continue;
-    const raw=n.nodeValue, trimmed=raw.trim();
-    if(exact.has(trimmed)){n.nodeValue=raw.replace(trimmed,exact.get(trimmed));continue;}
-    let out=raw;
-    EHS_PARTS.forEach(x=>[x.zh,x.en,x.km].forEach((v,i)=>{if(v!==x[lang])out=out.split(v).join(x[lang]);}));
-    if(out!==raw)n.nodeValue=out;
-  }
+  if(!document.body || _ehsApplying)return;
+  _ehsApplying = true;
+  try {
+    const nodes=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+    let n;
+    while(n=nodes.nextNode()){
+      const p=n.parentElement;
+      if(!p||['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(p.tagName))continue;
+      const base = EHS_ORIGINAL_TEXT.has(n) ? EHS_ORIGINAL_TEXT.get(n) : n.nodeValue;
+      EHS_ORIGINAL_TEXT.set(n, base);
+      const trimmed=base.trim();
+      const exact=EHS_EXACT.get(trimmed);
+      let out;
+      if(exact) out=base.replace(trimmed,exact[lang]);
+      else {
+        out=base;
+        EHS_PARTS.forEach(x=>[x.zh,x.en,x.km].forEach(v=>{
+          if(v && v!==x[lang])out=out.split(v).join(x[lang]);
+        }));
+      }
+      if(out!==n.nodeValue)n.nodeValue=out;
+    }
+  } finally { _ehsApplying = false; }
 }
 window.applyEhsStaticLanguage=applyEhsStaticLanguage;
 function setLang(l){
+  if(!T[l])l='zh';
   lang=l;
+  try{localStorage.setItem('vrt_ehs_lang',l);}catch(e){}
   document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.textContent.trim()===({zh:'中',en:'EN',km:'ខ្មែរ'}[l])));
   document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(T[l]&&T[l][k])el.textContent=T[l][k];});
   if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==l)GC.i18n.set(l);
-  setTimeout(applyEhsStaticLanguage,0);
+  scheduleEhsLanguageApply();
+}
+function scheduleEhsLanguageApply(){
+  clearTimeout(_ehsTimer);
+  _ehsTimer=setTimeout(applyEhsStaticLanguage,40);
 }
 function startEhsLanguageObserver(){
   applyEhsStaticLanguage();
   if(typeof MutationObserver==='undefined'||!document.body)return;
-  const _ehsObserver=new MutationObserver(()=>{if(lang!=='zh')applyEhsStaticLanguage();});
-  _ehsObserver.observe(document.body,{subtree:true,childList:true,characterData:true});
+  const _ehsObserver=new MutationObserver(()=>{if(!_ehsApplying&&lang!=='zh')scheduleEhsLanguageApply();});
+  _ehsObserver.observe(document.body,{subtree:true,childList:true});
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startEhsLanguageObserver);
 else startEhsLanguageObserver();
@@ -904,10 +938,11 @@ function renderHistoryTable(module,recs){
   if(!recs.length){wrap.innerHTML='<div class="empty-state">🔍 無符合記錄</div>';return;}
   let hdrs,rows;
   if(module==='internal'){
-    hdrs=['日期','Plastic(kg)','Fabric(kg)','Core(kg)','Total(kg)','備註','提交時間','操作'];
+    hdrs=['日期','Plastic(kg)','Fabric(kg)','Core(kg)','Total(kg)','照片','備註','提交時間','操作'];
     rows=recs.map(r=>`<tr>
       <td>${r.date||''}</td><td>${r.plastic_kg||0}</td><td>${r.fabric_kg||0}</td>
-      <td>${r.core_kg||0}</td><td><strong>${r.total_kg||0}</strong></td><td>${r.remark||''}</td>
+      <td>${r.core_kg||0}</td><td><strong>${r.total_kg||0}</strong></td>
+      <td>${typeof GC!=='undefined'&&GC.photo?GC.photo.cell(r.photos):((r.photos||[]).length?'📷 '+r.photos.length:'—')}</td><td>${r.remark||''}</td>
       <td style="font-size:11px;color:var(--dim)">${(r.submitted_at||'').substring(0,16)}</td>
       <td><button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteRecord('${r.id}','internal')">🗑️</button></td>
     </tr>`).join('');
@@ -931,6 +966,11 @@ function renderHistoryTable(module,recs){
     <thead><tr>${hdrs.map(h=>'<th>'+h+'</th>').join('')}</tr></thead>
     <tbody>${rows}</tbody>
   </table></div>`;
+}
+
+function openStoredPhotos(id){
+  const r=(historyData||[]).find(x=>x.id===id);
+  if(r&&typeof GC!=='undefined'&&GC.photo)GC.photo.lightbox(r.photos||[],0);
 }
 
 function deleteRecord(id,module){
@@ -1143,10 +1183,18 @@ function excelDateToISO(v){
   // Already YYYY-MM-DD
   if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);
   // 2026-March-02 text format
-  const monthNames={january:'01',february:'02',march:'03',april:'04',may:'05',june:'06',
-    july:'07',august:'08',september:'09',october:'10',november:'11',december:'12'};
+  const monthNames={january:'01',jan:'01',february:'02',feb:'02',march:'03',mar:'03',april:'04',apr:'04',may:'05',
+    june:'06',jun:'06',july:'07',jul:'07',august:'08',aug:'08',september:'09',sep:'09',october:'10',oct:'10',november:'11',nov:'11',december:'12',dec:'12'};
   const mMatch=s.match(/^(\d{4})-([A-Za-z]+)-(\d{1,2})$/);
   if(mMatch){const mn=monthNames[mMatch[2].toLowerCase()];if(mn)return mMatch[1]+'-'+mn+'-'+mMatch[3].padStart(2,'0');}
+  // Month labels used by the waste workbook, e.g. Jan-2026 / January 2026.
+  const ymMatch=s.match(/^(\d{4})[-/\s]+([A-Za-z]+)$/) || s.match(/^([A-Za-z]+)[-/\s]+(\d{4})$/);
+  if(ymMatch){
+    const year=/^\d{4}$/.test(ymMatch[1])?ymMatch[1]:ymMatch[2];
+    const mon=/^\d{4}$/.test(ymMatch[1])?ymMatch[2]:ymMatch[1];
+    const mn=monthNames[String(mon).toLowerCase()];
+    if(mn)return year+'-'+mn;
+  }
   // MM/DD/YYYY
   if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)){const p=s.split('/');return p[2]+'-'+p[0].padStart(2,'0')+'-'+p[1].padStart(2,'0');}
   // Excel serial number
@@ -1158,12 +1206,94 @@ function excelDateToISO(v){
   return s;
 }
 
+function xlsxXmlText(content){
+  if(!content)return'';
+  if(typeof content==='string')return content;
+  try{return new TextDecoder('utf-8').decode(content);}catch(e){}
+  let out='';for(let i=0;i<content.length;i++)out+=String.fromCharCode(content[i]);return out;
+}
+function xlsxZipPath(base,target){
+  const parts=(String(base).split('/').slice(0,-1).concat(String(target||'').split('/')));
+  const out=[];parts.forEach(p=>{if(!p||p==='.'){return;}if(p==='..')out.pop();else out.push(p);});
+  return out.join('/');
+}
+function xlsxRelsPath(source){
+  const bits=String(source).split('/'),name=bits.pop();
+  return bits.concat(['_rels',name+'.rels']).join('/');
+}
+function xlsxXmlDoc(content){
+  if(typeof DOMParser==='undefined')return null;
+  try{return new DOMParser().parseFromString(xlsxXmlText(content),'application/xml');}catch(e){return null;}
+}
+function xlsxNodes(doc,name){
+  if(!doc)return[];
+  return Array.from(doc.getElementsByTagName('*')).filter(function(n){return n.localName===name;});
+}
+function xlsxRelMap(files,source){
+  const doc=xlsxXmlDoc(files[xlsxRelsPath(source)]&&files[xlsxRelsPath(source)].content);
+  const out={};
+  xlsxNodes(doc,'Relationship').forEach(function(n){
+    const id=n.getAttribute('Id'),target=n.getAttribute('Target'),type=n.getAttribute('Type')||'';
+    if(id&&target)out[id]={path:xlsxZipPath(source,target),type:type};
+  });
+  return out;
+}
+function xlsxDataUrl(content,path){
+  if(!content)return'';
+  const ext=(String(path).split('.').pop()||'jpeg').toLowerCase();
+  const mime={jpg:'image/jpeg',jpeg:'image/jpeg',png:'image/png',gif:'image/gif',webp:'image/webp'}[ext]||'image/jpeg';
+  try{
+    const u8=content instanceof Uint8Array?content:new Uint8Array(content);
+    let binary='';
+    for(let i=0;i<u8.length;i+=8192)binary+=String.fromCharCode.apply(null,u8.subarray(i,i+8192));
+    return 'data:'+mime+';base64,'+btoa(binary);
+  }catch(e){return'';}
+}
+function xlsxEmbeddedPhotos(wb,sheetPath,firstDayRow){
+  const files=wb&&wb.files,empty={};
+  if(!files||!files['xl/workbook.xml']||typeof DOMParser==='undefined')return empty;
+  const sheetRels=xlsxRelMap(files,sheetPath),sheetDoc=xlsxXmlDoc(files[sheetPath]&&files[sheetPath].content);
+  const drawingRel=xlsxNodes(sheetDoc,'drawing')[0];
+  if(!drawingRel)return empty;
+  const drawingInfo=sheetRels[drawingRel.getAttribute('r:id')||drawingRel.getAttribute('id')];
+  if(!drawingInfo)return empty;
+  const drawingDoc=xlsxXmlDoc(files[drawingInfo.path]&&files[drawingInfo.path].content);
+  const imageRels=xlsxRelMap(files,drawingInfo.path),out={};
+  xlsxNodes(drawingDoc,'twoCellAnchor').concat(xlsxNodes(drawingDoc,'oneCellAnchor')).forEach(function(anchor){
+    const pic=xlsxNodes(anchor,'pic')[0];
+    const from=xlsxNodes(anchor,'from')[0];
+    const rowNode=xlsxNodes(from,'row')[0];
+    const blip=xlsxNodes(pic,'blip')[0];
+    if(!pic||!from||!rowNode||!blip)return;
+    const row=parseInt(rowNode.textContent,10),embed=blip.getAttribute('r:embed')||blip.getAttribute('embed');
+    const rel=imageRels[embed];
+    if(!isFinite(row)||!rel||row<firstDayRow)return;
+    const day=row-firstDayRow+1,url=xlsxDataUrl(files[rel.path]&&files[rel.path].content,rel.path);
+    if(day>=1&&day<=31&&url){if(!out[day])out[day]=[];if(!out[day].includes(url))out[day].push(url);}
+  });
+  return out;
+}
+
 function parseImportFile(file){
   const reader=new FileReader();
   reader.onload=e=>{
     try{
-      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false,raw:false});
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false,raw:false,bookFiles:true});
       let detected=false;
+      const internalAll=[];
+      const workbookDoc=xlsxXmlDoc(wb.files&&wb.files['xl/workbook.xml']&&wb.files['xl/workbook.xml'].content);
+      const workbookRels=xlsxRelMap(wb.files||{},'xl/workbook.xml');
+      const sheetPaths={};
+      xlsxNodes(workbookDoc,'sheet').forEach(function(n){
+        const rel=workbookRels[n.getAttribute('r:id')||n.getAttribute('id')];
+        if(n.getAttribute('name')&&rel)sheetPaths[n.getAttribute('name')]=rel.path;
+      });
+      const wasteNum=function(v){
+        if(v==null||v==='')return 0;
+        if(typeof v==='number')return isFinite(v)?v:0;
+        const n=parseFloat(String(v).replace(/[\s,，]/g,'').replace(/[^0-9.+-]/g,''));
+        return isNaN(n)?0:n;
+      };
       // Try each sheet
       for(const sn of wb.SheetNames){
         if(sn.toLowerCase()==='chart')continue; // Skip yearly summary chart sheet
@@ -1187,35 +1317,46 @@ function parseImportFile(file){
         }
 
         if(isInternal){
-          // Find the month date — usually in the row above headers that has a date value
+          // Find the month date — source uses labels such as Jan-2026.
           for(let i=0;i<dataStartRow;i++){
-            const cell=raw[i][0];
-            if(cell&&String(cell).match(/\d{4}/)){
-              const iso=excelDateToISO(cell);
-              if(iso.match(/^\d{4}-\d{2}/)){monthDate=iso.substring(0,7);break;}
+            for(let j=0;j<(raw[i]||[]).length;j++){
+              const cell=raw[i][j];
+              if(cell&&String(cell).match(/\d{4}/)){
+                const iso=excelDateToISO(cell);
+                if(/^\d{4}-\d{2}/.test(iso)){monthDate=iso.substring(0,7);break;}
+              }
             }
+            if(monthDate)break;
           }
-          // If no month found, use current year-month
+          // Fall back to the sheet name (Jan, Feb, Mar...) when the title is absent.
+          if(!monthDate){
+            const shortMonths=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+            const sm=shortMonths.findIndex(function(m){return sn.toLowerCase().trim()===m||sn.toLowerCase().trim().startsWith(m);});
+            const titleYear=String(raw.slice(0,dataStartRow).flat().join(' ')).match(/(\d{4})/);
+            if(sm>=0)monthDate=(titleYear?titleYear[1]:String(new Date().getFullYear()))+'-'+String(sm+1).padStart(2,'0');
+          }
           if(!monthDate){const now=new Date();monthDate=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');}
+          let firstDayRow=dataStartRow;
+          for(let ri=dataStartRow;ri<raw.length;ri++){
+            const candidate=parseInt(raw[ri]&&raw[ri][0]);
+            if(!isNaN(candidate)&&candidate>=1&&candidate<=31){firstDayRow=ri;break;}
+          }
+          const sheetPhotos=xlsxEmbeddedPhotos(wb,sheetPaths[sn],firstDayRow);
           // Parse day rows: col0=dayNum, col1=plastic, col2=fabric, col3=core, col4=total
           const parsed=[];
           for(let i=dataStartRow;i<raw.length;i++){
             const row=raw[i];
             const dayNum=parseInt(row[0]);
             if(isNaN(dayNum)||dayNum<1||dayNum>31)continue;
-            const plastic=parseFloat(row[1])||0;
-            const fabric=parseFloat(row[2])||0;
-            const core=parseFloat(row[3])||0;
-            const total=parseFloat(row[4])||0;
+            const plastic=wasteNum(row[1]);
+            const fabric=wasteNum(row[2]);
+            const core=wasteNum(row[3]);
+            const total=wasteNum(row[4]);
             if(plastic===0&&fabric===0&&core===0&&total===0)continue; // skip empty days
             const isoDate=monthDate+'-'+String(dayNum).padStart(2,'0');
-            parsed.push({date:isoDate,plastic_kg:plastic,fabric_kg:fabric,core_kg:core,total_kg:total||plastic+fabric+core});
+            parsed.push({date:isoDate,plastic_kg:plastic,fabric_kg:fabric,core_kg:core,total_kg:total||plastic+fabric+core,photos:sheetPhotos[dayNum]||[]});
           }
-          if(parsed.length){
-            importType='internal';importRows=parsed;
-            showImportPreview(['date','plastic_kg','fabric_kg','core_kg','total_kg'],monthDate);
-            detected=true;break;
-          }
+          if(parsed.length)internalAll.push({monthDate:monthDate,sheetName:sn,rows:parsed});
         }
 
         // ===== DETECT FILE 02: Gate Check (Suppliers column) =====
@@ -1252,6 +1393,20 @@ function parseImportFile(file){
           }
         }
       }
+      if(internalAll.length){
+        const byKey=new Map();
+        internalAll.forEach(function(group){group.rows.forEach(function(row){
+          const key=[row.date,row.plastic_kg,row.fabric_kg,row.core_kg,row.total_kg].join('|');
+          const old=byKey.get(key);
+          if(!old)byKey.set(key,Object.assign({},row,{photos:(row.photos||[]).slice()}));
+          else (row.photos||[]).forEach(function(p){if(!old.photos.includes(p))old.photos.push(p);});
+        });});
+        importType='internal';
+        importRows=Array.from(byKey.values()).sort(function(a,b){return a.date.localeCompare(b.date);});
+        const months=Array.from(new Set(internalAll.map(function(g){return g.monthDate;}))).join(', ');
+        showImportPreview(['date','plastic_kg','fabric_kg','core_kg','total_kg'],months);
+        detected=true;
+      }
       if(!detected)showToast('⚠️ 無法識別格式。請確認是 01 內部廢料 或 02 大門記錄 Excel。');
     }catch(err){
       console.error('Import error:',err);
@@ -1276,17 +1431,37 @@ async function submitBatchImport(){
   const btn=document.getElementById('import-submit-btn');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 匯入中...';
   const ld=loadLocal();
+  if(!Array.isArray(ld.gate))ld.gate=[];
+  if(!Array.isArray(ld.internal))ld.internal=[];
   const now=_localTS();
+  const pushed=[];
   importRows.forEach(r=>{
-    const id='IMP-'+Date.now()+'-'+Math.random().toString(36).slice(2);
-    if(importType==='gate')ld.gate.push({...r,id,submitted_at:now});
-    else ld.internal.push({...r,id,submitted_at:now});
+    const target=importType==='gate'?ld.gate:ld.internal;
+    const signature=importType==='gate'
+      ? [r.date,r.name,r.supplier,r.car_number,r.time_in,r.time_out].join('|')
+      : [r.date,r.plastic_kg,r.fabric_kg,r.core_kg,r.total_kg].join('|');
+    const old=target.find(x=>{
+      const vals=importType==='gate'
+        ? [x.date,x.name,x.supplier,x.car_number,x.time_in,x.time_out]
+        : [x.date,x.plastic_kg,x.fabric_kg,x.core_kg,x.total_kg];
+      return vals.join('|')===signature;
+    });
+    if(old){
+      const merged=Array.from(new Set([...(Array.isArray(old.photos)?old.photos:[]),...(Array.isArray(r.photos)?r.photos:[])]));
+      if(merged.length)old.photos=merged;
+      old.updatedAt=now;
+      pushed.push(old);
+    }else{
+      const id='IMP-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+      const fresh={...r,id,submitted_at:now,updatedAt:now,photos:Array.isArray(r.photos)?r.photos:[]};
+      target.push(fresh);pushed.push(fresh);
+    }
   });
   saveLocal(ld);
   try{
-    const res=await fetchGAS({action:'batchImport',type:importType,rows:importRows});
-    showToast(res&&res.ok?'✅ 已匯入 '+importRows.length+' 筆至雲端':'⚠️ 本機已儲存，雲端失敗');
-  }catch(e){showToast('⚠️ 離線模式，本機已儲存 '+importRows.length+' 筆');}
+    const res=await fetchGAS({action:'batchImport',type:importType,rows:pushed});
+    showToast(res&&res.ok?'✅ 已匯入 '+pushed.length+' 筆至雲端':'⚠️ 本機已儲存，雲端失敗');
+  }catch(e){showToast('⚠️ 離線模式，本機已儲存 '+pushed.length+' 筆');}
   btn.disabled=false;btn.innerHTML='☁️ 確認匯入雲端';
   cancelImport();
   renderAAnalysis();renderBAnalysis();
@@ -1313,7 +1488,7 @@ function getWeek(d){
 /* ========== INIT ========== */
 (function init(){
   const run=()=>{
-    setLang('zh'); buildYearSelect('a-p-year',renderAAnalysis); buildMonthSelect('a-p-month',renderAAnalysis);
+    setLang(lang); buildYearSelect('a-p-year',renderAAnalysis); buildMonthSelect('a-p-month',renderAAnalysis);
     buildYearSelect('b-p-year',renderBAnalysis); buildMonthSelect('b-p-month',renderBAnalysis);
     buildYearSelect('r-year',renderReport); buildMonthSelect('r-month',renderReport); buildYearSelect('h-year',queryHistory);
     const hy=document.getElementById('h-year'); const allOpt=document.createElement('option');allOpt.value='';allOpt.textContent='全年份';hy.insertBefore(allOpt,hy.firstChild);

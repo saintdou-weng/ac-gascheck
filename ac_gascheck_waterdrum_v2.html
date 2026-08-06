@@ -1258,7 +1258,7 @@ function renderSummaryCards() {
   var grand = fTtl + sTtl;
   var _exchRate = (typeof WDR_CURRENCY !== 'undefined' && WDR_CURRENCY && WDR_CURRENCY.getRate) ? WDR_CURRENCY.getRate() : 4100;
   function khrFmt(n)  { return (n||0).toLocaleString() + ' ៛'; }
-  function usdFmt(n)  { return '$' + ((n||0) / rate).toFixed(2); }
+  function usdFmt(n)  { return '$' + ((n||0) / (_exchRate || 4100)).toFixed(2); }
   function cardVal(khr) {
     if (!khr) return '<span style="font-size:1.1em">0.0K ៛</span><div style="font-size:12px;color:#94a3b8;margin-top:2px">$0.00</div>';
     return '<span style="font-size:1.1em">' + (khr/1000).toFixed(1) + 'K ៛</span>' +
@@ -1588,15 +1588,22 @@ function processExcelImport(file) {
     }
     return String(v);
   }
-  function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+  function num(v) {
+    if (v == null || v === '') return 0;
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    // Source workbook uses values such as " 100,000 ", "890 drum" and "No order".
+    var s = String(v).replace(/[\s,，]/g, '').replace(/[^0-9.+-]/g, '');
+    var n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
 
   var reader = new FileReader();
   reader.onload = function(e) {
     try {
-      var wb = XLSX.read(e.target.result, {type:'binary'});
+      var wb = XLSX.read(e.target.result, {type:'array', cellDates:false, raw:false});
       var MON = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
       var allResults = [];
-      var yearDetected = new Date().getFullYear();
+      var fallbackYear = new Date().getFullYear();
 
       // Scan every sheet — collect all month sheets
       wb.SheetNames.forEach(function(sn) {
@@ -1604,8 +1611,8 @@ function processExcelImport(file) {
         var raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
         // Detect year from title row (row 0)
         var title = ((raw[0]||[]).join(' ')).toLowerCase();
-        var ym = title.match(/(\d{4})/);
-        if (ym) yearDetected = parseInt(ym[1]);
+        var ym = title.match(/(\d{4})/) || sn.match(/(\d{4})/);
+        var sheetYear = ym ? parseInt(ym[1]) : fallbackYear;
         // Detect month from sheet name OR title
         var snl = sn.toLowerCase().trim();
         var mi  = MON.findIndex(function(m){ return snl===m||snl.startsWith(m); });
@@ -1623,15 +1630,19 @@ function processExcelImport(file) {
           var note = (typeof row[1]==='string'&&!/^\d/.test(row[1].trim())) ? row[1].trim() : '';
           rows.push({
             day:day, note:note,
-            fTime:xlTime(row[1]), fQty:fQ, fPrice:fP||getDefaultFacPrice(),
+            fTime:xlTime(row[1]), fQty:fQ, fPrice:fP,
             fTtl: num(row[4]) || fQ*fP,
-            sTime:xlTime(row[9]), sQty:sQ, sPrice:sP||getDefaultStaPrice(),
+            sTime:xlTime(row[9]), sQty:sQ, sPrice:sP,
             sTtl: num(row[12]) || sQ*sP,
+            checkBy: String(row[5] || row[13] || '').trim(),
+            supplier: String(row[6] || row[14] || '').trim(),
+            invoice: String(row[7] || row[15] || '').trim(),
+            note: [row[8], row[16]].map(function(v){return String(v == null ? '' : v).trim();}).filter(Boolean).join(' / '),
             anomaly:[]
           });
         }
         if (rows.length) {
-          allResults.push({year:yearDetected, month:mi+1, sheetName:sn, rows:rows});
+          allResults.push({year:sheetYear, month:mi+1, sheetName:sn, rows:rows});
         }
       });
 
@@ -1693,7 +1704,7 @@ function processExcelImport(file) {
       showToast(T('import_error') + ' ' + err.message, 'error');
     }
   };
-  reader.readAsBinaryString(file);
+  reader.readAsArrayBuffer(file);
 }
 
 function wdrConfirmImportIdx(idx) {

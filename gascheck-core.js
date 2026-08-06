@@ -89,7 +89,7 @@ const U = GC.util = {
    ═══════════════════════════════════════════════════════════ */
 const STORAGE = GC.storage = (() => {
   const DB_NAME = 'ac_gascheck_data_v1', STORE = 'kv';
-  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_th_z|vrt_th_r|vrt_keys|vrt_waste_v3|vrt_dorm_hub_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_default_fac_price|wdr_default_sta_price|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
+  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_th_z|vrt_th_r|vrt_keys|vrt_waste_v3|vrt_dorm_hub_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_default_fac_price|wdr_default_sta_price|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
   const storageProto = typeof Storage !== 'undefined' ? Storage.prototype : null;
   const native = storageProto ? {
     get: storageProto.getItem,
@@ -773,8 +773,8 @@ const IMPORT = GC.import = {
     return out;
   },
 
-  /** 解析檔案 → {headers, rows}（SheetJS 依慣例 cellDates:false, raw:true） */
-  parse(file) {
+  /** 解析檔案 → {headers, rows}；有 schema 時會跨工作表找最佳標題列。 */
+  parse(file, schema) {
     return new Promise((resolve, reject) => {
       if (typeof XLSX === 'undefined') return reject(new Error('SheetJS (XLSX) not loaded'));
       const fr = new FileReader();
@@ -782,11 +782,29 @@ const IMPORT = GC.import = {
       fr.onload = e => {
         try {
           const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false, raw: true });
-          const ws = wb.Sheets[wb.SheetNames[0]];
-          const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
-          const nonEmpty = aoa.filter(r => r.some(c => String(c).trim() !== ''));
-          if (!nonEmpty.length) return reject(new Error('empty file'));
-          resolve({ headers: nonEmpty[0].map(x => String(x)), rows: nonEmpty.slice(1), sheetName: wb.SheetNames[0] });
+          const fields = schema && typeof schema === 'object' ? Object.keys(schema) : [];
+          let best = null;
+          wb.SheetNames.forEach(sheetName => {
+            const ws = wb.Sheets[sheetName];
+            const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' });
+            const nonEmpty = aoa.filter(r => r.some(c => String(c).trim() !== ''));
+            if (!nonEmpty.length) return;
+            if (!fields.length) {
+              if (!best) best = { score: 0, headers: nonEmpty[0], rows: nonEmpty.slice(1), sheetName };
+              return;
+            }
+            const limit = Math.min(nonEmpty.length, 40);
+            for (let ri = 0; ri < limit; ri++) {
+              const headers = nonEmpty[ri].map(x => String(x == null ? '' : x));
+              const map = IMPORT.autoMap(headers, schema);
+              const matched = Object.keys(map).filter(k => map[k] >= 0).length;
+              if (matched && (!best || matched > best.score)) {
+                best = { score: matched, headers, rows: nonEmpty.slice(ri + 1), sheetName };
+              }
+            }
+          });
+          if (!best) return reject(new Error('empty file or no matching headers'));
+          resolve({ headers: best.headers, rows: best.rows, sheetName: best.sheetName });
         } catch (err) { reject(err); }
       };
       fr.readAsArrayBuffer(file);
@@ -828,8 +846,8 @@ const IMPORT = GC.import = {
       if (!file) return;
       status(I18.t('gc.importing'), 'busy');
       try {
-        const { headers, rows, sheetName } = await IMPORT.parse(file);
         const schema = opt.schema || {};
+        const { headers, rows, sheetName } = await IMPORT.parse(file, schema);
         const map = IMPORT.autoMap(headers, schema);
         const objects = rows.map(r => {
           const o = {};
@@ -1173,7 +1191,8 @@ GC.attach = function (cfg) {
        importSchema        智慧匯入欄位對應
        weather:  bool      是否顯示天氣統計
        photo:    bool      是否顯示照片統計
-       gasUrl
+       gasUrl,
+       telegramBuilder({ period, mode, cfg }) -> string  (optional module-specific report)
      } */
   cfg = cfg || {};
   if (!cfg.__storageReady && STORAGE && STORAGE.ready) {
@@ -1269,7 +1288,10 @@ GC.attach = function (cfg) {
     if (sendTelegram) sendTelegram.disabled = true;
     if (telegramState) telegramState.textContent = I18.t('gc.sync');
     try {
-      await GC.telegram.send(GC.telegram.buildText(C, period, mode));
+      const customText = typeof C.telegramBuilder === 'function'
+        ? await C.telegramBuilder({ period, mode, cfg: C })
+        : null;
+      await GC.telegram.send(customText || GC.telegram.buildText(C, period, mode));
       if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
     } catch (e) {
@@ -1367,12 +1389,13 @@ const BAR_CSS = `
 .gc-sec:last-child{margin-bottom:0}
 .gc-sec-t{font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px}
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
-@media(max-width:900px){.gc-action-strip{flex-wrap:wrap;overflow:visible;white-space:normal}.gc-panel-body{grid-template-columns:1fr 1fr}.gc-sec:last-child{grid-column:1/-1}}
+@media(max-width:900px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-sec:last-child{grid-column:1/-1}}
 @media(max-width:560px){
-  .gc-action-strip{align-items:stretch}
-  .gc-action-heading,.gc-action-label{width:100%;margin-left:0}
-  .gc-action-strip #gcTopCloud,.gc-action-strip .gc-cloud-btns,.gc-action-strip .gc-period,.gc-mode{width:100%}
-  .gc-action-strip .gc-cloud-btn,.gc-action-strip .gc-pd-btn,.gc-mode-btn,.gc-action-btn{flex:1;justify-content:center}
+  .gc-action-strip{align-items:center;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;padding:8px 9px}
+  .gc-action-heading,.gc-action-label{width:auto;margin-left:0}
+  .gc-action-strip #gcTopCloud,.gc-action-strip .gc-cloud-btns,.gc-action-strip .gc-period,.gc-mode{width:auto;flex:0 0 auto}
+  .gc-action-strip .gc-cloud-btn,.gc-action-strip .gc-pd-btn,.gc-mode-btn,.gc-action-btn{flex:0 0 auto;justify-content:center;min-height:38px;touch-action:manipulation}
+  .gc-mode{flex-wrap:nowrap}
   .gc-panel-body{grid-template-columns:1fr}
   .gc-sec:last-child{grid-column:auto}
   .gc-storage-badge{order:3}

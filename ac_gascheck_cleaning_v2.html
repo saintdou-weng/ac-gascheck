@@ -435,7 +435,7 @@ var i18n = (() => {
       'slots-cfg':'清潔時段設定','btn-add-slot':'新增','btn-reset-slot':'重設預設',
       'data-mgmt':'數據管理','export-all':'匯出全部 JSON','restore':'還原備份','clear-all':'清除全部',
       'ci-smell':'氣味','ci-light':'燈光','ci-floor':'地板','ci-door':'門','ci-corner':'角落','ci-ceiling':'天花',
-      'pass':'✓ 通過','fail':'✗ 不通過',
+      'pass':'✓ 通過','fail':'✗ 不通過','select':'— 選擇 —','records':'筆','items':'個','selected':'已選','confirm-delete':'確定刪除？','confirm-area-delete':'確定刪除地點？','saved':'已儲存','deleted':'已刪除','uploading':'☁ 上傳中…','uploaded':'☁ 已上傳','downloading':'⬇ 下載中…','downloaded':'⬇ 已下載並更新','no-data':'無資料','edit':'編輯','new-area':'新區域','all-pass':'全部通過','anomaly':'異常','normal':'正常','shift-day':'Day 日班','shift-night':'Night 夜班','note-ph':'請填寫異常情況或補充說明...','search-ph':'姓名/地點...','name-ph':'姓名 Name','cleaner-ph':'Cleaner name','location-example':'例：車縫區廁所 A','desc-example':'例：車縫區西南角','cancel':'取消','save':'儲存','yes':'確認','no':'取消',
     },
     en:{
       'tb-title':'Cleaning Management','t-dash':'Dashboard','t-rec':'New Record','t-hist':'History',
@@ -464,7 +464,7 @@ var i18n = (() => {
       'slots-cfg':'Time Slot Config','btn-add-slot':'Add','btn-reset-slot':'Reset Default',
       'data-mgmt':'Data Management','export-all':'Export All JSON','restore':'Restore Backup','clear-all':'Clear All',
       'ci-smell':'Smell','ci-light':'Light','ci-floor':'Floor','ci-door':'Door','ci-corner':'Corner','ci-ceiling':'Ceiling',
-      'pass':'✓ Pass','fail':'✗ Fail',
+      'pass':'✓ Pass','fail':'✗ Fail','select':'— Select —','records':'records','items':'items','selected':'selected','confirm-delete':'Delete this record?','confirm-area-delete':'Delete this location?','saved':'Saved','deleted':'Deleted','uploading':'☁ Uploading…','uploaded':'☁ Uploaded','downloading':'⬇ Downloading…','downloaded':'⬇ Downloaded and updated','no-data':'No data','edit':'Edit','new-area':'New area','all-pass':'All passed','anomaly':'Anomaly','normal':'Normal','shift-day':'Day shift','shift-night':'Night shift','note-ph':'Enter anomaly or additional notes...','search-ph':'Name/location...','name-ph':'Name','cleaner-ph':'Cleaner name','location-example':'e.g. Sewing toilet A','desc-example':'e.g. southwest corner','cancel':'Cancel','save':'Save','yes':'Confirm','no':'Cancel',
     },
     km:{
       'tb-title':'ប្រព័ន្ធគ្រប់គ្រងការសំអាត','t-dash':'ផ្ទាំង','t-rec':'បន្ថែម','t-hist':'ប្រវត្តិ',
@@ -495,7 +495,7 @@ var i18n = (() => {
       'slots-cfg':'ការកំណត់ពេលវេលាសម្អាត','btn-add-slot':'បន្ថែម','btn-reset-slot':'កំណត់ម៉ោងដើម',
       'data-mgmt':'ការគ្រប់គ្រងទិន្នន័យ','export-all':'នាំចេញ JSON ទាំងអស់','restore':'ស្តារបម្រុងទុក','clear-all':'លុបទាំងអស់',
       'ci-smell':'ក្លិន','ci-light':'អំពូល','ci-floor':'ជាន់','ci-door':'ទ្វារ','ci-corner':'ជ្រុង','ci-ceiling':'ពិដាន',
-      'pass':'✓ ជាប់','fail':'✗ ធ្លាក់',
+      'pass':'✓ ជាប់','fail':'✗ ធ្លាក់','select':'— ជ្រើស —','records':'កំណត់ត្រា','items':'ធាតុ','selected':'បានជ្រើស','confirm-delete':'លុបកំណត់ត្រានេះ?','confirm-area-delete':'លុបទីតាំងនេះ?','saved':'បានរក្សាទុក','deleted':'បានលុប','uploading':'☁ កំពុងផ្ទុកឡើង…','uploaded':'☁ បានផ្ទុកឡើង','downloading':'⬇ កំពុងទាញយក…','downloaded':'⬇ បានទាញយក និងធ្វើបច្ចុប្បន្នភាព','no-data':'គ្មានទិន្នន័យ','edit':'កែ','new-area':'តំបន់ថ្មី','all-pass':'ជាប់ទាំងអស់','anomaly':'មិនប្រក្រតី','normal':'ធម្មតា','shift-day':'វេនថ្ងៃ','shift-night':'វេនយប់','note-ph':'បញ្ចូលភាពមិនប្រក្រតី ឬកំណត់សម្គាល់បន្ថែម...','search-ph':'ឈ្មោះ/ទីតាំង...','name-ph':'ឈ្មោះ','cleaner-ph':'ឈ្មោះអ្នកសម្អាត','location-example':'ឧ. បង្គន់តំបន់ដេរ','desc-example':'ឧ. ជ្រុងនិរតី','cancel':'បោះបង់','save':'រក្សាទុក','yes':'បញ្ជាក់','no':'បោះបង់',
     }
   };
   let _l = (() => {
@@ -516,7 +516,15 @@ var i18n = (() => {
       const fallback = l==='km' ? (D.en[k]!==undefined ? D.en[k] : D.zh[k]) : D.zh[k];
       if(d[k]!==undefined || fallback!==undefined) el.textContent=d[k]!==undefined ? d[k] : fallback;
     });
+    const shift=document.getElementById('r-shift');
+    if(shift){shift.options[0].textContent=i18n.t('shift-day');shift.options[1].textContent=i18n.t('shift-night');}
+    ['r-note','hl-search','a-name','a-resp','new-cleaner','new-checker','b-desc','b-resp'].forEach(id=>{
+      const el=document.getElementById(id); if(!el)return;
+      const key=id==='r-note'?'note-ph':id==='hl-search'?'search-ph':id==='a-name'?'location-example':id==='a-resp'||id==='b-resp'?'cleaner-ph':id==='new-cleaner'||id==='new-checker'?'name-ph':'desc-example';
+      el.placeholder=i18n.t(key);
+    });
     state.populate();
+    setTimeout(()=>{ if(typeof applyCleaningStaticLanguage==='function') applyCleaningStaticLanguage(); },0);
   };
   const t = (k) => {
     const d=D[_l]||D.zh;
@@ -525,6 +533,59 @@ var i18n = (() => {
   const get = () => _l;
   return { set, t, get };
 })();
+
+/* 舊版清潔頁有一批直接寫在 render／SVG／原生 option 裡的文字。
+   用原始文字記憶做三語轉換，切換語言時不會把上一種語言再套一次，也不會碰輸入資料。 */
+const CLEAN_STATIC_PARTS = [
+  ['清潔管理系統 · Cleaning Management','Cleaning Management','ប្រព័ន្ធគ្រប់គ្រងការសម្អាត'],
+  ['清潔管理系統','Cleaning Management','ប្រព័ន្ធគ្រប់គ្រងការសម្អាត'],
+  ['總覽','Dashboard','ផ្ទាំងគ្រប់គ្រង'],['新增記錄','New Record','កំណត់ត្រាថ្មី'],['歷史記錄','History','ប្រវត្តិ'],
+  ['垃圾桶地圖','Dustbin Map','ផែនទីធុងសំរាម'],['6S 檢查','6S Check','ការត្រួតពិនិត្យ 6S'],['區域管理','Areas','តំបន់'],['設定','Settings','ការកំណត់'],
+  ['日','Day','ថ្ងៃ'],['週','Week','សប្តាហ៍'],['月','Month','ខែ'],['年','Year','ឆ្នាំ'],['刷新','Refresh','ផ្ទុកឡើងវិញ'],
+  ['日期','Date','កាលបរិច្ឆេទ'],['地點','Location','ទីតាំង'],['清潔員','Cleaner','អ្នកសម្អាត'],['檢查員','Checker','អ្នកត្រួតពិនិត្យ'],
+  ['時段','Slots','ពេលវេលា'],['檢查項目','Check Items','ចំណុចត្រួតពិនិត្យ'],['狀態','Status','ស្ថានភាព'],['備注','Note','កំណត់សម្គាល់'],['備註','Notes','កំណត់សម្គាល់'],
+  ['暫無記錄','No records','រកមិនឃើញកំណត់ត្រា'],['新增清潔記錄','New Cleaning Record','កត់ត្រាការសម្អាតថ្មី'],['帶 * 為必填','* Required','* ត្រូវបំពេញ'],
+  ['班次','Shift','វេន'],['— 選擇 —','— Select —','— ជ្រើស —'],['Day 日班','Day shift','វេនថ្ងៃ'],['Night 夜班','Night shift','វេនយប់'],
+  ['照片 Photos','Photos','រូបថត'],['清潔時段','Time Slots','ពេលវេលាសម្អាត'],['巡查項目','Check Items','ចំណុចត្រួតពិនិត្យ'],['點擊切換','Click to toggle','ចុចដើម្បីប្តូរ'],
+  ['備注 / 異常','Notes / Anomaly','កំណត់សម្គាល់ / ភាពមិនប្រក្រតី'],['請填寫異常情況或補充說明...','Enter anomaly or additional notes...','បញ្ចូលភាពមិនប្រក្រតី ឬកំណត់សម្គាល់បន្ថែម...'],
+  ['儲存記錄','Save Record','រក្សាទុកកំណត់ត្រា'],['清除','Clear','លុប'],['全部','All','ទាំងអស់'],['月份','Month','ខែ'],['搜尋','Search','ស្វែងរក'],['查詢','Query','ស្វែងរក'],
+  ['上傳','Upload','ផ្ទុកឡើង'],['下載','Download','ទាញយក'],['Excel','Excel','Excel'],['垃圾桶配置地圖','Dustbin Layout Map','ផែនទីទីតាំងធុងសំរាម'],['垃圾桶管理','Dustbin Management','ការគ្រប់គ្រងធុងសំរាម'],
+  ['新增垃圾桶','Add Dustbin','បន្ថែមធុងសំរាម'],['新增區域','Add Area','បន្ថែមតំបន់'],['編輯區域','Edit Area','កែតំបន់'],['區域名稱','Area Name','ឈ្មោះតំបន់'],['副標題','Subtitle','ចំណងជើងរង'],['垃圾桶數量','Bin Quantity','ចំនួនធុងសំរាម'],
+  ['確認','Confirm','បញ្ជាក់'],['取消','Cancel','បោះបង់'],['編輯','Edit','កែ'],['確定','OK','យល់ព្រម'],['確定刪除？','Delete?','លុប?'],['確定刪除地點？','Delete location?','លុបទីតាំង?'],
+  ['地點已新增','Location added','បានបន្ថែមទីតាំង'],['已儲存','Saved','បានរក្សាទុក'],['已刪除','Deleted','បានលុប'],['無資料','No data','គ្មានទិន្នន័យ'],['已選','selected','បានជ្រើស'],['筆','records','កំណត់ត្រា'],['個','items','ធាតុ'],
+  ['整理 Sort','Sort','រៀបចំ'],['整頓 Set','Set in Order','រៀបតាមលំដាប់'],['清潔 Shine','Shine','សម្អាត'],['標準化 Std','Standardize','ធ្វើឱ្យមានស្តង់ដារ'],['自律 Sustain','Sustain','រក្សាវិន័យ'],['安全 Safety','Safety','សុវត្ថិភាព'],
+  ['公告欄未清理','Notice board not cleaned','ផ្ទាំងប្រកាសមិនបានសម្អាត'],['走道/角落有雜物','Clutter in aisle/corner','មានសម្ភារៈរាយប៉ាយនៅផ្លូវ/ជ្រុង'],['安全隱患','Safety hazard','ហានិភ័យសុវត្ថិភាព'],['物品未在正確位置','Items not in correct place','សម្ភារៈមិននៅកន្លែងត្រឹមត្រូវ'],['使用後未放回','Not returned after use','មិនបានដាក់ត្រឡប់ក្រោយប្រើ'],['工作站未標明','Workstation not labelled','កន្លែងការងារមិនមានស្លាក'],['地板/牆壁有污垢','Dirt on floor/wall','កខ្វក់លើកម្រាល/ជញ្ជាំង'],['其他清潔問題','Other cleaning issue','បញ្ហាសម្អាតផ្សេងទៀត'],['清潔後更整潔？','Cleaner after cleaning?','ស្អាតជាងមុនក្រោយសម្អាត?'],['未嚴格遵守標準','Standard not followed','មិនគោរពស្តង់ដារ'],['無清潔清單','No cleaning checklist','គ្មានបញ្ជីសម្អាត'],['30秒找不到物品','Cannot find item in 30 seconds','រកមិនឃើញសម្ភារៈក្នុង 30 វិនាទី'],['未接受6S培訓','No 6S training','មិនបានបណ្តុះបណ្តាល 6S'],['上週未做6S檢查','No 6S check last week','មិនបានពិនិត្យ 6S សប្តាហ៍មុន'],['個人物品未整齊','Personal items not tidy','សម្ភារៈផ្ទាល់ខ្លួនមិនរៀបរយ'],['未接受SOE培訓','No SOE training','មិនបានបណ្តុះបណ្តាល SOE'],['今年工傷次數','Work injuries this year','ចំនួនរបួសការងារឆ្នាំនេះ'],['安全出口未標明','Emergency exit not labelled','ច្រកចេញសុវត្ថិភាពមិនមានស្លាក'],['危險區域未標示','Hazard area not marked','តំបន់គ្រោះថ្នាក់មិនមានសញ្ញា'],['SOE糾正未完成','SOE correction incomplete','ការកែតម្រូវ SOE មិនទាន់ចប់'],
+  ['類型','Type','ប្រភេទ'],['位置描述','Description','ពិពណ៌នាទីតាំង'],['責任人','Responsible','អ្នកទទួលខុសត្រូវ'],['頻率','Frequency','ភាពញឹកញាប់'],['最後清潔','Last Clean','សម្អាតចុងក្រោយ'],['數據管理','Data Management','ការគ្រប់គ្រងទិន្នន័យ'],['匯出全部 JSON','Export All JSON','នាំចេញ JSON ទាំងអស់'],['還原備份','Restore Backup','ស្តារបម្រុងទុក'],['清除全部','Clear All','លុបទាំងអស់'],['員工名單','Staff List','បញ្ជីបុគ្គលិក'],['清潔時段設定','Time Slot Config','ការកំណត់ពេលវេលា'],
+  ['TOTAL:','TOTAL:','សរុប:'],['SEWING LINES','SEWING LINES','ជួរដេរ'],['Click zone to edit','Click zone to edit','ចុចតំបន់ដើម្បីកែ'],['Records:','Records:','កំណត់ត្រា:'],['Locations:','Locations:','ទីតាំង:'],['Bins:','Bins:','ធុង:'],['6S:','6S:','6S:']
+].map(x=>({zh:x[0],en:x[1],km:x[2]}));
+const CLEAN_STATIC_EXACT = new Map();
+CLEAN_STATIC_PARTS.forEach(x=>[x.zh,x.en,x.km].forEach(v=>CLEAN_STATIC_EXACT.set(v,x)));
+const CLEAN_ORIGINAL_TEXT = new WeakMap();
+let _cleanApplying=false, _cleanLangTimer=0;
+function applyCleaningStaticLanguage(){
+  if(!document.body||_cleanApplying)return;
+  _cleanApplying=true;
+  try{
+    const l=i18n.get(), walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+    let node;
+    while(node=walker.nextNode()){
+      const p=node.parentElement;
+      if(!p||['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(p.tagName)||p.closest('[contenteditable="true"]'))continue;
+      const base=CLEAN_ORIGINAL_TEXT.has(node)?CLEAN_ORIGINAL_TEXT.get(node):node.nodeValue;
+      CLEAN_ORIGINAL_TEXT.set(node,base);
+      const trimmed=base.trim(), exact=CLEAN_STATIC_EXACT.get(trimmed);
+      let out=exact?base.replace(trimmed,exact[l]):base;
+      if(!exact) CLEAN_STATIC_PARTS.forEach(x=>[x.zh,x.en,x.km].forEach(v=>{if(v&&v.length>1&&v!==x[l])out=out.split(v).join(x[l]);}));
+      if(out!==node.nodeValue)node.nodeValue=out;
+    }
+  }finally{_cleanApplying=false;}
+}
+function scheduleCleaningStaticLanguage(){clearTimeout(_cleanLangTimer);_cleanLangTimer=setTimeout(applyCleaningStaticLanguage,40);}
+if(typeof MutationObserver!=='undefined'){
+  const _cleanObserver=new MutationObserver(()=>{if(!_cleanApplying)scheduleCleaningStaticLanguage();});
+  const observeClean=()=>document.body&&_cleanObserver.observe(document.body,{subtree:true,childList:true});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',observeClean);else observeClean();
+}
 
 /* ═══ DATE ENGINE MODULE ═══ */
 var de = (() => {
@@ -615,18 +676,18 @@ var state = (() => {
     ['r-loc','s6-loc','hl-loc'].forEach(id => {
       const el=document.getElementById(id); if(!el)return;
       const cur=el.value;
-      el.innerHTML = `<option value="">${id==='hl-loc'?(i18n.t('fl-all')||'全部'):'— 選擇 —'}</option>`;
+      el.innerHTML = `<option value="">${id==='hl-loc'?(i18n.t('fl-all')||'全部'):i18n.t('select')}</option>`;
       _db.locations.forEach(l => { el.innerHTML+=`<option value="${l.id}"${l.id===cur?' selected':''}>${esc(l.name)}</option>`; });
       if(el.value!==cur) el.value=cur;
     });
     // Populate cleaner/checker
     ['r-cleaner','s6-obs'].forEach(id => {
       const el=document.getElementById(id); if(!el)return;
-      el.innerHTML='<option value="">— 選擇 —</option>';
+      el.innerHTML=`<option value="">${i18n.t('select')}</option>`;
       _db.cleaners.forEach(n=>el.innerHTML+=`<option value="${esc(n)}">${esc(n)}</option>`);
     });
     const rc=document.getElementById('r-checker');
-    if(rc){rc.innerHTML='<option value="">— 選擇 —</option>';_db.checkers.forEach(n=>rc.innerHTML+=`<option value="${esc(n)}">${esc(n)}</option>`);}
+    if(rc){rc.innerHTML=`<option value="">${i18n.t('select')}</option>`;_db.checkers.forEach(n=>rc.innerHTML+=`<option value="${esc(n)}">${esc(n)}</option>`);}
     renderSlots();
     renderCheckGrid();
   };
@@ -750,7 +811,7 @@ var dash = (() => {
 var rec = (() => {
   const save = async () => {
     const date=gv('r-date'),locId=gv('r-loc'),cleaner=gv('r-cleaner');
-    if(!date||!locId||!cleaner){ui.toast('⚠️ 請填寫日期、地點、清潔員');return;}
+    if(!date||!locId||!cleaner){ui.toast('⚠️ '+i18n.t('rec-hint'));return;}
     const chks=state.getChk();
     const record={
       id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
@@ -763,7 +824,7 @@ var rec = (() => {
     state.db().records.push(record);
     state.save();
     try { const cloudRes=await api.post({action:'push',tool:'cleaning',records:[record]}); if(cloudRes&&cloudRes.ok!==false){record.synced=true;state.save();} } catch(e){}
-    ui.toast('✅ 記錄已儲存');
+    ui.toast('✅ '+i18n.t('saved'));
     clear();
   };
   const saveTg = async () => {
@@ -771,7 +832,7 @@ var rec = (() => {
     const loc=locName(locId);
     const chks=state.getChk();
     const fails=CHK_ITEMS.filter(k=>chks[k]===false).map(k=>i18n.t('ci-'+k));
-    const msg=`🧹 <b>VRT 清潔記錄</b>\n📅 ${date}  📍 ${loc}\n👷 ${cleaner}\n⏰ ${state.getSlots().join(', ')||'—'}\n${fails.length?'❌ 異常: '+fails.join(', '):'✅ 全部通過'}\n${gv('r-note')?'📝 '+gv('r-note'):''}`;
+    const msg=`🧹 <b>VRT Cleaning / សម្អាត</b>\n📅 ${date}  📍 ${loc}\n👷 ${cleaner}\n⏰ ${state.getSlots().join(', ')||'—'}\n${fails.length?'❌ '+i18n.t('anomaly')+': '+fails.join(', '):'✅ '+i18n.t('all-pass')}\n${gv('r-note')?'📝 '+gv('r-note'):''}`;
     await api.tg(msg);
     ui.toast('📤 Telegram 已發送');
   };
@@ -796,7 +857,7 @@ var hist = (() => {
       if(search&&!JSON.stringify(r).toLowerCase().includes(search))return false;
       return true;
     }).sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
-    document.getElementById('hist-count').textContent=recs.length+' 筆';
+    document.getElementById('hist-count').textContent=recs.length+' '+i18n.t('records');
     const tbody=document.getElementById('hist-tbody');
     if(!recs.length){tbody.innerHTML=`<tr><td colspan="9" class="es"><span class="esi">📋</span><br>${i18n.t('no-rec')}</td></tr>`;return;}
     tbody.innerHTML=recs.map(r=>{
@@ -808,7 +869,7 @@ var hist = (() => {
   };
   const exportXL = () => {
     const db=state.db();
-    if(!db.records.length){ui.toast('無資料');return;}
+    if(!db.records.length){ui.toast(i18n.t('no-data'));return;}
     const rows=db.records.map(r=>({
       Date:r.date, Location:locName(r.locId), Shift:r.shift, Cleaner:r.cleaner, Checker:r.checker,
       Slots:(r.slots||[]).join('|'),
@@ -820,21 +881,21 @@ var hist = (() => {
     const ws=XLSX.utils.json_to_sheet(rows);
     const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,'Cleaning');
     XLSX.writeFile(wb,`VRT_Cleaning_${_localTS().slice(0,10)}.xlsx`);
-    ui.toast('✅ 已下載');
+    ui.toast('✅ '+i18n.t('downloaded'));
   };
   const uploadCloud = async () => {
     const db=state.db();
-    ui.toast('☁ 上傳中…');
+    ui.toast(i18n.t('uploading'));
     try {
       const res = await api.post({action:'push',tool:'cleaning',records:db.records});
       if(res&&res.ok!==false){
         db.records.forEach(r=>r.synced=true);
-        state.save(); query(); ui.toast(`☁ 已上傳 (${db.records.length}筆)`);
-      } else { ui.toast('❌ 上傳失敗: '+(res&&res.error||'')); }
+        state.save(); query(); ui.toast(`${i18n.t('uploaded')} (${db.records.length}${i18n.t('records')})`);
+      } else { ui.toast('❌ '+i18n.t('btn-upload')+': '+(res&&res.error||'')); }
     } catch(e){ ui.toast('❌ '+e.message); }
   };
   const downloadCloud = async () => {
-    ui.toast('⬇ 下載中…');
+    ui.toast(i18n.t('downloading'));
     try {
       const res = await api.get({action:'pull',tool:'cleaning'});
       if(res&&res.ok!==false&&Array.isArray(res.records)){
@@ -844,8 +905,8 @@ var hist = (() => {
         state.save();
         state.populate(); dash.render(); query();
         binMap.render(); renderStaff(); updateDbInfo();
-        ui.toast('⬇ 已下載並更新');
-      } else { ui.toast('❌ 下載失敗: '+(res&&res.error||'')); }
+        ui.toast(i18n.t('downloaded'));
+      } else { ui.toast('❌ '+i18n.t('btn-download')+': '+(res&&res.error||'')); }
     } catch(e){ ui.toast('❌ '+e.message); }
   };
   return {query, exportXL, uploadCloud, downloadCloud};
