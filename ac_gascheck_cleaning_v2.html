@@ -1338,7 +1338,10 @@ var dataMgmt = (() => {
 })();
 
 /* ═══ BIN MGMT ═══ */
-const binMgmt = (() => {
+/* 必須用 var：頂層 const/let 不會掛到 window，
+   onclick="binMgmt.add()" 會找不到 → 按鈕點了沒反應。
+   其餘 hist / sixs / cfg 都是 var，只有這個漏掉。 */
+var binMgmt = (() => {
   const add = () => {
     const area=gv('b-area'),type=gv('b-type'),freq=gv('b-freq'),desc=gv('b-desc'),resp=gv('b-resp');
     state.db().bins.push({id:'bin'+Date.now(),area,type,freq,desc,resp,lastClean:de.fmt(new Date())});

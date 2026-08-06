@@ -1136,6 +1136,20 @@ const CSS = `
 /* 任何情況下工具卡都不得覆蓋其他元素 */
 .gc-tools-card{position:relative;z-index:1}
 .gc-tools-card *{max-width:100%}
+
+/* ── 精簡工具列（照 ac-hra-portal：一條窄 bar，不再有重複的大卡片）── */
+.gc-action-strip{background:#fff;border:1px solid #E2E6F0;border-radius:10px;
+  padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:42px}
+.gc-dot{width:9px;height:9px;border-radius:50%;background:#22C55E;flex-shrink:0}
+.gc-sep{width:1px;height:20px;background:#E2E6F0;flex-shrink:0}
+.gc-hstats{margin-left:auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.gc-hstat{font-size:10px;color:#8892A8;display:flex;flex-direction:column;align-items:flex-end;line-height:1.25}
+.gc-hstat b{font-size:15px;color:#1A3E78;font-family:'IBM Plex Mono',ui-monospace,monospace}
+@media(max-width:600px){
+  .gc-hstats{margin-left:0;width:100%;justify-content:space-around;gap:8px;
+    border-top:1px solid #EEF1F6;padding-top:7px;margin-top:2px}
+  .gc-sep{display:none}
+}
 .gc-toast-box{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none}
 .gc-toast{background:#1A2035;color:#fff;padding:10px 19px;border-radius:8px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.24);animation:gcIn .25s ease;max-width:88vw}
 .gc-toast.success{background:#16653A}.gc-toast.error{background:#B91C1C}.gc-toast.warning{background:#7D4E00}
@@ -1341,44 +1355,27 @@ GC.attach = function (cfg) {
   bar.className = 'gc-tools-card';
   bar.innerHTML = `
     <div class="gc-action-strip" id="gcActionStrip">
-      <span class="gc-action-heading">☁️ <span data-i="gc.quickActions">${U.escapeHtml(I18.t('gc.quickActions'))}</span></span>
+      <span class="gc-dot" id="gcDot" title="cloud"></span>
       <div id="gcTopCloud"></div>
       <button type="button" class="gc-action-btn gc-tg-btn" data-gc-send>✈️ <span data-i="gc.telegram">${U.escapeHtml(I18.t('gc.telegram'))}</span></button>
       ${C.importSchema ? `<button type="button" class="gc-action-btn gc-import-btn" data-gc-import>📥 <span data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</span></button>` : ''}
-      ${C.telegramScopes ? `<span class="gc-action-label" data-i="gc.dataType">${U.escapeHtml(I18.t('gc.dataType'))}</span><select class="gc-scope-select" data-gc-scope aria-label="${U.escapeHtml(I18.t('gc.dataType'))}"></select>` : ''}
-      <span class="gc-action-label" data-i="gc.period">${U.escapeHtml(I18.t('gc.period'))}</span>
+      <span class="gc-sep"></span>
+      ${C.telegramScopes ? `<select class="gc-scope-select" data-gc-scope aria-label="${U.escapeHtml(I18.t('gc.dataType'))}"></select>` : ''}
       <div id="gcQuickPeriod"></div>
-      ${C.periodRef ? `<span class="gc-action-label" data-i="gc.refDate">${U.escapeHtml(I18.t('gc.refDate'))}</span><button type="button" class="gc-ref-nav" data-gc-ref-prev aria-label="Previous date">◀</button><input class="gc-ref-date" data-gc-ref type="date" aria-label="${U.escapeHtml(I18.t('gc.refDate'))}"><button type="button" class="gc-ref-nav" data-gc-ref-next aria-label="Next date">▶</button>` : ''}
-      <span class="gc-action-label" data-i="gc.mode">${U.escapeHtml(I18.t('gc.mode'))}</span>
+      ${C.periodRef ? `<button type="button" class="gc-ref-nav" data-gc-ref-prev aria-label="Previous">◀</button><input class="gc-ref-date" data-gc-ref type="date" aria-label="${U.escapeHtml(I18.t('gc.refDate'))}"><button type="button" class="gc-ref-nav" data-gc-ref-next aria-label="Next">▶</button>` : ''}
       <div class="gc-mode" id="gcQuickMode">
         <button type="button" class="gc-mode-btn on" data-gc-mode="summary">📄 <span data-i="gc.summary">${U.escapeHtml(I18.t('gc.summary'))}</span></button>
         <button type="button" class="gc-mode-btn" data-gc-mode="review">🔎 <span data-i="gc.review">${U.escapeHtml(I18.t('gc.review'))}</span></button>
         <button type="button" class="gc-mode-btn" data-gc-mode="approval">✅ <span data-i="gc.approval">${U.escapeHtml(I18.t('gc.approval'))}</span></button>
       </div>
+      <div class="gc-hstats" id="gcHStats"></div>
       <span class="gc-action-status" id="gcTelegramState" aria-live="polite"></span>
     </div>
-    <div class="gc-panel" id="gcPanel">
-      <div class="gc-panel-head">
-        <span class="gc-panel-title">☁️ <span data-i="gc.cloudTools">${U.escapeHtml(I18.t('gc.cloudTools'))}</span></span>
-        <span class="gc-storage-badge" data-i="gc.indexedDb">${U.escapeHtml(I18.t('gc.indexedDb'))}</span>
-      </div>
-      <div class="gc-panel-body">
-        <div class="gc-sec">
-          <div class="gc-sec-t" data-i="gc.dashboard">${U.escapeHtml(I18.t('gc.dashboard'))}</div>
-          <div id="gcDash"></div>
-        </div>
-        <div class="gc-sec">
-          <div class="gc-sec-t">☁️ <span data-i="gc.upload">${U.escapeHtml(I18.t('gc.upload'))}</span> / <span data-i="gc.download">${U.escapeHtml(I18.t('gc.download'))}</span></div>
-          <div class="gc-cloud-info" data-i="gc.directHint">${U.escapeHtml(I18.t('gc.directHint'))}</div>
-          <div class="gc-note" id="gcCloudNote"></div>
-        </div>
-        ${C.importSchema ? `<div class="gc-sec gc-import-sec">
-          <div class="gc-sec-t">📥 <span data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</span></div>
-          <div id="gcImport"></div>
-        </div>` : ''}
-      </div>
-    </div>
+    <div id="gcDash" hidden></div>
+    ${C.importSchema ? '<div id="gcImport" hidden></div>' : ''}
+    <span id="gcCloudNote" hidden></span>
   `;
+
   /* ── 掛載位置 ──
      各模組結構不同：temperature 只有一個 .main（全頁共用）；
      cleaning 是每個分頁各有一個 .main，若插進第一個 .main
@@ -1564,9 +1561,32 @@ GC.attach = function (cfg) {
 
   if (C.importSchema) {
     const importMount = bar.querySelector('#gcImport');
+    /* 匯入改用彈窗（原本的大卡片已移除，避免同頁重複區塊） */
     const openImport = () => {
-      const sec = bar.querySelector('.gc-import-sec');
-      if (sec) { sec.scrollIntoView({ behavior: 'smooth', block: 'center' }); sec.classList.add('gc-import-focus'); setTimeout(() => sec.classList.remove('gc-import-focus'), 900); }
+      let m = document.getElementById('gcImpModal');
+      if (!m) {
+        m = document.createElement('div');
+        m.id = 'gcImpModal'; m.className = 'gc-tg-ov';
+        m.innerHTML =
+          '<div class="gc-tg-box">' +
+            '<div class="gc-tg-head">' +
+              '<span class="gc-tg-title">📥 <span data-i="gc.smartImport"></span></span>' +
+              '<button type="button" class="gc-tg-x" id="gcImpX">✕</button>' +
+            '</div>' +
+            '<div class="gc-tg-body"><div id="gcImpHost"></div></div>' +
+          '</div>';
+        document.body.appendChild(m);
+        m.querySelector('#gcImpX').onclick = () => m.classList.remove('open');
+        m.onclick = e => { if (e.target === m) m.classList.remove('open'); };
+      }
+      /* 把匯入元件搬進彈窗（只搬一次） */
+      const host = m.querySelector('#gcImpHost');
+      if (importMount && importMount.parentNode !== host) {
+        importMount.hidden = false;
+        host.appendChild(importMount);
+      }
+      I18.apply(m);
+      m.classList.add('open');
     };
     const importButton = bar.querySelector('[data-gc-import]');
     if (importButton) importButton.onclick = openImport;
@@ -1612,6 +1632,12 @@ GC.attach = function (cfg) {
       : null;
 
     GC.dash.render('#gcDash', { cards, bars });
+    /* 統計數字改用 header 樣式的小字，取代原本的大卡片 */
+    const hs = bar.querySelector('#gcHStats');
+    if (hs) hs.innerHTML = cards.map(function (c) {
+      return '<span class="gc-hstat"><b>' + U.escapeHtml(c.value) + '</b>' +
+             U.escapeHtml(c.label) + '</span>';
+    }).join('');
 
     const note = bar.querySelector('#gcCloudNote');
     if (note) note.textContent =
