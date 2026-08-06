@@ -397,8 +397,12 @@ tbody tr:hover{background:var(--bg);}
             <div class="fg"><label>Chat ID（選填）</label><input type="text" id="tg-chat" placeholder="-100..." oninput="saveTGcfg()"></div>
           </div>
           <div class="g2" style="margin-bottom:10px">
-            <div class="fg"><label id="i-tgtype">報告類型</label><select id="tg-type"><option value="daily" id="i-tgd">每日摘要</option><option value="anomaly" id="i-tga">異常報告</option><option value="full" id="i-tgf">完整報告</option></select></div>
+            <div class="fg"><label id="i-tgperiod">摘要期間</label><select id="tg-period" onchange="prevTG()"><option value="day" id="i-tgday">日 / Day</option><option value="week" id="i-tgweek">週 / Week</option><option value="month" id="i-tgmonth" selected>月 / Month</option><option value="year" id="i-tgyear">年 / Year</option><option value="all" id="i-tgall">全部 / All</option></select></div>
+            <div class="fg"><label id="i-tgtype">訊息類型</label><select id="tg-type" onchange="prevTG()"><option value="summary" id="i-tgsum">📄 摘要</option><option value="review" id="i-tgrev">🔎 審查</option><option value="approval" id="i-tgapp">✅ 核可</option></select></div>
+          </div>
+          <div class="g2" style="margin-bottom:10px">
             <div class="fg"><label id="i-tgdate">日期</label><div class="date-nav"><button type="button" onclick="shiftTempDate('tg-date',-1)">◀</button><input type="date" id="tg-date"><button type="button" onclick="shiftTempDate('tg-date',1)">▶</button></div></div>
+            <div></div>
           </div>
           <div class="flw" style="gap:6px">
             <button class="btn bg sm" onclick="prevTG()" id="i-prev">👁 預覽</button>
@@ -550,7 +554,7 @@ zh:{
   znzh:'中文名稱',znen:'英文名稱',znkm:'柬文名稱',zncol:'顏色',znact:'啟用此區域',zndesc:'說明',
   addztit:'新增監測區域',edittit:'編輯記錄',conftit:'確認操作',
   cht:'🌡️ 溫度趨勢',chh:'💧 濕度趨勢',cha:'⚠️ 異常統計',chs:'📊 統計表',
-  tgtype:'報告類型',tgdate:'日期',tgd:'每日摘要',tga:'異常報告',tgf:'完整報告',
+  tgperiod:'摘要期間',tgtype:'訊息類型',tgdate:'基準日期',tgday:'日 / Day',tgweek:'週 / Week',tgmonth:'月 / Month',tgyear:'年 / Year',tgall:'全部 / All',tgsum:'📄 摘要',tgrev:'🔎 審查',tgapp:'✅ 核可',
   today:'今天',yesterday:'昨天',nodata:'暫無數據',saved:'已儲存',deleted:'已刪除',
   impok:'匯入成功',expok:'匯出成功',noanom:'✅ 無異常',
   cdelrec:'確認刪除此記錄？',cdelzone:'確認刪除此區域（及其所有記錄）？',
@@ -584,7 +588,7 @@ en:{
   znzh:'Chinese Name',znen:'English Name',znkm:'Khmer Name',zncol:'Color',znact:'Active Zone',zndesc:'Description',
   addztit:'Add Monitoring Zone',edittit:'Edit Record',conftit:'Confirm Action',
   cht:'🌡️ Temperature Trend',chh:'💧 Humidity Trend',cha:'⚠️ Anomaly Count',chs:'📊 Statistics',
-  tgtype:'Report Type',tgdate:'Date',tgd:'Daily Summary',tga:'Anomaly Report',tgf:'Full Report',
+  tgperiod:'Summary period',tgtype:'Message type',tgdate:'Reference date',tgday:'Day',tgweek:'Week',tgmonth:'Month',tgyear:'Year',tgall:'All',tgsum:'📄 Summary',tgrev:'🔎 Review',tgapp:'✅ Approval',
   today:'Today',yesterday:'Yesterday',nodata:'No data',saved:'Saved',deleted:'Deleted',
   impok:'Import successful',expok:'Export successful',noanom:'✅ No Anomalies',
   cdelrec:'Delete this record?',cdelzone:'Delete zone (and all its records)?',
@@ -618,7 +622,7 @@ km:{
   znzh:'ឈ្មោះចិន',znen:'ឈ្មោះអង់គ្លេស',znkm:'ឈ្មោះខ្មែរ',zncol:'ពណ៌',znact:'តំបន់សកម្ម',zndesc:'ការពិពណ៌នា',
   addztit:'បន្ថែមតំបន់ត្រួតពិនិត្យ',edittit:'កែប្រែកំណត់ត្រា',conftit:'បញ្ជាក់ប្រតិបត្តិការ',
   cht:'🌡️ និន្នាការសីតុណ្ហភាព',chh:'💧 និន្នាការសំណើម',cha:'⚠️ ករណីខុសប្រក្រតី',chs:'📊 តារាងស្ថិតិ',
-  tgtype:'ប្រភេទ',tgdate:'កាលបរិច្ឆេទ',tgd:'សង្ខេបប្រចាំថ្ងៃ',tga:'ខុសប្រក្រតី',tgf:'ពេញ',
+  tgperiod:'រយៈពេលសង្ខេប',tgtype:'ប្រភេទសារ',tgdate:'កាលបរិច្ឆេទយោង',tgday:'ថ្ងៃ',tgweek:'សប្តាហ៍',tgmonth:'ខែ',tgyear:'ឆ្នាំ',tgall:'ទាំងអស់',tgsum:'📄 សង្ខេប',tgrev:'🔎 ពិនិត្យ',tgapp:'✅ អនុម័ត',
   today:'ថ្ងៃនេះ',yesterday:'ម្សិលមិញ',nodata:'គ្មានទិន្នន័យ',saved:'បានរក្សាទុក',deleted:'បានលុប',
   impok:'នាំចូលបានជោគជ័យ',expok:'នាំចេញបានជោគជ័យ',noanom:'✅ គ្មានភាពខុសប្រក្រតី',
   cdelrec:'លុបកំណត់ត្រានេះ?',cdelzone:'លុបតំបន់ (និងកំណត់ត្រាទាំងអស់)?',
@@ -784,7 +788,7 @@ function applyI18n(){
     'i-tcold':'tcold','i-tcool':'tcool','i-twarm':'twarm','i-thot':'thot',
     'i-hdry':'hdry','i-hhumid':'hhumid','i-hvhum':'hvhum',
     // Telegram
-    'i-tgtype':'tgtype','i-tgdate':'tgdate','i-tgd':'tgd','i-tga':'tga','i-tgf':'tgf',
+    'i-tgperiod':'tgperiod','i-tgtype':'tgtype','i-tgdate':'tgdate','i-tgday':'tgday','i-tgweek':'tgweek','i-tgmonth':'tgmonth','i-tgyear':'tgyear','i-tgall':'tgall','i-tgsum':'tgsum','i-tgrev':'tgrev','i-tgapp':'tgapp',
     'i-prev':'prev','i-send':'send',
     // GAS
     'i-testcon':'testcon','i-syncup':'syncup','i-upload-after-save':'syncup','i-pull':'pull',
@@ -1652,10 +1656,12 @@ function buildTGPeriodMsg(period,mode,ref){
   const periodName={day:'Today / 今日',week:'This Week / 本週',month:'This Month / 本月',year:'This Year / 今年',all:'All / 全部'}[period]||period;
   const modeName={summary:'Summary / 摘要',review:'Review / 審查',approval:'Approval / 核可'}[mode]||'Summary / 摘要';
   const temps=view.filter(r=>r.t!==''&&r.t!=null&&!isNaN(r.t)).map(r=>+r.t), hums=view.filter(r=>r.h!==''&&r.h!=null&&!isNaN(r.h)).map(r=>+r.h);
+  const photos=[];
+  view.forEach(r=>{(typeof GC!=='undefined'&&GC.util?GC.util.asArray(r.photos):Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^data:image\//i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
   const avg=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'--';
   const anomalies=view.filter(isAnom).length, zoneCount=new Set(view.map(r=>r.z).filter(Boolean)).size;
   const lines=['🌡️ <b>VRT Temperature & Humidity / 溫濕度</b>','📅 '+periodName,'🧾 Message type / 訊息類型: '+modeName,'━━━━━━━━━━━━━━━━','📊 <b>Dashboard / 儀表板</b>','• Records / 記錄: <b>'+view.length+'</b> | Zones / 區域: '+zoneCount,'• Avg Temp / 平均溫度: '+avg(temps)+'°C | Avg Hum / 平均濕度: '+avg(hums)+'%','• Anomaly / 異常: <b>'+anomalies+'</b>','━━━━━━━━━━━━━━━━'];
-  if(!view.length){lines.push('No records / 暫無記錄','⏰ '+new Date().toLocaleString());return lines.join('\n');}
+  if(!view.length){lines.push('No records / 暫無記錄','⏰ '+new Date().toLocaleString());return {text:lines.join('\n'),photos:photos};}
   const zones=getZ();
   const dates=[...new Set(view.map(r=>String(r.d||'').slice(0,10)).filter(Boolean))].sort();
   let count=0;
@@ -1674,12 +1680,22 @@ function buildTGPeriodMsg(period,mode,ref){
   });
   lines.push('━━━━━━━━━━━━━━━━','⚠️ Anomaly / 異常: '+anomalies+' | 📋 Records / 記錄: '+view.length,'⏰ '+new Date().toLocaleString());
   const out=lines.join('\n');
-  return out.length>3900?out.slice(0,3860)+'\n… (more records omitted / 其餘記錄略)':out;
+  return {text:out.length>3900?out.slice(0,3860)+'\n… (more records omitted / 其餘記錄略)':out,photos:photos};
 }
-function prevTG(){const msg=buildTGmsg(document.getElementById('tg-type').value,document.getElementById('tg-date').value||today());const p=document.getElementById('tg-prev');p.textContent=msg;p.style.display='block';}
+function prevTG(){
+  const period=(document.getElementById('tg-period')||{}).value||'month';
+  const mode=(document.getElementById('tg-type')||{}).value||'summary';
+  const ref=(document.getElementById('tg-date')||{}).value||today();
+  const packet=typeof buildTGPeriodMsg==='function'?buildTGPeriodMsg(period,mode,ref):{text:buildTGmsg('daily',ref)};
+  const p=document.getElementById('tg-prev');p.textContent=typeof packet==='string'?packet:(packet.text||'');p.style.display='block';
+}
 async function sendTG(){
   const cfg=getTG();if(!cfg.tok||!cfg.chat){toast('請設定 Bot Token 和 Chat ID','err');return;}
-  const msg=buildTGmsg(document.getElementById('tg-type').value,document.getElementById('tg-date').value||today())+'\n\n📊 Open Dashboard / 開啟平台: https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html';
+  const period=(document.getElementById('tg-period')||{}).value||'month';
+  const mode=(document.getElementById('tg-type')||{}).value||'summary';
+  const ref=(document.getElementById('tg-date')||{}).value||today();
+  const packet=typeof buildTGPeriodMsg==='function'?buildTGPeriodMsg(period,mode,ref):{text:buildTGmsg('daily',ref)};
+  const msg=(typeof packet==='string'?packet:(packet.text||''))+'\n\n📊 Open Dashboard / 開啟平台: https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html';
   if(!msg||!msg.trim()){toast('訊息內容為空，請確認日期有記錄','err');return;}
   try{
     // Telegram API 要用 application/json（不是 text/plain）
@@ -1958,6 +1974,7 @@ function shiftTempDate(id,delta){
   const d=new Date((el.value||today())+'T00:00:00'); d.setDate(d.getDate()+delta); el.value=_localYMD(d);
   if(id==='dash-date')renderDash();
   if(id==='rec-date')renderRec();
+  if(id==='tg-date'&&typeof prevTG==='function')prevTG();
 }
 
 // ══════════════════════════════════════════

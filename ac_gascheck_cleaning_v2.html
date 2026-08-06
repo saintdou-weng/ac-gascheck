@@ -1487,6 +1487,36 @@ if(typeof sv2==='function')         window.sv2=sv2;
 </script>
 
 <script>
+/* 清潔專用 Telegram 摘要：沿用 Temperature 的日／週／月／年與基準日期，
+   並把 Dashboard KPI、異常項目與照片一起交給共用 GAS 發送。 */
+function buildCleaningTelegram(opt){
+  opt=opt||{};
+  const cfg=opt.cfg||{};
+  const all=typeof cfg.read==='function'?(cfg.read()||[]):[];
+  const period=opt.period||'month', mode=opt.mode||'summary', ref=opt.ref;
+  const view=(typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'date',ref):all.slice();
+  const esc=function(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  const periodLabel={day:'Day / 日',week:'Week / 週',month:'Month / 月',year:'Year / 年',all:'All / 全部'}[period]||period;
+  const modeLabel={summary:'Summary / 摘要',review:'Review / 審查',approval:'Approval / 核可'}[mode]||mode;
+  const failed=view.filter(r=>Object.values(r.checks||{}).some(v=>v===false));
+  const passed=view.length-failed.length;
+  const lines=['🧹 <b>VRT Cleaning / 清潔</b>','📅 '+periodLabel,'🧾 Message type / 訊息類型: '+modeLabel,'━━━━━━━━━━━━━━━━','📊 <b>Dashboard / 儀表板</b>','• Records / 記錄: <b>'+view.length+'</b> | Pass / 通過: '+passed+' | Fail / 異常: '+failed.length,'• Locations / 地點: '+new Set(view.map(r=>r.locId).filter(Boolean)).size];
+  const photos=[];
+  view.slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))).slice(0,60).forEach(function(r){
+    const bad=Object.values(r.checks||{}).some(v=>v===false);
+    const badItems=(typeof CHK_ITEMS!=='undefined'?CHK_ITEMS:[]).filter(function(k){return r.checks&&r.checks[k]===false;}).map(function(k){return typeof i18n!=='undefined'?i18n.t('ci-'+k):k;});
+    lines.push('🧹 '+esc(r.date||'—')+' | '+esc(typeof locName==='function'?locName(r.locId):r.locId||'—')+' | '+esc(r.cleaner||'—')+' | '+(bad?'❌ Fail / 異常':'✅ Pass / 通過'));
+    if(r.checker)lines.push('   🔎 '+esc(r.checker));
+    if(badItems.length)lines.push('   ⚠️ '+esc(badItems.join(', ')));
+    if(r.note)lines.push('   📝 '+esc(r.note));
+    (typeof GC!=='undefined'&&GC.util?GC.util.asArray(r.photos):Array.isArray(r.photos)?r.photos:[]).forEach(function(p){if(/^data:image\//i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});
+  });
+  if(view.length>60)lines.push('… '+(view.length-60)+' more');
+  if(mode==='review'||mode==='approval')lines.push('━━━━━━━━━━━━━━━━','⏳ Pending review / approval: '+failed.length);
+  lines.push('━━━━━━━━━━━━━━━━','⏰ '+(typeof _localTS==='function'?_localTS():new Date().toLocaleString()));
+  return {text:lines.join('\n'),photos:photos};
+}
+
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
 (function(){
   function boot(){
@@ -1502,6 +1532,7 @@ if(typeof sv2==='function')         window.sv2=sv2;
       weather:false,
       photo:true,
       periodRef:true,
+      telegramBuilder:buildCleaningTelegram,
       importSchema:{"date": ["日期", "date"], "locId": ["地點", "location", "loc", "ទីតាំង"], "cleaner": ["清潔人員", "cleaner", "អ្នកសម្អាត"], "checker": ["檢查人", "checker", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "ចំណាំ"]},
     read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_clean_hub_v2')||'{}'); return Array.isArray(d.records)?d.records:[]; }catch(e){ return []; } },
     write(list){ try{ const d=JSON.parse(localStorage.getItem('vrt_clean_hub_v2')||'{}'); d.records=list; localStorage.setItem('vrt_clean_hub_v2',JSON.stringify(d)); }catch(e){} },

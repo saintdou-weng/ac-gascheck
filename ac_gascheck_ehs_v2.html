@@ -356,7 +356,7 @@ select.bi{cursor:pointer}
       <div style="font-size:13px;font-weight:600;margin-top:8px">點擊或拖放 Excel 檔案至此</div>
       <div style="font-size:11px;margin-top:4px;color:#94a3b8">支援 Recycle / Waste Excel (.xlsx/.xls)</div>
     </div>
-    <input type="file" id="import-file" accept=".xlsx,.xls" style="display:none" onchange="handleImportFile(this)">
+    <input type="file" id="import-file" accept=".xlsx,.xls" multiple style="display:none" onchange="handleImportFile(this)">
     <div id="import-preview" style="padding:12px;display:none">
       <div id="import-info" style="font-size:12px;color:var(--dim);margin-bottom:8px;padding:8px;background:var(--accent-bg);border-radius:5px;border-left:3px solid var(--accent)"></div>
       <div class="htable-wrap">
@@ -1169,9 +1169,9 @@ async function submitMonthlyApproval(){
 let importRows=[],importType='';
 function handleImportDrop(e){
   e.preventDefault();document.getElementById('import-zone').classList.remove('drag');
-  const file=e.dataTransfer.files[0];if(file)parseImportFile(file);
+  const files=Array.from((e.dataTransfer&&e.dataTransfer.files)||[]);if(files.length)parseImportFiles(files);
 }
-function handleImportFile(input){const file=input.files[0];if(file)parseImportFile(file);}
+function handleImportFile(input){const files=Array.from(input.files||[]);if(files.length)parseImportFiles(files);}
 function cancelImport(){
   document.getElementById('import-preview').style.display='none';
   document.getElementById('import-file').value='';importRows=[];
@@ -1195,14 +1195,17 @@ function excelDateToISO(v){
     const mn=monthNames[String(mon).toLowerCase()];
     if(mn)return year+'-'+mn;
   }
-  // MM/DD/YYYY
-  if(/^\d{1,2}\/\d{1,2}\/\d{4}/.test(s)){const p=s.split('/');return p[2]+'-'+p[0].padStart(2,'0')+'-'+p[1].padStart(2,'0');}
+  // MM/DD/YYYY or MM/DD/YY
+  if(/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(s)){const p=s.split('/');const y=p[2].length===2?'20'+p[2]:p[2];return y+'-'+p[0].padStart(2,'0')+'-'+p[1].padStart(2,'0');}
   // Excel serial number
   const n=parseFloat(v);
   if(!isNaN(n)&&n>1000){
     const d=new Date(Math.round((n-25569)*86400*1000));
     if(!isNaN(d.getTime()))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }
+  // SheetJS 某些日期格式會回傳可被瀏覽器辨識的日期字串，作最後退路。
+  const dt=new Date(s);
+  if(!isNaN(dt.getTime()))return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
   return s;
 }
 
@@ -1259,6 +1262,9 @@ function xlsxEmbeddedPhotos(wb,sheetPath,firstDayRow){
   if(!drawingInfo)return empty;
   const drawingDoc=xlsxXmlDoc(files[drawingInfo.path]&&files[drawingInfo.path].content);
   const imageRels=xlsxRelMap(files,drawingInfo.path),out={};
+  // SheetJS 的 row index 是 0-based；XLSX drawing XML 的 row 是 0-based
+  // 起始位置，但圖片對應的日期列由 parser 傳入的資料列需保持同一基準。
+  const firstRow=Number(firstDayRow)||0;
   xlsxNodes(drawingDoc,'twoCellAnchor').concat(xlsxNodes(drawingDoc,'oneCellAnchor')).forEach(function(anchor){
     const pic=xlsxNodes(anchor,'pic')[0];
     const from=xlsxNodes(anchor,'from')[0];
@@ -1267,8 +1273,8 @@ function xlsxEmbeddedPhotos(wb,sheetPath,firstDayRow){
     if(!pic||!from||!rowNode||!blip)return;
     const row=parseInt(rowNode.textContent,10),embed=blip.getAttribute('r:embed')||blip.getAttribute('embed');
     const rel=imageRels[embed];
-    if(!isFinite(row)||!rel||row<firstDayRow)return;
-    const day=row-firstDayRow+1,url=xlsxDataUrl(files[rel.path]&&files[rel.path].content,rel.path);
+    if(!isFinite(row)||!rel||row<firstRow)return;
+    const day=row-firstRow+1,url=xlsxDataUrl(files[rel.path]&&files[rel.path].content,rel.path);
     if(day>=1&&day<=31&&url){if(!out[day])out[day]=[];if(!out[day].includes(url))out[day].push(url);}
   });
   return out;
@@ -1425,6 +1431,11 @@ function parseImportFileLegacy(file){
 function parseEhsSmartImport(file){
   return new Promise(function(resolve,reject){
     if(typeof XLSX==='undefined')return reject(new Error('SheetJS (XLSX) not loaded'));
+    // 這個函式在模組頁面自己的 script scope 執行，不能直接引用 core.js IIFE
+    // 內部的 U。之前使用 U.uid 會在檔案解析到第一筆資料時中斷（U is not defined）。
+    const makeId=function(prefix){
+      return 'IMP-'+prefix+'-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2,8);
+    };
     const reader=new FileReader();
     reader.onerror=function(){reject(new Error('read fail'));};
     reader.onload=function(e){
@@ -1454,6 +1465,11 @@ function parseEhsSmartImport(file){
           let year='';
           const before=(raw||[]).slice(0,limit||8).flat().map(text).join(' ');
           const ym=before.match(/\b(20\d{2})\b/); if(ym)year=ym[1];
+          // 工作表名稱有時與實際月份不一致（例如分頁叫 Mar，但內容日期是 Feb）。
+          // 先採用分頁上明確的日期，再退回分頁名稱，避免整月資料被放錯月份。
+          for(const row of (raw||[]).slice(0,limit||8))for(const cell of row||[]){
+            const iso=isDate(cell); if(/^\d{4}-\d{2}-\d{2}$/.test(iso))return iso.slice(0,7);
+          }
           let month=0;
           const clean=text(name).toLowerCase();
           Object.keys(monthNames).forEach(function(k){if(!month&&clean.indexOf(k)===0)month=monthNames[k];});
@@ -1471,6 +1487,15 @@ function parseEhsSmartImport(file){
           for(let i=0;i<Math.min(16,raw.length);i++)if(test(raw[i].map(text).join('|').toLowerCase()))return i;
           return -1;
         };
+        // Waste 活頁簿常把格式延伸到第 16,384 欄；只讀 EHS 實際使用的區域，
+        // 避免 SheetJS 逐格掃描造成長時間停在「解析中」。
+        const readRows=function(ws){
+          let range;
+          try{range=ws&&ws['!ref']?XLSX.utils.decode_range(ws['!ref']):{s:{r:0,c:0},e:{r:5000,c:40}};}
+          catch(e){range={s:{r:0,c:0},e:{r:5000,c:40}};}
+          range.s={r:0,c:0}; range.e.c=Math.min(Number(range.e.c)||40,40); range.e.r=Math.min(Number(range.e.r)||5000,5000);
+          return XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false,range:range});
+        };
         const merge=function(map,key,row){
           const old=map.get(key);
           if(!old){map.set(key,Object.assign({},row,{photos:Array.isArray(row.photos)?row.photos.slice():[]}));return;}
@@ -1481,7 +1506,7 @@ function parseEhsSmartImport(file){
         for(const sn of wb.SheetNames){
           if(/^chart$/i.test(text(sn)))continue;
           const ws=wb.Sheets[sn];
-          const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+          const raw=readRows(ws);
           if(!raw||raw.length<4)continue;
           const recycleHead=findHeader(raw,function(j){return j.indexOf('plastic')>=0&&(j.indexOf('fabric')>=0||j.indexOf('cutting')>=0);});
           if(recycleHead>=0){
@@ -1495,7 +1520,7 @@ function parseEhsSmartImport(file){
                 if(!(day>=1&&day<=31))continue;
                 const plastic=num(row[1]),fabric=num(row[2]),core=num(row[3]),total=num(row[4]);
                 if(!plastic&&!fabric&&!core&&!total)continue;
-                const item={id:'IMP-'+U.uid('r'),module:'internal',sourceType:'recycle',date:month+'-'+String(day).padStart(2,'0'),plastic_kg:plastic,fabric_kg:fabric,core_kg:core,total_kg:total||plastic+fabric+core,photos:photos[day]||[],remark:'',submitted_at:_localTS(),updatedAt:_localTS()};
+                const item={id:makeId('r'),module:'internal',sourceType:'recycle',date:month+'-'+String(day).padStart(2,'0'),plastic_kg:plastic,fabric_kg:fabric,core_kg:core,total_kg:total||plastic+fabric+core,photos:photos[day]||[],remark:'',submitted_at:_localTS(),updatedAt:_localTS()};
                 merge(recycle,[item.date,item.plastic_kg,item.fabric_kg,item.core_kg,item.total_kg].join('|'),item);
               }
               sheets.push('Recycle:'+sn);
@@ -1518,7 +1543,7 @@ function parseEhsSmartImport(file){
               const row=raw[i]||[],date=isDate(row[dateI]);
               if(!date)continue;
               const supplier=text(row[supplierI]);
-              const item={id:'IMP-'+U.uid('w'),module:'gate',sourceType:'waste',date:date,name:text(row[nameI]),id_number:text(row[idI]),supplier:supplier.toUpperCase().indexOf('K.S')>=0||supplier.toUpperCase().indexOf('KSWM')>=0?'K.S.W.M':supplier.toUpperCase().indexOf('SONY')>=0?'SONYAPICH':supplier,car_number:text(row[carI]),visitor_id:text(row[visitorI]),solid_waste:text(row[solidI])?'V':'',industrial_waste:text(row[indI])?'V':'',weight_kg:num(row[weightI])||text(row[weightI]),maintain_by:text(row[maintainI]),checked_by:text(row[checkI]),time_in:text(row[inI]),time_out:text(row[outI]),gate_keeper:text(row[keeperI]),photos:[],submitted_at:_localTS(),updatedAt:_localTS()};
+              const item={id:makeId('w'),module:'gate',sourceType:'waste',date:date,name:text(row[nameI]),id_number:text(row[idI]),supplier:supplier.toUpperCase().indexOf('K.S')>=0||supplier.toUpperCase().indexOf('KSWM')>=0?'K.S.W.M':supplier.toUpperCase().indexOf('SONY')>=0?'SONYAPICH':supplier,car_number:text(row[carI]),visitor_id:text(row[visitorI]),solid_waste:text(row[solidI])?'V':'',industrial_waste:text(row[indI])?'V':'',weight_kg:num(row[weightI])||text(row[weightI]),maintain_by:text(row[maintainI]),checked_by:text(row[checkI]),time_in:text(row[inI]),time_out:text(row[outI]),gate_keeper:text(row[keeperI]),photos:[],submitted_at:_localTS(),updatedAt:_localTS()};
               if(!item.name&&!item.supplier&&!item.weight_kg&&!item.solid_waste&&!item.industrial_waste)continue;
               merge(waste,[item.date,item.name,item.supplier,item.car_number,item.time_in,item.time_out,item.weight_kg].join('|'),item);
             }
@@ -1544,10 +1569,27 @@ function parseImportFile(file){
     showImportPreview(cols,meta.sheetName);
   }).catch(function(err){console.error('Import error:',err);showToast('❌ 解析失敗：'+err.message);});
 }
+async function parseImportFiles(files){
+  importRows=[]; importType='';
+  const metas=[],errors=[];
+  for(const file of (files||[])){
+    try{const meta=await parseEhsSmartImport(file);metas.push({file:file.name,meta:meta});importRows=importRows.concat(meta.objects||[]);}
+    catch(e){errors.push(file.name+': '+(e&&e.message||e));}
+  }
+  const hasRecycle=importRows.some(function(r){return r.sourceType==='recycle';});
+  const hasWaste=importRows.some(function(r){return r.sourceType==='waste';});
+  importType=hasRecycle&&hasWaste?'mixed':hasWaste?'gate':'internal';
+  if(!importRows.length){showToast('❌ 解析失敗：'+(errors.join(' | ')||'沒有有效資料'));return;}
+  const cols=importType==='gate'?['date','name','supplier','car_number','solid_waste','industrial_waste','weight_kg','time_in','time_out']:
+    importType==='internal'?['date','plastic_kg','fabric_kg','core_kg','total_kg']:
+    ['sourceType','date','name','supplier','plastic_kg','fabric_kg','core_kg','total_kg','weight_kg'];
+  const note=metas.map(function(x){return x.file;}).join(', ')+(errors.length?' | ⚠️ '+errors.join(' | '):'');
+  showImportPreview(cols,note);
+}
 
 function showImportPreview(cols,monthNote){
   const info=document.getElementById('import-info');
-  const typeLabel=importType==='internal'?'♻️ Recycle 回收':'🗑️ Waste 廢料';
+  const typeLabel=importType==='internal'?'♻️ Recycle 回收':importType==='gate'?'🗑️ Waste 廢料':'♻️ Recycle + 🗑️ Waste';
   info.innerHTML=`<strong>${typeLabel}</strong>${monthNote?' — '+monthNote+' 月份':''} &nbsp;|&nbsp; 解析到 <strong>${importRows.length}</strong> 筆有效記錄（顯示前 20 筆）`;
   const hdrs=cols.map(h=>'<th>'+h+'</th>').join('');
   const rows=importRows.slice(0,20).map(r=>'<tr>'+cols.map(c=>'<td>'+(r[c]!==undefined?r[c]:'')+'</td>').join('')+'</tr>').join('');
@@ -1565,12 +1607,13 @@ async function submitBatchImport(){
   const now=_localTS();
   const pushed=[];
   importRows.forEach(r=>{
-    const target=importType==='gate'?ld.gate:ld.internal;
-    const signature=importType==='gate'
+    const isWaste=r.sourceType==='waste'||(r.sourceType==null&&importType==='gate');
+    const target=isWaste?ld.gate:ld.internal;
+    const signature=isWaste
       ? [r.date,r.name,r.supplier,r.car_number,r.time_in,r.time_out].join('|')
       : [r.date,r.plastic_kg,r.fabric_kg,r.core_kg,r.total_kg].join('|');
     const old=target.find(x=>{
-      const vals=importType==='gate'
+      const vals=isWaste
         ? [x.date,x.name,x.supplier,x.car_number,x.time_in,x.time_out]
         : [x.date,x.plastic_kg,x.fabric_kg,x.core_kg,x.total_kg];
       return vals.join('|')===signature;
@@ -1588,7 +1631,9 @@ async function submitBatchImport(){
   });
   saveLocal(ld);
   try{
-    const res=await fetchGAS({action:'batchImport',type:importType,rows:pushed});
+    // Core GAS 統一使用 push/save；舊版 batchImport 沒有對應 doPost case，
+    // 會造成「本機有資料但雲端失敗」。Recycle/Waste 混合匯入也直接以 EHS 合併上傳。
+    const res=await fetchGAS({action:'push',tool:'ehs',records:pushed});
     showToast(res&&res.ok?'✅ 已匯入 '+pushed.length+' 筆至雲端':'⚠️ 本機已儲存，雲端失敗');
   }catch(e){showToast('⚠️ 離線模式，本機已儲存 '+pushed.length+' 筆');}
   btn.disabled=false;btn.innerHTML='☁️ 確認匯入雲端';

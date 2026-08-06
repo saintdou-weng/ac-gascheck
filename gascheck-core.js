@@ -726,7 +726,9 @@ const PERIOD = GC.period = {
     opt = opt || {};
     let mode = opt.value || 'month';
     const modes = opt.modes || ['day', 'week', 'month', 'year', 'all'];
-    const LB = { day: 'gc.today', week: 'gc.thisWeek', month: 'gc.thisMonth', year: 'gc.thisYear', all: 'gc.all' };
+    // 期間按鈕採用 HRA Pay／Temperature 的直覺標籤：日、週、月、年、全部。
+    // 基準日期與前後按鈕另行控制，避免「今日／本週」和基準日期混在一起。
+    const LB = { day: 'gc.day', week: 'gc.week', month: 'gc.month', year: 'gc.year', all: 'gc.all' };
     function render() {
       el.innerHTML = '<div class="gc-period">' +
         modes.map(m =>
@@ -831,7 +833,7 @@ const IMPORT = GC.import = {
          <div class="gc-import-t" data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</div>
          <div class="gc-import-d" data-i="gc.dropHere">${U.escapeHtml(I18.t('gc.dropHere'))}</div>
          <div class="gc-import-h" data-i="gc.supportFmt">${U.escapeHtml(I18.t('gc.supportFmt'))}</div>
-         <input type="file" id="${id}" accept="${accept}" hidden>
+         <input type="file" id="${id}" accept="${accept}"${opt.multiple === false ? '' : ' multiple'} hidden>
        </div>
        <div class="gc-import-status" id="${id}_st"></div>`;
 
@@ -844,40 +846,65 @@ const IMPORT = GC.import = {
       st.textContent = msg || '';
     }
 
-    async function handle(file) {
-      if (!file) return;
-      status(I18.t('gc.importing'), 'busy');
-      try {
-        const schema = opt.schema || {};
-        const parsed = typeof opt.parse === 'function'
-          ? await opt.parse(file, schema)
-          : await IMPORT.parse(file, schema);
-        const headers = parsed.headers || [];
-        const sheetName = parsed.sheetName || '';
-        const map = parsed.map || IMPORT.autoMap(headers, schema);
-        const objects = Array.isArray(parsed.objects) ? parsed.objects : (parsed.rows || []).map(r => {
-          const o = {};
-          Object.keys(map).forEach(f => { o[f] = map[f] >= 0 ? r[map[f]] : ''; });
-          o._raw = r;
-          return o;
-        }).filter(o => Object.keys(schema).some(f => String(o[f]).trim() !== ''));
-
-        status(`✅ ${objects.length} ${I18.t('gc.imported')}`, 'ok');
-        if (opt.onData) opt.onData(objects, Object.assign({}, parsed, { headers, map, sheetName, fileName: file.name }));
-      } catch (err) {
-        status('❌ ' + I18.t('gc.importFail') + ': ' + err.message, 'err');
+    async function handle(files) {
+      const list = Array.isArray(files) ? files.filter(Boolean) : (files ? [files] : []);
+      if (!list.length) return;
+      status(I18.t('gc.importing') + ' 0/' + list.length, 'busy');
+      const allObjects = [];
+      const metas = [];
+      const errors = [];
+      for (let i = 0; i < list.length; i++) {
+        const file = list[i];
+        try {
+          const schema = opt.schema || {};
+          const parsed = typeof opt.parse === 'function'
+            ? await opt.parse(file, schema)
+            : await IMPORT.parse(file, schema);
+          const headers = parsed.headers || [];
+          const sheetName = parsed.sheetName || '';
+          const map = parsed.map || IMPORT.autoMap(headers, schema);
+          const objects = Array.isArray(parsed.objects) ? parsed.objects : (parsed.rows || []).map(r => {
+            const o = {};
+            Object.keys(map).forEach(f => { o[f] = map[f] >= 0 ? r[map[f]] : ''; });
+            o._raw = r;
+            return o;
+          }).filter(o => Object.keys(schema).some(f => String(o[f]).trim() !== ''));
+          allObjects.push(...objects);
+          metas.push(Object.assign({}, parsed, { headers, map, sheetName, fileName: file.name, objectCount: objects.length }));
+          status(I18.t('gc.importing') + ' ' + (i + 1) + '/' + list.length + ' · ' + file.name, 'busy');
+        } catch (err) {
+          errors.push(file.name + ': ' + (err && err.message ? err.message : err));
+          status(I18.t('gc.importing') + ' ' + (i + 1) + '/' + list.length + ' · ' + file.name, 'busy');
+        }
+      }
+      if (!allObjects.length && errors.length) {
+        status('❌ ' + I18.t('gc.importFail') + ': ' + errors.join(' | '), 'err');
+        return;
+      }
+      const fileNames = metas.map(m => m.fileName).join(', ');
+      status('✅ ' + allObjects.length + ' ' + I18.t('gc.imported') +
+        (metas.length > 1 ? ' · ' + metas.length + ' files' : '') +
+        (errors.length ? ' · ' + errors.length + ' failed' : ''), errors.length ? 'warning' : 'ok');
+      if (opt.onData) {
+        const first = metas[0] || {};
+        opt.onData(allObjects, Object.assign({}, first, {
+          fileName: fileNames,
+          files: metas,
+          fileCount: metas.length,
+          errors: errors
+        }));
       }
     }
 
     dz.onclick = () => input.click();
-    input.onchange = e => { handle(e.target.files[0]); e.target.value = ''; };
+    input.onchange = e => { handle(Array.from(e.target.files || [])); e.target.value = ''; };
     ['dragenter', 'dragover'].forEach(ev =>
       dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add('over'); }));
     ['dragleave', 'drop'].forEach(ev =>
       dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove('over'); }));
     dz.addEventListener('drop', e => {
-      const f = e.dataTransfer.files && e.dataTransfer.files[0];
-      if (f) handle(f);
+      const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
+      if (files.length) handle(files);
     });
 
     return { status, reset: () => status('') };
@@ -1009,6 +1036,7 @@ const CSS = `
 .gc-import-status{margin-top:9px;font-size:12px;min-height:17px}
 .gc-import-status.ok{color:#16653A;font-weight:600}
 .gc-import-status.err{color:#B91C1C;font-weight:600}
+.gc-import-status.warning{color:#7D4E00;font-weight:600}
 .gc-import-status.busy{color:#7D4E00}
 
 .gc-dash-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(128px,1fr));gap:11px;margin-bottom:14px}
@@ -1036,7 +1064,7 @@ const CSS = `
 .gc-cloud-btn:hover{background:#EBF0FA;border-color:#1A3E78}
 .gc-cloud-btn:disabled{opacity:.45;cursor:not-allowed}
 
-.gc-action-strip{display:flex;align-items:center;gap:7px;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;padding:10px 12px;margin-bottom:10px;background:#F7F9FC;border:1px solid #D8DCE6;border-radius:12px;box-shadow:0 3px 12px rgba(15,20,32,.08);scrollbar-width:thin}
+.gc-action-strip{display:flex;align-items:center;gap:7px;flex-wrap:wrap;overflow:visible;white-space:normal;padding:10px 12px;margin-bottom:10px;background:#F7F9FC;border:1px solid #D8DCE6;border-radius:12px;box-shadow:0 3px 12px rgba(15,20,32,.08)}
 .gc-action-strip>*{flex-shrink:0}
 .gc-action-heading{font-size:12px;font-weight:800;color:#1A3E78;white-space:nowrap;margin-right:2px}
 .gc-action-label{font-size:11px;font-weight:700;color:#5A6478;white-space:nowrap;margin-left:4px}
@@ -1261,14 +1289,13 @@ GC.attach = function (cfg) {
           <div class="gc-cloud-info" data-i="gc.directHint">${U.escapeHtml(I18.t('gc.directHint'))}</div>
           <div class="gc-note" id="gcCloudNote"></div>
         </div>
+        ${C.importSchema ? `<div class="gc-sec gc-import-sec">
+          <div class="gc-sec-t">📥 <span data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</span></div>
+          <div id="gcImport"></div>
+        </div>` : ''}
       </div>
     </div>
-    ${C.importSchema ? `<div class="gc-import-modal" id="gcImportModal" aria-hidden="true">
-      <div class="gc-import-dialog" role="dialog" aria-modal="true" aria-label="${U.escapeHtml(I18.t('gc.smartImport'))}">
-        <div class="gc-import-head"><strong>📥 <span data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</span></strong><button type="button" class="gc-import-close" data-gc-import-close>✕</button></div>
-        <div id="gcImport"></div>
-      </div>
-    </div>` : ''}`;
+  `;
   const contentMount = document.querySelector('.main, .content, .page, .wrap') || document.body;
   if (contentMount.firstChild) contentMount.insertBefore(bar, contentMount.firstChild);
   else contentMount.appendChild(bar);
@@ -1354,23 +1381,14 @@ GC.attach = function (cfg) {
   if (sendTelegram) sendTelegram.onclick = sendCurrentTelegram;
 
   if (C.importSchema) {
-    const importModal = bar.querySelector('#gcImportModal');
-    const closeImport = () => {
-      if (!importModal) return;
-      importModal.classList.remove('open');
-      importModal.setAttribute('aria-hidden', 'true');
-    };
+    const importMount = bar.querySelector('#gcImport');
     const openImport = () => {
-      if (!importModal) return;
-      importModal.classList.add('open');
-      importModal.setAttribute('aria-hidden', 'false');
+      const sec = bar.querySelector('.gc-import-sec');
+      if (sec) { sec.scrollIntoView({ behavior: 'smooth', block: 'center' }); sec.classList.add('gc-import-focus'); setTimeout(() => sec.classList.remove('gc-import-focus'), 900); }
     };
     const importButton = bar.querySelector('[data-gc-import]');
-    const closeButton = bar.querySelector('[data-gc-import-close]');
     if (importButton) importButton.onclick = openImport;
-    if (closeButton) closeButton.onclick = closeImport;
-    if (importModal) importModal.onclick = e => { if (e.target === importModal) closeImport(); };
-    GC.import.mount('#gcImport', {
+    GC.import.mount(importMount, {
       schema: C.importSchema,
       parse: C.importParser,
       onData: (rows, meta) => {
@@ -1383,7 +1401,6 @@ GC.attach = function (cfg) {
         const merged = typeof C.mergeImport === 'function' ? C.mergeImport(cur, rows) : cur.concat(rows);
         C.write(merged);
         refresh();
-        closeImport();
         GC.toast(`✅ ${rows.length} ${I18.t('gc.imported')} — ${meta.fileName}`, 'success');
         if (C.onImport) C.onImport(rows);
       }
@@ -1437,18 +1454,20 @@ const BAR_CSS = `
 .gc-panel-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid #EEF1F6;background:#F7F8FA;border-radius:13px 13px 0 0}
 .gc-panel-title{font-weight:700;font-size:13px;color:#1A3E78;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gc-storage-badge{font-size:10px;color:#16653A;background:#E8F7EE;border:1px solid #BCE7CB;border-radius:12px;padding:3px 8px;white-space:nowrap}
-.gc-panel-body{display:grid;grid-template-columns:minmax(260px,1.2fr) minmax(260px,.8fr);gap:14px;padding:14px;overflow:visible}
+.gc-panel-body{display:grid;grid-template-columns:minmax(260px,1.05fr) minmax(240px,.85fr) minmax(300px,1.2fr);gap:14px;padding:14px;overflow:visible}
 .gc-sec{min-width:0;margin:0}
 .gc-sec:last-child{margin-bottom:0}
+.gc-import-sec{min-width:0}
+.gc-import-focus{outline:3px solid rgba(78,111,255,.25);outline-offset:3px;border-radius:9px;transition:outline .2s}
 .gc-sec-t{font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px}
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
-@media(max-width:900px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-sec:last-child{grid-column:1/-1}}
+@media(max-width:1050px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-import-sec{grid-column:1/-1}}
 @media(max-width:560px){
-  .gc-action-strip{align-items:center;flex-wrap:nowrap;overflow-x:auto;white-space:nowrap;-webkit-overflow-scrolling:touch;padding:8px 9px}
+  .gc-action-strip{align-items:center;flex-wrap:wrap;overflow:visible;white-space:normal;padding:8px 9px}
   .gc-action-heading,.gc-action-label{width:auto;margin-left:0}
   .gc-action-strip #gcTopCloud,.gc-action-strip .gc-cloud-btns,.gc-action-strip .gc-period,.gc-mode{width:auto;flex:0 0 auto}
   .gc-action-strip .gc-cloud-btn,.gc-action-strip .gc-pd-btn,.gc-mode-btn,.gc-action-btn{flex:0 0 auto;justify-content:center;min-height:38px;touch-action:manipulation}
-  .gc-mode{flex-wrap:nowrap}
+  .gc-mode{flex-wrap:wrap}
   .gc-panel-body{grid-template-columns:1fr}
   .gc-sec:last-child{grid-column:auto}
   .gc-storage-badge{order:3}
