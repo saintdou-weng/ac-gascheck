@@ -941,6 +941,11 @@ var tgPost = async (body) => {
   const token = c.botToken || '8618516219:AAELNq_Iux_jL5k0lustjTcf_eCBGc7iwKI';
   const chatId= c.chatId   || '-5167815203';
   const payload = Object.assign({chat_id:chatId, parse_mode:'HTML'}, body);
+  let suppliedMarkup = payload.reply_markup;
+  if(typeof suppliedMarkup === 'string'){ try{suppliedMarkup=JSON.parse(suppliedMarkup);}catch(e){suppliedMarkup=null;} }
+  const rows = suppliedMarkup && suppliedMarkup.inline_keyboard ? suppliedMarkup.inline_keyboard.slice() : [];
+  rows.push([{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_dormitory_v2.html'}]);
+  payload.reply_markup = {inline_keyboard:rows};
   try {
     const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
       method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)

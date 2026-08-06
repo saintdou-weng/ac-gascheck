@@ -19,6 +19,8 @@ const GC = {};
 /* 使用者指定的固定入口：頁面不再要求每個模組重填 GAS URL／Chat ID。 */
 const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
 const DEFAULT_CHAT_ID = '-5113064563';
+const DASHBOARD_BASE_URL = 'https://saintdou-weng.github.io/ac-gascheck/';
+const DASHBOARD_PATHS = {asset:'ac_gascheck_asset_v2.html',dormitory:'ac_gascheck_dormitory_v2.html',cleaning:'ac_gascheck_cleaning_v2.html',keymovement:'ac_gascheck_keymovement_v2.html',ehs:'ac_gascheck_ehs_v2.html',waterdrum:'ac_gascheck_waterdrum_v2.html',temperature:'ac_gascheck_temperature_v2.html'};
 try {
   // 只保存小設定；大量業務內容由下方 IndexedDB layer 接管。
   localStorage.setItem('ac_gascheck_gas_url', DEFAULT_GAS_URL);
@@ -243,7 +245,7 @@ const BASE_DICT = {
     'gc.summary':'摘要','gc.review':'審查','gc.approval':'Approval','gc.quickActions':'快速操作',
     'gc.directHint':'上方按鈕可直接同步、匯入與發送，不需填網址／Token／Chat ID',
     'gc.sentTelegram':'Telegram 已發送','gc.noApproval':'沒有待審查／待核可資料',
-    'gc.pendingApproval':'待審查／待核可','gc.mode':'訊息類型'
+    'gc.pendingApproval':'待審查／待核可','gc.mode':'訊息類型','gc.dataType':'資料類型','gc.refDate':'基準日期'
   },
   en: {
     'gc.upload':'Upload','gc.download':'Download','gc.sync':'Syncing…',
@@ -267,7 +269,7 @@ const BASE_DICT = {
     'gc.summary':'Summary','gc.review':'Review','gc.approval':'Approval','gc.quickActions':'Quick actions',
     'gc.directHint':'Use the buttons above to sync, import and send; no URL/token/chat ID entry is needed',
     'gc.sentTelegram':'Telegram sent','gc.noApproval':'No pending review/approval records',
-    'gc.pendingApproval':'Pending review/approval','gc.mode':'Message type'
+    'gc.pendingApproval':'Pending review/approval','gc.mode':'Message type','gc.dataType':'Data type','gc.refDate':'As of'
   },
   km: {
     'gc.upload':'ផ្ទុកឡើង','gc.download':'ទាញយក','gc.sync':'កំពុងធ្វើសមកាលកម្ម…',
@@ -291,7 +293,7 @@ const BASE_DICT = {
     'gc.summary':'សង្ខេប','gc.review':'ពិនិត្យ','gc.approval':'Approval','gc.quickActions':'សកម្មភាពរហ័ស',
     'gc.directHint':'ប្រើប៊ូតុងខាងលើដើម្បីធ្វើសមកាលកម្ម នាំចូល និងផ្ញើ ដោយមិនចាំបាច់បញ្ចូល URL/token/chat ID',
     'gc.sentTelegram':'បានផ្ញើ Telegram','gc.noApproval':'គ្មានទិន្នន័យកំពុងរង់ចាំពិនិត្យ/អនុម័ត',
-    'gc.pendingApproval':'កំពុងរង់ចាំពិនិត្យ/អនុម័ត','gc.mode':'ប្រភេទសារ'
+    'gc.pendingApproval':'កំពុងរង់ចាំពិនិត្យ/អនុម័ត','gc.mode':'ប្រភេទសារ','gc.dataType':'ប្រភេទទិន្នន័យ','gc.refDate':'កាលបរិច្ឆេទយោង'
   }
 };
 
@@ -847,9 +849,13 @@ const IMPORT = GC.import = {
       status(I18.t('gc.importing'), 'busy');
       try {
         const schema = opt.schema || {};
-        const { headers, rows, sheetName } = await IMPORT.parse(file, schema);
-        const map = IMPORT.autoMap(headers, schema);
-        const objects = rows.map(r => {
+        const parsed = typeof opt.parse === 'function'
+          ? await opt.parse(file, schema)
+          : await IMPORT.parse(file, schema);
+        const headers = parsed.headers || [];
+        const sheetName = parsed.sheetName || '';
+        const map = parsed.map || IMPORT.autoMap(headers, schema);
+        const objects = Array.isArray(parsed.objects) ? parsed.objects : (parsed.rows || []).map(r => {
           const o = {};
           Object.keys(map).forEach(f => { o[f] = map[f] >= 0 ? r[map[f]] : ''; });
           o._raw = r;
@@ -857,7 +863,7 @@ const IMPORT = GC.import = {
         }).filter(o => Object.keys(schema).some(f => String(o[f]).trim() !== ''));
 
         status(`✅ ${objects.length} ${I18.t('gc.imported')}`, 'ok');
-        if (opt.onData) opt.onData(objects, { headers, map, sheetName, fileName: file.name });
+        if (opt.onData) opt.onData(objects, Object.assign({}, parsed, { headers, map, sheetName, fileName: file.name }));
       } catch (err) {
         status('❌ ' + I18.t('gc.importFail') + ': ' + err.message, 'err');
       }
@@ -1034,6 +1040,8 @@ const CSS = `
 .gc-action-strip>*{flex-shrink:0}
 .gc-action-heading{font-size:12px;font-weight:800;color:#1A3E78;white-space:nowrap;margin-right:2px}
 .gc-action-label{font-size:11px;font-weight:700;color:#5A6478;white-space:nowrap;margin-left:4px}
+.gc-scope-select,.gc-ref-date{height:34px;padding:0 8px;border:1px solid #C9D3E3;border-radius:8px;background:#fff;color:#1A3E78;font:700 11px/1 inherit;flex:0 0 auto}
+.gc-ref-nav{height:34px;min-width:30px;padding:0 7px;border:1px solid #C9D3E3;border-radius:8px;background:#fff;color:#1A3E78;font:700 12px/1 inherit;cursor:pointer;flex:0 0 auto}
 .gc-action-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1px solid #C9D3E3;background:#fff;border-radius:8px;font:700 12px/1 inherit;color:#1A3E78;cursor:pointer;white-space:nowrap;transition:.15s}
 .gc-action-btn:hover{background:#EBF0FA;border-color:#1A3E78}
 .gc-action-btn:disabled{opacity:.5;cursor:not-allowed}
@@ -1135,11 +1143,12 @@ GC.telegram = {
       record.approval, record.approved, record.review];
     return vals.some(v => v === false || /pending|待審|待核|待批|review|approval|審查|核可|未完成/i.test(String(v || '')));
   },
-  buildText(cfg, period, mode) {
+  buildText(cfg, period, mode, ref, scope) {
     cfg = cfg || {};
     const all = typeof cfg.read === 'function' ? (cfg.read() || []) : [];
     const list = Array.isArray(all) ? all : [];
-    const view = PERIOD.filter(list, period || 'month', cfg.dateField || 'date');
+    let view = PERIOD.filter(list, period || 'month', cfg.dateField || 'date', ref);
+    if (cfg.scopeField && scope && scope !== 'all') view = view.filter(r => String(r && r[cfg.scopeField] || '') === String(scope));
     const pending = view.filter(GC.telegram.pending);
     const periodLabels = {
       day: I18.t('gc.today'), week: I18.t('gc.thisWeek'), month: I18.t('gc.thisMonth'),
@@ -1154,12 +1163,13 @@ GC.telegram = {
         U.escapeHtml(I18.t('gc.total')) + ': ' + list.length,
       '🧾 ' + U.escapeHtml(I18.t('gc.mode')) + ': ' + U.escapeHtml(modeLabels[mode] || modeLabels.summary)
     ];
+    const photoCount = cfg.photoField ? view.filter(r => U.asArray(r && r[cfg.photoField]).length).length : 0;
+    const weatherCount = cfg.weatherField ? view.filter(r => r && r[cfg.weatherField]).length : 0;
+    lines.push('━━━━━━━━━━━━━━━━', '📊 <b>Dashboard</b>');
+    lines.push('• Records: <b>' + view.length + '</b> | Photos: ' + photoCount + (cfg.weather ? ' | Weather: ' + weatherCount : ''));
     if (cfg.groupField) {
       const groups = GC.dash.groupBy(view, r => r && r[cfg.groupField]).slice(0, 8);
-      if (groups.length) {
-        lines.push('━━━━━━━━━━━━━━━━');
-        groups.forEach(g => lines.push('• ' + U.escapeHtml(g.label) + ': ' + g.value));
-      }
+      groups.forEach(g => lines.push('• ' + U.escapeHtml(g.label) + ': ' + g.value));
     }
     if (mode === 'review' || mode === 'approval') {
       lines.push('━━━━━━━━━━━━━━━━');
@@ -1169,9 +1179,9 @@ GC.telegram = {
     lines.push('━━━━━━━━━━━━━━━━', '⏰ ' + U.ymdhms());
     return lines.join('\n');
   },
-  async send(text) {
+  async send(text, photos, buttons) {
     if (!text) throw new Error('No Telegram text');
-    const res = await CLOUD.post({ action: 'telegram', text: text });
+    const res = await CLOUD.post({ action: 'telegram', text: text, photos: Array.isArray(photos) ? photos.slice(0, 5) : [], buttons: Array.isArray(buttons) ? buttons : [] });
     if (!res || res.ok === false) throw new Error((res && res.error) || 'Telegram request failed');
     return res;
   }
@@ -1189,10 +1199,14 @@ GC.attach = function (cfg) {
        dateField, idField,
        groupField          儀表板長條圖分組欄位
        importSchema        智慧匯入欄位對應
+       importParser(file,schema) -> Promise<{objects,headers,...}>（可自訂跨分頁解析）
+       telegramScopes      [{value,zh,en,km}]（Telegram 資料類型選擇）
+       scopeField          Telegram／統計分組篩選欄位
+       periodRef           true 時顯示基準日期
        weather:  bool      是否顯示天氣統計
        photo:    bool      是否顯示照片統計
        gasUrl,
-       telegramBuilder({ period, mode, cfg }) -> string  (optional module-specific report)
+       telegramBuilder({ period, mode, ref, scope, cfg }) -> string|{text,photos}  (optional module-specific report)
      } */
   cfg = cfg || {};
   if (!cfg.__storageReady && STORAGE && STORAGE.ready) {
@@ -1202,7 +1216,8 @@ GC.attach = function (cfg) {
   }
   const C = Object.assign({
     dateField: 'date', idField: 'id', groupField: null,
-    weather: false, photo: false, importSchema: null,
+    weather: false, photo: false, importSchema: null, importParser: null,
+    telegramScopes: null, scopeField: null, periodRef: false,
     weatherField: 'weather',   // 各模組欄位名可能不同（如 temperature 用 'wx'）
     photoField:   'photos'
   }, cfg || {});
@@ -1219,8 +1234,10 @@ GC.attach = function (cfg) {
       <div id="gcTopCloud"></div>
       <button type="button" class="gc-action-btn gc-tg-btn" data-gc-send>✈️ <span data-i="gc.telegram">${U.escapeHtml(I18.t('gc.telegram'))}</span></button>
       ${C.importSchema ? `<button type="button" class="gc-action-btn gc-import-btn" data-gc-import>📥 <span data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</span></button>` : ''}
+      ${C.telegramScopes ? `<span class="gc-action-label" data-i="gc.dataType">${U.escapeHtml(I18.t('gc.dataType'))}</span><select class="gc-scope-select" data-gc-scope aria-label="${U.escapeHtml(I18.t('gc.dataType'))}"></select>` : ''}
       <span class="gc-action-label" data-i="gc.period">${U.escapeHtml(I18.t('gc.period'))}</span>
       <div id="gcQuickPeriod"></div>
+      ${C.periodRef ? `<span class="gc-action-label" data-i="gc.refDate">${U.escapeHtml(I18.t('gc.refDate'))}</span><button type="button" class="gc-ref-nav" data-gc-ref-prev aria-label="Previous date">◀</button><input class="gc-ref-date" data-gc-ref type="date" aria-label="${U.escapeHtml(I18.t('gc.refDate'))}"><button type="button" class="gc-ref-nav" data-gc-ref-next aria-label="Next date">▶</button>` : ''}
       <span class="gc-action-label" data-i="gc.mode">${U.escapeHtml(I18.t('gc.mode'))}</span>
       <div class="gc-mode" id="gcQuickMode">
         <button type="button" class="gc-mode-btn on" data-gc-mode="summary">📄 <span data-i="gc.summary">${U.escapeHtml(I18.t('gc.summary'))}</span></button>
@@ -1259,6 +1276,36 @@ GC.attach = function (cfg) {
   /* ── 元件掛載 ── */
   let period = 'month';
   let mode = 'summary';
+  let periodRef = C.periodRef ? U.ymd(new Date()) : null;
+  let scope = 'all';
+  const scopeSelect = bar.querySelector('[data-gc-scope]');
+  const refInput = bar.querySelector('[data-gc-ref]');
+  const refPrev = bar.querySelector('[data-gc-ref-prev]');
+  const refNext = bar.querySelector('[data-gc-ref-next]');
+  const scopeLabel = item => typeof item === 'string' ? item : (item[I18.lang] || item.zh || item.en || item.value || '');
+  function renderScope() {
+    if (!scopeSelect || !Array.isArray(C.telegramScopes)) return;
+    scopeSelect.innerHTML = C.telegramScopes.map(item => `<option value="${U.escapeHtml(item.value)}">${U.escapeHtml(scopeLabel(item))}</option>`).join('');
+    scopeSelect.value = scope;
+  }
+  renderScope();
+  if (refInput) {
+    refInput.value = periodRef || '';
+    refInput.onchange = () => { periodRef = refInput.value || U.ymd(new Date()); refresh(); };
+  }
+  function moveReference(delta) {
+    const d = new Date((periodRef || U.ymd(new Date())) + 'T00:00:00');
+    if (period === 'week') d.setDate(d.getDate() + delta * 7);
+    else if (period === 'month') d.setMonth(d.getMonth() + delta);
+    else if (period === 'year') d.setFullYear(d.getFullYear() + delta);
+    else d.setDate(d.getDate() + delta);
+    periodRef = U.ymd(d);
+    if (refInput) refInput.value = periodRef;
+    refresh();
+  }
+  if (refPrev) refPrev.onclick = () => moveReference(-1);
+  if (refNext) refNext.onclick = () => moveReference(1);
+  if (scopeSelect) scopeSelect.onchange = () => { scope = scopeSelect.value || 'all'; refresh(); };
   const quickPeriod = GC.period.mount('#gcQuickPeriod', {
     value: period,
     onChange: m => { period = m; refresh(); }
@@ -1289,9 +1336,13 @@ GC.attach = function (cfg) {
     if (telegramState) telegramState.textContent = I18.t('gc.sync');
     try {
       const customText = typeof C.telegramBuilder === 'function'
-        ? await C.telegramBuilder({ period, mode, cfg: C })
+        ? await C.telegramBuilder({ period, mode, ref: periodRef, scope, cfg: C })
         : null;
-      await GC.telegram.send(customText || GC.telegram.buildText(C, period, mode));
+      const built = customText == null ? GC.telegram.buildText(C, period, mode, periodRef, scope) : customText;
+      const packet = typeof built === 'string' ? { text: built, photos: [] } : (built || { text: '', photos: [] });
+      const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
+      const buttons = packet.buttons || [[{text:'📊 Open Dashboard / 開啟平台',url:dashUrl}]];
+      await GC.telegram.send(packet.text, packet.photos, buttons);
       if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
     } catch (e) {
@@ -1321,15 +1372,16 @@ GC.attach = function (cfg) {
     if (importModal) importModal.onclick = e => { if (e.target === importModal) closeImport(); };
     GC.import.mount('#gcImport', {
       schema: C.importSchema,
+      parse: C.importParser,
       onData: (rows, meta) => {
         const cur = C.read() || [];
         rows.forEach(r => {
           r[C.idField] = r[C.idField] || U.uid('imp');
           r.updatedAt = U.now();
           delete r._raw;
-          cur.push(r);
         });
-        C.write(cur);
+        const merged = typeof C.mergeImport === 'function' ? C.mergeImport(cur, rows) : cur.concat(rows);
+        C.write(merged);
         refresh();
         closeImport();
         GC.toast(`✅ ${rows.length} ${I18.t('gc.imported')} — ${meta.fileName}`, 'success');
@@ -1341,7 +1393,8 @@ GC.attach = function (cfg) {
   /* ── 重新整理儀表板 ── */
   function refresh() {
     const all  = C.read() || [];
-    const view = GC.period.filter(all, period, C.dateField);
+    let view = GC.period.filter(all, period, C.dateField, periodRef);
+    if (C.scopeField && scope && scope !== 'all') view = view.filter(r => String(r && r[C.scopeField] || '') === String(scope));
     const cards = [
       { label: I18.t('gc.records'), value: view.length, color: '#1A3E78' },
       { label: I18.t('gc.total'),   value: all.length, sub: I18.t('gc.all'), color: '#5A6478' }
@@ -1370,7 +1423,7 @@ GC.attach = function (cfg) {
   /* ── 分頁內工具列：面板保持可見，避免智慧匯入／雲端按鈕被藏起來 ── */
   const panel = bar.querySelector('#gcPanel');
   if (panel) panel.classList.add('open');
-  window.addEventListener('gc:langchange', refresh);
+  window.addEventListener('gc:langchange', () => { renderScope(); refresh(); });
 
   refresh();
   return { refresh, getPeriod: () => period, sendTelegram: sendCurrentTelegram };

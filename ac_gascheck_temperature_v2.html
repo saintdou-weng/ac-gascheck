@@ -72,6 +72,7 @@ input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--pr
 .cb{padding:18px;}
 /* CTRL BAR */
 .cbar{background:var(--card);border-radius:var(--r);padding:13px 18px;margin-bottom:16px;box-shadow:var(--shadow-sm);border:1px solid var(--border);display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+.date-nav{display:flex;align-items:center;gap:4px}.date-nav button{height:32px;min-width:28px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);cursor:pointer;font-weight:700}.date-nav input{width:140px!important}
 .rec-weather{display:flex;align-items:center;gap:7px;flex:1 1 300px;min-width:260px}.rec-weather .gc-weather{gap:4px}.rec-weather .gc-wx-btn{min-width:42px;padding:4px 6px}.rec-weather .gc-wx-ic{font-size:15px}.rec-weather .gc-wx-tx{font-size:9px}
 .clbl{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
 /* STAT CARDS */
@@ -229,7 +230,7 @@ tbody tr:hover{background:var(--bg);}
   <div class="sgrid" id="dash-stats"></div>
   <div class="cbar">
     <span class="clbl" id="i-date">日期</span>
-    <input type="date" id="dash-date" style="width:155px" onchange="renderDash()">
+    <div class="date-nav"><button type="button" onclick="shiftTempDate('dash-date',-1)">◀</button><input type="date" id="dash-date" style="width:155px" onchange="renderDash()"><button type="button" onclick="shiftTempDate('dash-date',1)">▶</button></div>
     <div class="ptog">
       <button class="pbtn on" id="dbam" onclick="setDP('morning')">早上</button>
       <button class="pbtn" id="dbpm" onclick="setDP('afternoon')">下午</button>
@@ -245,7 +246,7 @@ tbody tr:hover{background:var(--bg);}
 <div class="pnl" id="pnl-rec">
   <div class="cbar">
     <span class="clbl" id="i-date2">日期</span>
-    <input type="date" id="rec-date" style="width:155px">
+    <div class="date-nav"><button type="button" onclick="shiftTempDate('rec-date',-1)">◀</button><input type="date" id="rec-date" style="width:155px"><button type="button" onclick="shiftTempDate('rec-date',1)">▶</button></div>
     <div class="ptog">
       <button class="pbtn on" id="rbam" onclick="setRP('morning')">早上</button>
       <button class="pbtn" id="rbpm" onclick="setRP('afternoon')">下午</button>
@@ -397,7 +398,7 @@ tbody tr:hover{background:var(--bg);}
           </div>
           <div class="g2" style="margin-bottom:10px">
             <div class="fg"><label id="i-tgtype">報告類型</label><select id="tg-type"><option value="daily" id="i-tgd">每日摘要</option><option value="anomaly" id="i-tga">異常報告</option><option value="full" id="i-tgf">完整報告</option></select></div>
-            <div class="fg"><label id="i-tgdate">日期</label><input type="date" id="tg-date"></div>
+            <div class="fg"><label id="i-tgdate">日期</label><div class="date-nav"><button type="button" onclick="shiftTempDate('tg-date',-1)">◀</button><input type="date" id="tg-date"><button type="button" onclick="shiftTempDate('tg-date',1)">▶</button></div></div>
           </div>
           <div class="flw" style="gap:6px">
             <button class="btn bg sm" onclick="prevTG()" id="i-prev">👁 預覽</button>
@@ -1645,12 +1646,15 @@ function buildTGmsg(type,date){
 }
 // 共用上方 Telegram 按鈕使用的詳細報告：保留每個日期、區域、時段、溫度、濕度與狀態，
 // 不再只送「za / zb」分組筆數。訊息上限前保留完整列，避免 Telegram 拒收過長內容。
-function buildTGPeriodMsg(period,mode){
+function buildTGPeriodMsg(period,mode,ref){
   const all=getR();
-  const view=(typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'d'):all.slice();
+  const view=(typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'d',ref):all.slice();
   const periodName={day:'Today / 今日',week:'This Week / 本週',month:'This Month / 本月',year:'This Year / 今年',all:'All / 全部'}[period]||period;
   const modeName={summary:'Summary / 摘要',review:'Review / 審查',approval:'Approval / 核可'}[mode]||'Summary / 摘要';
-  const lines=['🌡️ <b>VRT Temperature & Humidity / 溫濕度</b>','📅 '+periodName,'🧾 Message type / 訊息類型: '+modeName,'━━━━━━━━━━━━━━━━'];
+  const temps=view.filter(r=>r.t!==''&&r.t!=null&&!isNaN(r.t)).map(r=>+r.t), hums=view.filter(r=>r.h!==''&&r.h!=null&&!isNaN(r.h)).map(r=>+r.h);
+  const avg=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'--';
+  const anomalies=view.filter(isAnom).length, zoneCount=new Set(view.map(r=>r.z).filter(Boolean)).size;
+  const lines=['🌡️ <b>VRT Temperature & Humidity / 溫濕度</b>','📅 '+periodName,'🧾 Message type / 訊息類型: '+modeName,'━━━━━━━━━━━━━━━━','📊 <b>Dashboard / 儀表板</b>','• Records / 記錄: <b>'+view.length+'</b> | Zones / 區域: '+zoneCount,'• Avg Temp / 平均溫度: '+avg(temps)+'°C | Avg Hum / 平均濕度: '+avg(hums)+'%','• Anomaly / 異常: <b>'+anomalies+'</b>','━━━━━━━━━━━━━━━━'];
   if(!view.length){lines.push('No records / 暫無記錄','⏰ '+new Date().toLocaleString());return lines.join('\n');}
   const zones=getZ();
   const dates=[...new Set(view.map(r=>String(r.d||'').slice(0,10)).filter(Boolean))].sort();
@@ -1668,7 +1672,6 @@ function buildTGPeriodMsg(period,mode){
       count++;
     });
   });
-  const anomalies=view.filter(isAnom).length;
   lines.push('━━━━━━━━━━━━━━━━','⚠️ Anomaly / 異常: '+anomalies+' | 📋 Records / 記錄: '+view.length,'⏰ '+new Date().toLocaleString());
   const out=lines.join('\n');
   return out.length>3900?out.slice(0,3860)+'\n… (more records omitted / 其餘記錄略)':out;
@@ -1676,7 +1679,7 @@ function buildTGPeriodMsg(period,mode){
 function prevTG(){const msg=buildTGmsg(document.getElementById('tg-type').value,document.getElementById('tg-date').value||today());const p=document.getElementById('tg-prev');p.textContent=msg;p.style.display='block';}
 async function sendTG(){
   const cfg=getTG();if(!cfg.tok||!cfg.chat){toast('請設定 Bot Token 和 Chat ID','err');return;}
-  const msg=buildTGmsg(document.getElementById('tg-type').value,document.getElementById('tg-date').value||today());
+  const msg=buildTGmsg(document.getElementById('tg-type').value,document.getElementById('tg-date').value||today())+'\n\n📊 Open Dashboard / 開啟平台: https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html';
   if(!msg||!msg.trim()){toast('訊息內容為空，請確認日期有記錄','err');return;}
   try{
     // Telegram API 要用 application/json（不是 text/plain）
@@ -1950,6 +1953,13 @@ function renderAll(){
   updBadge();
 }
 
+function shiftTempDate(id,delta){
+  const el=document.getElementById(id); if(!el)return;
+  const d=new Date((el.value||today())+'T00:00:00'); d.setDate(d.getDate()+delta); el.value=_localYMD(d);
+  if(id==='dash-date')renderDash();
+  if(id==='rec-date')renderRec();
+}
+
 // ══════════════════════════════════════════
 // INIT
 // ══════════════════════════════════════════
@@ -2019,7 +2029,8 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       photo:true,
       toCloud:enrichRec,
       fromCloud:normalizeRec,
-      telegramBuilder:({period,mode})=>buildTGPeriodMsg(period,mode),
+      periodRef:true,
+      telegramBuilder:({period,mode,ref})=>buildTGPeriodMsg(period,mode,ref),
       extra:()=>({zones:getZ(),zonesMode:'merge'}),
       onRemote:(d)=>{if(d&&Array.isArray(d.zones)){const z=mergeTempZones(getZ(),d.zones);if(JSON.stringify(z)!==JSON.stringify(getZ())){setZ(z);renderAll();}}},
       importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "note": ["備註", "note", "notes", "ចំណាំ"]},

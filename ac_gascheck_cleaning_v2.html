@@ -51,6 +51,7 @@ body{font-family:'Outfit','Noto Sans TC','Noto Sans Khmer',sans-serif;background
 .fgrid{display:grid;grid-template-columns:1fr 1fr;gap:0}
 .fgrid.c3{grid-template-columns:1fr 1fr 1fr}
 .fg{border-right:1px solid var(--bdr2);border-bottom:1px solid var(--bdr2);display:flex;flex-direction:column}
+.date-nav{display:flex;align-items:center;gap:4px}.date-nav button{height:30px;min-width:28px;border:1px solid var(--bdr2);border-radius:6px;background:var(--card);color:var(--tx);cursor:pointer;font-weight:700}.date-nav .fi{flex:1;min-width:0}
 .fg:nth-child(2n){border-right:none}
 .fgrid.c3 .fg:nth-child(3n){border-right:none}
 .fgrid.c3 .fg:nth-child(2n){border-right:1px solid var(--bdr2)}
@@ -216,7 +217,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 <div class="pane" id="pane-rec"><div class="main">
   <div class="card"><div class="ch"><span class="ch-icon">✏️</span><span class="ch-title" data-i="rec-title">新增清潔記錄</span><span class="ch-note" data-i="rec-hint">帶 * 為必填</span></div>
     <div class="fgrid c3">
-      <div class="fg"><div class="fl"><span data-i="f-date">日期</span> <span style="color:var(--red)">*</span></div><input class="fi" type="date" id="r-date"></div>
+      <div class="fg"><div class="fl"><span data-i="f-date">日期</span> <span style="color:var(--red)">*</span></div><div class="date-nav"><button type="button" onclick="shiftCleanDate('r-date',-1)">◀</button><input class="fi" type="date" id="r-date"><button type="button" onclick="shiftCleanDate('r-date',1)">▶</button></div></div>
       <div class="fg"><div class="fl"><span data-i="f-loc">地點</span> <span style="color:var(--red)">*</span></div><select class="fi" id="r-loc"><option value="">— 選擇 —</option></select></div>
       <div class="fg"><div class="fl"><span data-i="f-shift">班次</span></div><select class="fi" id="r-shift"><option value="Day">Day 日班</option><option value="Night">Night 夜班</option></select></div>
       <div class="fg"><div class="fl"><span data-i="f-cleaner">清潔員</span> <span style="color:var(--red)">*</span></div><select class="fi" id="r-cleaner"><option value="">— 選擇 —</option></select></div>
@@ -302,7 +303,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
   </div>
   <div class="card"><div class="ch"><span class="ch-icon">📝</span><span class="ch-title" data-i="s6-info">巡查資訊</span></div>
     <div class="fgrid c3">
-      <div class="fg"><div class="fl" data-i="f-date">日期</div><input class="fi" type="date" id="s6-date"></div>
+      <div class="fg"><div class="fl" data-i="f-date">日期</div><div class="date-nav"><button type="button" onclick="shiftCleanDate('s6-date',-1)">◀</button><input class="fi" type="date" id="s6-date"><button type="button" onclick="shiftCleanDate('s6-date',1)">▶</button></div></div>
       <div class="fg"><div class="fl" data-i="f-loc">地點</div><select class="fi" id="s6-loc" onchange="sixs.updateHeader()"><option value="">— 選擇 —</option></select></div>
       <div class="fg"><div class="fl" data-i="f-observer">觀察員</div><select class="fi" id="s6-obs"><option value="">— 選擇 —</option></select></div>
     </div>
@@ -712,9 +713,10 @@ var api = (() => {
     const r=await fetch(c.gasUrl+'?'+qs);
     return r.json();
   };
-  const tg = async (msg) => {
+  const tg = async (msg,buttons) => {
     const c=cfg(); if(!c.botToken||!c.chatId) return;
-    await fetch(`https://api.telegram.org/bot${c.botToken}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:c.chatId,text:msg,parse_mode:'HTML'})});
+    const keyboard=buttons||[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_cleaning_v2.html'}]];
+    await fetch(`https://api.telegram.org/bot${c.botToken}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:c.chatId,text:msg,parse_mode:'HTML',reply_markup:{inline_keyboard:keyboard}})});
   };
   return { post, get, tg };
 })();
@@ -808,6 +810,12 @@ var dash = (() => {
 })();
 
 /* ═══ RECORD MODULE ═══ */
+function shiftCleanDate(id,delta){
+  const el=document.getElementById(id); if(!el)return;
+  const d=new Date((el.value||de.fmt(new Date()))+'T00:00:00');
+  d.setDate(d.getDate()+delta); el.value=de.fmt(d);
+  if(id==='s6-date'){const show=document.getElementById('s6-date-show');if(show)show.textContent=el.value;}
+}
 var rec = (() => {
   const save = async () => {
     const date=gv('r-date'),locId=gv('r-loc'),cleaner=gv('r-cleaner');
@@ -1493,6 +1501,7 @@ if(typeof sv2==='function')         window.sv2=sv2;
       groupLabel:'Location',
       weather:false,
       photo:true,
+      periodRef:true,
       importSchema:{"date": ["日期", "date"], "locId": ["地點", "location", "loc", "ទីតាំង"], "cleaner": ["清潔人員", "cleaner", "អ្នកសម្អាត"], "checker": ["檢查人", "checker", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "ចំណាំ"]},
     read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_clean_hub_v2')||'{}'); return Array.isArray(d.records)?d.records:[]; }catch(e){ return []; } },
     write(list){ try{ const d=JSON.parse(localStorage.getItem('vrt_clean_hub_v2')||'{}'); d.records=list; localStorage.setItem('vrt_clean_hub_v2',JSON.stringify(d)); }catch(e){} },

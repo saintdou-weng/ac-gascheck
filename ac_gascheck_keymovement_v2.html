@@ -1388,7 +1388,7 @@ async function sendTgMessage(token, chat, text) {
   try {
     const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ chat_id:chat, text, parse_mode:'Markdown' })
+      body: JSON.stringify({ chat_id:chat, text, parse_mode:'Markdown', reply_markup:{inline_keyboard:[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_keymovement_v2.html'}]]} })
     });
     const d = await r.json();
     if(d.ok) showToast('Telegram 發送成功 ✓', 'success');

@@ -149,8 +149,8 @@ select.bi{cursor:pointer}
 </div>
 
 <div class="tabs" id="tab-bar">
-  <div class="tab active" onclick="switchTab('modA')">📦 <span data-i18n="tab-a">模組A 內部</span></div>
-  <div class="tab" onclick="switchTab('modB')">🚛 <span data-i18n="tab-b">模組B 大門</span></div>
+  <div class="tab active" onclick="switchTab('modA')">♻️ <span data-i18n="tab-a">Recycle 回收</span></div>
+  <div class="tab" onclick="switchTab('modB')">🗑️ <span data-i18n="tab-b">Waste 廢料</span></div>
   <div class="tab" onclick="switchTab('report')">📊 <span data-i18n="tab-report">報表分析</span></div>
   <div class="tab" onclick="switchTab('history')">📋 <span data-i18n="tab-hist">歷史記錄</span></div>
   <div class="tab" onclick="switchTab('import')">📥 <span data-i18n="tab-import">歷史匯入</span></div>
@@ -164,7 +164,7 @@ select.bi{cursor:pointer}
   <!-- Period analysis bar -->
   <div class="sec">
     <div class="period-bar">
-      <strong style="font-size:12px">📦 模組A — 內部廢料</strong>
+      <strong style="font-size:12px">♻️ Recycle 回收</strong>
       <div class="ptoggle" id="a-ptoggle">
         <button class="active" onclick="setAPeriod('month',this)">月</button>
         <button onclick="setAPeriod('week',this)">週</button>
@@ -215,7 +215,7 @@ select.bi{cursor:pointer}
   <!-- Supplier Dashboard -->
   <div class="sec">
     <div class="period-bar">
-      <strong style="font-size:12px">🚛 模組B — 大門 & 供應商趟數</strong>
+      <strong style="font-size:12px">🗑️ Waste 廢料</strong>
       <div class="ptoggle" id="b-ptoggle">
         <button class="active" onclick="setBPeriod('month',this)">月</button>
         <button onclick="setBPeriod('week',this)">週</button>
@@ -242,7 +242,7 @@ select.bi{cursor:pointer}
 
   <!-- BATCH INPUT FORM -->
   <div class="sec">
-    <div class="sec-head">✏️ <span data-i18n="b-batch-title">批次填寫 — 大門出入記錄</span>
+    <div class="sec-head">✏️ <span data-i18n="b-batch-title">批次填寫 — Waste 廢料記錄</span>
       <span class="note">一次填多行，統一提交</span>
     </div>
     <div class="batch-wrap">
@@ -266,7 +266,7 @@ select.bi{cursor:pointer}
 
   <!-- This month gate records -->
   <div class="sec" id="b-month-records">
-    <div class="sec-head">📋 本月大門記錄 <span class="note" id="b-month-label"></span></div>
+    <div class="sec-head">📋 Waste 記錄 <span class="note" id="b-month-label"></span></div>
     <div class="htable-wrap">
       <table class="htable">
         <thead><tr>
@@ -297,11 +297,11 @@ select.bi{cursor:pointer}
     <div class="stat-row" id="r-stats"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border2)">
       <div style="border-right:1px solid var(--border2)">
-        <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)">內部廢料趨勢 Internal Waste (kg)</div>
+        <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)">Recycle 趨勢 (kg)</div>
         <div class="chart-wrap"><canvas id="chartR1"></canvas></div>
       </div>
       <div>
-        <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)">大門出車趟數 Gate Trips</div>
+        <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)">Waste 記錄趟數</div>
         <div class="chart-wrap"><canvas id="chartR2"></canvas></div>
       </div>
     </div>
@@ -322,8 +322,8 @@ select.bi{cursor:pointer}
     <div class="period-bar">
       <strong style="font-size:12px">📋 歷史記錄查詢</strong>
       <select class="period-select" id="h-module" onchange="queryHistory()">
-        <option value="gate">大門 Gate</option>
-        <option value="internal">內部 Internal</option>
+        <option value="gate">Waste</option>
+        <option value="internal">Recycle</option>
       </select>
       <select class="period-select" id="h-year" onchange="queryHistory()"></select>
       <select class="period-select" id="h-month" onchange="queryHistory()">
@@ -345,7 +345,7 @@ select.bi{cursor:pointer}
 <div id="tab-import" class="tab-content">
   <div class="sec">
     <div class="sec-head">📥 <span data-i18n="import-title">歷史資料匯入</span>
-      <span class="note">支援 01__VRT_monthly_waste_report (內部) 及 02__WASTE_CHECK_RECORD (大門)</span>
+      <span class="note">支援 Recycle 月報及 Waste 檢查記錄</span>
     </div>
     <div class="import-zone" id="import-zone"
          onclick="document.getElementById('import-file').click()"
@@ -354,7 +354,7 @@ select.bi{cursor:pointer}
          ondrop="handleImportDrop(event)">
       <div style="font-size:32px">📂</div>
       <div style="font-size:13px;font-weight:600;margin-top:8px">點擊或拖放 Excel 檔案至此</div>
-      <div style="font-size:11px;margin-top:4px;color:#94a3b8">支援 01 內部廢料 / 02 大門記錄 (.xlsx/.xls)</div>
+      <div style="font-size:11px;margin-top:4px;color:#94a3b8">支援 Recycle / Waste Excel (.xlsx/.xls)</div>
     </div>
     <input type="file" id="import-file" accept=".xlsx,.xls" style="display:none" onchange="handleImportFile(this)">
     <div id="import-preview" style="padding:12px;display:none">
@@ -406,7 +406,7 @@ select.bi{cursor:pointer}
       <div style="margin-bottom:16px">
         <label style="display:block;font-size:11px;font-weight:700;color:var(--dim);margin-bottom:5px">Telegram Chat ID</label>
         <input id="cfg-chat" class="period-select" type="text"
-          placeholder="-4002295659"
+          placeholder="-5113064563"
           style="width:100%;font-family:monospace;font-size:10px;box-sizing:border-box">
       </div>
 
@@ -438,7 +438,7 @@ function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2
 /* ========== CONFIG ========== */
 const CFG_KEY = 'vrt_ehs_cfg_v1';
 const TG_BOT   = '8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM';
-const TG_GROUP = '-4002295659';
+const TG_GROUP = '-5113064563';
 const PAUL_UID = '5026942575';
 const SUPPLIERS = ['K.S.W.M','SONYAPICH'];
 const SUP_TARGET = 4;
@@ -453,19 +453,19 @@ let lang = (() => {
 })();
 const T = {
   zh:{
-    'tab-a':'模組A 內部','tab-b':'模組B 大門','tab-report':'報表分析','tab-hist':'歷史記錄','tab-import':'歷史匯入',
-    'a-batch-title':'批次填寫 — 上月回收記錄','b-batch-title':'批次填寫 — 大門出入記錄',
-    'import-title':'歷史資料匯入',
+    'tab-a':'Recycle 回收','tab-b':'Waste 廢料','tab-report':'報表分析','tab-hist':'歷史記錄','tab-import':'歷史匯入',
+    'a-batch-title':'批次填寫 — Recycle 回收記錄','b-batch-title':'批次填寫 — Waste 廢料記錄',
+    'import-title':'智慧匯入 Recycle / Waste',
   },
   en:{
-    'tab-a':'Module A Internal','tab-b':'Module B Gate','tab-report':'Report','tab-hist':'History','tab-import':'Import',
-    'a-batch-title':'Batch Entry — Last Month Recycling','b-batch-title':'Batch Entry — Gate Records',
-    'import-title':'Historical Data Import',
+    'tab-a':'Recycle','tab-b':'Waste','tab-report':'Report','tab-hist':'History','tab-import':'Import',
+    'a-batch-title':'Batch Entry — Recycle','b-batch-title':'Batch Entry — Waste',
+    'import-title':'Smart Import — Recycle / Waste',
   },
   km:{
-    'tab-a':'មូឌុល A ខាងក្នុង','tab-b':'មូឌុល B ទ្វារ','tab-report':'របាយការណ៍','tab-hist':'កំណត់ត្រា','tab-import':'នាំចូល',
-    'a-batch-title':'បំពេញជាក្រុម — ការកកូរ','b-batch-title':'បំពេញជាក្រុម — ការចូល/ចេញ',
-    'import-title':'នាំចូលទិន្នន័យប្រវត្តិ',
+    'tab-a':'Recycle','tab-b':'Waste','tab-report':'របាយការណ៍','tab-hist':'កំណត់ត្រា','tab-import':'នាំចូល',
+    'a-batch-title':'បំពេញជាក្រុម — Recycle','b-batch-title':'បំពេញជាក្រុម — Waste',
+    'import-title':'នាំចូលឆ្លាតវៃ — Recycle / Waste',
   }
 };
 
@@ -474,13 +474,13 @@ const T = {
 const EHS_LABELS = [
   ['VRT 廢棄物回收管理系統','VRT Waste Recycling Management System','ប្រព័ន្ធគ្រប់គ្រងការកែច្នៃសំណល់ VRT'],
   ['Vantage River Textiles · Sihanoukville','Vantage River Textiles · Sihanoukville','Vantage River Textiles · Sihanoukville'],
-  ['模組A 內部','Module A Internal','មូឌុល A ខាងក្នុង'],['模組B 大門','Module B Gate','មូឌុល B ច្រកទ្វារ'],
+  ['Recycle 回收','Recycle','Recycle'],['Waste 廢料','Waste','Waste'],
   ['報表分析','Report','របាយការណ៍'],['歷史記錄','History','ប្រវត្តិ'],['歷史匯入','Import','នាំចូល'],
   ['Telegram/雲端','Telegram / Cloud','Telegram / Cloud'],
-  ['模組A — 內部廢料','Module A — Internal Recycling','មូឌុល A — ការកែច្នៃខាងក្នុង'],
-  ['模組B — 大門 & 供應商趟數','Module B — Gate & Supplier Trips','មូឌុល B — ច្រកទ្វារ និងចំនួនជើងអ្នកផ្គត់ផ្គង់'],
-  ['批次填寫 — 上月回收記錄','Batch Entry — Last Month Recycling','បំពេញជាក្រុម — កំណត់ត្រាកែច្នៃខែមុន'],
-  ['批次填寫 — 大門出入記錄','Batch Entry — Gate Records','បំពេញជាក្រុម — កំណត់ត្រាចូលចេញច្រកទ្វារ'],
+  ['Recycle 回收','Recycle','Recycle'],
+  ['Waste 廢料','Waste','Waste'],
+  ['批次填寫 — Recycle 回收記錄','Batch Entry — Recycle','បំពេញជាក្រុម — Recycle'],
+  ['批次填寫 — Waste 廢料記錄','Batch Entry — Waste','បំពេញជាក្រុម — Waste'],
   ['一次填多行，統一提交','Enter multiple rows, then submit once','បញ្ចូលជួរច្រើន រួចដាក់ស្នើតែម្តង'],
   ['日期 Date *','Date *','កាលបរិច្ឆេទ *'],['塑膠 Plastic (kg)','Plastic (kg)','ប្លាស្ទិក (kg)'],
   ['裁切碎布 Fabric (kg)','Fabric (kg)','ក្រណាត់ (kg)'],['紙管 Core (kg)','Core (kg)','ស្នូលក្រដាស (kg)'],
@@ -489,7 +489,7 @@ const EHS_LABELS = [
   ['車牌','Vehicle No.','លេខយានយន្ត'],['固體','Solid','រឹង'],['工業','Industrial','ឧស្សាហកម្ម'],
   ['重量(kg)','Weight (kg)','ទម្ងន់ (kg)'],['Time In *','Time In *','ពេលចូល *'],['Time Out','Time Out','ពេលចេញ'],
   ['Gate Keeper','Gate Keeper','អ្នកយាមច្រក'],['備註','Remark','ចំណាំ'],['新增一行','Add Row','បន្ថែមជួរ'],
-  ['清除全部','Clear All','លុបទាំងអស់'],['本月大門記錄','This Month Gate Records','កំណត់ត្រាច្រកទ្វារខែនេះ'],
+  ['清除全部','Clear All','លុបទាំងអស់'],['Waste 記錄','Waste Records','Waste Records'],
   ['綜合報表分析','Consolidated Report','របាយការណ៍សង្ខេប'],['歷史記錄查詢','History Query','ស្វែងរកប្រវត្តិ'],
   ['歷史資料匯入','Historical Data Import','នាំចូលទិន្នន័យប្រវត្តិ'],['連線設定','Connection Settings','ការកំណត់ការតភ្ជាប់'],
   ['GAS Web App URL','GAS Web App URL','GAS Web App URL'],['Telegram Bot Token','Telegram Bot Token','Telegram Bot Token'],
@@ -499,16 +499,16 @@ const EHS_LABELS = [
   ['月','Month','ខែ'],['週','Week','សប្ដាហ៍'],['年','Year','ឆ្នាំ'],['日','Day','ថ្ងៃ'],
   ['總趟數','Total Trips','ចំនួនជើងសរុប'],['異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី'],
   ['供應商達標','Suppliers Meeting Target','អ្នកផ្គត់ផ្គង់ដល់គោលដៅ'],['回收次數','Recycling Count','ចំនួនកែច្នៃ'],
-  ['內部廢料 (kg)','Internal Recycling (kg)','សំណល់កែច្នៃខាងក្នុង (kg)'],['大門趟數','Gate Trips','ចំនួនជើងច្រកទ្វារ']
+  ['Recycle (kg)','Recycle (kg)','Recycle (kg)'],['Waste 記錄','Waste Records','Waste Records']
 ].map(x=>({zh:x[0],en:x[1],km:x[2]}));
 const EHS_PARTS = [
-  ['模組A','Module A','មូឌុល A'],['模組B','Module B','មូឌុល B'],['內部廢料','Internal Recycling','សំណល់កែច្នៃខាងក្នុង'],
-  ['大門','Gate','ច្រកទ្វារ'],['供應商','Supplier','អ្នកផ្គត់ផ្គង់'],['趟數','Trips','ចំនួនជើង'],['本月','This Month','ខែនេះ'],
+  ['Recycle','Recycle','Recycle'],['Waste','Waste','Waste'],['內部廢料','Recycle','Recycle'],
+  ['大門','Waste','Waste'],['供應商','Supplier','អ្នកផ្គត់ផ្គង់'],['趟數','Trips','ចំនួនជើង'],['本月','This Month','ខែនេះ'],
   ['合計','Total','សរុប'],['回收次數','Recycling Count','ចំនួនកែច្នៃ'],['異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី'],
   ['目標','Target','គោលដៅ'],['達標','Target Met','ដល់គោលដៅ'],['未達標','Below Target','មិនដល់គោលដៅ'],['送審','Submit for Review','ដាក់ស្នើពិនិត្យ'],
   ['等待核可','Waiting for Approval','កំពុងរង់ចាំអនុម័ត'],['清除全部','Clear All','លុបទាំងអស់'],
   ['共','Total','សរុប'],['筆','records','កំណត់ត្រា'],['趟','trips','ជើង'],['狀態','Status','ស្ថានភាព'],
-  ['等待','Waiting','រង់ចាំ'],['核可','Approval','អនុម័ត'],['內部','Internal','ខាងក្នុង'],['出入','Entry / Exit','ចូល / ចេញ'],
+  ['等待','Waiting','រង់ចាំ'],['核可','Approval','អនុម័ត'],['內部','Recycle','Recycle'],['出入','Waste Entry / Exit','Waste Entry / Exit'],
   ['廢料','Recycling','សំណល់'],['資料','Data','ទិន្នន័យ'],['設定','Settings','ការកំណត់'],['天','days','ថ្ងៃ']
 ].map(x=>({zh:x[0],en:x[1],km:x[2]}));
 EHS_PARTS.push(
@@ -846,9 +846,9 @@ function renderReport(){
   const curTrips=curGate.length,prevTrips=prevGate.length;
 
   document.getElementById('r-stats').innerHTML=`
-    <div class="stat-card"><div class="stat-val">${curTotalKg.toFixed(0)}</div><div class="stat-lbl">內部廢料 (kg)</div></div>
+    <div class="stat-card"><div class="stat-val">${curTotalKg.toFixed(0)}</div><div class="stat-lbl">Recycle (kg)</div></div>
     <div class="stat-card"><div class="stat-val">${curInt.length}</div><div class="stat-lbl">回收次數</div></div>
-    <div class="stat-card"><div class="stat-val">${curTrips}</div><div class="stat-lbl">大門趟數</div></div>
+    <div class="stat-card"><div class="stat-val">${curTrips}</div><div class="stat-lbl">Waste Records</div></div>
     <div class="stat-card"><div class="stat-val">${SUPPLIERS.filter(s=>curGate.filter(r=>r.supplier===s).length>=SUP_TARGET).length}/${SUPPLIERS.length}</div><div class="stat-lbl">供應商達標</div></div>
   `;
 
@@ -883,7 +883,7 @@ function renderReport(){
 
   // Comparison table
   const rows=[
-    {m:'內部廢料 Total (kg)',c:curTotalKg.toFixed(0),p:prevTotalKg.toFixed(0),cv:curTotalKg,pv:prevTotalKg},
+    {m:'Recycle Total (kg)',c:curTotalKg.toFixed(0),p:prevTotalKg.toFixed(0),cv:curTotalKg,pv:prevTotalKg},
     {m:'Plastic (kg)',
      c:curInt.reduce((s,r)=>s+(+r.plastic_kg||0),0).toFixed(0),
      p:prevInt.reduce((s,r)=>s+(+r.plastic_kg||0),0).toFixed(0),
@@ -894,7 +894,7 @@ function renderReport(){
      p:prevInt.reduce((s,r)=>s+(+r.fabric_kg||0),0).toFixed(0),
      cv:curInt.reduce((s,r)=>s+(+r.fabric_kg||0),0),
      pv:prevInt.reduce((s,r)=>s+(+r.fabric_kg||0),0)},
-    {m:'大門趟數 Gate Trips',c:curTrips,p:prevTrips,cv:curTrips,pv:prevTrips},
+    {m:'Waste Records',c:curTrips,p:prevTrips,cv:curTrips,pv:prevTrips},
     ...SUPPLIERS.map(s=>({
       m:s+' 趟數',
       c:curGate.filter(r=>r.supplier===s).length,
@@ -1274,7 +1274,7 @@ function xlsxEmbeddedPhotos(wb,sheetPath,firstDayRow){
   return out;
 }
 
-function parseImportFile(file){
+function parseImportFileLegacy(file){
   const reader=new FileReader();
   reader.onload=e=>{
     try{
@@ -1407,7 +1407,7 @@ function parseImportFile(file){
         showImportPreview(['date','plastic_kg','fabric_kg','core_kg','total_kg'],months);
         detected=true;
       }
-      if(!detected)showToast('⚠️ 無法識別格式。請確認是 01 內部廢料 或 02 大門記錄 Excel。');
+      if(!detected)showToast('⚠️ 無法識別格式。請確認是 Recycle 或 Waste Excel。');
     }catch(err){
       console.error('Import error:',err);
       showToast('❌ 解析失敗：'+err.message);
@@ -1416,9 +1416,138 @@ function parseImportFile(file){
   reader.readAsArrayBuffer(file);
 }
 
+/*
+ * EHS 專用智慧匯入：
+ * 01 Recycle 檔案是一個月份一個分頁；02 Waste 檔案除了月份廢料分頁，
+ * 還混有車輛清單分頁。通用欄位比對只會選一個最佳分頁，因此這裡明確
+ * 掃描全部分頁、排除 Chart／車輛分頁、合併 Mar／March 重複資料，並保留圖片。
+ */
+function parseEhsSmartImport(file){
+  return new Promise(function(resolve,reject){
+    if(typeof XLSX==='undefined')return reject(new Error('SheetJS (XLSX) not loaded'));
+    const reader=new FileReader();
+    reader.onerror=function(){reject(new Error('read fail'));};
+    reader.onload=function(e){
+      try{
+        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false,raw:false,bookFiles:true});
+        const workbookDoc=xlsxXmlDoc(wb.files&&wb.files['xl/workbook.xml']&&wb.files['xl/workbook.xml'].content);
+        const workbookRels=xlsxRelMap(wb.files||{},'xl/workbook.xml');
+        const sheetPaths={};
+        xlsxNodes(workbookDoc,'sheet').forEach(function(n){
+          const rel=workbookRels[n.getAttribute('r:id')||n.getAttribute('id')];
+          if(n.getAttribute('name')&&rel)sheetPaths[n.getAttribute('name')]=rel.path;
+        });
+        const monthNames={january:1,jan:1,february:2,feb:2,march:3,mar:3,april:4,apr:4,may:5,june:6,jun:6,july:7,jul:7,august:8,aug:8,september:9,sep:9,october:10,oct:10,november:11,nov:11,december:12,dec:12};
+        const num=function(v){
+          if(v==null||String(v).trim()==='')return 0;
+          if(typeof v==='number')return isFinite(v)?v:0;
+          const n=parseFloat(String(v).replace(/[\s,，]/g,'').replace(/[^0-9.+-]/g,''));
+          return isNaN(n)?0:n;
+        };
+        const text=function(v){return String(v==null?'':v).trim();};
+        const norm=function(v){return text(v).toLowerCase().replace(/[\s_\-\/()（）:：.]/g,'');};
+        const isDate=function(v){
+          const s=text(v),iso=excelDateToISO(s);
+          return /^\d{4}-\d{2}-\d{2}$/.test(iso)?iso:'';
+        };
+        const sheetMonth=function(name,raw,limit){
+          let year='';
+          const before=(raw||[]).slice(0,limit||8).flat().map(text).join(' ');
+          const ym=before.match(/\b(20\d{2})\b/); if(ym)year=ym[1];
+          let month=0;
+          const clean=text(name).toLowerCase();
+          Object.keys(monthNames).forEach(function(k){if(!month&&clean.indexOf(k)===0)month=monthNames[k];});
+          if(!month){
+            for(const row of (raw||[]).slice(0,limit||8))for(const cell of row||[]){
+              const iso=isDate(cell); if(iso){year=iso.slice(0,4);month=parseInt(iso.slice(5,7),10);break;}
+              const m=text(cell).toLowerCase().match(/(january|jan|february|feb|march|mar|april|apr|may|june|jun|july|jul|august|aug|september|sep|october|oct|november|nov|december|dec)/);
+              if(m&&!month)month=monthNames[m[1]];
+            }
+          }
+          if(!year)year=String(new Date().getFullYear());
+          return month?year+'-'+String(month).padStart(2,'0'):'';
+        };
+        const findHeader=function(raw,test){
+          for(let i=0;i<Math.min(16,raw.length);i++)if(test(raw[i].map(text).join('|').toLowerCase()))return i;
+          return -1;
+        };
+        const merge=function(map,key,row){
+          const old=map.get(key);
+          if(!old){map.set(key,Object.assign({},row,{photos:Array.isArray(row.photos)?row.photos.slice():[]}));return;}
+          (row.photos||[]).forEach(function(p){if(!old.photos.includes(p))old.photos.push(p);});
+          Object.keys(row).forEach(function(k){if((old[k]==null||old[k]==='')&&row[k]!=null&&row[k]!=='')old[k]=row[k];});
+        };
+        const recycle=new Map(),waste=new Map(),sheets=[];
+        for(const sn of wb.SheetNames){
+          if(/^chart$/i.test(text(sn)))continue;
+          const ws=wb.Sheets[sn];
+          const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
+          if(!raw||raw.length<4)continue;
+          const recycleHead=findHeader(raw,function(j){return j.indexOf('plastic')>=0&&(j.indexOf('fabric')>=0||j.indexOf('cutting')>=0);});
+          if(recycleHead>=0){
+            const month=sheetMonth(sn,raw,recycleHead+1);
+            if(month){
+              let firstDay=-1;
+              for(let i=recycleHead+1;i<raw.length;i++){const d=parseInt(text(raw[i][0]),10);if(d>=1&&d<=31){firstDay=i;break;}}
+              const photos=firstDay>=0?xlsxEmbeddedPhotos(wb,sheetPaths[sn],firstDay):{};
+              if(firstDay>=0)for(let i=firstDay;i<raw.length;i++){
+                const row=raw[i],day=parseInt(text(row[0]),10);
+                if(!(day>=1&&day<=31))continue;
+                const plastic=num(row[1]),fabric=num(row[2]),core=num(row[3]),total=num(row[4]);
+                if(!plastic&&!fabric&&!core&&!total)continue;
+                const item={id:'IMP-'+U.uid('r'),module:'internal',sourceType:'recycle',date:month+'-'+String(day).padStart(2,'0'),plastic_kg:plastic,fabric_kg:fabric,core_kg:core,total_kg:total||plastic+fabric+core,photos:photos[day]||[],remark:'',submitted_at:_localTS(),updatedAt:_localTS()};
+                merge(recycle,[item.date,item.plastic_kg,item.fabric_kg,item.core_kg,item.total_kg].join('|'),item);
+              }
+              sheets.push('Recycle:'+sn);
+            }
+          }
+          const wasteHead=findHeader(raw,function(j){
+            const jj=j.replace(/\s+/g,'');
+            return jj.indexOf('date')>=0&&jj.indexOf('supplier')>=0&&
+              (jj.indexOf('solidwaste')>=0||jj.indexOf('industrialwaste')>=0)&&jj.indexOf('kg')>=0;
+          });
+          if(wasteHead>=0){
+            const hdrs=raw[wasteHead].map(text);
+            const idx=function(){
+              const kws=Array.from(arguments).map(function(x){return norm(x);});
+              for(let i=0;i<hdrs.length;i++){const h=norm(hdrs[i]);if(kws.some(function(k){return h.indexOf(k)>=0;}))return i;}
+              return -1;
+            };
+            const dateI=idx('date'),nameI=idx('name'),supplierI=idx('supplier'),idI=idx('id number'),carI=idx('car number'),visitorI=idx('visitor id'),solidI=idx('solid waste'),indI=idx('industrial waste'),weightI=idx('kg','weight'),maintainI=idx('maintain'),checkI=idx('checked','check'),inI=idx('time in','timein'),outI=idx('time out','timeout'),keeperI=idx('gate keeper');
+            for(let i=wasteHead+1;i<raw.length;i++){
+              const row=raw[i]||[],date=isDate(row[dateI]);
+              if(!date)continue;
+              const supplier=text(row[supplierI]);
+              const item={id:'IMP-'+U.uid('w'),module:'gate',sourceType:'waste',date:date,name:text(row[nameI]),id_number:text(row[idI]),supplier:supplier.toUpperCase().indexOf('K.S')>=0||supplier.toUpperCase().indexOf('KSWM')>=0?'K.S.W.M':supplier.toUpperCase().indexOf('SONY')>=0?'SONYAPICH':supplier,car_number:text(row[carI]),visitor_id:text(row[visitorI]),solid_waste:text(row[solidI])?'V':'',industrial_waste:text(row[indI])?'V':'',weight_kg:num(row[weightI])||text(row[weightI]),maintain_by:text(row[maintainI]),checked_by:text(row[checkI]),time_in:text(row[inI]),time_out:text(row[outI]),gate_keeper:text(row[keeperI]),photos:[],submitted_at:_localTS(),updatedAt:_localTS()};
+              if(!item.name&&!item.supplier&&!item.weight_kg&&!item.solid_waste&&!item.industrial_waste)continue;
+              merge(waste,[item.date,item.name,item.supplier,item.car_number,item.time_in,item.time_out,item.weight_kg].join('|'),item);
+            }
+            sheets.push('Waste:'+sn);
+          }
+        }
+        const objects=Array.from(recycle.values()).concat(Array.from(waste.values())).sort(function(a,b){return String(a.date).localeCompare(String(b.date));});
+        if(!objects.length)throw new Error('找不到 Recycle 或 Waste 的有效欄位／資料');
+        resolve({objects:objects,headers:[],map:{},sheetName:sheets.join(', '),summary:{recycle:recycle.size,waste:waste.size,sheets:sheets}});
+      }catch(err){reject(err);}
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
+/* 舊版 EHS 匯入頁也使用同一個全分頁解析器。 */
+function parseImportFile(file){
+  parseEhsSmartImport(file).then(function(meta){
+    importRows=meta.objects||[];
+    const hasRecycle=importRows.some(function(r){return r.sourceType==='recycle';});
+    importType=hasRecycle?'internal':'gate';
+    const cols=hasRecycle?['date','plastic_kg','fabric_kg','core_kg','total_kg']:['date','name','supplier','car_number','solid_waste','industrial_waste','weight_kg','time_in','time_out'];
+    showImportPreview(cols,meta.sheetName);
+  }).catch(function(err){console.error('Import error:',err);showToast('❌ 解析失敗：'+err.message);});
+}
+
 function showImportPreview(cols,monthNote){
   const info=document.getElementById('import-info');
-  const typeLabel=importType==='internal'?'📦 內部廢料 (01格式)':'🚛 大門記錄 (02格式)';
+  const typeLabel=importType==='internal'?'♻️ Recycle 回收':'🗑️ Waste 廢料';
   info.innerHTML=`<strong>${typeLabel}</strong>${monthNote?' — '+monthNote+' 月份':''} &nbsp;|&nbsp; 解析到 <strong>${importRows.length}</strong> 筆有效記錄（顯示前 20 筆）`;
   const hdrs=cols.map(h=>'<th>'+h+'</th>').join('');
   const rows=importRows.slice(0,20).map(r=>'<tr>'+cols.map(c=>'<td>'+(r[c]!==undefined?r[c]:'')+'</td>').join('')+'</tr>').join('');
@@ -1507,9 +1636,10 @@ var cfg = (() => {
   let _cfg = {};
   const load = () => {
     try { _cfg = JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e) {}
-    if(!_cfg.gasUrl)   _cfg.gasUrl   = localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
+    const fixedGasUrl='https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
+    if(!_cfg.gasUrl || /AKfycbyRm/.test(_cfg.gasUrl)) _cfg.gasUrl=fixedGasUrl;
     if(!_cfg.botToken) _cfg.botToken = TG_BOT  || '8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM';
-    if(!_cfg.chatId)   _cfg.chatId   = TG_GROUP || '-4002295659';
+    if(!_cfg.chatId || _cfg.chatId==='-4002295659') _cfg.chatId=TG_GROUP || '-5113064563';
     // Populate settings inputs
     var g = document.getElementById('cfg-gas');
     var b = document.getElementById('cfg-token');
@@ -1568,6 +1698,9 @@ var tgPost = async (body) => {
   var token  = c.botToken || TG_BOT;
   var chatId = c.chatId   || TG_GROUP;
   var payload = Object.assign({chat_id: chatId, parse_mode: 'HTML'}, body);
+  var rows = payload.reply_markup && payload.reply_markup.inline_keyboard ? payload.reply_markup.inline_keyboard.slice() : [];
+  rows.push([{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_ehs_v2.html'}]);
+  payload.reply_markup = {inline_keyboard:rows};
   try {
     var r = await fetch('https://api.telegram.org/bot'+token+'/sendMessage', {
       method: 'POST',
@@ -1662,6 +1795,54 @@ window.tgPost = tgPost;
 window.gasGet = gasGet;
 window.gasPost = gasPost;
 window.updateCloudBadge = updateCloudBadge;
+
+/* 通用工具列的 EHS Telegram 報告：期間、資料類型、模式各自獨立選擇。 */
+function buildEhsTelegram(opt){
+  opt=opt||{};
+  const cfg=opt.cfg||{};
+  const all=typeof cfg.read==='function'?(cfg.read()||[]):[];
+  let rows=typeof GC!=='undefined'&&GC.period?GC.period.filter(all,opt.period||'month','date',opt.ref):all.slice();
+  const scope=opt.scope||'all';
+  if(scope!=='all')rows=rows.filter(function(r){return String(r.sourceType||'')===scope;});
+  const esc=function(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
+  const periodLabel={day:'Day / 日',week:'Week / 週',month:'Month / 月',year:'Year / 年',all:'All / 全部'}[opt.period||'month']||opt.period;
+  const modeLabel={summary:'Summary / 摘要',review:'Review / 審查',approval:'Approval / 核可'}[opt.mode||'summary']||opt.mode;
+  const dataLabel={all:'All / 全部',recycle:'Recycle / 回收',waste:'Waste / 廢料'}[scope]||scope;
+  const lines=['♻️ <b>VRT Recycle / Waste</b>','📅 '+esc(periodLabel),'🏷️ Data: <b>'+esc(dataLabel)+'</b>','🧾 Type: '+esc(modeLabel),'📊 Records: <b>'+rows.length+'</b> / Total: '+all.length];
+  const photos=[];
+  if(rows.length){
+    lines.push('━━━━━━━━━━━━━━━━');
+    rows.slice(0,28).forEach(function(r){
+      if(r.sourceType==='waste'){
+        const kinds=[];if(r.solid_waste)kinds.push('Solid');if(r.industrial_waste)kinds.push('Industrial');
+        lines.push('🗑️ '+esc(r.date||'—')+' | '+esc(r.supplier||r.name||'Waste')+' | '+esc(kinds.join('/')||'Waste')+' | '+esc(r.weight_kg||'—')+' kg');
+        if(r.car_number||r.time_in||r.time_out)lines.push('   '+esc(r.car_number||'')+' '+esc(r.time_in||'')+'→'+esc(r.time_out||''));
+      }else{
+        lines.push('♻️ '+esc(r.date||'—')+' | Plastic '+esc(r.plastic_kg||0)+' | Fabric '+esc(r.fabric_kg||0)+' | Core '+esc(r.core_kg||0)+' | Total <b>'+esc(r.total_kg||0)+'</b> kg');
+      }
+      (Array.isArray(r.photos)?r.photos:[]).forEach(function(p){if(/^data:image\//i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});
+    });
+    if(rows.length>28)lines.push('… '+(rows.length-28)+' more');
+  }
+  if(opt.mode==='review'||opt.mode==='approval'){
+    const pending=rows.filter(function(r){return typeof GC!=='undefined'&&GC.telegram&&GC.telegram.pending(r);});
+    lines.push('━━━━━━━━━━━━━━━━','⏳ Pending review / approval: <b>'+pending.length+'</b>');
+  }
+  lines.push('━━━━━━━━━━━━━━━━','⏰ '+_localTS());
+  return {text:lines.join('\n'),photos:photos};
+}
+function mergeEhsImport(current,incoming){
+  const out=(current||[]).map(function(r){return Object.assign({},r,{photos:Array.isArray(r.photos)?r.photos.slice():[]});});
+  const key=function(r){return [r.sourceType||((r.module==='gate')?'waste':'recycle'),r.date,r.name||'',r.supplier||'',r.car_number||'',r.time_in||'',r.time_out||'',r.plastic_kg||'',r.fabric_kg||'',r.core_kg||'',r.total_kg||'',r.weight_kg||''].join('|');};
+  const by=new Map(out.map(function(r){return [key(r),r];}));
+  (incoming||[]).forEach(function(r){
+    const k=key(r),old=by.get(k);
+    if(!old){const copy=Object.assign({},r,{photos:Array.isArray(r.photos)?r.photos.slice():[]});out.push(copy);by.set(k,copy);return;}
+    const photos=Array.from(new Set([...(old.photos||[]),...(r.photos||[])]));
+    Object.assign(old,r,{id:old.id,photos:photos,updatedAt:r.updatedAt||old.updatedAt});
+  });
+  return out;
+}
 </script>
 
 <datalist id="b-namelist">
@@ -1678,20 +1859,28 @@ window.updateCloudBadge = updateCloudBadge;
     if(typeof GC==='undefined'||!GC.attach){ setTimeout(boot,150); return; }
     GC.attach({
       tool:'ehs',
-      title:'EHS 廢棄物',
-      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec',
+      title:'EHS Recycle / Waste',
+      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'date',
       idField:'id',
-      groupField:'module',
-      groupLabel:'Type',
+      groupField:'sourceType',
+      groupLabel:'Data Type',
       weather:false,
       photo:true,
+      periodRef:true,
+      telegramScopes:[{value:'all',zh:'全部',en:'All',km:'ទាំងអស់'},{value:'recycle',zh:'Recycle 回收',en:'Recycle',km:'Recycle'},{value:'waste',zh:'Waste 廢料',en:'Waste',km:'Waste'}],
+      scopeField:'sourceType',
+      telegramBuilder:buildEhsTelegram,
+      importParser:parseEhsSmartImport,
+      mergeImport:mergeEhsImport,
       importSchema:{"date": ["日期", "date", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "weight", "ទម្ងន់"], "suppliers": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
-    read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_waste_v3')||'{}'); const S=["gate", "internal", "monthly"]; let o=[];
-        S.forEach(k=>{ (Array.isArray(d[k])?d[k]:[]).forEach(r=>o.push(Object.assign({module:k},r))); }); return o; }catch(e){ return []; } },
-    write(list){ try{ const d=JSON.parse(localStorage.getItem('vrt_waste_v3')||'{}'); const S=["gate", "internal", "monthly"];
-        S.forEach(k=>d[k]=[]); (list||[]).forEach(r=>{ const k=S.includes(r.module)?r.module:S[0]; d[k].push(r); });
-        localStorage.setItem('vrt_waste_v3',JSON.stringify(d)); }catch(e){} },
+    read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_waste_v3')||'{}'); let o=[];
+        (Array.isArray(d.internal)?d.internal:[]).forEach(r=>o.push(Object.assign({module:'internal',sourceType:'recycle'},r,{sourceType:r.sourceType||'recycle'})));
+        (Array.isArray(d.gate)?d.gate:[]).forEach(r=>o.push(Object.assign({module:'gate',sourceType:'waste'},r,{sourceType:r.sourceType||'waste'})));
+        return o; }catch(e){ return []; } },
+    write(list){ try{ const d=JSON.parse(localStorage.getItem('vrt_waste_v3')||'{}'); const monthly=Array.isArray(d.monthly)?d.monthly:[]; d.gate=[];d.internal=[];
+        (list||[]).forEach(r=>{ const waste=r.sourceType==='waste'||r.module==='gate'; const clean=Object.assign({},r,{module:waste?'gate':'internal',sourceType:waste?'waste':'recycle'}); d[waste?'gate':'internal'].push(clean); });
+        d.monthly=monthly; localStorage.setItem('vrt_waste_v3',JSON.stringify(d)); }catch(e){} },
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
@@ -1721,7 +1910,7 @@ function openRowPhotos(which,id){
   var mount=document.getElementById('rpMount');
   mount.innerHTML='';
   _rpCtl=GC.photo.mount(mount,{photos:row.photos,max:4,onChange:function(p){ row.photos=p; }});
-  document.getElementById('rpTitle').textContent='📷 '+(which==='a'?'廢料 Waste':'進出場 Gate');
+  document.getElementById('rpTitle').textContent='📷 '+(which==='a'?'Recycle':'Waste');
   document.getElementById('rowPhotoOv').classList.add('open');
 }
 function closeRowPhotos(){
