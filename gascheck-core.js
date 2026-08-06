@@ -241,7 +241,7 @@ const BASE_DICT = {
     'gc.heavyRain':'大雨','gc.storm':'雷雨','gc.hot':'酷熱','gc.humid':'潮濕',
     'gc.confirm':'確認','gc.cancel':'取消','gc.save':'儲存','gc.delete':'刪除','gc.close':'關閉',
     'gc.cloudTools':'雲端工具','gc.indexedDb':'資料庫：IndexedDB',
-    'gc.telegram':'Telegram','gc.sendTelegram':'發送 Telegram','gc.period':'摘要期間',
+    'gc.noGasUrl':'尚未設定 GAS URL','gc.emptyMsg':'訊息內容是空的，未送出','gc.noGasResp':'GAS 沒有回傳資料，請確認部署 URL','gc.noMsgId':'GAS 未取得 Telegram messageId，請檢查 Bot/群組設定','gc.preview':'預覽','gc.previewEmpty':'此期間沒有資料，無法傳送','gc.confirmSend':'確認傳送','gc.sending':'傳送中…','gc.importReport':'匯入結果','gc.fileOk':'成功','gc.fileFail':'失敗','gc.refresh':'重新整理','gc.telegram':'Telegram','gc.sendTelegram':'發送 Telegram','gc.period':'摘要期間',
     'gc.summary':'摘要','gc.review':'審查','gc.approval':'Approval','gc.quickActions':'快速操作',
     'gc.directHint':'上方按鈕可直接同步、匯入與發送，不需填網址／Token／Chat ID',
     'gc.sentTelegram':'Telegram 已發送','gc.noApproval':'沒有待審查／待核可資料',
@@ -265,7 +265,7 @@ const BASE_DICT = {
     'gc.heavyRain':'Heavy Rain','gc.storm':'Storm','gc.hot':'Hot','gc.humid':'Humid',
     'gc.confirm':'Confirm','gc.cancel':'Cancel','gc.save':'Save','gc.delete':'Delete','gc.close':'Close',
     'gc.cloudTools':'Cloud Tools','gc.indexedDb':'Storage: IndexedDB',
-    'gc.telegram':'Telegram','gc.sendTelegram':'Send to Telegram','gc.period':'Summary period',
+    'gc.noGasUrl':'GAS URL not set','gc.emptyMsg':'Message empty — not sent','gc.noGasResp':'No response from GAS deployment','gc.noMsgId':'No Telegram messageId; check bot/group settings','gc.preview':'Preview','gc.previewEmpty':'No data for this period','gc.confirmSend':'Send','gc.sending':'Sending…','gc.importReport':'Import Result','gc.fileOk':'OK','gc.fileFail':'Failed','gc.refresh':'Refresh','gc.telegram':'Telegram','gc.sendTelegram':'Send to Telegram','gc.period':'Summary period',
     'gc.summary':'Summary','gc.review':'Review','gc.approval':'Approval','gc.quickActions':'Quick actions',
     'gc.directHint':'Use the buttons above to sync, import and send; no URL/token/chat ID entry is needed',
     'gc.sentTelegram':'Telegram sent','gc.noApproval':'No pending review/approval records',
@@ -289,7 +289,7 @@ const BASE_DICT = {
     'gc.heavyRain':'ភ្លៀងខ្លាំង','gc.storm':'ព្យុះ','gc.hot':'ក្ដៅ','gc.humid':'សើម',
     'gc.confirm':'បញ្ជាក់','gc.cancel':'បោះបង់','gc.save':'រក្សាទុក','gc.delete':'លុប','gc.close':'បិទ',
     'gc.cloudTools':'ឧបករណ៍ Cloud','gc.indexedDb':'ការផ្ទុក៖ IndexedDB',
-    'gc.telegram':'Telegram','gc.sendTelegram':'ផ្ញើទៅ Telegram','gc.period':'រយៈពេលសង្ខេប',
+    'gc.noGasUrl':'មិនទាន់កំណត់ GAS URL','gc.emptyMsg':'សារទទេ — មិនបានផ្ញើ','gc.noGasResp':'គ្មានការឆ្លើយតបពី GAS','gc.noMsgId':'រកមិនឃើញ messageId','gc.preview':'មើលជាមុន','gc.previewEmpty':'គ្មានទិន្នន័យសម្រាប់រយៈពេលនេះ','gc.confirmSend':'ផ្ញើ','gc.sending':'កំពុងផ្ញើ…','gc.importReport':'លទ្ធផលនាំចូល','gc.fileOk':'ជោគជ័យ','gc.fileFail':'បរាជ័យ','gc.refresh':'ផ្ទុកឡើងវិញ','gc.telegram':'Telegram','gc.sendTelegram':'ផ្ញើទៅ Telegram','gc.period':'រយៈពេលសង្ខេប',
     'gc.summary':'សង្ខេប','gc.review':'ពិនិត្យ','gc.approval':'Approval','gc.quickActions':'សកម្មភាពរហ័ស',
     'gc.directHint':'ប្រើប៊ូតុងខាងលើដើម្បីធ្វើសមកាលកម្ម នាំចូល និងផ្ញើ ដោយមិនចាំបាច់បញ្ចូល URL/token/chat ID',
     'gc.sentTelegram':'បានផ្ញើ Telegram','gc.noApproval':'គ្មានទិន្នន័យកំពុងរង់ចាំពិនិត្យ/អនុម័ត',
@@ -502,7 +502,15 @@ const CLOUD = GC.cloud = {
 
   /** Telegram 通知（HTML 模式 + escape） */
   async notify(text) {
-    return CLOUD.post({ type: 'notify', parse_mode: 'HTML', text });
+    /* 照 ac-hra-pay 做法：必須拿到 messageId 才算成功，否則明確報錯 */
+    if (!CLOUD.gasUrl) throw new Error(I18.t('gc.noGasUrl'));
+    if (!text || !String(text).trim()) throw new Error(I18.t('gc.emptyMsg'));
+    const d = await CLOUD.post({ type: 'notify', parse_mode: 'HTML', text });
+    if (!d) throw new Error(I18.t('gc.noGasResp'));
+    if (d.ok === false) throw new Error(d.error || 'GAS error');
+    const info = d.data || d;
+    if (info.sent !== true || !info.messageId) throw new Error(I18.t('gc.noMsgId'));
+    return info;
   }
 };
 
@@ -835,11 +843,32 @@ const IMPORT = GC.import = {
          <div class="gc-import-h" data-i="gc.supportFmt">${U.escapeHtml(I18.t('gc.supportFmt'))}</div>
          <input type="file" id="${id}" accept="${accept}"${opt.multiple === false ? '' : ' multiple'} hidden>
        </div>
-       <div class="gc-import-status" id="${id}_st"></div>`;
+       <div class="gc-import-status" id="${id}_st"></div>
+       <div class="gc-imp-report" id="${id}_rep" style="display:none"></div>`;
 
     const dz = el.querySelector('#' + id + '_dz');
     const input = el.querySelector('#' + id);
     const st = el.querySelector('#' + id + '_st');
+    const rep = el.querySelector('#' + id + '_rep');
+
+    /* 照 ac-hra-pay：逐檔列出成功/失敗與原因，並提示缺什麼 */
+    function report(rows, notes) {
+      if (!rep) return;
+      if (!rows || !rows.length) { rep.style.display = 'none'; rep.innerHTML = ''; return; }
+      rep.innerHTML = rows.map(function (r) {
+        return r.ok
+          ? '<div class="gc-imp-row"><span class="gc-imp-ok">✓</span><span><b>' +
+            U.escapeHtml(r.file) + '</b> → ' + U.escapeHtml(String(r.n)) + ' ' +
+            U.escapeHtml(I18.t('gc.records')) +
+            (r.detail ? ' · ' + U.escapeHtml(r.detail) : '') + '</span></div>'
+          : '<div class="gc-imp-row"><span class="gc-imp-bad">✕</span><span><b>' +
+            U.escapeHtml(r.file) + '</b> — ' + U.escapeHtml(r.msg || '') + '</span></div>';
+      }).join('') +
+      (notes && notes.length
+        ? '<div class="gc-imp-note">📌 ' + notes.map(U.escapeHtml).join('；') + '</div>'
+        : '');
+      rep.style.display = '';
+    }
 
     function status(msg, cls) {
       st.className = 'gc-import-status' + (cls ? ' ' + cls : '');
@@ -853,6 +882,8 @@ const IMPORT = GC.import = {
       const allObjects = [];
       const metas = [];
       const errors = [];
+      const fileLog = [];
+      if (rep) { rep.style.display = 'none'; rep.innerHTML = ''; }
       for (let i = 0; i < list.length; i++) {
         const file = list[i];
         try {
@@ -871,20 +902,31 @@ const IMPORT = GC.import = {
           }).filter(o => Object.keys(schema).some(f => String(o[f]).trim() !== ''));
           allObjects.push(...objects);
           metas.push(Object.assign({}, parsed, { headers, map, sheetName, fileName: file.name, objectCount: objects.length }));
+          /* 記錄哪些欄位沒對應到，方便使用者判斷是不是欄位名不同 */
+          const unmapped = Object.keys(opt.schema || {}).filter(function (f) { return map[f] === undefined || map[f] < 0; });
+          fileLog.push({ ok: true, file: file.name, n: objects.length,
+            detail: (sheetName ? sheetName : '') +
+                    (unmapped.length ? (sheetName ? ' · ' : '') + '未對應: ' + unmapped.join('/') : '') });
           status(I18.t('gc.importing') + ' ' + (i + 1) + '/' + list.length + ' · ' + file.name, 'busy');
         } catch (err) {
           errors.push(file.name + ': ' + (err && err.message ? err.message : err));
+          fileLog.push({ ok: false, file: file.name, msg: (err && err.message ? err.message : String(err)) });
           status(I18.t('gc.importing') + ' ' + (i + 1) + '/' + list.length + ' · ' + file.name, 'busy');
         }
       }
       if (!allObjects.length && errors.length) {
-        status('❌ ' + I18.t('gc.importFail') + ': ' + errors.join(' | '), 'err');
+        status('❌ ' + I18.t('gc.importFail'), 'err');
+        report(fileLog, [I18.t('gc.importFail')]);
         return;
       }
       const fileNames = metas.map(m => m.fileName).join(', ');
-      status('✅ ' + allObjects.length + ' ' + I18.t('gc.imported') +
-        (metas.length > 1 ? ' · ' + metas.length + ' files' : '') +
-        (errors.length ? ' · ' + errors.length + ' failed' : ''), errors.length ? 'warning' : 'ok');
+      const okN = fileLog.filter(function (x) { return x.ok; }).length;
+      status((okN === fileLog.length ? '✅ ' : '⚠ ') + okN + '/' + fileLog.length + ' · ' +
+        allObjects.length + ' ' + I18.t('gc.imported'), errors.length ? 'warning' : 'ok');
+      const notes = [];
+      const zeroFiles = fileLog.filter(function (x) { return x.ok && x.n === 0; });
+      if (zeroFiles.length) notes.push(zeroFiles.map(function (x) { return x.file; }).join(', ') + ' 讀到 0 筆，請確認欄位名稱');
+      report(fileLog, notes);
       if (opt.onData) {
         const first = metas[0] || {};
         opt.onData(allObjects, Object.assign({}, first, {
@@ -1053,6 +1095,30 @@ const CSS = `
 .gc-bar-v{font-size:11px;font-weight:700;color:#1A2035;text-align:right;font-variant-numeric:tabular-nums}
 .gc-empty{text-align:center;padding:26px;color:#8892A8;font-size:13px}
 
+
+.gc-tg-ov{position:fixed;inset:0;background:rgba(15,20,32,.5);z-index:9900;display:none;align-items:center;justify-content:center;padding:20px}
+.gc-tg-ov.open{display:flex}
+.gc-tg-box{background:#fff;border-radius:13px;width:min(520px,100%);max-height:86vh;display:flex;flex-direction:column;box-shadow:0 14px 46px rgba(0,0,0,.3)}
+.gc-tg-head{padding:13px 16px;border-bottom:1px solid #EEF1F6;display:flex;justify-content:space-between;align-items:center}
+.gc-tg-title{font-weight:700;font-size:14px;color:#1A3E78}
+.gc-tg-x{border:0;background:transparent;font-size:17px;cursor:pointer;color:#8892A8;line-height:1}
+.gc-tg-x:hover{color:#B91C1C}
+.gc-tg-meta{padding:10px 16px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #F4F6FA;background:#FAFBFC}
+.gc-tg-chip{background:#EBF0FA;color:#1A3E78;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
+.gc-tg-chip-n{background:#E6F4EC;color:#16653A}
+.gc-tg-body{padding:14px 16px;overflow-y:auto;flex:1}
+.gc-tg-pre{margin:0;font:12px/1.6 'IBM Plex Mono',ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;color:#1A2035;background:#F7F8FA;border:1px solid #EEF1F6;border-radius:8px;padding:12px}
+.gc-tg-foot{padding:12px 16px;border-top:1px solid #EEF1F6;display:flex;gap:8px;justify-content:flex-end}
+.gc-tg-cancel{border:1px solid #D8DCE6;background:#fff;color:#4A5472;padding:8px 16px;border-radius:7px;font:600 13px/1 inherit;cursor:pointer}
+.gc-tg-cancel:hover{background:#EEF1F6}
+.gc-tg-send{border:0;background:#1A3E78;color:#fff;padding:8px 22px;border-radius:7px;font:600 13px/1 inherit;cursor:pointer}
+.gc-tg-send:hover{background:#153268}
+.gc-tg-send.off,.gc-tg-send:disabled{background:#C4CAD8;cursor:not-allowed}
+.gc-imp-report{margin-top:10px;font-size:12px;line-height:1.65}
+.gc-imp-row{display:flex;gap:7px;align-items:flex-start;padding:2px 0}
+.gc-imp-ok{color:#059669;font-weight:700}
+.gc-imp-bad{color:#DC2626;font-weight:700}
+.gc-imp-note{margin-top:7px;padding-top:7px;border-top:1px solid #EEF1F6;color:#B45309}
 .gc-toast-box{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none}
 .gc-toast{background:#1A2035;color:#fff;padding:10px 19px;border-radius:8px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.24);animation:gcIn .25s ease;max-width:88vw}
 .gc-toast.success{background:#16653A}.gc-toast.error{background:#B91C1C}.gc-toast.warning{background:#7D4E00}
@@ -1296,9 +1362,39 @@ GC.attach = function (cfg) {
       </div>
     </div>
   `;
-  const contentMount = document.querySelector('.main, .content, .page, .wrap') || document.body;
-  if (contentMount.firstChild) contentMount.insertBefore(bar, contentMount.firstChild);
-  else contentMount.appendChild(bar);
+  /* ── 掛載位置 ──
+     各模組結構不同：temperature 只有一個 .main（全頁共用）；
+     cleaning 是每個分頁各有一個 .main，若插進第一個 .main
+     工具卡只會出現在「總覽」分頁，其他分頁看不到。
+     所以優先掛在頁籤列之後、所有分頁之前，確保每個分頁都看得到。 */
+  (function mountBar() {
+    if (C.mountSelector) {
+      const custom = document.querySelector(C.mountSelector);
+      if (custom) { custom.appendChild(bar); return; }
+    }
+    // 1) 頁籤列之後（適用有多個 pane 的模組，如 cleaning）
+    const tabs = document.querySelector('.tabs, #main-tabs, nav.tabs');
+    const panes = document.querySelectorAll('.pane, .tab-pane, [data-pane]');
+    if (tabs && panes.length > 1 && tabs.parentNode) {
+      tabs.parentNode.insertBefore(bar, tabs.nextSibling);
+      return;
+    }
+    // 2) 單一內容容器（適用 temperature 這類）
+    const mains = document.querySelectorAll('.main, .content, .page, .wrap');
+    if (mains.length === 1) {
+      const m = mains[0];
+      if (m.firstChild) m.insertBefore(bar, m.firstChild); else m.appendChild(bar);
+      return;
+    }
+    // 3) 有多個 .main 但沒有頁籤 → 放在第一個 .main 之前（頁面層級）
+    if (mains.length > 1 && mains[0].parentNode) {
+      mains[0].parentNode.insertBefore(bar, mains[0]);
+      return;
+    }
+    // 4) 最後手段
+    if (tabs && tabs.parentNode) tabs.parentNode.insertBefore(bar, tabs.nextSibling);
+    else document.body.insertBefore(bar, document.body.firstChild);
+  })();
 
   /* ── 元件掛載 ── */
   let period = 'month';
@@ -1358,27 +1454,96 @@ GC.attach = function (cfg) {
 
   const sendTelegram = bar.querySelector('[data-gc-send]');
   const telegramState = bar.querySelector('#gcTelegramState');
-  async function sendCurrentTelegram() {
-    if (sendTelegram) sendTelegram.disabled = true;
-    if (telegramState) telegramState.textContent = I18.t('gc.sync');
-    try {
-      const customText = typeof C.telegramBuilder === 'function'
-        ? await C.telegramBuilder({ period, mode, ref: periodRef, scope, cfg: C })
-        : null;
-      const built = customText == null ? GC.telegram.buildText(C, period, mode, periodRef, scope) : customText;
-      const packet = typeof built === 'string' ? { text: built, photos: [] } : (built || { text: '', photos: [] });
-      const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
-      const buttons = packet.buttons || [[{text:'📊 Open Dashboard / 開啟平台',url:dashUrl}]];
-      await GC.telegram.send(packet.text, packet.photos, buttons);
-      if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
-      GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
-    } catch (e) {
-      if (telegramState) telegramState.textContent = '✕ ' + e.message;
-      GC.toast('❌ ' + I18.t('gc.upFail') + ': ' + e.message, 'error');
-    }
-    if (sendTelegram) sendTelegram.disabled = false;
+  /* ── 組出目前設定下的 Telegram 內容 ── */
+  async function buildTelegramPacket() {
+    const customText = typeof C.telegramBuilder === 'function'
+      ? await C.telegramBuilder({ period, mode, ref: periodRef, scope, cfg: C })
+      : null;
+    const built = customText == null ? GC.telegram.buildText(C, period, mode, periodRef, scope) : customText;
+    return typeof built === 'string' ? { text: built, photos: [] } : (built || { text: '', photos: [] });
   }
-  if (sendTelegram) sendTelegram.onclick = sendCurrentTelegram;
+
+  /* ── 預覽彈窗（照 ac-hra-pay：先看內容再決定送不送）── */
+  function ensureTgModal() {
+    let m = document.getElementById('gcTgModal');
+    if (m) return m;
+    m = document.createElement('div');
+    m.id = 'gcTgModal'; m.className = 'gc-tg-ov';
+    m.innerHTML =
+      '<div class="gc-tg-box">' +
+        '<div class="gc-tg-head">' +
+          '<span class="gc-tg-title">✈️ <span data-i="gc.sendTelegram"></span></span>' +
+          '<button type="button" class="gc-tg-x" id="gcTgX">✕</button>' +
+        '</div>' +
+        '<div class="gc-tg-meta" id="gcTgMeta"></div>' +
+        '<div class="gc-tg-body"><pre class="gc-tg-pre" id="gcTgPre"></pre></div>' +
+        '<div class="gc-tg-foot">' +
+          '<button type="button" class="gc-tg-cancel" id="gcTgCancel" data-i="gc.cancel"></button>' +
+          '<button type="button" class="gc-tg-send" id="gcTgSend" data-i="gc.confirmSend"></button>' +
+        '</div>' +
+      '</div>';
+    document.body.appendChild(m);
+    m.querySelector('#gcTgX').onclick = () => m.classList.remove('open');
+    m.querySelector('#gcTgCancel').onclick = () => m.classList.remove('open');
+    m.onclick = e => { if (e.target === m) m.classList.remove('open'); };
+    return m;
+  }
+
+  async function openTelegramPreview() {
+    const m = ensureTgModal();
+    const pre = m.querySelector('#gcTgPre');
+    const meta = m.querySelector('#gcTgMeta');
+    const send = m.querySelector('#gcTgSend');
+    I18.apply(m);
+
+    /* 顯示目前期間/模式/範圍，讓人一眼知道要送什麼 */
+    const all = C.read() || [];
+    let view = GC.period.filter(all, period, C.dateField, periodRef);
+    if (C.scopeField && scope && scope !== 'all')
+      view = view.filter(r => String(r && r[C.scopeField] || '') === String(scope));
+    const PD = { day:'gc.today', week:'gc.thisWeek', month:'gc.thisMonth', year:'gc.thisYear', all:'gc.all' };
+    meta.innerHTML =
+      '<span class="gc-tg-chip">' + U.escapeHtml(I18.t(PD[period] || period)) + '</span>' +
+      '<span class="gc-tg-chip">' + U.escapeHtml(mode) + '</span>' +
+      (scope && scope !== 'all' ? '<span class="gc-tg-chip">' + U.escapeHtml(scope) + '</span>' : '') +
+      '<span class="gc-tg-chip gc-tg-chip-n">' + view.length + ' ' + U.escapeHtml(I18.t('gc.records')) + '</span>';
+
+    pre.textContent = I18.t('gc.sync');
+    m.classList.add('open');
+
+    try {
+      const packet = await buildTelegramPacket();
+      const plain = String(packet.text || '').replace(/<\/?[^>]+>/g, '');
+      if (!plain.trim() || !view.length) {
+        pre.textContent = '⚠️ ' + I18.t('gc.previewEmpty');
+        send.disabled = true; send.classList.add('off');
+      } else {
+        pre.textContent = plain;
+        send.disabled = false; send.classList.remove('off');
+      }
+      send.onclick = async () => {
+        send.disabled = true;
+        const orig = send.textContent;
+        send.textContent = I18.t('gc.sending');
+        try {
+          const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
+          const buttons = packet.buttons || [[{ text:'📊 Open Dashboard / 開啟平台', url: dashUrl }]];
+          await GC.telegram.send(packet.text, packet.photos, buttons);
+          if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
+          GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
+          m.classList.remove('open');
+        } catch (e) {
+          if (telegramState) telegramState.textContent = '✕ ' + e.message;
+          GC.toast('❌ ' + e.message, 'error');
+        }
+        send.disabled = false; send.textContent = orig;
+      };
+    } catch (e) {
+      pre.textContent = '⚠️ ' + e.message;
+      send.disabled = true; send.classList.add('off');
+    }
+  }
+  if (sendTelegram) sendTelegram.onclick = openTelegramPreview;
 
   if (C.importSchema) {
     const importMount = bar.querySelector('#gcImport');
@@ -1443,7 +1608,22 @@ GC.attach = function (cfg) {
   window.addEventListener('gc:langchange', () => { renderScope(); refresh(); });
 
   refresh();
-  return { refresh, getPeriod: () => period, sendTelegram: sendCurrentTelegram };
+  /* ── 自動刷新：模組自己存檔後，面板數字要跟著動（修 ehs 顯示 0 的問題）── */
+  let _lastSig = '';
+  function autoRefresh() {
+    try {
+      const all = C.read() || [];
+      const last = all.length ? all[all.length - 1] : null;
+      const sig = all.length + '|' + (last && last[C.idField] || '') + '|' + (last && last.updatedAt || '');
+      if (sig !== _lastSig) { _lastSig = sig; refresh(); }
+    } catch (e) {}
+  }
+  autoRefresh();
+  setInterval(autoRefresh, 1500);
+  window.addEventListener('storage', autoRefresh);
+  window.addEventListener('gc:datachange', function () { refresh(); });
+
+  return { refresh, getPeriod: () => period, sendTelegram: openTelegramPreview, openTelegram: openTelegramPreview };
 };
 
 /* ── 面板樣式 ── */
