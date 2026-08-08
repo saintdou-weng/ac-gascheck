@@ -328,6 +328,10 @@ table tr:last-child td { border-bottom: none; }
           </select>
         </div>
         <div class="form-group">
+          <label data-i18n="f_checker">檢查人 / Inspector</label>
+          <input type="text" id="f_checker" placeholder="Inspector">
+        </div>
+        <div class="form-group">
           <label data-i18n="f_recipient_id">收受人 ID / Recipient ID Number</label>
           <input type="text" id="f_recipient_id" placeholder="Employee ID">
         </div>
@@ -609,7 +613,7 @@ const I18N = {
     dept_distribution:'各部門鑰匙使用', trend:'鑰匙動態趨勢', recent_anomaly:'最新異常', outstanding_keys:'未歸還鑰匙',
     new_record_title:'鑰匙動態記錄 / Key Movement Record',
     issue_section:'鑰匙發出 / Key Issued', return_section:'鑰匙歸還 / Key Return (可稍後填寫)',
-    f_issue_date:'鑰匙發出日', f_issue_time:'發出時間', f_key_no:'鑰匙號碼', f_key_dept:'部門', f_recipient_id:'收受人 ID', f_recipient_name:'收受人姓名', f_key_type:'鑰匙類型', f_key_condition:'鑰匙狀態',
+    f_issue_date:'鑰匙發出日', f_issue_time:'發出時間', f_key_no:'鑰匙號碼', f_key_dept:'部門', f_checker:'檢查人', f_recipient_id:'收受人 ID', f_recipient_name:'收受人姓名', f_key_type:'鑰匙類型', f_key_condition:'鑰匙狀態',
     f_return_date:'收回日期', f_return_time:'收回時間', f_receiver_name:'收受人姓名', f_receiver_id:'收受人 ID', f_return_condition:'歸還狀態', f_remarks:'備注', f_photos:'📷 照片',
     save_record:'儲存記錄', clear_form:'清除', update_record:'更新記錄',
     f_filter_period:'篩選:', all:'全部', period_day:'日', period_week:'週', period_month:'月', period_year:'年',
@@ -621,7 +625,7 @@ const I18N = {
     dept_chart:'部門分佈', keytype_chart:'鑰匙類型', monthly_trend:'月度趨勢', return_duration:'平均借用時長', dept_summary_table:'部門彙總表',
     send_report_tg:'發送報告到 Telegram', select:'選擇',
     stat_total:'總記錄數', stat_outstanding:'未歸還', stat_returned:'已歸還', stat_lost:'遺失', stat_depts:'使用部門', stat_overdue:'超時未歸還',
-    col_no:'#', col_issue_date:'發出日期', col_issue_time:'發出時間', col_key_no:'鑰匙號碼', col_dept:'部門', col_type:'類型', col_recipient:'收受人', col_recipient_id:'員工ID', col_return_date:'歸還日期', col_return_time:'歸還時間', col_status:'狀態', col_remarks:'備注', col_photos:'📷', col_actions:'操作',
+    col_no:'#', col_issue_date:'發出日期', col_issue_time:'發出時間', col_key_no:'鑰匙號碼', col_dept:'部門', col_checker:'檢查人', col_type:'類型', col_recipient:'收受人', col_recipient_id:'員工ID', col_return_date:'歸還日期', col_return_time:'歸還時間', col_status:'狀態', col_remarks:'備注', col_photos:'📷', col_actions:'操作',
     status_outstanding:'未歸還', status_returned:'已歸還', status_lost:'遺失',
     total_records:'總記錄', outstanding:'未歸還', returned:'已歸還',
   },
@@ -630,7 +634,7 @@ const I18N = {
     dept_distribution:'Key Usage by Dept.', trend:'Key Movement Trend', recent_anomaly:'Recent Anomalies', outstanding_keys:'Outstanding Keys',
     new_record_title:'Key Movement Record',
     issue_section:'Key Issued', return_section:'Key Return (can fill later)',
-    f_issue_date:'Date of Key Issued', f_issue_time:'Time of Issued', f_key_no:'Key Number', f_key_dept:'Key Department', f_recipient_id:'Recipient ID', f_recipient_name:'Recipient Name', f_key_type:'Key Type', f_key_condition:'Key Condition',
+    f_issue_date:'Date of Key Issued', f_issue_time:'Time of Issued', f_key_no:'Key Number', f_key_dept:'Key Department', f_checker:'Inspector', f_recipient_id:'Recipient ID', f_recipient_name:'Recipient Name', f_key_type:'Key Type', f_key_condition:'Key Condition',
     f_return_date:'Date of Return', f_return_time:'Time of Return', f_receiver_name:'Receiver Name', f_receiver_id:'Receiver ID', f_return_condition:'Return Condition', f_remarks:'Remarks', f_photos:'📷 Photos',
     save_record:'Save Record', clear_form:'Clear', update_record:'Update Record',
     f_filter_period:'Filter:', all:'All', period_day:'Day', period_week:'Week', period_month:'Month', period_year:'Year',
@@ -642,7 +646,7 @@ const I18N = {
     dept_chart:'Dept. Distribution', keytype_chart:'Key Types', monthly_trend:'Monthly Trend', return_duration:'Avg. Loan Duration', dept_summary_table:'Department Summary',
     send_report_tg:'Send Report to Telegram', select:'Select',
     stat_total:'Total Records', stat_outstanding:'Outstanding', stat_returned:'Returned', stat_lost:'Lost', stat_depts:'Depts. Active', stat_overdue:'Overdue',
-    col_no:'#', col_issue_date:'Issue Date', col_issue_time:'Issue Time', col_key_no:'Key No.', col_dept:'Dept.', col_type:'Type', col_recipient:'Recipient', col_recipient_id:'Emp ID', col_return_date:'Return Date', col_return_time:'Return Time', col_status:'Status', col_remarks:'Remarks', col_photos:'📷', col_actions:'Actions',
+    col_no:'#', col_issue_date:'Issue Date', col_issue_time:'Issue Time', col_key_no:'Key No.', col_dept:'Dept.', col_checker:'Inspector', col_type:'Type', col_recipient:'Recipient', col_recipient_id:'Emp ID', col_return_date:'Return Date', col_return_time:'Return Time', col_status:'Status', col_remarks:'Remarks', col_photos:'📷', col_actions:'Actions',
     status_outstanding:'Outstanding', status_returned:'Returned', status_lost:'Lost',
     total_records:'Total Records', outstanding:'Outstanding', returned:'Returned',
   },
@@ -651,7 +655,7 @@ const I18N = {
     dept_distribution:'ការប្រើប្រាស់គ្រាប់ចុច', trend:'និន្នាការចលនា', recent_anomaly:'ការព្រមានថ្មី', outstanding_keys:'គ្រាប់ចុចមិនទាន់ប្រគល់',
     new_record_title:'កំណត់ត្រាចលនាគ្រាប់ចុច',
     issue_section:'ចេញគ្រាប់ចុច', return_section:'ប្រគល់គ្រាប់ចុច',
-    f_issue_date:'ថ្ងៃចេញ', f_issue_time:'ម៉ោងចេញ', f_key_no:'លេខគ្រាប់ចុច', f_key_dept:'នាយកដ្ឋាន', f_recipient_id:'លេខ ID', f_recipient_name:'ឈ្មោះអ្នកទទួល', f_key_type:'ប្រភេទ', f_key_condition:'ស្ថានភាព',
+    f_issue_date:'ថ្ងៃចេញ', f_issue_time:'ម៉ោងចេញ', f_key_no:'លេខគ្រាប់ចុច', f_key_dept:'នាយកដ្ឋាន', f_checker:'អ្នកត្រួតពិនិត្យ', f_recipient_id:'លេខ ID', f_recipient_name:'ឈ្មោះអ្នកទទួល', f_key_type:'ប្រភេទ', f_key_condition:'ស្ថានភាព',
     f_return_date:'ថ្ងៃប្រគល់', f_return_time:'ម៉ោងប្រគល់', f_receiver_name:'ឈ្មោះអ្នកទទួល', f_receiver_id:'លេខ ID', f_return_condition:'ស្ថានភាពប្រគល់', f_remarks:'ចំណាំ', f_photos:'📷 រូបថត',
     save_record:'រក្សាទុក', clear_form:'លុប', update_record:'ធ្វើបច្ចុប្បន្នភាព',
     f_filter_period:'ត្រង:', all:'ទាំងអស់', period_day:'ថ្ងៃ', period_week:'សប្តាហ៍', period_month:'ខែ', period_year:'ឆ្នាំ',
@@ -663,7 +667,7 @@ const I18N = {
     dept_chart:'ការចែកចាយនាយកដ្ឋាន', keytype_chart:'ប្រភេទគ្រាប់ចុច', monthly_trend:'និន្នាការប្រចាំខែ', return_duration:'រយៈពេលខ្ចីជាមធ្យម', dept_summary_table:'តារាងសង្ខេបនាយកដ្ឋាន',
     send_report_tg:'ផ្ញើរបាយការណ៍ Telegram', select:'ជ្រើស',
     stat_total:'កំណត់ត្រាសរុប', stat_outstanding:'មិនទាន់ប្រគល់', stat_returned:'ប្រគល់ហើយ', stat_lost:'បាត់', stat_depts:'នាយកដ្ឋាន', stat_overdue:'យឺតយ៉ាវ',
-    col_no:'#', col_issue_date:'ថ្ងៃចេញ', col_issue_time:'ម៉ោងចេញ', col_key_no:'លេខ', col_dept:'នាយកដ្ឋាន', col_type:'ប្រភេទ', col_recipient:'អ្នកទទួល', col_recipient_id:'ID', col_return_date:'ថ្ងៃប្រគល់', col_return_time:'ម៉ោង', col_status:'ស្ថានភាព', col_remarks:'ចំណាំ', col_photos:'📷', col_actions:'សកម្មភាព',
+    col_no:'#', col_issue_date:'ថ្ងៃចេញ', col_issue_time:'ម៉ោងចេញ', col_key_no:'លេខ', col_dept:'នាយកដ្ឋាន', col_checker:'អ្នកត្រួតពិនិត្យ', col_type:'ប្រភេទ', col_recipient:'អ្នកទទួល', col_recipient_id:'ID', col_return_date:'ថ្ងៃប្រគល់', col_return_time:'ម៉ោង', col_status:'ស្ថានភាព', col_remarks:'ចំណាំ', col_photos:'📷', col_actions:'សកម្មភាព',
     status_outstanding:'មិនទាន់ប្រគល់', status_returned:'ប្រគល់ហើយ', status_lost:'បាត់',
     total_records:'កំណត់ត្រាសរុប', outstanding:'មិនទាន់ប្រគល់', returned:'ប្រគល់ហើយ',
   }
@@ -770,6 +774,7 @@ function collectForm() {
     issue_time: document.getElementById('f_issue_time').value,
     key_no: keyNo,
     dept: dept,
+    checker: document.getElementById('f_checker').value.trim(),
     recipient_id: document.getElementById('f_recipient_id').value,
     recipient_name: document.getElementById('f_recipient_name').value,
     key_type: document.getElementById('f_key_type').value,
@@ -786,7 +791,7 @@ function collectForm() {
 }
 
 function clearForm() {
-  ['f_issue_date','f_issue_time','f_key_no','f_recipient_id','f_recipient_name','f_return_date','f_return_time','f_receiver_name','f_receiver_id','f_remarks'].forEach(id => document.getElementById(id).value = '');
+  ['f_issue_date','f_issue_time','f_key_no','f_checker','f_recipient_id','f_recipient_name','f_return_date','f_return_time','f_receiver_name','f_receiver_id','f_remarks'].forEach(id => document.getElementById(id).value = '');
   document.getElementById('f_key_dept').value = '';
   document.getElementById('f_key_type').value = '一般鑰匙';
   document.getElementById('f_key_condition').value = '良好';
@@ -803,6 +808,7 @@ function editRecord(id) {
   document.getElementById('f_issue_time').value = r.issue_time || '';
   document.getElementById('f_key_no').value = r.key_no || '';
   document.getElementById('f_key_dept').value = r.dept || '';
+  document.getElementById('f_checker').value = r.checker || r.checked_by || '';
   document.getElementById('f_recipient_id').value = r.recipient_id || '';
   document.getElementById('f_recipient_name').value = r.recipient_name || '';
   document.getElementById('f_key_type').value = r.key_type || '一般鑰匙';
@@ -891,6 +897,7 @@ function renderList() {
       <th>${t('col_issue_time')}</th>
       <th>${t('col_key_no')}</th>
       <th>${t('col_dept')}</th>
+      <th>${t('col_checker')}</th>
       <th>${t('col_type')}</th>
       <th>${t('col_recipient')}</th>
       <th>${t('col_recipient_id')}</th>
@@ -915,6 +922,7 @@ function renderList() {
       <td>${r.issue_time||''}</td>
       <td><b>${r.key_no||''}</b></td>
       <td><span class="dept-badge dept-${r.dept}" style="background:${deptColor}">${r.dept||''}</span></td>
+      <td>${r.checker||r.checked_by||'—'}</td>
       <td>${icon} ${r.key_type||''}</td>
       <td>${r.recipient_name||''}</td>
       <td>${r.recipient_id||''}</td>
@@ -1353,8 +1361,8 @@ function deleteImportMonth(m) {
 // ==================== EXPORT ====================
 function exportExcel() {
   const rs = filterRecords();
-  const headers = ['#','發出日期','發出時間','鑰匙號碼','部門','類型','收受人姓名','收受人ID','鑰匙狀態','歸還日期','歸還時間','收受人','收受人ID','歸還狀態','備注'];
-  const data = [headers, ...rs.map((r,i) => [i+1,r.issue_date,r.issue_time,r.key_no,r.dept,r.key_type,r.recipient_name,r.recipient_id,r.key_condition,r.return_date,r.return_time,r.receiver_name,r.receiver_id,r.return_condition,r.remarks])];
+  const headers = ['#','發出日期','發出時間','鑰匙號碼','部門','檢查人','類型','收受人姓名','收受人ID','鑰匙狀態','歸還日期','歸還時間','收受人','收受人ID','歸還狀態','備注'];
+  const data = [headers, ...rs.map((r,i) => [i+1,r.issue_date,r.issue_time,r.key_no,r.dept,r.checker||r.checked_by||'',r.key_type,r.recipient_name,r.recipient_id,r.key_condition,r.return_date,r.return_time,r.receiver_name,r.receiver_id,r.return_condition,r.remarks])];
   const ws = XLSX.utils.aoa_to_sheet(data);
   ws['!cols'] = headers.map((_,i) => ({ wch: i===0?4:i<4?15:20 }));
   const wb = XLSX.utils.book_new();
@@ -1580,6 +1588,26 @@ window.updateRecord = updateRecord;
 
 <script>
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
+function keyTelegramText(zh,en,km,lang){
+  if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
+  return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
+}
+function buildKeyTelegram(opt){
+  opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode=opt.mode||'summary',lang=opt.lang||'bi';
+  const all=typeof cfg.read==='function'?(cfg.read()||[]):[];
+  const rows=typeof GC!=='undefined'&&GC.telegram?GC.telegram.filter(all,cfg,period,opt.ref,opt.scope||'all',opt.slot||'all'):(typeof GC!=='undefined'&&GC.period?GC.period.filter(all,period,'issue_date',opt.ref):all.slice());
+  const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  const periodLabel={day:keyTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:keyTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:keyTelegramText('本月','This Month','ខែនេះ',lang),year:keyTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:keyTelegramText('全部','All','ទាំងអស់',lang)}[period]||period;
+  const modeLabel={summary:keyTelegramText('摘要','Summary','សង្ខេប',lang),review:keyTelegramText('審查','Review','ពិនិត្យ',lang),approval:keyTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
+  const checkers=[...new Set(rows.map(r=>String(r.checker||r.checked_by||r.checkBy||'').trim()).filter(Boolean))];
+  const returned=rows.filter(r=>r.return_date).length,lost=rows.filter(r=>r.return_condition==='遺失'||String(r.return_condition||'').toLowerCase()==='lost').length,outstanding=Math.max(0,rows.length-returned-lost);
+  const lines=['🔑 <b>'+keyTelegramText('VRT 鑰匙管理','VRT Key Management','VRT គ្រប់គ្រងសោ',lang)+'</b>','📅 '+periodLabel,'🧾 '+keyTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeLabel,'━━━━━━━━━━━━━━━━','📊 <b>'+keyTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+keyTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+rows.length+'</b> | '+keyTelegramText('未歸還','Outstanding','មិនទាន់ប្រគល់',lang)+': '+outstanding,'• '+keyTelegramText('已歸還','Returned','បានប្រគល់',lang)+': '+returned+' | '+keyTelegramText('遺失','Lost','បាត់',lang)+': '+lost,'• '+keyTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+esc(checkers.join(', ')||'—')];
+  const photos=[];
+  if(rows.length){lines.push('━━━━━━━━━━━━━━━━');rows.slice(0,60).forEach(r=>{const isLost=r.return_condition==='遺失'||String(r.return_condition||'').toLowerCase()==='lost';const status=isLost?keyTelegramText('遺失','Lost','បាត់',lang):(r.return_date?keyTelegramText('已歸還','Returned','បានប្រគល់',lang):keyTelegramText('未歸還','Outstanding','មិនទាន់ប្រគល់',lang));lines.push('🗝️ '+esc(r.issue_date||'—')+' '+esc(r.issue_time||'')+' | '+esc(r.key_no||'—')+' | '+esc(r.dept||'—')+' | '+esc(r.recipient_name||'—')+' | '+status+(r.checker||r.checked_by?' | 👤 '+esc(r.checker||r.checked_by):''));(Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^data:image\//i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});if(rows.length>60)lines.push('… '+(rows.length-60)+' more');}
+  else lines.push('━━━━━━━━━━━━━━━━',keyTelegramText('暫無記錄','No records','គ្មានកំណត់ត្រា',lang));
+  lines.push('━━━━━━━━━━━━━━━━','⏰ '+new Date().toLocaleString());
+  return {text:lines.join('\n'),photos};
+}
 (function(){
   function boot(){
     if(typeof GC==='undefined'||!GC.attach){ setTimeout(boot,150); return; }
@@ -1587,13 +1615,16 @@ window.updateRecord = updateRecord;
       tool:'keymovement',
       title:'Key 鑰匙管理',
       gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
-      dateField:'datetime',
+      dateField:'issue_date',
       idField:'id',
-      groupField:'key_name',
-      groupLabel:'Key',
+      groupField:'dept',
+      groupLabel:'Department',
       weather:false,
       photo:true,
-      importSchema:{"key_code": ["鑰匙編號", "keycode", "code", "លេខសោ"], "key_name": ["鑰匙名稱", "keyname", "name", "ឈ្មោះសោ"], "holder": ["領用人", "holder", "អ្នកកាន់"], "action": ["動作", "action", "សកម្មភាព"], "datetime": ["日期", "date", "datetime", "ថ្ងៃ"], "location": ["地點", "location", "ទីតាំង"], "purpose": ["用途", "purpose", "គោលបំណង"]},
+      periodRef:true,
+      telegramLanguage:true,
+      telegramBuilder:buildKeyTelegram,
+      importSchema:{"key_no": ["鑰匙編號", "鑰匙號碼", "keyno", "key code", "code", "លេខសោ"], "dept": ["部門", "department", "dept", "នាយកដ្ឋាន"], "recipient_name": ["領用人", "收受人", "recipient", "holder", "អ្នកកាន់"], "issue_date": ["發出日期", "日期", "issue date", "date", "ថ្ងៃ"], "issue_time": ["發出時間", "issue time", "time", "ម៉ោងចេញ"], "checker": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remarks": ["備註", "備注", "remarks", "notes", "ចំណាំ"]},
     read(){ try{ const raw=localStorage.getItem('vrt_keys'); if(!raw) return [];
         const d=JSON.parse(raw); if(Array.isArray(d)) return d;
         for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])) return d[k];

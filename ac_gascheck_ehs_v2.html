@@ -193,6 +193,7 @@ select.bi{cursor:pointer}
             <th>裁切碎布 Fabric (kg)</th>
             <th>紙管 Core (kg)</th>
             <th>合計 Total (kg)</th>
+            <th>檢查人 Inspector</th>
             <th>備註 Remark</th>
             <th>📷</th>
             <th></th>
@@ -251,7 +252,7 @@ select.bi{cursor:pointer}
           <tr>
             <th>日期 *</th><th>姓名 *</th><th>供應商 *</th><th>車牌</th>
             <th>固體</th><th>工業</th><th>重量(kg)</th>
-            <th>Time In *</th><th>Time Out</th><th>Gate Keeper</th><th>備註</th><th></th>
+            <th>Time In *</th><th>Time Out</th><th>Gate Keeper</th><th>檢查人 Inspector</th><th>備註</th><th></th>
           </tr>
         </thead>
         <tbody id="b-batch-body"></tbody>
@@ -271,7 +272,7 @@ select.bi{cursor:pointer}
       <table class="htable">
         <thead><tr>
           <th>#</th><th>日期</th><th>姓名</th><th>供應商</th><th>廢料類型</th>
-          <th>重量</th><th>Time In</th><th>Time Out</th><th>停留</th><th>異常</th>
+          <th>重量</th><th>Time In</th><th>Time Out</th><th>停留</th><th>檢查人</th><th>異常</th>
         </tr></thead>
         <tbody id="b-month-body"></tbody>
       </table>
@@ -837,7 +838,7 @@ function renderBAnalysis(){
   document.getElementById('b-month-label').textContent=ehsYearLabel(yr)+' '+ehsMonthLabel(mo)+' · '+ehsText('共','Total','សរុប')+' '+moRecs.length+' '+ehsText('筆','records','កំណត់ត្រា');
   const tbody=document.getElementById('b-month-body');
   if(!moRecs.length){
-    tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--dim)">'+ehsText('本月尚無記錄','No records this month','គ្មានកំណត់ត្រាក្នុងខែនេះ')+'</td></tr>';
+    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:16px;color:var(--dim)">'+ehsText('本月尚無記錄','No records this month','គ្មានកំណត់ត្រាក្នុងខែនេះ')+'</td></tr>';
   }else{
     tbody.innerHTML=moRecs.map((r,i)=>{
       const wtype=[(r.solid_waste?'<span class="badge badge-solid">固</span>':''),
@@ -846,7 +847,7 @@ function renderBAnalysis(){
       const dur=r.duration_min!=null?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'—';
       return `<tr><td>${i+1}</td><td>${r.date}</td><td>${r.name||'—'}</td><td><strong>${r.supplier||'—'}</strong></td>
         <td>${wtype}</td><td>${r.weight_kg||'—'}</td><td>${r.time_in||'—'}</td><td>${r.time_out||'—'}</td>
-        <td>${dur}</td><td>${anom}</td></tr>`;
+        <td>${dur}</td><td>${r.checked_by||'—'}</td><td>${anom}</td></tr>`;
     }).join('');
   }
   const kN=moRecs.filter(r=>r.supplier==='K.S.W.M').length;
@@ -973,16 +974,16 @@ function renderHistoryTable(module,recs){
   if(!recs.length){wrap.innerHTML='<div class="empty-state">🔍 無符合記錄</div>';return;}
   let hdrs,rows;
   if(module==='internal'){
-    hdrs=['日期','Plastic(kg)','Fabric(kg)','Core(kg)','Total(kg)','照片','備註','提交時間','操作'];
+    hdrs=['日期','Plastic(kg)','Fabric(kg)','Core(kg)','Total(kg)','檢查人','照片','備註','提交時間','操作'];
     rows=recs.map(r=>`<tr>
       <td>${r.date||''}</td><td>${r.plastic_kg||0}</td><td>${r.fabric_kg||0}</td>
-      <td>${r.core_kg||0}</td><td><strong>${r.total_kg||0}</strong></td>
+      <td>${r.core_kg||0}</td><td><strong>${r.total_kg||0}</strong></td><td>${r.checked_by||'—'}</td>
       <td>${typeof GC!=='undefined'&&GC.photo?GC.photo.cell(r.photos):((r.photos||[]).length?'📷 '+r.photos.length:'—')}</td><td>${r.remark||''}</td>
       <td style="font-size:11px;color:var(--dim)">${(r.submitted_at||'').substring(0,16)}</td>
       <td><button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteRecord('${r.id}','internal')">🗑️</button></td>
     </tr>`).join('');
   }else{
-    hdrs=['日期','姓名','供應商','車牌','廢料','重量','Time In','Time Out','停留','異常','操作'];
+    hdrs=['日期','姓名','供應商','車牌','廢料','重量','Time In','Time Out','停留','檢查人','異常','操作'];
     rows=recs.map(r=>{
       const wtype=[(r.solid_waste?'<span class="badge badge-solid">固</span>':''),
                    (r.industrial_waste?'<span class="badge badge-ind">工</span>':'')].filter(Boolean).join(' ')||'—';
@@ -990,7 +991,7 @@ function renderHistoryTable(module,recs){
         <td>${r.date||''}</td><td>${r.name||''}</td><td><strong>${r.supplier||''}</strong></td>
         <td>${r.car_number||''}</td><td>${wtype}</td><td>${r.weight_kg||'—'}</td>
         <td>${r.time_in||''}</td><td>${r.time_out||'—'}</td>
-        <td>${r.duration_min!=null?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'—'}</td>
+        <td>${r.duration_min!=null?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'—'}</td><td>${r.checked_by||'—'}</td>
         <td>${r.anomaly?'<span class="badge badge-anom">⚠️</span>':'—'}</td>
         <td><button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteRecord('${r.id}','gate')">🗑️</button></td>
       </tr>`;
@@ -1032,7 +1033,7 @@ function exportHistoryExcel(){
 let aRows=[];
 function addARow(){
   const id='A-'+Date.now()+'-'+Math.floor(Math.random()*9999);
-  aRows.push({id,date:'',plastic:0,fabric:0,core:0,total:0,remark:'',photos:[]});
+  aRows.push({id,date:'',plastic:0,fabric:0,core:0,total:0,checked_by:'',remark:'',photos:[]});
   renderABatch();
 }
 function removeARow(id){
@@ -1049,6 +1050,7 @@ function renderABatch(){
       <td><input class="bi" type="number" placeholder="0" value="${r.fabric||''}" min="0" onchange="updateARow('${r.id}','fabric',this.value);calcATotal('${r.id}',this)"></td>
       <td><input class="bi" type="number" placeholder="0" value="${r.core||''}" min="0" onchange="updateARow('${r.id}','core',this.value);calcATotal('${r.id}',this)"></td>
       <td><input class="bi total-cell" type="number" id="a-total-${r.id}" value="${r.total||''}" readonly></td>
+      <td><input class="bi" type="text" placeholder="${ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')}" value="${r.checked_by||''}" onchange="updateARow('${r.id}','checked_by',this.value)"></td>
       <td><input class="bi" type="text" placeholder="備註..." value="${r.remark||''}" onchange="updateARow('${r.id}','remark',this.value)"></td>
       <td><button class="ph-row-btn" onclick="openRowPhotos('a','${r.id}')">${(r.photos&&r.photos.length)?'📷'+r.photos.length:'📷'}</button></td>
       <td><button class="del-row-btn" onclick="removeARow('${r.id}')">✕</button></td>
@@ -1079,7 +1081,7 @@ async function submitModA(){
   const newRecs=valid.map(r=>({
     id:'A-'+Date.now()+'-'+Math.random().toString(36).slice(2),
     date:r.date,plastic_kg:+r.plastic||0,fabric_kg:+r.fabric||0,core_kg:+r.core||0,
-    total_kg:+r.total||0,remark:r.remark||'',photos:r.photos||[],submitted_at:now,updatedAt:now
+    total_kg:+r.total||0,checked_by:r.checked_by||'',remark:r.remark||'',photos:r.photos||[],submitted_at:now,updatedAt:now
   }));
   ld.internal=[...ld.internal,...newRecs];
   saveLocal(ld);
@@ -1096,7 +1098,7 @@ async function submitModA(){
 let bRows=[];
 function addBRow(){
   const id='B-'+Date.now()+'-'+Math.floor(Math.random()*9999);
-  bRows.push({id,date:'',name:'',supplier:'',car:'',solid:false,industrial:false,kg:'',timein:'',timeout:'',gate:'',remark:'',photos:[]});
+  bRows.push({id,date:'',name:'',supplier:'',car:'',solid:false,industrial:false,kg:'',timein:'',timeout:'',gate:'',checked_by:'',remark:'',photos:[]});
   renderBBatch();
 }
 function removeBRow(id){bRows=bRows.filter(r=>r.id!==id);renderBBatch();}
@@ -1120,6 +1122,7 @@ function renderBBatch(){
       <td><input class="bi" type="text" style="min-width:80px" placeholder="03:10pm" value="${r.timein}" onchange="updateBRow('${r.id}','timein',this.value)"></td>
       <td><input class="bi" type="text" style="min-width:80px" placeholder="03:30pm" value="${r.timeout}" onchange="updateBRow('${r.id}','timeout',this.value)"></td>
       <td><input class="bi" type="text" style="min-width:80px" placeholder="Kun Vin" value="${r.gate}" onchange="updateBRow('${r.id}','gate',this.value)"></td>
+      <td><input class="bi" type="text" style="min-width:100px" placeholder="${ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')}" value="${r.checked_by||''}" onchange="updateBRow('${r.id}','checked_by',this.value)"></td>
       <td><input class="bi" type="text" style="min-width:80px" placeholder="備註" value="${r.remark}" onchange="updateBRow('${r.id}','remark',this.value)"></td>
       <td><button class="del-row-btn" onclick="removeBRow('${r.id}')">✕</button></td>
     </tr>`).join('');
@@ -1128,8 +1131,9 @@ function updateBRow(id,field,val){const r=bRows.find(r=>r.id===id);if(r)r[field]
 function autoFillB(id,sel){
   const r=bRows.find(r=>r.id===id);if(!r)return;
   const row=sel.closest('tr');
-  const nameInp=row.querySelectorAll('input.bi')[0];
-  const carInp=row.querySelectorAll('input.bi')[1];
+  const inputs=row.querySelectorAll('input.bi');
+  const nameInp=inputs[1];
+  const carInp=inputs[2];
   if(sel.value==='K.S.W.M'){if(!r.name){nameInp.value='Na Rin';r.name='Na Rin';}if(!r.car){carInp.value='C527';r.car='C527';}
     row.querySelectorAll('input[type=checkbox]')[0].checked=true;r.solid=true;}
   if(sel.value==='SONYAPICH'){if(!r.name){nameInp.value='Nhem Eoen';r.name='Nhem Eoen';}
@@ -1151,8 +1155,8 @@ async function submitModB(){
       date:r.date,name:r.name,supplier:r.supplier,car_number:r.car,
       solid_waste:r.solid?'V':'',industrial_waste:r.industrial?'V':'',
       weight_kg:r.kg,time_in:r.timein,time_out:r.timeout,
-      duration_min:dur,gate_keeper:r.gate,remark:r.remark,
-      anomaly:dur>180,submitted_at:now
+      duration_min:dur,gate_keeper:r.gate,checked_by:r.checked_by||'',remark:r.remark,
+      anomaly:dur>180,submitted_at:now,updatedAt:now
     };
   });
   ld.gate=[...ld.gate,...newRecs];
@@ -1904,17 +1908,18 @@ function buildEhsTelegram(opt){
   const modeLabel={summary:ehsTelegramText('摘要','Summary','សង្ខេប',lang),review:ehsTelegramText('審查','Review','ពិនិត្យ',lang),approval:ehsTelegramText('核可','Approval','អនុម័ត',lang)}[opt.mode||'summary']||opt.mode;
   const dataLabel={all:ehsTelegramText('全部','All','ទាំងអស់',lang),recycle:ehsTelegramText('Recycle 回收','Recycle','Recycle',lang),waste:ehsTelegramText('Waste 廢料','Waste','Waste',lang)}[scope]||scope;
   const slotLabel={all:ehsTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:ehsTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:ehsTelegramText('下午','Afternoon','ពេលរសៀល',lang),night:ehsTelegramText('晚上','Night','ពេលយប់',lang)}[slot]||slot;
-  const lines=['♻️ <b>'+ehsTelegramText('VRT 回收／廢料','VRT Recycle / Waste','VRT កែច្នៃ / សំណល់',lang)+'</b>','📅 '+esc(periodLabel),'⏱️ '+ehsTelegramText('時段','Slot','ពេលវេលា',lang)+': '+esc(slotLabel),'🏷️ '+ehsTelegramText('資料類型','Data type','ប្រភេទទិន្នន័យ',lang)+': <b>'+esc(dataLabel)+'</b>','🧾 '+ehsTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+esc(modeLabel),'📊 '+ehsTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+rows.length+'</b> / '+ehsTelegramText('總計','Total','សរុប',lang)+': '+all.length];
+  const checkers=[...new Set(rows.map(function(r){return String(r.checked_by||r.checker||r.checkBy||'').trim();}).filter(Boolean))];
+  const lines=['♻️ <b>'+ehsTelegramText('VRT 回收／廢料','VRT Recycle / Waste','VRT កែច្នៃ / សំណល់',lang)+'</b>','📅 '+esc(periodLabel),'⏱️ '+ehsTelegramText('時段','Slot','ពេលវេលា',lang)+': '+esc(slotLabel),'🏷️ '+ehsTelegramText('資料類型','Data type','ប្រភេទទិន្នន័យ',lang)+': <b>'+esc(dataLabel)+'</b>','🧾 '+ehsTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+esc(modeLabel),'📊 '+ehsTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+rows.length+'</b> / '+ehsTelegramText('總計','Total','សរុប',lang)+': '+all.length,'👤 '+ehsTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+esc(checkers.join(', ')||'—')];
   const photos=[];
   if(rows.length){
     lines.push('━━━━━━━━━━━━━━━━');
     rows.slice(0,28).forEach(function(r){
       if(r.sourceType==='waste'){
         const kinds=[];if(r.solid_waste)kinds.push(ehsTelegramText('固體','Solid','រឹង',lang));if(r.industrial_waste)kinds.push(ehsTelegramText('工業','Industrial','ឧស្សាហកម្ម',lang));
-        lines.push('🗑️ '+esc(r.date||'—')+' | '+esc(r.supplier||r.name||'Waste')+' | '+esc(kinds.join('/')||'Waste')+' | '+esc(r.weight_kg||'—')+' kg');
+        lines.push('🗑️ '+esc(r.date||'—')+' | '+esc(r.supplier||r.name||'Waste')+' | '+esc(kinds.join('/')||'Waste')+' | '+esc(r.weight_kg||'—')+' kg'+(r.checked_by?' | 👤 '+esc(r.checked_by):''));
         if(r.car_number||r.time_in||r.time_out)lines.push('   '+esc(r.car_number||'')+' '+esc(r.time_in||'')+'→'+esc(r.time_out||''));
       }else{
-        lines.push('♻️ '+esc(r.date||'—')+' | '+ehsTelegramText('塑膠','Plastic','ប្លាស្ទិក',lang)+' '+esc(r.plastic_kg||0)+' | '+ehsTelegramText('布料','Fabric','ក្រណាត់',lang)+' '+esc(r.fabric_kg||0)+' | '+ehsTelegramText('紙管','Core','ស្នូល',lang)+' '+esc(r.core_kg||0)+' | '+ehsTelegramText('總重','Total','សរុប',lang)+' <b>'+esc(r.total_kg||0)+'</b> kg');
+        lines.push('♻️ '+esc(r.date||'—')+' | '+ehsTelegramText('塑膠','Plastic','ប្លាស្ទិក',lang)+' '+esc(r.plastic_kg||0)+' | '+ehsTelegramText('布料','Fabric','ក្រណាត់',lang)+' '+esc(r.fabric_kg||0)+' | '+ehsTelegramText('紙管','Core','ស្នូល',lang)+' '+esc(r.core_kg||0)+' | '+ehsTelegramText('總重','Total','សរុប',lang)+' <b>'+esc(r.total_kg||0)+'</b> kg'+(r.checked_by?' | 👤 '+esc(r.checked_by):''));
       }
       (Array.isArray(r.photos)?r.photos:[]).forEach(function(p){if(/^data:image\//i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});
     });
@@ -1972,7 +1977,7 @@ function mergeEhsImport(current,incoming){
       telegramBuilder:buildEhsTelegram,
       importParser:parseEhsSmartImport,
       mergeImport:mergeEhsImport,
-      importSchema:{"date": ["日期", "date", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "weight", "ទម្ងន់"], "suppliers": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
+      importSchema:{"date": ["日期", "date", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "weight", "ទម្ងន់"], "suppliers": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "checked_by": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
     read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_waste_v3')||'{}'); let o=[];
         (Array.isArray(d.internal)?d.internal:[]).forEach(r=>o.push(Object.assign({module:'internal',sourceType:'recycle'},r,{sourceType:r.sourceType||'recycle'})));
         (Array.isArray(d.gate)?d.gate:[]).forEach(r=>o.push(Object.assign({module:'gate',sourceType:'waste'},r,{sourceType:r.sourceType||'waste'})));

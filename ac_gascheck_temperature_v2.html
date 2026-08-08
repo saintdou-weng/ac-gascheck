@@ -252,6 +252,7 @@ tbody tr:hover{background:var(--bg);}
       <button class="pbtn" id="rbpm" onclick="setRP('afternoon')">下午</button>
     </div>
     <div class="rec-weather"><span class="clbl" id="i-rec-weather">🌤️ 天氣 Weather</span><div id="rec-wx"></div></div>
+    <input type="text" id="rec-checker" style="width:150px" placeholder="檢查人">
     <input type="text" id="rec-note" style="width:180px" placeholder="備註（可選）">
     <button class="btn bp ml" onclick="saveAllRec()" id="i-saveall">💾 全部儲存</button>
     <button class="btn bg sm" onclick="syncUp()" id="i-upload-after-save" disabled>⬆ 上傳</button>
@@ -504,6 +505,7 @@ tbody tr:hover{background:var(--bg);}
   <div class="g2" style="margin-bottom:11px">
     <div class="fg"><label id="i-rezon">區域</label><select id="re-zon"></select></div>
     <div class="fg" style="grid-column:1/-1"><label id="i-rewx">🌤️ 天氣 Weather</label><div id="re-wx"></div></div>
+    <div class="fg"><label id="i-rechecker">檢查人</label><input type="text" id="re-checker"></div>
     <div class="fg"><label id="i-renote">備註</label><input type="text" id="re-note"></div>
   </div>
   <div class="g2" style="margin-bottom:11px">
@@ -537,7 +539,7 @@ zh:{
   'tab-dash':'儀表板','tab-rec':'記錄','tab-hist':'歷史','tab-anal':'分析','tab-zones':'區域','tab-alert':'異常','tab-set':'設定',
   am:'早上 08:00~09:00',pm:'下午 15:30~16:30',all:'全天',
   cold:'過冷',cool:'涼爽',ok:'正常',warm:'偏熱',hot:'過熱',dry:'偏乾',humid:'偏濕',vhum:'過濕',
-  date:'日期',zone:'區域',per:'時段',note:'備註',act:'操作',wx:'🌤️ 天氣', wxcol:'天氣',
+  date:'日期',zone:'區域',per:'時段',note:'備註',checker:'檢查人',act:'操作',wx:'🌤️ 天氣', wxcol:'天氣',
   allz:'全部區域',allp:'全部時段',allsev:'全部等級',crit:'嚴重',warn:'警告',
   addrec:'＋ 新增記錄',saveall:'💾 全部儲存',clr:'清除',clrtoday:'清除今日',
   cancel:'取消',save:'儲存',edit:'編輯',del:'刪除',prev:'👁 預覽',send:'📤 發送',
@@ -560,9 +562,9 @@ zh:{
   cdelrec:'確認刪除此記錄？',cdelzone:'確認刪除此區域（及其所有記錄）？',
   cclrall:'確認清除所有記錄？不可還原！',crstzone:'確認重置所有區域？',
   ahigh:'溫度過高',alow:'溫度過低',ahhigh:'濕度過高',ahlow:'濕度過低',
-  clbl_date:'日期',clbl_zone:'區域',clbl_per:'時段',clbl_tmp:'溫度°C',clbl_hum:'濕度%',clbl_stat:'狀態',clbl_note:'備註',
+  clbl_date:'日期',clbl_zone:'區域',clbl_per:'時段',clbl_tmp:'溫度°C',clbl_hum:'濕度%',clbl_stat:'狀態',clbl_note:'備註',clbl_checker:'檢查人',
   an_cnt:'記錄',an_avgt:'均溫°C',an_maxt:'最高°C',an_mint:'最低°C',an_avgh:'均濕%',an_maxh:'最高%',an_minh:'最低%',an_anom:'異常',
-  rplbl_note_ph:'備註（可選）',today_recs:'今日已記錄',
+  rplbl_note_ph:'備註（可選）',checker_ph:'檢查人',today_recs:'今日已記錄',
   view_day:'日',view_week:'週',view_month:'月',view_year:'年',
   months:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
 },
@@ -571,7 +573,7 @@ en:{
   'tab-dash':'Dashboard','tab-rec':'Record','tab-hist':'History','tab-anal':'Analysis','tab-zones':'Zones','tab-alert':'Alerts','tab-set':'Settings',
   am:'Morning 08:00~09:00',pm:'Afternoon 15:30~16:30',all:'All Day',
   cold:'Cold',cool:'Cool',ok:'Normal',warm:'Warm',hot:'Hot',dry:'Dry',humid:'Humid',vhum:'Very Humid',
-  date:'Date',zone:'Zone',per:'Period',note:'Notes',act:'Actions',wx:'🌤️ Weather', wxcol:'Weather',
+  date:'Date',zone:'Zone',per:'Period',note:'Notes',checker:'Inspector',act:'Actions',wx:'🌤️ Weather', wxcol:'Weather',
   allz:'All Zones',allp:'All Periods',allsev:'All Severity',crit:'Critical',warn:'Warning',
   addrec:'＋ Add Record',saveall:'💾 Save All',clr:'Clear',clrtoday:'Clear Today',
   cancel:'Cancel',save:'Save',edit:'Edit',del:'Delete',prev:'👁 Preview',send:'📤 Send',
@@ -594,9 +596,9 @@ en:{
   cdelrec:'Delete this record?',cdelzone:'Delete zone (and all its records)?',
   cclrall:'Delete ALL records? Cannot be undone!',crstzone:'Reset all zone settings?',
   ahigh:'Temp Too High',alow:'Temp Too Low',ahhigh:'Humidity Too High',ahlow:'Humidity Too Low',
-  clbl_date:'Date',clbl_zone:'Zone',clbl_per:'Period',clbl_tmp:'Temp°C',clbl_hum:'Hum%',clbl_stat:'Status',clbl_note:'Notes',
+  clbl_date:'Date',clbl_zone:'Zone',clbl_per:'Period',clbl_tmp:'Temp°C',clbl_hum:'Hum%',clbl_stat:'Status',clbl_note:'Notes',clbl_checker:'Inspector',
   an_cnt:'Records',an_avgt:'Avg°C',an_maxt:'Max°C',an_mint:'Min°C',an_avgh:'Avg%',an_maxh:'Max%',an_minh:'Min%',an_anom:'Anomalies',
-  rplbl_note_ph:'Optional notes',today_recs:"Today's Records",
+  rplbl_note_ph:'Optional notes',checker_ph:'Inspector',today_recs:"Today's Records",
   view_day:'Day',view_week:'Week',view_month:'Month',view_year:'Year',
   months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
 },
@@ -605,7 +607,7 @@ km:{
   'tab-dash':'ផ្ទាំងគ្រប់គ្រង','tab-rec':'កំណត់ត្រា','tab-hist':'ប្រវត្តិ','tab-anal':'វិភាគ','tab-zones':'តំបន់','tab-alert':'ព្រមាន','tab-set':'ការកំណត់',
   am:'ព្រឹក 08:00~09:00',pm:'រសៀល 15:30~16:30',all:'ថ្ងៃទាំងមូល',
   cold:'ត្រជាក់',cool:'ត្រជាក់ស្រួល',ok:'ធម្មតា',warm:'កក្តៅ',hot:'ក្តៅខ្លាំង',dry:'ស្ងួត',humid:'សើម',vhum:'សើមខ្លាំង',
-  date:'កាលបរិច្ឆេទ',zone:'តំបន់',per:'វេលា',note:'កំណត់ចំណាំ',act:'ប្រតិបត្តិការ',wx:'🌤️ អាកាសធាតុ', wxcol:'អាកាសធាតុ',
+  date:'កាលបរិច្ឆេទ',zone:'តំបន់',per:'វេលា',note:'កំណត់ចំណាំ',checker:'អ្នកត្រួតពិនិត្យ',act:'ប្រតិបត្តិការ',wx:'🌤️ អាកាសធាតុ', wxcol:'អាកាសធាតុ',
   allz:'គ្រប់តំបន់',allp:'គ្រប់វេលា',allsev:'គ្រប់កម្រិត',crit:'ធ្ងន់ធ្ងរ',warn:'ព្រមាន',
   addrec:'＋ បន្ថែម',saveall:'💾 រក្សាទុក',clr:'លុបចោល',clrtoday:'លុបថ្ងៃនេះ',
   cancel:'បោះបង់',save:'រក្សាទុក',edit:'កែ',del:'លុប',prev:'👁 មើល',send:'📤 ផ្ញើ',
@@ -628,9 +630,9 @@ km:{
   cdelrec:'លុបកំណត់ត្រានេះ?',cdelzone:'លុបតំបន់ (និងកំណត់ត្រាទាំងអស់)?',
   cclrall:'លុបកំណត់ត្រាទាំងអស់?',crstzone:'កំណត់ទ្សសន្ណ?',
   ahigh:'សីតុណ្ហភាពខ្ពស់',alow:'សីតុណ្ហភាពទាប',ahhigh:'សំណើមខ្ពស់',ahlow:'សំណើមទាប',
-  clbl_date:'កាលបរិច្ឆេទ',clbl_zone:'តំបន់',clbl_per:'វេលា',clbl_tmp:'°C',clbl_hum:'%',clbl_stat:'ស្ថានភាព',clbl_note:'ចំណាំ',
+  clbl_date:'កាលបរិច្ឆេទ',clbl_zone:'តំបន់',clbl_per:'វេលា',clbl_tmp:'°C',clbl_hum:'%',clbl_stat:'ស្ថានភាព',clbl_note:'ចំណាំ',clbl_checker:'អ្នកត្រួតពិនិត្យ',
   an_cnt:'កំណត់ត្រា',an_avgt:'មធ្យម°C',an_maxt:'ខ្ពស់°C',an_mint:'ទាប°C',an_avgh:'មធ្យម%',an_maxh:'ខ្ពស់%',an_minh:'ទាប%',an_anom:'ខុសប្រក្រតី',
-  rplbl_note_ph:'កំណត់ចំណាំ',today_recs:'ការកត់ត្រាថ្ងៃនេះ',
+  rplbl_note_ph:'កំណត់ចំណាំ',checker_ph:'អ្នកត្រួតពិនិត្យ',today_recs:'ការកត់ត្រាថ្ងៃនេះ',
   view_day:'ថ្ងៃ',view_week:'សប្តាហ៍',view_month:'ខែ',view_year:'ឆ្នាំ',
   months:['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'],
 }};
@@ -687,7 +689,7 @@ function compactTempRecords(list){
   return Array.from(map.values());
 }
 function tempStorageRecord(r){
-  const out={id:r.id||'',z:r.z||'',d:r.d||'',p:r.p||'',t:r.t!==undefined?r.t:'',h:r.h!==undefined?r.h:'',wx:r.wx||'',note:String(r.note||'').slice(0,2000),ts:r.ts||'',updatedAt:r.updatedAt||''};
+  const out={id:r.id||'',z:r.z||'',d:r.d||'',p:r.p||'',t:r.t!==undefined?r.t:'',h:r.h!==undefined?r.h:'',wx:r.wx||'',checker:String(r.checker||'').slice(0,200),note:String(r.note||'').slice(0,2000),ts:r.ts||'',updatedAt:r.updatedAt||''};
   const photos=Array.isArray(r.photos)?r.photos.filter(p=>typeof p==='string'&&!/^data:image\//i.test(p)&&p.length<=4096):[];
   if(photos.length)out.photos=photos;
   return out;
@@ -805,7 +807,7 @@ function applyI18n(){
     'i-cancel':'cancel','i-cancel2':'cancel','i-cancel3':'cancel',
     'i-save':'save','i-save2':'save',
     // Record edit modal
-    'i-edittit':'edittit','i-redate':'date','i-reper':'per','i-rezon':'zone','i-renote':'note','i-rewx':'wx',
+    'i-edittit':'edittit','i-redate':'date','i-reper':'per','i-rezon':'zone','i-rechecker':'checker','i-renote':'note','i-rewx':'wx',
     'i-retmp':'clbl_tmp','i-rehum':'clbl_hum',
     // Confirm modal
     'i-conftit':'conftit','cf-ok':'confirm',
@@ -820,6 +822,7 @@ function applyI18n(){
   btn('avd','view_day');btn('avw','view_week');btn('avm','view_month');btn('avy','view_year');
   // Placeholder
   const rn=document.getElementById('rec-note');if(rn)rn.placeholder=T('rplbl_note_ph');
+  const rc=document.getElementById('rec-checker');if(rc)rc.placeholder=T('checker_ph');
   // Select option texts
   const hperiod=document.getElementById('hperiod');
   if(hperiod){hperiod.options[0].text=T('allp');hperiod.options[1].text=T('am');hperiod.options[2].text=T('pm');}
@@ -1015,6 +1018,7 @@ function prvSt(zid){
 function saveAllRec(){
   const rd=document.getElementById('rec-date');
   const sel=rd.value;if(!sel){toast('請選擇日期','err');return;}
+  const checker=document.getElementById('rec-checker').value.trim();
   const note=document.getElementById('rec-note').value;
   const wx=window._recWxCtl?window._recWxCtl.get():'';
   const zones=getZ().filter(z=>z.on);
@@ -1025,7 +1029,7 @@ function saveAllRec(){
     if((t===''||t===undefined)&&(h===''||h===undefined))return;
     recs=recs.filter(r=>!(r.d===sel&&r.p===RP&&r.z===z.id));
     const rec={id:'r'+Date.now()+Math.random().toString(36).slice(2,5),z:z.id,d:sel,p:RP,
-      t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',wx,note,ts:_localTS(),updatedAt:_localTS()};
+      t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',wx,checker,note,ts:_localTS(),updatedAt:_localTS()};
     recs.push(rec);newRecs.push(rec);
   });
   setR(recs);toast(newRecs.length?T('saved')+' · '+T('syncup'):T('saved'),'ok');renderTodayCard(sel);updBadge();
@@ -1047,13 +1051,14 @@ function renderTodayCard(date){
   if(!recs.length){tc.style.display='none';return;}
   tc.style.display='block';
   const zones=getZ();
-  tb.innerHTML=`<div class="twrap"><table><thead><tr><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('wxcol')}</th><th>${T('clbl_stat')}</th></tr></thead>
+  tb.innerHTML=`<div class="twrap"><table><thead><tr><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('wxcol')}</th><th>${T('clbl_checker')}</th><th>${T('clbl_stat')}</th></tr></thead>
   <tbody>${recs.map(r=>{const z=zones.find(z=>z.id===r.z);const ts=tSt(r.t),hs=hSt(r.h);
     return `<tr><td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${z?z.col:'#ccc'};display:inline-block"></span>${z?znm(z):'?'}</span></td>
     <td>${r.p==='morning'?T('am'):T('pm')} ${r.wx?_wxLabel(r.wx):''}</td>
     <td class="${ts?ts.tc:''}">${r.t!==''?r.t+'°C':'--'}</td>
     <td class="${hs?hs.tc:''}">${r.h!==''?r.h+'%':'--'}</td>
-        <td style="white-space:nowrap">${_wxLabel(r.wx)}</td>
+    <td style="white-space:nowrap">${_wxLabel(r.wx)}</td>
+    <td>${r.checker||'—'}</td>
     <td>${ts&&ts.k!=='ok'?`<span class="bdg ${ts.cls}">${T(ts.k)}</span>`:''} ${hs&&hs.k!=='ok'?`<span class="bdg ${hs.cls}">${T(hs.k)}</span>`:''}</td>
     </tr>`;}).join('')}</tbody></table></div>`;
 }
@@ -1146,8 +1151,8 @@ function renderHist(){
 
 function renderHistTbl(recs,zones){
   const total=recs.length,start=(HP-1)*PER_PAGE,page=recs.slice(start,start+PER_PAGE);
-  document.getElementById('h-thead').innerHTML=`<tr><th>${T('clbl_date')}</th><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('wxcol')}</th><th>${T('clbl_stat')}</th><th>${T('clbl_note')}</th><th>${T('act')}</th></tr>`;
-  if(!page.length){document.getElementById('h-tbody').innerHTML=`<tr class="nodata-row"><td colspan="9">${T('nodata')}</td></tr>`;document.getElementById('h-pagi').innerHTML='';return;}
+  document.getElementById('h-thead').innerHTML=`<tr><th>${T('clbl_date')}</th><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('wxcol')}</th><th>${T('clbl_checker')}</th><th>${T('clbl_stat')}</th><th>${T('clbl_note')}</th><th>${T('act')}</th></tr>`;
+  if(!page.length){document.getElementById('h-tbody').innerHTML=`<tr class="nodata-row"><td colspan="10">${T('nodata')}</td></tr>`;document.getElementById('h-pagi').innerHTML='';return;}
   document.getElementById('h-tbody').innerHTML=page.map(r=>{
     const z=zones.find(z=>z.id===r.z),ts=tSt(r.t),hs=hSt(r.h),an=isAnom(r),cr=isCrit(r);
     return `<tr style="${cr?'background:var(--hot-bg)':an?'background:var(--warm-bg)':''}">
@@ -1157,6 +1162,7 @@ function renderHistTbl(recs,zones){
       <td class="${ts?ts.tc:''}">${r.t!==''?r.t+'°C':'--'}</td>
       <td class="${hs?hs.tc:''}">${r.h!==''?r.h+'%':'--'}</td>
       <td style="white-space:nowrap">${_wxLabel(r.wx)}</td>
+      <td>${r.checker||'—'}</td>
       <td>${ts&&ts.k!=='ok'?`<span class="bdg ${ts.cls}">${T(ts.k)}</span>`:''} ${hs&&hs.k!=='ok'?`<span class="bdg ${hs.cls}">${T(hs.k)}</span>`:''} ${cr?'🔴':an?'⚠️':''}</td>
       <td class="muted">${r.note||''}</td>
       <td style="white-space:nowrap"><button class="btn bg xs" onclick="openREmod('${r.id}')">✏️</button> <button class="btn bd xs" onclick="delRec('${r.id}')">🗑</button></td>
@@ -1412,6 +1418,7 @@ function popREmod(id){
   document.getElementById('re-per').value='morning';
   document.getElementById('re-tmp').value='';
   document.getElementById('re-hum').value='';
+  document.getElementById('re-checker').value='';
   document.getElementById('re-note').value='';
   _mountWx('');
   openMod('re-over');
@@ -1456,6 +1463,7 @@ function openREmod(id){
   document.getElementById('re-zon').value=r.z;
   document.getElementById('re-tmp').value=r.t!==''?r.t:'';
   document.getElementById('re-hum').value=r.h!==''?r.h:'';
+  document.getElementById('re-checker').value=r.checker||'';
   document.getElementById('re-note').value=r.note||'';
   _mountWx(r.wx||'');
   openMod('re-over');
@@ -1467,9 +1475,9 @@ function saveREedit(){
   let recs=getR();
   if(id){
     const i=recs.findIndex(r=>r.id===id);
-    if(i>=0)recs[i]={...recs[i],d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',wx:(window._wxCtl?window._wxCtl.get():(recs[i].wx||'')),note:document.getElementById('re-note').value,ts:_localTS(),updatedAt:_localTS()};
+    if(i>=0)recs[i]={...recs[i],d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',wx:(window._wxCtl?window._wxCtl.get():(recs[i].wx||'')),checker:document.getElementById('re-checker').value.trim(),note:document.getElementById('re-note').value,ts:_localTS(),updatedAt:_localTS()};
   }else{
-    recs.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,5),d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',wx:(window._wxCtl?window._wxCtl.get():''),note:document.getElementById('re-note').value,ts:_localTS(),updatedAt:_localTS()});
+    recs.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,5),d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',wx:(window._wxCtl?window._wxCtl.get():''),checker:document.getElementById('re-checker').value.trim(),note:document.getElementById('re-note').value,ts:_localTS(),updatedAt:_localTS()});
   }
   setR(recs);closeMod('re-over');toast(T('saved'),'ok');renderAll();updBadge();
   // 雲端同步
@@ -1678,7 +1686,8 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
   view.forEach(r=>{(typeof GC!=='undefined'&&GC.util?GC.util.asArray(r.photos):Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^data:image\//i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
   const avg=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'--';
   const anomalies=view.filter(isAnom).length, zoneCount=new Set(view.map(r=>r.z).filter(Boolean)).size;
-  const lines=['🌡️ <b>'+tempTelegramText('VRT 溫濕度','VRT Temperature & Humidity','VRT សីតុណ្ហភាព និងសំណើម',lang)+'</b>','📅 '+periodName,'⏱️ '+tempTelegramText('時段','Slot','ពេលវេលា',lang)+': '+slotName,'🧾 '+tempTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeName,'━━━━━━━━━━━━━━━━','📊 <b>'+tempTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+tempTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b> | '+tempTelegramText('區域','Zones','តំបន់',lang)+': '+zoneCount,'• '+tempTelegramText('平均溫度','Avg Temp','សីតុណ្ហភាពមធ្យម',lang)+': '+avg(temps)+'°C | '+tempTelegramText('平均濕度','Avg Hum','សំណើមមធ្យម',lang)+': '+avg(hums)+'%','• '+tempTelegramText('異常','Anomaly','មិនប្រក្រតី',lang)+': <b>'+anomalies+'</b>','━━━━━━━━━━━━━━━━'];
+  const checkers=[...new Set(view.map(r=>String(r.checker||r.checked_by||r.checkBy||'').trim()).filter(Boolean))];
+  const lines=['🌡️ <b>'+tempTelegramText('VRT 溫濕度','VRT Temperature & Humidity','VRT សីតុណ្ហភាព និងសំណើម',lang)+'</b>','📅 '+periodName,'⏱️ '+tempTelegramText('時段','Slot','ពេលវេលា',lang)+': '+slotName,'🧾 '+tempTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeName,'━━━━━━━━━━━━━━━━','📊 <b>'+tempTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+tempTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b> | '+tempTelegramText('區域','Zones','តំបន់',lang)+': '+zoneCount,'• '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(checkers.join(', ')||'—'),'• '+tempTelegramText('平均溫度','Avg Temp','សីតុណ្ហភាពមធ្យម',lang)+': '+avg(temps)+'°C | '+tempTelegramText('平均濕度','Avg Hum','សំណើមមធ្យម',lang)+': '+avg(hums)+'%','• '+tempTelegramText('異常','Anomaly','មិនប្រក្រតី',lang)+': <b>'+anomalies+'</b>','━━━━━━━━━━━━━━━━'];
   if(!view.length){lines.push(tempTelegramText('暫無記錄','No records','គ្មានកំណត់ត្រា',lang),'⏰ '+new Date().toLocaleString());return {text:lines.join('\n'),photos:photos};}
   const zones=getZ();
   const dates=[...new Set(view.map(r=>String(r.d||'').slice(0,10)).filter(Boolean))].sort();
@@ -1692,7 +1701,7 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
       const per=r.p==='morning'?tempTelegramText('早上','Morning','ពេលព្រឹក',lang):tempTelegramText('下午','Afternoon','ពេលរសៀល',lang);
       const ts=tSt(r.t),hs=hSt(r.h);
       const status=[ts&&tempTelegramStatus(ts.k,lang),hs&&tempTelegramStatus(hs.k,lang)].filter(Boolean).join(' / ')||tempTelegramText('正常','Normal','ធម្មតា',lang);
-      lines.push('🏭 '+name+' | '+per+' | 🌡️ '+(r.t!==''&&r.t!=null?r.t+'°C':'--')+' | 💧 '+(r.h!==''&&r.h!=null?r.h+'%':'--')+' | '+status+(r.wx?' | '+tempTelegramWeather(r.wx,lang):''));
+      lines.push('🏭 '+name+' | '+per+' | 🌡️ '+(r.t!==''&&r.t!=null?r.t+'°C':'--')+' | 💧 '+(r.h!==''&&r.h!=null?r.h+'%':'--')+' | '+status+(r.wx?' | '+tempTelegramWeather(r.wx,lang):'')+(r.checker?' | 👤 '+r.checker:''));
       count++;
     });
   });
@@ -1738,6 +1747,7 @@ function enrichRec(r){
     temperature: r.t!==''&&r.t!==undefined?r.t:'',
     humidity:    r.h!==''&&r.h!==undefined?r.h:'',
     weather:     r.wx||r.weather||'',
+    checker:     r.checker||r.checked_by||r.checkBy||'',
     note:        r.note||'',
     photos:      r.photos||[],
     submittedAt: r.ts||r.updatedAt||_localTS(),
@@ -1757,6 +1767,7 @@ function normalizeRec(r){
     t:    isNaN(t)?'':t,
     h:    isNaN(h)?'':h,
     wx:   r.weather||r.wx||'',
+    checker:r.checker||r.checked_by||r.checkBy||'',
     note: r.note||'',
     photos:Array.isArray(r.photos)?r.photos:[],
     ts:   r.submittedAt||r.updatedAt||'',
@@ -2064,7 +2075,7 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       telegramBuilder:({period,mode,ref,slot,lang})=>buildTGPeriodMsg(period,mode,ref,slot,lang),
       extra:()=>({zones:getZ(),zonesMode:'merge'}),
       onRemote:(d)=>{if(d&&Array.isArray(d.zones)){const z=mergeTempZones(getZ(),d.zones);if(JSON.stringify(z)!==JSON.stringify(getZ())){setZ(z);renderAll();}}},
-      importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "note": ["備註", "note", "notes", "ចំណាំ"]},
+      importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "checker": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "notes", "ចំណាំ"]},
     read(){ try{ const raw=localStorage.getItem('vrt_th_r'); if(!raw) return [];
         const d=JSON.parse(raw); if(Array.isArray(d)) return d;
         for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])) return d[k];

@@ -590,6 +590,7 @@ document.addEventListener('click', function(e) {
       <col style="width:70px"><!-- S Qty -->
       <col style="width:100px"><!-- S Price -->
       <col style="width:110px"><!-- S TTL KHR -->
+      <col style="width:120px"><!-- Inspector -->
       <col style="width:44px"><!-- Action -->
     </colgroup>
       
@@ -598,6 +599,7 @@ document.addEventListener('click', function(e) {
               <th rowspan="2" style="background:var(--slate-100);color:var(--slate-600)" data-key="date">Date</th>
               <th colspan="4" class="section-factory">🏭 <span data-key="factory">Factory</span></th>
               <th colspan="4" class="section-staff">🏠 <span data-key="staff_house">Staff House</span></th>
+              <th rowspan="2" style="background:var(--slate-100)" data-key="checker">Inspector</th>
               <th rowspan="2" style="background:var(--slate-100);width:60px;" data-key="action">Action</th>
             </tr>
             <tr>
@@ -813,6 +815,10 @@ document.addEventListener('click', function(e) {
       <label class="form-label" data-key="price">Price (Riels)</label>
       <input class="form-input" id="modal-sta-price" type="number" min="0" placeholder="0">
     </div>
+    <div class="form-group">
+      <label class="form-label" data-key="checker">Inspector</label>
+      <input class="form-input" id="modal-checker" type="text" placeholder="Inspector">
+    </div>
     <div class="modal-actions">
       <button class="btn btn-ghost" onclick="closeModal('add-modal')" data-key="cancel">Cancel</button>
       <button class="btn btn-primary" onclick="saveModalRecord()" data-key="save">Save Record</button>
@@ -834,7 +840,7 @@ const LANGS = {
     tab_entry:'Data Entry', tab_analysis:'Analysis', tab_history:'History',
     tab_import:'Import Excel', tab_alerts:'Alerts', tab_telegram:'Telegram',
     add_record:'Add Record', export:'Export', save:'Save', cancel:'Cancel',
-    day:'Day', week:'Week', year:'Year', month:'Month', date:'Date', time:'Time', qty:'Qty',
+    day:'Day', week:'Week', year:'Year', month:'Month', date:'Date', time:'Time', qty:'Qty', checker:'Inspector',
     price:'Price (Riels)', ttl:'TTL (Riels)', action:'Action',
     factory:'Factory', staff_house:'Staff House',
     today:'Today', clear_month:'Clear Month', monthly_record:'Monthly Record',
@@ -875,7 +881,7 @@ const LANGS = {
     tab_entry:'數據輸入', tab_analysis:'分析', tab_history:'歷史記錄',
     tab_import:'匯入Excel', tab_alerts:'異常提醒', tab_telegram:'Telegram',
     add_record:'新增記錄', export:'匯出', save:'儲存', cancel:'取消',
-    day:'日', week:'週', year:'年', month:'月', date:'日期', time:'時間', qty:'數量',
+    day:'日', week:'週', year:'年', month:'月', date:'日期', time:'時間', qty:'數量', checker:'檢查人',
     price:'單價(瑞爾)', ttl:'合計(瑞爾)', action:'操作',
     factory:'工廠', staff_house:'員工宿舍',
     today:'今天', clear_month:'清除本月', monthly_record:'月度記錄',
@@ -916,7 +922,7 @@ const LANGS = {
     tab_entry:'បញ្ចូលទិន្នន័យ', tab_analysis:'វិភាគ', tab_history:'ប្រវត្តិ',
     tab_import:'នាំចូល Excel', tab_alerts:'ការជូនដំណឹង', tab_telegram:'Telegram',
     add_record:'បន្ថែមកំណត់ត្រា', export:'នាំចេញ', save:'រក្សាទុក', cancel:'បោះបង់',
-    day:'ថ្ងៃ', week:'សប្តាហ៍', year:'ឆ្នាំ', month:'ខែ', date:'កាលបរិច្ឆេទ', time:'ម៉ោង', qty:'បរិមាណ',
+    day:'ថ្ងៃ', week:'សប្តាហ៍', year:'ឆ្នាំ', month:'ខែ', date:'កាលបរិច្ឆេទ', time:'ម៉ោង', qty:'បរិមាណ', checker:'អ្នកត្រួតពិនិត្យ',
     price:'តម្លៃ(រៀល)', ttl:'សរុប(រៀល)', action:'សកម្មភាព',
     factory:'រោងចក្រ', staff_house:'ផ្ទះបុគ្គលិក',
     today:'ថ្ងៃនេះ', clear_month:'លុបខែ', monthly_record:'កំណត់ត្រាប្រចាំខែ',
@@ -1191,6 +1197,7 @@ function renderTable() {
       <td><input type="number" min="0" value="${row.sQty||''}" placeholder="0" onchange="updateRow(${idx},'sQty',this.value)" style="width:60px"></td>
       <td><input type="number" min="0" value="${row.sPrice||''}" placeholder="0" onchange="updateRow(${idx},'sPrice',this.value)" class="sPrice-inp" style="width:80px"></td>
       <td><span class="ttl-value" id="sttl-${idx}">${fmtTtl(row.sTtl)}</span></td>
+      <td><input type="text" value="${row.checkBy||''}" placeholder="${T('checker')}" onchange="updateRow(${idx},'checkBy',this.value)" style="width:110px"></td>
       <td><button class="btn btn-ghost btn-sm" onclick="clearRow(${idx})" title="${T('clear')}">✕</button></td>
     </tr>`;
   });
@@ -1206,12 +1213,11 @@ function renderTable() {
     <td style="font-weight:700;color:var(--blue-700)">${totalFQty}</td>
     <td></td>
     <td style="font-weight:700;color:var(--blue-700)">${totalFTtl.toLocaleString()} ៛</td>
-    <td style="font-weight:700;color:#2563eb">$${(totalFTtl/_rate).toFixed(2)}</td>
     <td></td>
     <td style="font-weight:700;color:var(--teal-700)">${totalSQty}</td>
     <td></td>
     <td style="font-weight:700;color:var(--teal-700)">${totalSTtl.toLocaleString()} ៛</td>
-    <td style="font-weight:700;color:#0d9488">$${(totalSTtl/_rate).toFixed(2)}</td>
+    <td></td>
     <td></td>
   </tr>`;
   tbody.innerHTML = rows;
@@ -1323,17 +1329,17 @@ function exportExcel() {
     [`Month: ${months[currentMonth-1]}`, `Year: ${currentYear}`],
     [],
     ['Date','Time (Factory)','Qty (Factory)','Price (Factory)','TTL (Factory)',
-     'Time (Staff)','Qty (Staff)','Price (Staff)','TTL (Staff)'],
+     'Time (Staff)','Qty (Staff)','Price (Staff)','TTL (Staff)','Inspector'],
     ...currentRows.map(r => [
       r.day, r.fTime||'', parseFloat(r.fQty)||0, parseFloat(r.fPrice)||0, r.fTtl||0,
-      r.sTime||'', parseFloat(r.sQty)||0, parseFloat(r.sPrice)||0, r.sTtl||0
+      r.sTime||'', parseFloat(r.sQty)||0, parseFloat(r.sPrice)||0, r.sTtl||0, r.checkBy||''
     ]),
     [],
     ['Total','',
      currentRows.reduce((a,r)=>a+(parseFloat(r.fQty)||0),0),'',
      currentRows.reduce((a,r)=>a+r.fTtl,0),'',
      currentRows.reduce((a,r)=>a+(parseFloat(r.sQty)||0),0),'',
-     currentRows.reduce((a,r)=>a+r.sTtl,0)]
+     currentRows.reduce((a,r)=>a+r.sTtl,0),'']
   ];
   const ws = XLSX.utils.aoa_to_sheet(wsData);
   XLSX.utils.book_append_sheet(wb, ws, `${currentYear}-${String(currentMonth).padStart(2,'0')}`);
@@ -1353,6 +1359,7 @@ function openAddModal() {
   document.getElementById('modal-sta-time').value = '';
   document.getElementById('modal-sta-qty').value = '';
   document.getElementById('modal-sta-price').value = '';
+  document.getElementById('modal-checker').value = '';
   document.getElementById('add-modal').classList.add('open');
 }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
@@ -1375,6 +1382,7 @@ function saveModalRecord() {
     sQty: document.getElementById('modal-sta-qty').value,
     sPrice: document.getElementById('modal-sta-price').value,
     sTtl: calcTtl(document.getElementById('modal-sta-qty').value, document.getElementById('modal-sta-price').value),
+    checkBy: document.getElementById('modal-checker').value.trim(),
     anomaly: []
   };
   if(idx >= 0) saved[idx] = newRow; else saved.push(newRow);
@@ -2223,7 +2231,7 @@ function buildWaterTelegram(opt){
   const events=[];
   rows.forEach(function(r){
     [['factory',r.fTime,r.fQty,r.fPrice,r.fTtl],['staff',r.sTime,r.sQty,r.sPrice,r.sTtl]].forEach(function(e){
-      if(e[1]||e[2]||e[3]||e[4])events.push({date:r.date||'—',kind:e[0],time:e[1]||'',qty:+e[2]||0,price:+e[3]||0,total:+e[4]||0});
+      if(e[1]||e[2]||e[3]||e[4])events.push({date:r.date||'—',kind:e[0],time:e[1]||'',qty:+e[2]||0,price:+e[3]||0,total:+e[4]||0,checker:r.checkBy||r.checker||r.checked_by||''});
     });
   });
   const view=events.filter(e=>waterTelegramSlotMatch(e.time,slot));
@@ -2231,9 +2239,10 @@ function buildWaterTelegram(opt){
   const mLabel={summary:waterTelegramText('摘要','Summary','សង្ខេប',lang),review:waterTelegramText('審查','Review','ពិនិត្យ',lang),approval:waterTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
   const sLabel={all:waterTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:waterTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:waterTelegramText('下午','Afternoon','ពេលរសៀល',lang),night:waterTelegramText('晚上','Night','ពេលយប់',lang)}[slot]||slot;
   const fQty=view.filter(e=>e.kind==='factory').reduce((a,e)=>a+e.qty,0),sQty=view.filter(e=>e.kind==='staff').reduce((a,e)=>a+e.qty,0),fTtl=view.filter(e=>e.kind==='factory').reduce((a,e)=>a+e.total,0),sTtl=view.filter(e=>e.kind==='staff').reduce((a,e)=>a+e.total,0);
-  const lines=['💧 <b>'+waterTelegramText('VRT 飲水記錄','VRT Drinking Water','VRT ទឹកផឹក',lang)+'</b>','📅 '+pLabel,'⏱️ '+waterTelegramText('時段','Slot','ពេលវេលា',lang)+': '+sLabel,'🧾 '+waterTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+mLabel,'━━━━━━━━━━━━━━━━','📊 <b>'+waterTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+waterTelegramText('工廠數量','Factory qty','បរិមាណរោងចក្រ',lang)+': '+fQty+' | '+waterTelegramText('宿舍數量','Staff house qty','បរិមាណផ្ទះបុគ្គលិក',lang)+': '+sQty,'• '+waterTelegramText('工廠金額','Factory total','សរុបរោងចក្រ',lang)+': '+fTtl.toLocaleString()+' KHR | '+waterTelegramText('宿舍金額','Staff house total','សរុបផ្ទះបុគ្គលិក',lang)+': '+sTtl.toLocaleString()+' KHR','• '+waterTelegramText('筆數','Events','ព្រឹត្តិការណ៍',lang)+': <b>'+view.length+'</b>'];
+  const checkers=[...new Set(view.map(e=>String(e.checker||'').trim()).filter(Boolean))];
+  const lines=['💧 <b>'+waterTelegramText('VRT 飲水記錄','VRT Drinking Water','VRT ទឹកផឹក',lang)+'</b>','📅 '+pLabel,'⏱️ '+waterTelegramText('時段','Slot','ពេលវេលា',lang)+': '+sLabel,'🧾 '+waterTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+mLabel,'━━━━━━━━━━━━━━━━','📊 <b>'+waterTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+waterTelegramText('工廠數量','Factory qty','បរិមាណរោងចក្រ',lang)+': '+fQty+' | '+waterTelegramText('宿舍數量','Staff house qty','បរិមាណផ្ទះបុគ្គលិក',lang)+': '+sQty,'• '+waterTelegramText('工廠金額','Factory total','សរុបរោងចក្រ',lang)+': '+fTtl.toLocaleString()+' KHR | '+waterTelegramText('宿舍金額','Staff house total','សរុបផ្ទះបុគ្គលិក',lang)+': '+sTtl.toLocaleString()+' KHR','• '+waterTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(checkers.join(', ')||'—'),'• '+waterTelegramText('筆數','Events','ព្រឹត្តិការណ៍',lang)+': <b>'+view.length+'</b>'];
   if(!view.length)lines.push('⚠️ '+waterTelegramText('該期間沒有此時段資料','No records for this slot','គ្មានទិន្នន័យសម្រាប់ពេលនេះ',lang));
-  else { lines.push('━━━━━━━━━━━━━━━━'); view.slice(0,80).forEach(function(e){lines.push('📅 '+e.date+' | '+(e.kind==='factory'?waterTelegramText('工廠','Factory','រោងចក្រ',lang):waterTelegramText('宿舍','Staff House','ផ្ទះបុគ្គលិក',lang))+' | '+(e.time||'—')+' | '+waterTelegramText('數量','Qty','បរិមាណ',lang)+' '+e.qty+' | '+waterTelegramText('單價','Price','តម្លៃ',lang)+' '+e.price+' | '+waterTelegramText('合計','Total','សរុប',lang)+' '+e.total.toLocaleString()+' KHR');}); if(view.length>80)lines.push('… '+(view.length-80)+' more'); }
+  else { lines.push('━━━━━━━━━━━━━━━━'); view.slice(0,80).forEach(function(e){lines.push('📅 '+e.date+' | '+(e.kind==='factory'?waterTelegramText('工廠','Factory','រោងចក្រ',lang):waterTelegramText('宿舍','Staff House','ផ្ទះបុគ្គលិក',lang))+' | '+(e.time||'—')+' | '+waterTelegramText('數量','Qty','បរិមាណ',lang)+' '+e.qty+' | '+waterTelegramText('單價','Price','តម្លៃ',lang)+' '+e.price+' | '+waterTelegramText('合計','Total','សរុប',lang)+' '+e.total.toLocaleString()+' KHR'+(e.checker?' | 👤 '+e.checker:''));}); if(view.length>80)lines.push('… '+(view.length-80)+' more'); }
   lines.push('━━━━━━━━━━━━━━━━','⏰ '+new Date().toLocaleString());
   return {text:lines.join('\n'),photos:[]};
 }
@@ -2261,7 +2270,7 @@ function buildWaterTelegram(opt){
       telegramBuilder:buildWaterTelegram,
       importAccept:'.xlsx,.xls,.xlsb',
       importParser:parseWaterSmartImport,
-      importSchema:{"year": ["年", "year", "ឆ្នាំ"], "month": ["月", "month", "ខែ"], "zone": ["區域", "zone", "តំបន់"], "name": ["名稱", "name", "ឈ្មោះ"], "reading_start": ["期初", "start", "readingstart", "ដើមគ្រា"], "reading_end": ["期末", "end", "readingend", "ចុងគ្រា"], "notes": ["備註", "note", "ចំណាំ"]},
+      importSchema:{"year": ["年", "year", "ឆ្នាំ"], "month": ["月", "month", "ខែ"], "zone": ["區域", "zone", "តំបន់"], "name": ["名稱", "name", "ឈ្មោះ"], "reading_start": ["期初", "start", "readingstart", "ដើមគ្រា"], "reading_end": ["期末", "end", "readingend", "ចុងគ្រា"], "checkBy": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "notes": ["備註", "note", "ចំណាំ"]},
     read(){ try{
         return getAllKeys().reduce((out,k)=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/);if(!m)return out;let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(ignore){return out;}if(!Array.isArray(rows))return out;return out.concat(rows.map(row=>Object.assign({},row,{id:'wdr_'+m[1]+'_'+m[2]+'_'+row.day,date:m[1]+'-'+m[2]+'-'+String(row.day).padStart(2,'0'),year:+m[1],month:+m[2],updatedAt:localStorage.getItem('wdr_last_saved')||''})));},[]);
       }catch(e){ return []; } },
