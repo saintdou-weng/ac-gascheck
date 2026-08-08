@@ -685,10 +685,10 @@ var state = (() => {
     ['r-cleaner','s6-obs'].forEach(id => {
       const el=document.getElementById(id); if(!el)return;
       el.innerHTML=`<option value="">${i18n.t('select')}</option>`;
-      _db.cleaners.forEach(n=>el.innerHTML+=`<option value="${esc(n)}">${esc(n)}</option>`);
+      _db.cleaners.forEach(n=>{const name=personName(n);el.innerHTML+=`<option value="${esc(name)}">${esc(name)}</option>`;});
     });
     const rc=document.getElementById('r-checker');
-    if(rc){rc.innerHTML=`<option value="">${i18n.t('select')}</option>`;_db.checkers.forEach(n=>rc.innerHTML+=`<option value="${esc(n)}">${esc(n)}</option>`);}
+    if(rc){rc.innerHTML=`<option value="">${i18n.t('select')}</option>`;_db.checkers.forEach(n=>{const name=personName(n);rc.innerHTML+=`<option value="${esc(name)}">${esc(name)}</option>`;});}
     renderSlots();
     renderCheckGrid();
   };
@@ -697,10 +697,14 @@ var state = (() => {
 
 /* ═══ API MODULE ═══ */
 var api = (() => {
-  const _GAS_DEFAULT = 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
-  const _TG_TOKEN_DEFAULT = '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
-  const _TG_CHAT_DEFAULT = '-5113064563';
-  var cfg = () => { const c=state.db().cfg || {}; if(!c.gasUrl)c.gasUrl=localStorage.getItem('ac_gascheck_gas_url')||_GAS_DEFAULT; return c; };
+  var cfg = () => {
+    const c=state.db().cfg || {};
+    /* 舊版 Cleaning 會把空白 Token／Chat ID 當成「不需要發送」而靜默返回，
+       也曾指向另一個舊 GAS。現在統一使用核心固定入口；Token 只留在 GAS。 */
+    if(!c.gasUrl)c.gasUrl=(typeof GC!=='undefined'&&GC.cloud&&GC.cloud.gasUrl)||localStorage.getItem('ac_gascheck_gas_url')||'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
+    if(!c.chatId)c.chatId='-5113064563';
+    return c;
+  };
   const post = async (payload) => {
     const c=cfg(); if(!c.gasUrl) return {ok:false};
     const body=new URLSearchParams({payload:JSON.stringify(payload)});
@@ -714,9 +718,14 @@ var api = (() => {
     return r.json();
   };
   const tg = async (msg,buttons) => {
-    const c=cfg(); if(!c.botToken||!c.chatId) return;
+    if(!msg || !String(msg).trim()) throw new Error('Telegram 訊息是空的');
     const keyboard=buttons||[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_cleaning_v2.html'}]];
-    await fetch(`https://api.telegram.org/bot${c.botToken}/sendMessage`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({chat_id:c.chatId,text:msg,parse_mode:'HTML',reply_markup:{inline_keyboard:keyboard}})});
+    /* 優先走共用 GAS，避免在 HTML 暴露 Bot Token，也避免舊 URL／CORS 問題。 */
+    if(typeof GC!=='undefined'&&GC.telegram&&typeof GC.telegram.send==='function')
+      return GC.telegram.send(String(msg),[],keyboard);
+    const res=await post({action:'telegram',text:String(msg),photos:[],buttons:keyboard});
+    if(!res||res.ok===false) throw new Error((res&&res.error)||'Telegram 發送失敗');
+    return res;
   };
   return { post, get, tg };
 })();
@@ -728,6 +737,17 @@ var chs = (() => {
   const render=(id,type,labels,datasets,opts={})=>{
     if(_i[id])_i[id].destroy();
     const ctx=document.getElementById(id); if(!ctx)return;
+    /* Chart.js 是外部資源；離線或 CDN 載入稍慢時不能讓整頁初始化中斷，
+       否則 window.ui 不會掛上去，所有 inline onclick 看起來都會失效。 */
+    if(typeof Chart==='undefined'){
+      const box=ctx.parentElement;
+      if(box&&!box.querySelector('.chart-unavailable')){
+        const msg=document.createElement('div');msg.className='chart-unavailable';
+        msg.textContent=i18n.t('no-data')||'No data';
+        msg.style.cssText='padding:48px 8px;text-align:center;color:var(--dim);font-size:11px';box.appendChild(msg);
+      }
+      return;
+    }
     _i[id]=new Chart(ctx,{type,data:{labels,datasets},options:{
       responsive:true,maintainAspectRatio:false,
       plugins:{legend:{labels:{font:{size:10,family:'Outfit'},color:'#2D5040'}},tooltip:{bodyFont:{size:11}}},
@@ -841,8 +861,8 @@ var rec = (() => {
     const chks=state.getChk();
     const fails=CHK_ITEMS.filter(k=>chks[k]===false).map(k=>i18n.t('ci-'+k));
     const msg=`🧹 <b>VRT Cleaning / សម្អាត</b>\n📅 ${date}  📍 ${loc}\n👷 ${cleaner}\n⏰ ${state.getSlots().join(', ')||'—'}\n${fails.length?'❌ '+i18n.t('anomaly')+': '+fails.join(', '):'✅ '+i18n.t('all-pass')}\n${gv('r-note')?'📝 '+gv('r-note'):''}`;
-    await api.tg(msg);
-    ui.toast('📤 Telegram 已發送');
+    try { await api.tg(msg); ui.toast('📤 Telegram 已發送'); }
+    catch(e) { ui.toast('❌ Telegram：'+e.message); }
   };
   const clear = () => {
     ['r-date','r-loc','r-shift','r-cleaner','r-checker','r-note','r-photo-n'].forEach(id=>sv(id,''));
@@ -1210,8 +1230,8 @@ var sixs = (() => {
     const loc=state.db().locations.find(l=>l.id===gv('s6-loc'));
     const grade=score>=90?'A':score>=75?'B':score>=60?'C':'D';
     const msg=`⭐ <b>VRT 6S 檢查</b>\n📍 ${loc?loc.name:'—'}  📅 ${gv('s6-date')}\n👤 ${gv('s6-obs')||'—'}\n📊 分數: ${score}/100  評級: ${grade}`;
-    await api.tg(msg);
-    ui.toast('📤 Telegram 已發送');
+    try { await api.tg(msg); ui.toast('📤 Telegram 已發送'); }
+    catch(e) { ui.toast('❌ Telegram：'+e.message); }
   };
   const reset = () => {
     if(!confirm('確定重置所有評分？'))return;
@@ -1277,8 +1297,8 @@ var cfg = (() => {
     state.save(); ui.toast('✅ 設定已儲存');
   };
   const testTg = async () => {
-    await api.tg('🧹 VRT Cleaning Management — Telegram 測試成功！');
-    ui.toast('📤 測試訊息已發送');
+    try { await api.tg('🧹 VRT Cleaning Management — Telegram 測試成功！'); ui.toast('📤 測試訊息已發送'); }
+    catch(e) { ui.toast('❌ Telegram：'+e.message); }
   };
   const testGas = async () => {
     try{const d=await api.get({action:'ping'});ui.toast(d.ok?'✅ GAS 連接成功':'⚠️ '+d.err);}
@@ -1338,10 +1358,7 @@ var dataMgmt = (() => {
 })();
 
 /* ═══ BIN MGMT ═══ */
-/* 必須用 var：頂層 const/let 不會掛到 window，
-   onclick="binMgmt.add()" 會找不到 → 按鈕點了沒反應。
-   其餘 hist / sixs / cfg 都是 var，只有這個漏掉。 */
-var binMgmt = (() => {
+const binMgmt = (() => {
   const add = () => {
     const area=gv('b-area'),type=gv('b-type'),freq=gv('b-freq'),desc=gv('b-desc'),resp=gv('b-resp');
     state.db().bins.push({id:'bin'+Date.now(),area,type,freq,desc,resp,lastClean:de.fmt(new Date())});
@@ -1355,6 +1372,7 @@ var binMgmt = (() => {
 function gv(id){const el=document.getElementById(id);return el?el.value.trim():'';}
 function sv(id,v){const el=document.getElementById(id);if(el)el.value=v;}
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+function personName(v){return typeof v==='string'?v:(v&&typeof v==='object'?(v.name||v.label||v.id||''):'');}
 function locName(id){const l=state.db().locations.find(l=>l.id===id);return l?l.name:id||'—';}
 function fmtChk(chks,k){const v=(chks||{})[k];return v===true?'PASS':v===false?'FAIL':'—';}
 function binEmoji(t){return{general:'🗑️',fabric:'🟢',plastic:'🟠',metal:'⚫',paper:'📄',hazard:'⚠️'}[t]||'🗑️';}
@@ -1390,21 +1408,21 @@ function renderStaff(){
   ['r-cleaner','s6-cleaner'].forEach(id=>{
     const sel=document.getElementById(id); if(!sel) return;
     const cur=sel.value;
-    sel.innerHTML='<option value="">— 選擇 —</option>'+(db.cleaners||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    sel.innerHTML='<option value="">— 選擇 —</option>'+(db.cleaners||[]).map(c=>{const n=personName(c);return`<option value="${esc(n)}">${esc(n)}</option>`;}).join('');
     sel.value=cur;
   });
   // Sync checker dropdown
   ['r-checker'].forEach(id=>{
     const sel=document.getElementById(id); if(!sel) return;
     const cur=sel.value;
-    sel.innerHTML='<option value="">— 選擇 —</option>'+(db.checkers||[]).map(c=>`<option value="${c.id}">${esc(c.name)}</option>`).join('');
+    sel.innerHTML='<option value="">— 選擇 —</option>'+(db.checkers||[]).map(c=>{const n=personName(c);return`<option value="${esc(n)}">${esc(n)}</option>`;}).join('');
     sel.value=cur;
   });
   // db already declared above
   const ct=document.getElementById('cleaner-tags');
   const cht=document.getElementById('checker-tags');
-  if(ct)ct.innerHTML=db.cleaners.map((n,i)=>`<div class="stag">${esc(n)}<span class="del" onclick="staff_del('cleaner',${i})">✕</span></div>`).join('')||'<span style="color:var(--dim);font-size:10px">—</span>';
-  if(cht)cht.innerHTML=db.checkers.map((n,i)=>`<div class="stag">${esc(n)}<span class="del" onclick="staff_del('checker',${i})">✕</span></div>`).join('')||'<span style="color:var(--dim);font-size:10px">—</span>';
+  if(ct)ct.innerHTML=db.cleaners.map((n,i)=>`<div class="stag">${esc(personName(n))}<span class="del" onclick="staff_del('cleaner',${i})">✕</span></div>`).join('')||'<span style="color:var(--dim);font-size:10px">—</span>';
+  if(cht)cht.innerHTML=db.checkers.map((n,i)=>`<div class="stag">${esc(personName(n))}<span class="del" onclick="staff_del('checker',${i})">✕</span></div>`).join('')||'<span style="color:var(--dim);font-size:10px">—</span>';
 }
 
 function staff_del(type,idx){
@@ -1439,15 +1457,27 @@ function updateTs(){
 }
 
 /* ═══ INIT ═══ */
+/* 先掛上 inline onclick 會用到的公開 API；圖表或外部 CDN 失敗時，
+   分頁、日期、檢查項目與儲存按鈕仍然可以操作。 */
+window.ui=ui; window.rec=rec; window.hist=hist; window.binMap=binMap;
+window.sixs=sixs; window.areas=areas; window.cfg=cfg; window.state=state;
+window.i18n=i18n; window.de=de; window.dash=dash; window.chs=chs;
 (function init(){
   const run=()=>{
-    state.load();
-    const initialLang = i18n.get();
-    i18n.set(initialLang);
-    state.resetChk(); updateTs(); setInterval(updateTs,1000);
-    const today=de.fmt(new Date()); sv('r-date',today); sv('s6-date',today);
-    const q=document.getElementById('insp-quarter'); if(q){const m=new Date().getMonth()+1;q.value=m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';}
-    state.populate(); renderStaff();renderSlotTags();de.set('month',document.querySelector('.pt .ptab'));updateDbInfo();
+    try {
+      state.load();
+      const initialLang = i18n.get();
+      i18n.set(initialLang);
+      state.resetChk(); updateTs(); setInterval(updateTs,1000);
+      const today=de.fmt(new Date()); sv('r-date',today); sv('s6-date',today);
+      const q=document.getElementById('insp-quarter'); if(q){const m=new Date().getMonth()+1;q.value=m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';}
+      state.populate(); renderStaff();renderSlotTags();
+      try{de.set('month',document.querySelector('.pt .ptab'));}catch(e){console.warn('Cleaning chart init skipped:',e);}
+      updateDbInfo();
+    } catch(e) {
+      console.error('Cleaning initialization failed:',e);
+      ui.toast('⚠️ Cleaning loaded; please refresh charts later');
+    }
   };
   if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 })();
@@ -1492,30 +1522,42 @@ if(typeof sv2==='function')         window.sv2=sv2;
 <script>
 /* 清潔專用 Telegram 摘要：沿用 Temperature 的日／週／月／年與基準日期，
    並把 Dashboard KPI、異常項目與照片一起交給共用 GAS 發送。 */
+function cleaningTelegramText(zh,en,km,lang){
+  if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
+  return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
+}
+function cleaningTelegramSlotFilter(r,slot){
+  if(!slot||slot==='all')return true;
+  const slots=(typeof GC!=='undefined'&&GC.util?GC.util.asArray(r&&r.slots):Array.isArray(r&&r.slots)?r.slots:[]).map(String);
+  if(!slots.length)return slot==='morning'&&String(r&&r.shift||'').toLowerCase()==='day';
+  return slots.some(function(v){const m=/^(\d{1,2})(?::(\d{2}))?/.exec(v.trim());if(!m)return false;const mins=+m[1]*60+(+(m[2]||0));if(slot==='morning')return mins<720;if(slot==='afternoon')return mins>=720&&mins<1080;return mins>=1080;});
+}
 function buildCleaningTelegram(opt){
   opt=opt||{};
   const cfg=opt.cfg||{};
   const all=typeof cfg.read==='function'?(cfg.read()||[]):[];
-  const period=opt.period||'month', mode=opt.mode||'summary', ref=opt.ref;
-  const view=(typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'date',ref):all.slice();
+  const period=opt.period||'month', mode=opt.mode||'summary', ref=opt.ref, slot=opt.slot||'all', lang=opt.lang||'bi';
+  const view=(typeof GC!=='undefined'&&GC.telegram)?GC.telegram.filter(all,cfg,period,ref,'all',slot):((typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'date',ref):all.slice());
   const esc=function(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
-  const periodLabel={day:'Day / 日',week:'Week / 週',month:'Month / 月',year:'Year / 年',all:'All / 全部'}[period]||period;
-  const modeLabel={summary:'Summary / 摘要',review:'Review / 審查',approval:'Approval / 核可'}[mode]||mode;
+  const periodLabel={day:cleaningTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:cleaningTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:cleaningTelegramText('本月','This Month','ខែនេះ',lang),year:cleaningTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:cleaningTelegramText('全部','All','ទាំងអស់',lang)}[period]||period;
+  const modeLabel={summary:cleaningTelegramText('摘要','Summary','សង្ខេប',lang),review:cleaningTelegramText('審查','Review','ពិនិត្យ',lang),approval:cleaningTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
+  const slotLabel={all:cleaningTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:cleaningTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:cleaningTelegramText('下午','Afternoon','ពេលរសៀល',lang),night:cleaningTelegramText('晚上／夜班','Night','ពេលយប់',lang)}[slot]||slot;
   const failed=view.filter(r=>Object.values(r.checks||{}).some(v=>v===false));
   const passed=view.length-failed.length;
-  const lines=['🧹 <b>VRT Cleaning / 清潔</b>','📅 '+periodLabel,'🧾 Message type / 訊息類型: '+modeLabel,'━━━━━━━━━━━━━━━━','📊 <b>Dashboard / 儀表板</b>','• Records / 記錄: <b>'+view.length+'</b> | Pass / 通過: '+passed+' | Fail / 異常: '+failed.length,'• Locations / 地點: '+new Set(view.map(r=>r.locId).filter(Boolean)).size];
+  const lines=['🧹 <b>'+cleaningTelegramText('VRT 清潔','VRT Cleaning','VRT សម្អាត',lang)+'</b>','📅 '+periodLabel,'⏱️ '+cleaningTelegramText('時段','Slot','ពេលវេលា',lang)+': '+slotLabel,'🧾 '+cleaningTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeLabel,'━━━━━━━━━━━━━━━━','📊 <b>'+cleaningTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+cleaningTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b> | '+cleaningTelegramText('通過','Pass','ជាប់',lang)+': '+passed+' | '+cleaningTelegramText('異常','Fail','ធ្លាក់',lang)+': '+failed.length,'• '+cleaningTelegramText('地點','Locations','ទីតាំង',lang)+': '+new Set(view.map(r=>r.locId).filter(Boolean)).size];
   const photos=[];
+  if(!view.length) lines.push('⚠️ '+cleaningTelegramText('該期間沒有清潔記錄','No cleaning records in selected period','គ្មានកំណត់ត្រាសម្អាតក្នុងរយៈពេលនេះ',lang));
   view.slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))).slice(0,60).forEach(function(r){
     const bad=Object.values(r.checks||{}).some(v=>v===false);
     const badItems=(typeof CHK_ITEMS!=='undefined'?CHK_ITEMS:[]).filter(function(k){return r.checks&&r.checks[k]===false;}).map(function(k){return typeof i18n!=='undefined'?i18n.t('ci-'+k):k;});
-    lines.push('🧹 '+esc(r.date||'—')+' | '+esc(typeof locName==='function'?locName(r.locId):r.locId||'—')+' | '+esc(r.cleaner||'—')+' | '+(bad?'❌ Fail / 異常':'✅ Pass / 通過'));
+    lines.push('🧹 '+esc(r.date||'—')+' | '+esc(typeof locName==='function'?locName(r.locId):r.locId||'—')+' | '+esc(r.cleaner||'—')+' | '+(bad?'❌ '+cleaningTelegramText('異常','Fail','ធ្លាក់',lang):'✅ '+cleaningTelegramText('通過','Pass','ជាប់',lang)));
     if(r.checker)lines.push('   🔎 '+esc(r.checker));
     if(badItems.length)lines.push('   ⚠️ '+esc(badItems.join(', ')));
     if(r.note)lines.push('   📝 '+esc(r.note));
     (typeof GC!=='undefined'&&GC.util?GC.util.asArray(r.photos):Array.isArray(r.photos)?r.photos:[]).forEach(function(p){if(/^data:image\//i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});
   });
   if(view.length>60)lines.push('… '+(view.length-60)+' more');
-  if(mode==='review'||mode==='approval')lines.push('━━━━━━━━━━━━━━━━','⏳ Pending review / approval: '+failed.length);
+  if(mode==='review'||mode==='approval')lines.push('━━━━━━━━━━━━━━━━','⏳ '+cleaningTelegramText('待審查／待核可','Pending review / approval','កំពុងរង់ចាំពិនិត្យ/អនុម័ត',lang)+': '+failed.length);
   lines.push('━━━━━━━━━━━━━━━━','⏰ '+(typeof _localTS==='function'?_localTS():new Date().toLocaleString()));
   return {text:lines.join('\n'),photos:photos};
 }
@@ -1535,6 +1577,9 @@ function buildCleaningTelegram(opt){
       weather:false,
       photo:true,
       periodRef:true,
+      telegramSlots:[{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'},{value:'morning',zh:'早上',en:'Morning',km:'ពេលព្រឹក'},{value:'afternoon',zh:'下午',en:'Afternoon',km:'ពេលរសៀល'},{value:'night',zh:'晚上／夜班',en:'Night',km:'ពេលយប់'}],
+      telegramSlotFilter:cleaningTelegramSlotFilter,
+      telegramLanguage:true,
       telegramBuilder:buildCleaningTelegram,
       importSchema:{"date": ["日期", "date"], "locId": ["地點", "location", "loc", "ទីតាំង"], "cleaner": ["清潔人員", "cleaner", "អ្នកសម្អាត"], "checker": ["檢查人", "checker", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "ចំណាំ"]},
     read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_clean_hub_v2')||'{}'); return Array.isArray(d.records)?d.records:[]; }catch(e){ return []; } },

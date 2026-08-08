@@ -2077,6 +2077,44 @@ function setMainPeriod(p, btn) {
 
 // Wrap renderSummaryCards to respect mainPeriod
 var _origRenderSummaryCards = null;
+
+/* 共用 Telegram：把 Factory／Staff 的每筆用水事件依時間拆開，
+   早上送過的資料不會在下午摘要再次列出。 */
+function waterTelegramText(zh,en,km,lang){
+  if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
+  return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
+}
+function waterHour(v){
+  const s=String(v||'').trim().toLowerCase();if(!s)return NaN;
+  const m=s.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);if(!m)return NaN;
+  let h=+m[1],min=+(m[2]||0);if(m[3]==='pm'&&h<12)h+=12;if(m[3]==='am'&&h===12)h=0;return h+min/60;
+}
+function waterTelegramSlotMatch(time,slot){
+  if(!slot||slot==='all')return true;
+  const h=waterHour(time);if(isNaN(h))return false;
+  return slot==='morning'?h<12:(slot==='afternoon'?h>=12&&h<18:h>=18);
+}
+function buildWaterTelegram(opt){
+  opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode=opt.mode||'summary',ref=opt.ref,slot=opt.slot||'all',lang=opt.lang||'bi';
+  const all=typeof cfg.read==='function'?(cfg.read()||[]):[];
+  const rows=(typeof GC!=='undefined'&&GC.telegram)?GC.telegram.filter(all,cfg,period,ref,'all','all'):all.slice();
+  const events=[];
+  rows.forEach(function(r){
+    [['factory',r.fTime,r.fQty,r.fPrice,r.fTtl],['staff',r.sTime,r.sQty,r.sPrice,r.sTtl]].forEach(function(e){
+      if(e[1]||e[2]||e[3]||e[4])events.push({date:r.date||'—',kind:e[0],time:e[1]||'',qty:+e[2]||0,price:+e[3]||0,total:+e[4]||0});
+    });
+  });
+  const view=events.filter(e=>waterTelegramSlotMatch(e.time,slot));
+  const pLabel={day:waterTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:waterTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:waterTelegramText('本月','This Month','ខែនេះ',lang),year:waterTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:waterTelegramText('全部','All','ទាំងអស់',lang)}[period]||period;
+  const mLabel={summary:waterTelegramText('摘要','Summary','សង្ខេប',lang),review:waterTelegramText('審查','Review','ពិនិត្យ',lang),approval:waterTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
+  const sLabel={all:waterTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:waterTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:waterTelegramText('下午','Afternoon','ពេលរសៀល',lang),night:waterTelegramText('晚上','Night','ពេលយប់',lang)}[slot]||slot;
+  const fQty=view.filter(e=>e.kind==='factory').reduce((a,e)=>a+e.qty,0),sQty=view.filter(e=>e.kind==='staff').reduce((a,e)=>a+e.qty,0),fTtl=view.filter(e=>e.kind==='factory').reduce((a,e)=>a+e.total,0),sTtl=view.filter(e=>e.kind==='staff').reduce((a,e)=>a+e.total,0);
+  const lines=['💧 <b>'+waterTelegramText('VRT 飲水記錄','VRT Drinking Water','VRT ទឹកផឹក',lang)+'</b>','📅 '+pLabel,'⏱️ '+waterTelegramText('時段','Slot','ពេលវេលា',lang)+': '+sLabel,'🧾 '+waterTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+mLabel,'━━━━━━━━━━━━━━━━','📊 <b>'+waterTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+waterTelegramText('工廠數量','Factory qty','បរិមាណរោងចក្រ',lang)+': '+fQty+' | '+waterTelegramText('宿舍數量','Staff house qty','បរិមាណផ្ទះបុគ្គលិក',lang)+': '+sQty,'• '+waterTelegramText('工廠金額','Factory total','សរុបរោងចក្រ',lang)+': '+fTtl.toLocaleString()+' KHR | '+waterTelegramText('宿舍金額','Staff house total','សរុបផ្ទះបុគ្គលិក',lang)+': '+sTtl.toLocaleString()+' KHR','• '+waterTelegramText('筆數','Events','ព្រឹត្តិការណ៍',lang)+': <b>'+view.length+'</b>'];
+  if(!view.length)lines.push('⚠️ '+waterTelegramText('該期間沒有此時段資料','No records for this slot','គ្មានទិន្នន័យសម្រាប់ពេលនេះ',lang));
+  else { lines.push('━━━━━━━━━━━━━━━━'); view.slice(0,80).forEach(function(e){lines.push('📅 '+e.date+' | '+(e.kind==='factory'?waterTelegramText('工廠','Factory','រោងចក្រ',lang):waterTelegramText('宿舍','Staff House','ផ្ទះបុគ្គលិក',lang))+' | '+(e.time||'—')+' | '+waterTelegramText('數量','Qty','បរិមាណ',lang)+' '+e.qty+' | '+waterTelegramText('單價','Price','តម្លៃ',lang)+' '+e.price+' | '+waterTelegramText('合計','Total','សរុប',lang)+' '+e.total.toLocaleString()+' KHR');}); if(view.length>80)lines.push('… '+(view.length-80)+' more'); }
+  lines.push('━━━━━━━━━━━━━━━━','⏰ '+new Date().toLocaleString());
+  return {text:lines.join('\n'),photos:[]};
+}
 </script>
 
 <script>
@@ -2094,6 +2132,11 @@ var _origRenderSummaryCards = null;
       groupLabel:'Zone',
       weather:false,
       photo:true,
+      periodRef:true,
+      telegramSlots:[{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'},{value:'morning',zh:'早上',en:'Morning',km:'ពេលព្រឹក'},{value:'afternoon',zh:'下午',en:'Afternoon',km:'ពេលរសៀល'},{value:'night',zh:'晚上',en:'Night',km:'ពេលយប់'}],
+      telegramSlotFilter:function(r,slot){return !slot||slot==='all'||waterTelegramSlotMatch(r.fTime,slot)||waterTelegramSlotMatch(r.sTime,slot);},
+      telegramLanguage:true,
+      telegramBuilder:buildWaterTelegram,
       importSchema:{"year": ["年", "year", "ឆ្នាំ"], "month": ["月", "month", "ខែ"], "zone": ["區域", "zone", "តំបន់"], "name": ["名稱", "name", "ឈ្មោះ"], "reading_start": ["期初", "start", "readingstart", "ដើមគ្រា"], "reading_end": ["期末", "end", "readingend", "ចុងគ្រា"], "notes": ["備註", "note", "ចំណាំ"]},
     read(){ try{
         return getAllKeys().reduce((out,k)=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/),rows=JSON.parse(localStorage.getItem(k)||'[]');if(!m||!Array.isArray(rows))return out;return out.concat(rows.map(row=>Object.assign({},row,{id:'wdr_'+m[1]+'_'+m[2]+'_'+row.day,date:m[1]+'-'+m[2]+'-'+String(row.day).padStart(2,'0'),year:+m[1],month:+m[2],updatedAt:localStorage.getItem('wdr_last_saved')||''})));},[]);

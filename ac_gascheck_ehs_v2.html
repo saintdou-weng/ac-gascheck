@@ -1197,13 +1197,9 @@ function excelDateToISO(v){
   }
   // MM/DD/YYYY or MM/DD/YY
   if(/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(s)){const p=s.split('/');const y=p[2].length===2?'20'+p[2]:p[2];return y+'-'+p[0].padStart(2,'0')+'-'+p[1].padStart(2,'0');}
-  // 純年份（如 2026）不是序號，不可當日期解析
-  if(/^\d{4}$/.test(s))return'';
   // Excel serial number
-  // 門檻改用 1990-01-01 的序號 32874：低於此值多半是年份或普通數字，
-  // 舊版用 n>1000 會把 2026 當成序號 → 解析成 1905-07-18。
   const n=parseFloat(v);
-  if(!isNaN(n)&&n>=32874&&n<=80000){
+  if(!isNaN(n)&&n>1000){
     const d=new Date(Math.round((n-25569)*86400*1000));
     if(!isNaN(d.getTime()))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
   }
@@ -1444,7 +1440,9 @@ function parseEhsSmartImport(file){
     reader.onerror=function(){reject(new Error('read fail'));};
     reader.onload=function(e){
       try{
-        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false,raw:false,bookFiles:true});
+        /* Waste 活頁簿把格式延伸到 16,384 欄；限制讀取列數並使用 dense
+           結構，避免智慧匯入先花很久建立無用的空白儲存格。 */
+        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false,raw:false,bookFiles:true,sheetRows:3000,dense:true});
         const workbookDoc=xlsxXmlDoc(wb.files&&wb.files['xl/workbook.xml']&&wb.files['xl/workbook.xml'].content);
         const workbookRels=xlsxRelMap(wb.files||{},'xl/workbook.xml');
         const sheetPaths={};
@@ -1845,29 +1843,44 @@ window.gasGet = gasGet;
 window.gasPost = gasPost;
 window.updateCloudBadge = updateCloudBadge;
 
-/* 通用工具列的 EHS Telegram 報告：期間、資料類型、模式各自獨立選擇。 */
+/* 通用工具列的 EHS Telegram 報告：期間、資料類型、時段、模式各自獨立選擇。 */
+function ehsTelegramText(zh,en,km,lang){
+  if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
+  return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
+}
+function ehsHour(v){
+  const s=String(v||'').trim().toLowerCase();if(!s)return NaN;
+  const m=s.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?/);if(!m)return NaN;
+  let h=+m[1],min=+(m[2]||0);if(m[3]==='pm'&&h<12)h+=12;if(m[3]==='am'&&h===12)h=0;return h+min/60;
+}
+function ehsTelegramSlotFilter(r,slot){
+  if(!slot||slot==='all')return true;
+  const h=ehsHour(r&&r.time_in||r&&r.time||'');if(isNaN(h))return false;
+  return slot==='morning'?h<12:(slot==='afternoon'?h>=12&&h<18:h>=18);
+}
 function buildEhsTelegram(opt){
   opt=opt||{};
   const cfg=opt.cfg||{};
   const all=typeof cfg.read==='function'?(cfg.read()||[]):[];
-  let rows=typeof GC!=='undefined'&&GC.period?GC.period.filter(all,opt.period||'month','date',opt.ref):all.slice();
   const scope=opt.scope||'all';
-  if(scope!=='all')rows=rows.filter(function(r){return String(r.sourceType||'')===scope;});
+  const slot=opt.slot||'all',lang=opt.lang||'bi';
+  let rows=typeof GC!=='undefined'&&GC.telegram?GC.telegram.filter(all,cfg,opt.period||'month',opt.ref,scope,slot):(typeof GC!=='undefined'&&GC.period?GC.period.filter(all,opt.period||'month','date',opt.ref):all.slice());
   const esc=function(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
-  const periodLabel={day:'Day / 日',week:'Week / 週',month:'Month / 月',year:'Year / 年',all:'All / 全部'}[opt.period||'month']||opt.period;
-  const modeLabel={summary:'Summary / 摘要',review:'Review / 審查',approval:'Approval / 核可'}[opt.mode||'summary']||opt.mode;
-  const dataLabel={all:'All / 全部',recycle:'Recycle / 回收',waste:'Waste / 廢料'}[scope]||scope;
-  const lines=['♻️ <b>VRT Recycle / Waste</b>','📅 '+esc(periodLabel),'🏷️ Data: <b>'+esc(dataLabel)+'</b>','🧾 Type: '+esc(modeLabel),'📊 Records: <b>'+rows.length+'</b> / Total: '+all.length];
+  const periodLabel={day:ehsTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:ehsTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:ehsTelegramText('本月','This Month','ខែនេះ',lang),year:ehsTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:ehsTelegramText('全部','All','ទាំងអស់',lang)}[opt.period||'month']||opt.period;
+  const modeLabel={summary:ehsTelegramText('摘要','Summary','សង្ខេប',lang),review:ehsTelegramText('審查','Review','ពិនិត្យ',lang),approval:ehsTelegramText('核可','Approval','អនុម័ត',lang)}[opt.mode||'summary']||opt.mode;
+  const dataLabel={all:ehsTelegramText('全部','All','ទាំងអស់',lang),recycle:ehsTelegramText('Recycle 回收','Recycle','Recycle',lang),waste:ehsTelegramText('Waste 廢料','Waste','Waste',lang)}[scope]||scope;
+  const slotLabel={all:ehsTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:ehsTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:ehsTelegramText('下午','Afternoon','ពេលរសៀល',lang),night:ehsTelegramText('晚上','Night','ពេលយប់',lang)}[slot]||slot;
+  const lines=['♻️ <b>'+ehsTelegramText('VRT 回收／廢料','VRT Recycle / Waste','VRT កែច្នៃ / សំណល់',lang)+'</b>','📅 '+esc(periodLabel),'⏱️ '+ehsTelegramText('時段','Slot','ពេលវេលា',lang)+': '+esc(slotLabel),'🏷️ '+ehsTelegramText('資料類型','Data type','ប្រភេទទិន្នន័យ',lang)+': <b>'+esc(dataLabel)+'</b>','🧾 '+ehsTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+esc(modeLabel),'📊 '+ehsTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+rows.length+'</b> / '+ehsTelegramText('總計','Total','សរុប',lang)+': '+all.length];
   const photos=[];
   if(rows.length){
     lines.push('━━━━━━━━━━━━━━━━');
     rows.slice(0,28).forEach(function(r){
       if(r.sourceType==='waste'){
-        const kinds=[];if(r.solid_waste)kinds.push('Solid');if(r.industrial_waste)kinds.push('Industrial');
+        const kinds=[];if(r.solid_waste)kinds.push(ehsTelegramText('固體','Solid','រឹង',lang));if(r.industrial_waste)kinds.push(ehsTelegramText('工業','Industrial','ឧស្សាហកម្ម',lang));
         lines.push('🗑️ '+esc(r.date||'—')+' | '+esc(r.supplier||r.name||'Waste')+' | '+esc(kinds.join('/')||'Waste')+' | '+esc(r.weight_kg||'—')+' kg');
         if(r.car_number||r.time_in||r.time_out)lines.push('   '+esc(r.car_number||'')+' '+esc(r.time_in||'')+'→'+esc(r.time_out||''));
       }else{
-        lines.push('♻️ '+esc(r.date||'—')+' | Plastic '+esc(r.plastic_kg||0)+' | Fabric '+esc(r.fabric_kg||0)+' | Core '+esc(r.core_kg||0)+' | Total <b>'+esc(r.total_kg||0)+'</b> kg');
+        lines.push('♻️ '+esc(r.date||'—')+' | '+ehsTelegramText('塑膠','Plastic','ប្លាស្ទិក',lang)+' '+esc(r.plastic_kg||0)+' | '+ehsTelegramText('布料','Fabric','ក្រណាត់',lang)+' '+esc(r.fabric_kg||0)+' | '+ehsTelegramText('紙管','Core','ស្នូល',lang)+' '+esc(r.core_kg||0)+' | '+ehsTelegramText('總重','Total','សរុប',lang)+' <b>'+esc(r.total_kg||0)+'</b> kg');
       }
       (Array.isArray(r.photos)?r.photos:[]).forEach(function(p){if(/^data:image\//i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});
     });
@@ -1875,7 +1888,7 @@ function buildEhsTelegram(opt){
   }
   if(opt.mode==='review'||opt.mode==='approval'){
     const pending=rows.filter(function(r){return typeof GC!=='undefined'&&GC.telegram&&GC.telegram.pending(r);});
-    lines.push('━━━━━━━━━━━━━━━━','⏳ Pending review / approval: <b>'+pending.length+'</b>');
+    lines.push('━━━━━━━━━━━━━━━━','⏳ '+ehsTelegramText('待審查／待核可','Pending review / approval','កំពុងរង់ចាំពិនិត្យ/អនុម័ត',lang)+': <b>'+pending.length+'</b>');
   }
   lines.push('━━━━━━━━━━━━━━━━','⏰ '+_localTS());
   return {text:lines.join('\n'),photos:photos};
@@ -1919,6 +1932,9 @@ function mergeEhsImport(current,incoming){
       periodRef:true,
       telegramScopes:[{value:'all',zh:'全部',en:'All',km:'ទាំងអស់'},{value:'recycle',zh:'Recycle 回收',en:'Recycle',km:'Recycle'},{value:'waste',zh:'Waste 廢料',en:'Waste',km:'Waste'}],
       scopeField:'sourceType',
+      telegramSlots:[{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'},{value:'morning',zh:'早上',en:'Morning',km:'ពេលព្រឹក'},{value:'afternoon',zh:'下午',en:'Afternoon',km:'ពេលរសៀល'},{value:'night',zh:'晚上',en:'Night',km:'ពេលយប់'}],
+      telegramSlotFilter:ehsTelegramSlotFilter,
+      telegramLanguage:true,
       telegramBuilder:buildEhsTelegram,
       importParser:parseEhsSmartImport,
       mergeImport:mergeEhsImport,

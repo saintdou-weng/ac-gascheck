@@ -241,7 +241,7 @@ const BASE_DICT = {
     'gc.heavyRain':'大雨','gc.storm':'雷雨','gc.hot':'酷熱','gc.humid':'潮濕',
     'gc.confirm':'確認','gc.cancel':'取消','gc.save':'儲存','gc.delete':'刪除','gc.close':'關閉',
     'gc.cloudTools':'雲端工具','gc.indexedDb':'資料庫：IndexedDB',
-    'gc.noGasUrl':'尚未設定 GAS URL','gc.emptyMsg':'訊息內容是空的，未送出','gc.noGasResp':'GAS 沒有回傳資料，請確認部署 URL','gc.noMsgId':'GAS 未取得 Telegram messageId，請檢查 Bot/群組設定','gc.preview':'預覽','gc.previewEmpty':'此期間沒有資料，無法傳送','gc.confirmSend':'確認傳送','gc.sending':'傳送中…','gc.importReport':'匯入結果','gc.fileOk':'成功','gc.fileFail':'失敗','gc.refresh':'重新整理','gc.telegram':'Telegram','gc.sendTelegram':'發送 Telegram','gc.period':'摘要期間',
+    'gc.telegram':'Telegram','gc.sendTelegram':'發送 Telegram','gc.period':'摘要期間','gc.slot':'發送時段','gc.allSlots':'全部時段','gc.reportLanguage':'摘要語言','gc.bilingual':'中英雙語','gc.chinese':'中文','gc.english':'English','gc.khmer':'ខ្មែរ',
     'gc.summary':'摘要','gc.review':'審查','gc.approval':'Approval','gc.quickActions':'快速操作',
     'gc.directHint':'上方按鈕可直接同步、匯入與發送，不需填網址／Token／Chat ID',
     'gc.sentTelegram':'Telegram 已發送','gc.noApproval':'沒有待審查／待核可資料',
@@ -265,7 +265,7 @@ const BASE_DICT = {
     'gc.heavyRain':'Heavy Rain','gc.storm':'Storm','gc.hot':'Hot','gc.humid':'Humid',
     'gc.confirm':'Confirm','gc.cancel':'Cancel','gc.save':'Save','gc.delete':'Delete','gc.close':'Close',
     'gc.cloudTools':'Cloud Tools','gc.indexedDb':'Storage: IndexedDB',
-    'gc.noGasUrl':'GAS URL not set','gc.emptyMsg':'Message empty — not sent','gc.noGasResp':'No response from GAS deployment','gc.noMsgId':'No Telegram messageId; check bot/group settings','gc.preview':'Preview','gc.previewEmpty':'No data for this period','gc.confirmSend':'Send','gc.sending':'Sending…','gc.importReport':'Import Result','gc.fileOk':'OK','gc.fileFail':'Failed','gc.refresh':'Refresh','gc.telegram':'Telegram','gc.sendTelegram':'Send to Telegram','gc.period':'Summary period',
+    'gc.telegram':'Telegram','gc.sendTelegram':'Send to Telegram','gc.period':'Summary period','gc.slot':'Send time slot','gc.allSlots':'All slots','gc.reportLanguage':'Report language','gc.bilingual':'Chinese + English','gc.chinese':'中文','gc.english':'English','gc.khmer':'ខ្មែរ',
     'gc.summary':'Summary','gc.review':'Review','gc.approval':'Approval','gc.quickActions':'Quick actions',
     'gc.directHint':'Use the buttons above to sync, import and send; no URL/token/chat ID entry is needed',
     'gc.sentTelegram':'Telegram sent','gc.noApproval':'No pending review/approval records',
@@ -289,7 +289,7 @@ const BASE_DICT = {
     'gc.heavyRain':'ភ្លៀងខ្លាំង','gc.storm':'ព្យុះ','gc.hot':'ក្ដៅ','gc.humid':'សើម',
     'gc.confirm':'បញ្ជាក់','gc.cancel':'បោះបង់','gc.save':'រក្សាទុក','gc.delete':'លុប','gc.close':'បិទ',
     'gc.cloudTools':'ឧបករណ៍ Cloud','gc.indexedDb':'ការផ្ទុក៖ IndexedDB',
-    'gc.noGasUrl':'មិនទាន់កំណត់ GAS URL','gc.emptyMsg':'សារទទេ — មិនបានផ្ញើ','gc.noGasResp':'គ្មានការឆ្លើយតបពី GAS','gc.noMsgId':'រកមិនឃើញ messageId','gc.preview':'មើលជាមុន','gc.previewEmpty':'គ្មានទិន្នន័យសម្រាប់រយៈពេលនេះ','gc.confirmSend':'ផ្ញើ','gc.sending':'កំពុងផ្ញើ…','gc.importReport':'លទ្ធផលនាំចូល','gc.fileOk':'ជោគជ័យ','gc.fileFail':'បរាជ័យ','gc.refresh':'ផ្ទុកឡើងវិញ','gc.telegram':'Telegram','gc.sendTelegram':'ផ្ញើទៅ Telegram','gc.period':'រយៈពេលសង្ខេប',
+    'gc.telegram':'Telegram','gc.sendTelegram':'ផ្ញើទៅ Telegram','gc.period':'រយៈពេលសង្ខេប','gc.slot':'ពេលវេលាផ្ញើ','gc.allSlots':'គ្រប់ពេល','gc.reportLanguage':'ភាសាសង្ខេប','gc.bilingual':'ចិន + អង់គ្លេស','gc.chinese':'中文','gc.english':'English','gc.khmer':'ខ្មែរ',
     'gc.summary':'សង្ខេប','gc.review':'ពិនិត្យ','gc.approval':'Approval','gc.quickActions':'សកម្មភាពរហ័ស',
     'gc.directHint':'ប្រើប៊ូតុងខាងលើដើម្បីធ្វើសមកាលកម្ម នាំចូល និងផ្ញើ ដោយមិនចាំបាច់បញ្ចូល URL/token/chat ID',
     'gc.sentTelegram':'បានផ្ញើ Telegram','gc.noApproval':'គ្មានទិន្នន័យកំពុងរង់ចាំពិនិត្យ/អនុម័ត',
@@ -502,15 +502,7 @@ const CLOUD = GC.cloud = {
 
   /** Telegram 通知（HTML 模式 + escape） */
   async notify(text) {
-    /* 照 ac-hra-pay 做法：必須拿到 messageId 才算成功，否則明確報錯 */
-    if (!CLOUD.gasUrl) throw new Error(I18.t('gc.noGasUrl'));
-    if (!text || !String(text).trim()) throw new Error(I18.t('gc.emptyMsg'));
-    const d = await CLOUD.post({ type: 'notify', parse_mode: 'HTML', text });
-    if (!d) throw new Error(I18.t('gc.noGasResp'));
-    if (d.ok === false) throw new Error(d.error || 'GAS error');
-    const info = d.data || d;
-    if (info.sent !== true || !info.messageId) throw new Error(I18.t('gc.noMsgId'));
-    return info;
+    return CLOUD.post({ type: 'notify', parse_mode: 'HTML', text });
   }
 };
 
@@ -843,32 +835,11 @@ const IMPORT = GC.import = {
          <div class="gc-import-h" data-i="gc.supportFmt">${U.escapeHtml(I18.t('gc.supportFmt'))}</div>
          <input type="file" id="${id}" accept="${accept}"${opt.multiple === false ? '' : ' multiple'} hidden>
        </div>
-       <div class="gc-import-status" id="${id}_st"></div>
-       <div class="gc-imp-report" id="${id}_rep" style="display:none"></div>`;
+       <div class="gc-import-status" id="${id}_st"></div>`;
 
     const dz = el.querySelector('#' + id + '_dz');
     const input = el.querySelector('#' + id);
     const st = el.querySelector('#' + id + '_st');
-    const rep = el.querySelector('#' + id + '_rep');
-
-    /* 照 ac-hra-pay：逐檔列出成功/失敗與原因，並提示缺什麼 */
-    function report(rows, notes) {
-      if (!rep) return;
-      if (!rows || !rows.length) { rep.style.display = 'none'; rep.innerHTML = ''; return; }
-      rep.innerHTML = rows.map(function (r) {
-        return r.ok
-          ? '<div class="gc-imp-row"><span class="gc-imp-ok">✓</span><span><b>' +
-            U.escapeHtml(r.file) + '</b> → ' + U.escapeHtml(String(r.n)) + ' ' +
-            U.escapeHtml(I18.t('gc.records')) +
-            (r.detail ? ' · ' + U.escapeHtml(r.detail) : '') + '</span></div>'
-          : '<div class="gc-imp-row"><span class="gc-imp-bad">✕</span><span><b>' +
-            U.escapeHtml(r.file) + '</b> — ' + U.escapeHtml(r.msg || '') + '</span></div>';
-      }).join('') +
-      (notes && notes.length
-        ? '<div class="gc-imp-note">📌 ' + notes.map(U.escapeHtml).join('；') + '</div>'
-        : '');
-      rep.style.display = '';
-    }
 
     function status(msg, cls) {
       st.className = 'gc-import-status' + (cls ? ' ' + cls : '');
@@ -882,8 +853,6 @@ const IMPORT = GC.import = {
       const allObjects = [];
       const metas = [];
       const errors = [];
-      const fileLog = [];
-      if (rep) { rep.style.display = 'none'; rep.innerHTML = ''; }
       for (let i = 0; i < list.length; i++) {
         const file = list[i];
         try {
@@ -902,31 +871,20 @@ const IMPORT = GC.import = {
           }).filter(o => Object.keys(schema).some(f => String(o[f]).trim() !== ''));
           allObjects.push(...objects);
           metas.push(Object.assign({}, parsed, { headers, map, sheetName, fileName: file.name, objectCount: objects.length }));
-          /* 記錄哪些欄位沒對應到，方便使用者判斷是不是欄位名不同 */
-          const unmapped = Object.keys(opt.schema || {}).filter(function (f) { return map[f] === undefined || map[f] < 0; });
-          fileLog.push({ ok: true, file: file.name, n: objects.length,
-            detail: (sheetName ? sheetName : '') +
-                    (unmapped.length ? (sheetName ? ' · ' : '') + '未對應: ' + unmapped.join('/') : '') });
           status(I18.t('gc.importing') + ' ' + (i + 1) + '/' + list.length + ' · ' + file.name, 'busy');
         } catch (err) {
           errors.push(file.name + ': ' + (err && err.message ? err.message : err));
-          fileLog.push({ ok: false, file: file.name, msg: (err && err.message ? err.message : String(err)) });
           status(I18.t('gc.importing') + ' ' + (i + 1) + '/' + list.length + ' · ' + file.name, 'busy');
         }
       }
       if (!allObjects.length && errors.length) {
-        status('❌ ' + I18.t('gc.importFail'), 'err');
-        report(fileLog, [I18.t('gc.importFail')]);
+        status('❌ ' + I18.t('gc.importFail') + ': ' + errors.join(' | '), 'err');
         return;
       }
       const fileNames = metas.map(m => m.fileName).join(', ');
-      const okN = fileLog.filter(function (x) { return x.ok; }).length;
-      status((okN === fileLog.length ? '✅ ' : '⚠ ') + okN + '/' + fileLog.length + ' · ' +
-        allObjects.length + ' ' + I18.t('gc.imported'), errors.length ? 'warning' : 'ok');
-      const notes = [];
-      const zeroFiles = fileLog.filter(function (x) { return x.ok && x.n === 0; });
-      if (zeroFiles.length) notes.push(zeroFiles.map(function (x) { return x.file; }).join(', ') + ' 讀到 0 筆，請確認欄位名稱');
-      report(fileLog, notes);
+      status('✅ ' + allObjects.length + ' ' + I18.t('gc.imported') +
+        (metas.length > 1 ? ' · ' + metas.length + ' files' : '') +
+        (errors.length ? ' · ' + errors.length + ' failed' : ''), errors.length ? 'warning' : 'ok');
       if (opt.onData) {
         const first = metas[0] || {};
         opt.onData(allObjects, Object.assign({}, first, {
@@ -1095,61 +1053,6 @@ const CSS = `
 .gc-bar-v{font-size:11px;font-weight:700;color:#1A2035;text-align:right;font-variant-numeric:tabular-nums}
 .gc-empty{text-align:center;padding:26px;color:#8892A8;font-size:13px}
 
-
-.gc-tg-ov{position:fixed;inset:0;background:rgba(15,20,32,.5);z-index:9900;display:none;align-items:center;justify-content:center;padding:20px}
-.gc-tg-ov.open{display:flex}
-.gc-tg-box{background:#fff;border-radius:13px;width:min(520px,100%);max-height:86vh;display:flex;flex-direction:column;box-shadow:0 14px 46px rgba(0,0,0,.3)}
-.gc-tg-head{padding:13px 16px;border-bottom:1px solid #EEF1F6;display:flex;justify-content:space-between;align-items:center}
-.gc-tg-title{font-weight:700;font-size:14px;color:#1A3E78}
-.gc-tg-x{border:0;background:transparent;font-size:17px;cursor:pointer;color:#8892A8;line-height:1}
-.gc-tg-x:hover{color:#B91C1C}
-.gc-tg-meta{padding:10px 16px;display:flex;gap:6px;flex-wrap:wrap;border-bottom:1px solid #F4F6FA;background:#FAFBFC}
-.gc-tg-chip{background:#EBF0FA;color:#1A3E78;font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px}
-.gc-tg-chip-n{background:#E6F4EC;color:#16653A}
-.gc-tg-body{padding:14px 16px;overflow-y:auto;flex:1}
-.gc-tg-pre{margin:0;font:12px/1.6 'IBM Plex Mono',ui-monospace,monospace;white-space:pre-wrap;word-break:break-word;color:#1A2035;background:#F7F8FA;border:1px solid #EEF1F6;border-radius:8px;padding:12px}
-.gc-tg-foot{padding:12px 16px;border-top:1px solid #EEF1F6;display:flex;gap:8px;justify-content:flex-end}
-.gc-tg-cancel{border:1px solid #D8DCE6;background:#fff;color:#4A5472;padding:8px 16px;border-radius:7px;font:600 13px/1 inherit;cursor:pointer}
-.gc-tg-cancel:hover{background:#EEF1F6}
-.gc-tg-send{border:0;background:#1A3E78;color:#fff;padding:8px 22px;border-radius:7px;font:600 13px/1 inherit;cursor:pointer}
-.gc-tg-send:hover{background:#153268}
-.gc-tg-send.off,.gc-tg-send:disabled{background:#C4CAD8;cursor:not-allowed}
-.gc-imp-report{margin-top:10px;font-size:12px;line-height:1.65}
-.gc-imp-row{display:flex;gap:7px;align-items:flex-start;padding:2px 0}
-.gc-imp-ok{color:#059669;font-weight:700}
-.gc-imp-bad{color:#DC2626;font-weight:700}
-.gc-imp-note{margin-top:7px;padding-top:7px;border-top:1px solid #EEF1F6;color:#B45309}
-
-/* 手機版：工具卡不可壓縮或遮擋模組原有按鈕 */
-@media(max-width:600px){
-  .gc-tools-card{margin:0 0 10px;padding:0 8px;box-sizing:border-box}
-  .gc-panel{border-radius:10px}
-  .gc-action-strip{gap:6px;padding:8px}
-  .gc-action-strip button,.gc-cloud-btn{min-height:38px;font-size:12px}
-  .gc-pd-btn{min-height:34px;padding:6px 11px}
-  .gc-lang-btn{min-height:32px}
-  /* 彈窗在手機上留出可點擊的關閉區 */
-  .gc-tg-box{max-height:82vh}
-  .gc-tg-foot{position:sticky;bottom:0;background:#fff;border-radius:0 0 13px 13px}
-  .gc-tg-send,.gc-tg-cancel{min-height:42px;flex:1}
-}
-/* 任何情況下工具卡都不得覆蓋其他元素 */
-.gc-tools-card{position:relative;z-index:1}
-.gc-tools-card *{max-width:100%}
-
-/* ── 精簡工具列（照 ac-hra-portal：一條窄 bar，不再有重複的大卡片）── */
-.gc-action-strip{background:#fff;border:1px solid #E2E6F0;border-radius:10px;
-  padding:8px 12px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-height:42px}
-.gc-dot{width:9px;height:9px;border-radius:50%;background:#22C55E;flex-shrink:0}
-.gc-sep{width:1px;height:20px;background:#E2E6F0;flex-shrink:0}
-.gc-hstats{margin-left:auto;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
-.gc-hstat{font-size:10px;color:#8892A8;display:flex;flex-direction:column;align-items:flex-end;line-height:1.25}
-.gc-hstat b{font-size:15px;color:#1A3E78;font-family:'IBM Plex Mono',ui-monospace,monospace}
-@media(max-width:600px){
-  .gc-hstats{margin-left:0;width:100%;justify-content:space-around;gap:8px;
-    border-top:1px solid #EEF1F6;padding-top:7px;margin-top:2px}
-  .gc-sep{display:none}
-}
 .gc-toast-box{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none}
 .gc-toast{background:#1A2035;color:#fff;padding:10px 19px;border-radius:8px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.24);animation:gcIn .25s ease;max-width:88vw}
 .gc-toast.success{background:#16653A}.gc-toast.error{background:#B91C1C}.gc-toast.warning{background:#7D4E00}
@@ -1161,11 +1064,13 @@ const CSS = `
 .gc-cloud-btn:hover{background:#EBF0FA;border-color:#1A3E78}
 .gc-cloud-btn:disabled{opacity:.45;cursor:not-allowed}
 
-.gc-action-strip{display:flex;align-items:center;gap:7px;flex-wrap:wrap;overflow:visible;white-space:normal;padding:10px 12px;margin-bottom:10px;background:#F7F9FC;border:1px solid #D8DCE6;border-radius:12px;box-shadow:0 3px 12px rgba(15,20,32,.08)}
+.gc-action-strip{display:flex;align-items:center;gap:7px;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;white-space:nowrap;scrollbar-width:none;padding:10px 12px;margin-bottom:10px;background:#F7F9FC;border:1px solid #D8DCE6;border-radius:12px;box-shadow:0 3px 12px rgba(15,20,32,.08)}
+.gc-action-strip::-webkit-scrollbar{display:none}
 .gc-action-strip>*{flex-shrink:0}
 .gc-action-heading{font-size:12px;font-weight:800;color:#1A3E78;white-space:nowrap;margin-right:2px}
 .gc-action-label{font-size:11px;font-weight:700;color:#5A6478;white-space:nowrap;margin-left:4px}
 .gc-scope-select,.gc-ref-date{height:34px;padding:0 8px;border:1px solid #C9D3E3;border-radius:8px;background:#fff;color:#1A3E78;font:700 11px/1 inherit;flex:0 0 auto}
+.gc-slot-select,.gc-lang-select{height:34px;padding:0 8px;border:1px solid #C9D3E3;border-radius:8px;background:#fff;color:#1A3E78;font:700 11px/1 inherit;flex:0 0 auto;max-width:150px}
 .gc-ref-nav{height:34px;min-width:30px;padding:0 7px;border:1px solid #C9D3E3;border-radius:8px;background:#fff;color:#1A3E78;font:700 12px/1 inherit;cursor:pointer;flex:0 0 auto}
 .gc-action-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1px solid #C9D3E3;background:#fff;border-radius:8px;font:700 12px/1 inherit;color:#1A3E78;cursor:pointer;white-space:nowrap;transition:.15s}
 .gc-action-btn:hover{background:#EBF0FA;border-color:#1A3E78}
@@ -1262,18 +1167,39 @@ GC.mountCloudButtons = function (mountEl, opt) {
    Telegram token 留在 GAS，瀏覽器只呼叫固定 Web App URL。
    ═══════════════════════════════════════════════════════════ */
 GC.telegram = {
+  text(zh, en, km, lang) {
+    lang = lang || 'bi';
+    if (lang === 'zh') return zh;
+    if (lang === 'en') return en;
+    if (lang === 'km') return km || en;
+    return zh + ' / ' + en;
+  },
+  slotText(item, lang) {
+    if (typeof item === 'string') return item;
+    return GC.telegram.text(item.zh || item.value, item.en || item.zh || item.value, item.km || item.en || item.zh || item.value, lang || 'bi');
+  },
+  filter(list, cfg, period, ref, scope, slot) {
+    cfg = cfg || {};
+    let view = PERIOD.filter(Array.isArray(list) ? list : [], period || 'month', cfg.dateField || 'date', ref);
+    if (cfg.scopeField && scope && scope !== 'all') view = view.filter(r => String(r && r[cfg.scopeField] || '') === String(scope));
+    if (slot && slot !== 'all' && typeof cfg.telegramSlotFilter === 'function') {
+      view = view.filter(r => cfg.telegramSlotFilter(r, slot));
+    } else if (slot && slot !== 'all' && cfg.telegramSlotField) {
+      view = view.filter(r => String(r && r[cfg.telegramSlotField] || '') === String(slot));
+    }
+    return view;
+  },
   pending(record) {
     if (!record) return false;
     const vals = [record.status, record.approvalStatus, record.reviewStatus,
       record.approval, record.approved, record.review];
     return vals.some(v => v === false || /pending|待審|待核|待批|review|approval|審查|核可|未完成/i.test(String(v || '')));
   },
-  buildText(cfg, period, mode, ref, scope) {
+  buildText(cfg, period, mode, ref, scope, slot, lang) {
     cfg = cfg || {};
     const all = typeof cfg.read === 'function' ? (cfg.read() || []) : [];
     const list = Array.isArray(all) ? all : [];
-    let view = PERIOD.filter(list, period || 'month', cfg.dateField || 'date', ref);
-    if (cfg.scopeField && scope && scope !== 'all') view = view.filter(r => String(r && r[cfg.scopeField] || '') === String(scope));
+    let view = GC.telegram.filter(list, cfg, period || 'month', ref, scope, slot);
     const pending = view.filter(GC.telegram.pending);
     const periodLabels = {
       day: I18.t('gc.today'), week: I18.t('gc.thisWeek'), month: I18.t('gc.thisMonth'),
@@ -1284,6 +1210,7 @@ GC.telegram = {
     const lines = [
       '♻️ <b>' + title + '</b>',
       '📅 ' + U.escapeHtml(periodLabels[period] || period || I18.t('gc.thisMonth')),
+      (slot && slot !== 'all' ? '⏱️ ' + U.escapeHtml(I18.t('gc.slot')) + ': ' + U.escapeHtml((cfg.telegramSlots || []).find(x => (typeof x === 'string' ? x : x.value) === slot) ? GC.telegram.slotText((cfg.telegramSlots || []).find(x => (typeof x === 'string' ? x : x.value) === slot), lang) : slot) : ''),
       '📊 ' + U.escapeHtml(I18.t('gc.records')) + ': <b>' + view.length + '</b> / ' +
         U.escapeHtml(I18.t('gc.total')) + ': ' + list.length,
       '🧾 ' + U.escapeHtml(I18.t('gc.mode')) + ': ' + U.escapeHtml(modeLabels[mode] || modeLabels.summary)
@@ -1326,12 +1253,15 @@ GC.attach = function (cfg) {
        importSchema        智慧匯入欄位對應
        importParser(file,schema) -> Promise<{objects,headers,...}>（可自訂跨分頁解析）
        telegramScopes      [{value,zh,en,km}]（Telegram 資料類型選擇）
+       telegramSlots       [{value,zh,en,km}]（Telegram 發送時段選擇）
+       telegramSlotFilter(record, value) 依記錄內時間欄位篩選
+       telegramLanguage    true 時顯示摘要語言選擇（bi/zh/en/km）
        scopeField          Telegram／統計分組篩選欄位
        periodRef           true 時顯示基準日期
        weather:  bool      是否顯示天氣統計
        photo:    bool      是否顯示照片統計
        gasUrl,
-       telegramBuilder({ period, mode, ref, scope, cfg }) -> string|{text,photos}  (optional module-specific report)
+       telegramBuilder({ period, mode, ref, scope, slot, lang, cfg }) -> string|{text,photos}  (optional module-specific report)
      } */
   cfg = cfg || {};
   if (!cfg.__storageReady && STORAGE && STORAGE.ready) {
@@ -1342,7 +1272,7 @@ GC.attach = function (cfg) {
   const C = Object.assign({
     dateField: 'date', idField: 'id', groupField: null,
     weather: false, photo: false, importSchema: null, importParser: null,
-    telegramScopes: null, scopeField: null, periodRef: false,
+    telegramScopes: null, scopeField: null, telegramSlots: null, telegramSlotFilter: null, telegramLanguage: false, telegramDefaultLanguage: 'bi', telegramDefaultSlot: 'all', periodRef: false,
     weatherField: 'weather',   // 各模組欄位名可能不同（如 temperature 用 'wx'）
     photoField:   'photos'
   }, cfg || {});
@@ -1350,72 +1280,81 @@ GC.attach = function (cfg) {
   // 固定使用已確認可用的 Web App 入口；模組內舊的 gasUrl 只保留相容性，不再要求使用者手動設定。
   CLOUD.setUrl(DEFAULT_GAS_URL);
 
-  /* ── 面板 DOM：固定放在模組內容頂端，不再使用浮動按鈕 ── */
+  /* ── 面板 DOM：Portal 只有一個共用操作入口 ──
+     共用列統一負責雲端、Telegram、期間、訊息類型；面板只保留
+     Dashboard 和一個智慧匯入拖放區，避免同一頁重複渲染同一組功能。 */
   const bar = document.createElement('div');
   bar.className = 'gc-tools-card';
   bar.innerHTML = `
     <div class="gc-action-strip" id="gcActionStrip">
-      <span class="gc-dot" id="gcDot" title="cloud"></span>
+      <span class="gc-action-heading">☁️ <span data-i="gc.quickActions">${U.escapeHtml(I18.t('gc.quickActions'))}</span></span>
       <div id="gcTopCloud"></div>
       <button type="button" class="gc-action-btn gc-tg-btn" data-gc-send>✈️ <span data-i="gc.telegram">${U.escapeHtml(I18.t('gc.telegram'))}</span></button>
       ${C.importSchema ? `<button type="button" class="gc-action-btn gc-import-btn" data-gc-import>📥 <span data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</span></button>` : ''}
-      <span class="gc-sep"></span>
-      ${C.telegramScopes ? `<select class="gc-scope-select" data-gc-scope aria-label="${U.escapeHtml(I18.t('gc.dataType'))}"></select>` : ''}
+      ${C.telegramScopes ? `<span class="gc-action-label" data-i="gc.dataType">${U.escapeHtml(I18.t('gc.dataType'))}</span><select class="gc-scope-select" data-gc-scope aria-label="${U.escapeHtml(I18.t('gc.dataType'))}"></select>` : ''}
+      ${C.telegramSlots ? `<span class="gc-action-label" data-i="gc.slot">${U.escapeHtml(I18.t('gc.slot'))}</span><select class="gc-slot-select" data-gc-slot aria-label="${U.escapeHtml(I18.t('gc.slot'))}"></select>` : ''}
+      <span class="gc-action-label" data-i="gc.period">${U.escapeHtml(I18.t('gc.period'))}</span>
       <div id="gcQuickPeriod"></div>
-      ${C.periodRef ? `<button type="button" class="gc-ref-nav" data-gc-ref-prev aria-label="Previous">◀</button><input class="gc-ref-date" data-gc-ref type="date" aria-label="${U.escapeHtml(I18.t('gc.refDate'))}"><button type="button" class="gc-ref-nav" data-gc-ref-next aria-label="Next">▶</button>` : ''}
+      ${C.periodRef ? `<span class="gc-action-label" data-i="gc.refDate">${U.escapeHtml(I18.t('gc.refDate'))}</span><button type="button" class="gc-ref-nav" data-gc-ref-prev aria-label="Previous date">◀</button><input class="gc-ref-date" data-gc-ref type="date" aria-label="${U.escapeHtml(I18.t('gc.refDate'))}"><button type="button" class="gc-ref-nav" data-gc-ref-next aria-label="Next date">▶</button>` : ''}
+      <span class="gc-action-label" data-i="gc.mode">${U.escapeHtml(I18.t('gc.mode'))}</span>
       <div class="gc-mode" id="gcQuickMode">
         <button type="button" class="gc-mode-btn on" data-gc-mode="summary">📄 <span data-i="gc.summary">${U.escapeHtml(I18.t('gc.summary'))}</span></button>
         <button type="button" class="gc-mode-btn" data-gc-mode="review">🔎 <span data-i="gc.review">${U.escapeHtml(I18.t('gc.review'))}</span></button>
         <button type="button" class="gc-mode-btn" data-gc-mode="approval">✅ <span data-i="gc.approval">${U.escapeHtml(I18.t('gc.approval'))}</span></button>
       </div>
-      <div class="gc-hstats" id="gcHStats"></div>
+      ${C.telegramLanguage ? `<span class="gc-action-label" data-i="gc.reportLanguage">${U.escapeHtml(I18.t('gc.reportLanguage'))}</span><select class="gc-lang-select" data-gc-lang aria-label="${U.escapeHtml(I18.t('gc.reportLanguage'))}"><option value="bi">${U.escapeHtml(I18.t('gc.bilingual'))}</option><option value="zh">${U.escapeHtml(I18.t('gc.chinese'))}</option><option value="en">${U.escapeHtml(I18.t('gc.english'))}</option><option value="km">${U.escapeHtml(I18.t('gc.khmer'))}</option></select>` : ''}
       <span class="gc-action-status" id="gcTelegramState" aria-live="polite"></span>
     </div>
-    <div id="gcDash" hidden></div>
-    ${C.importSchema ? '<div id="gcImport" hidden></div>' : ''}
-    <span id="gcCloudNote" hidden></span>
+    <div class="gc-panel" id="gcPanel">
+      <div class="gc-panel-head">
+        <span class="gc-panel-title">📊 <span data-i="gc.dashboard">${U.escapeHtml(I18.t('gc.dashboard'))}</span></span>
+        <span class="gc-storage-badge" data-i="gc.indexedDb">${U.escapeHtml(I18.t('gc.indexedDb'))}</span>
+      </div>
+      <div class="gc-panel-body">
+        <div class="gc-sec">
+          <div id="gcDash"></div>
+        </div>
+        ${C.importSchema ? `<div class="gc-sec gc-import-sec">
+          <div class="gc-sec-t">📥 <span data-i="gc.smartImport">${U.escapeHtml(I18.t('gc.smartImport'))}</span></div>
+          <div class="gc-cloud-info" data-i="gc.directHint">${U.escapeHtml(I18.t('gc.directHint'))}</div>
+          <div id="gcImport"></div>
+        </div>` : ''}
+      </div>
+    </div>
   `;
+  const contentMount = document.querySelector('.main, .content, .page, .wrap') || document.body;
+  if (contentMount.firstChild) contentMount.insertBefore(bar, contentMount.firstChild);
+  else contentMount.appendChild(bar);
 
-  /* ── 掛載位置 ──
-     各模組結構不同：temperature 只有一個 .main（全頁共用）；
-     cleaning 是每個分頁各有一個 .main，若插進第一個 .main
-     工具卡只會出現在「總覽」分頁，其他分頁看不到。
-     所以優先掛在頁籤列之後、所有分頁之前，確保每個分頁都看得到。 */
-  (function mountBar() {
-    if (C.mountSelector) {
-      const custom = document.querySelector(C.mountSelector);
-      if (custom) { custom.appendChild(bar); return; }
-    }
-    // 1) 頁籤列之後（適用有多個 pane 的模組，如 cleaning）
-    const tabs = document.querySelector('.tabs, #main-tabs, nav.tabs');
-    const panes = document.querySelectorAll('.pane, .tab-pane, [data-pane]');
-    if (tabs && panes.length > 1 && tabs.parentNode) {
-      tabs.parentNode.insertBefore(bar, tabs.nextSibling);
-      return;
-    }
-    // 2) 單一內容容器（適用 temperature 這類）
-    const mains = document.querySelectorAll('.main, .content, .page, .wrap');
-    if (mains.length === 1) {
-      const m = mains[0];
-      if (m.firstChild) m.insertBefore(bar, m.firstChild); else m.appendChild(bar);
-      return;
-    }
-    // 3) 有多個 .main 但沒有頁籤 → 放在第一個 .main 之前（頁面層級）
-    if (mains.length > 1 && mains[0].parentNode) {
-      mains[0].parentNode.insertBefore(bar, mains[0]);
-      return;
-    }
-    // 4) 最後手段
-    if (tabs && tabs.parentNode) tabs.parentNode.insertBefore(bar, tabs.nextSibling);
-    else document.body.insertBefore(bar, document.body.firstChild);
-  })();
+  /* 舊模組的連線／雲端／Telegram 區塊只保留一份功能入口。
+     只隱藏重複操作區，不刪除業務設定、記錄表或歷史資料。 */
+  if (C.hideLegacyTools !== false) {
+    const hide = el => { if (el) el.classList.add('gc-legacy-hidden'); };
+    const hideBlock = el => {
+      if (!el) return;
+      const block = el.closest('.card, .sec, .section, .panel, .pnl, .tab-content, .pane') || el.parentElement;
+      hide(block || el);
+    };
+    ['#gas-panel', '#gas-panel-card', '#tab-import', '#tab-tg', '#nav-import', '#nav-telegram', '#tab-telegram', '#pnl-import', '#pnl-tg', '#pnl-telegram', '#panel-import', '#panel-telegram', '#section-import']
+      .forEach(sel => document.querySelectorAll(sel).forEach(hide));
+    document.querySelectorAll('[onclick*="switchTab(\'import\')"], [onclick*="switchTab(\'tg\')"], [onclick*="switchTab(\'telegram\')"]')
+      .forEach(hide);
+    ['#cfg-gas', '#cfg-token', '#cfg-chat', '#tg-tok', '#tg-chat', '#tg-token', '#tg-period']
+      .forEach(sel => document.querySelectorAll(sel).forEach(hideBlock));
+    document.querySelectorAll('[onclick*="openImport"], [onclick*="uploadCloud"], [onclick*="downloadCloud"], [onclick*="cloud.push"], [onclick*="cloud.pull"], [onclick*="syncUp"], [onclick*="syncDown"], [onclick*="saveToGAS"], [onclick*="loadFromGAS"], [onclick*="sendTg"], [onclick*="sendTG"], [onclick*="saveTg"], [onclick*="sendToTelegram"], [onclick*="sendAnalyticsTelegram"], [onclick*="previewTelegramMessage"]')
+      .forEach(hide);
+  }
 
   /* ── 元件掛載 ── */
   let period = 'month';
   let mode = 'summary';
   let periodRef = C.periodRef ? U.ymd(new Date()) : null;
   let scope = 'all';
+  let slot = C.telegramDefaultSlot || 'all';
+  let lang = C.telegramDefaultLanguage || 'bi';
   const scopeSelect = bar.querySelector('[data-gc-scope]');
+  const slotSelect = bar.querySelector('[data-gc-slot]');
+  const langSelect = bar.querySelector('[data-gc-lang]');
   const refInput = bar.querySelector('[data-gc-ref]');
   const refPrev = bar.querySelector('[data-gc-ref-prev]');
   const refNext = bar.querySelector('[data-gc-ref-next]');
@@ -1425,7 +1364,21 @@ GC.attach = function (cfg) {
     scopeSelect.innerHTML = C.telegramScopes.map(item => `<option value="${U.escapeHtml(item.value)}">${U.escapeHtml(scopeLabel(item))}</option>`).join('');
     scopeSelect.value = scope;
   }
+  function renderSlot() {
+    if (!slotSelect || !Array.isArray(C.telegramSlots)) return;
+    slotSelect.innerHTML = C.telegramSlots.map(item => `<option value="${U.escapeHtml(typeof item === 'string' ? item : item.value)}">${U.escapeHtml(GC.telegram.slotText(item, lang))}</option>`).join('');
+    slotSelect.value = slot;
+  }
+  function renderLanguage() {
+    if (!langSelect) return;
+    langSelect.innerHTML = '<option value="bi">' + U.escapeHtml(I18.t('gc.bilingual')) + '</option><option value="zh">' + U.escapeHtml(I18.t('gc.chinese')) + '</option><option value="en">' + U.escapeHtml(I18.t('gc.english')) + '</option><option value="km">' + U.escapeHtml(I18.t('gc.khmer')) + '</option>';
+    langSelect.value = lang;
+  }
+  if (slotSelect) slotSelect.onchange = () => { slot = slotSelect.value || 'all'; refresh(); };
+  if (langSelect) { langSelect.onchange = () => { lang = langSelect.value || 'bi'; renderSlot(); refresh(); }; }
   renderScope();
+  renderLanguage();
+  renderSlot();
   if (refInput) {
     refInput.value = periodRef || '';
     refInput.onchange = () => { periodRef = refInput.value || U.ymd(new Date()); refresh(); };
@@ -1468,125 +1421,33 @@ GC.attach = function (cfg) {
 
   const sendTelegram = bar.querySelector('[data-gc-send]');
   const telegramState = bar.querySelector('#gcTelegramState');
-  /* ── 組出目前設定下的 Telegram 內容 ── */
-  async function buildTelegramPacket() {
-    const customText = typeof C.telegramBuilder === 'function'
-      ? await C.telegramBuilder({ period, mode, ref: periodRef, scope, cfg: C })
-      : null;
-    const built = customText == null ? GC.telegram.buildText(C, period, mode, periodRef, scope) : customText;
-    return typeof built === 'string' ? { text: built, photos: [] } : (built || { text: '', photos: [] });
-  }
-
-  /* ── 預覽彈窗（照 ac-hra-pay：先看內容再決定送不送）── */
-  function ensureTgModal() {
-    let m = document.getElementById('gcTgModal');
-    if (m) return m;
-    m = document.createElement('div');
-    m.id = 'gcTgModal'; m.className = 'gc-tg-ov';
-    m.innerHTML =
-      '<div class="gc-tg-box">' +
-        '<div class="gc-tg-head">' +
-          '<span class="gc-tg-title">✈️ <span data-i="gc.sendTelegram"></span></span>' +
-          '<button type="button" class="gc-tg-x" id="gcTgX">✕</button>' +
-        '</div>' +
-        '<div class="gc-tg-meta" id="gcTgMeta"></div>' +
-        '<div class="gc-tg-body"><pre class="gc-tg-pre" id="gcTgPre"></pre></div>' +
-        '<div class="gc-tg-foot">' +
-          '<button type="button" class="gc-tg-cancel" id="gcTgCancel" data-i="gc.cancel"></button>' +
-          '<button type="button" class="gc-tg-send" id="gcTgSend" data-i="gc.confirmSend"></button>' +
-        '</div>' +
-      '</div>';
-    document.body.appendChild(m);
-    m.querySelector('#gcTgX').onclick = () => m.classList.remove('open');
-    m.querySelector('#gcTgCancel').onclick = () => m.classList.remove('open');
-    m.onclick = e => { if (e.target === m) m.classList.remove('open'); };
-    return m;
-  }
-
-  async function openTelegramPreview() {
-    const m = ensureTgModal();
-    const pre = m.querySelector('#gcTgPre');
-    const meta = m.querySelector('#gcTgMeta');
-    const send = m.querySelector('#gcTgSend');
-    I18.apply(m);
-
-    /* 顯示目前期間/模式/範圍，讓人一眼知道要送什麼 */
-    const all = C.read() || [];
-    let view = GC.period.filter(all, period, C.dateField, periodRef);
-    if (C.scopeField && scope && scope !== 'all')
-      view = view.filter(r => String(r && r[C.scopeField] || '') === String(scope));
-    const PD = { day:'gc.today', week:'gc.thisWeek', month:'gc.thisMonth', year:'gc.thisYear', all:'gc.all' };
-    meta.innerHTML =
-      '<span class="gc-tg-chip">' + U.escapeHtml(I18.t(PD[period] || period)) + '</span>' +
-      '<span class="gc-tg-chip">' + U.escapeHtml(mode) + '</span>' +
-      (scope && scope !== 'all' ? '<span class="gc-tg-chip">' + U.escapeHtml(scope) + '</span>' : '') +
-      '<span class="gc-tg-chip gc-tg-chip-n">' + view.length + ' ' + U.escapeHtml(I18.t('gc.records')) + '</span>';
-
-    pre.textContent = I18.t('gc.sync');
-    m.classList.add('open');
-
+  async function sendCurrentTelegram() {
+    if (sendTelegram) sendTelegram.disabled = true;
+    if (telegramState) telegramState.textContent = I18.t('gc.sync');
     try {
-      const packet = await buildTelegramPacket();
-      const plain = String(packet.text || '').replace(/<\/?[^>]+>/g, '');
-      if (!plain.trim() || !view.length) {
-        pre.textContent = '⚠️ ' + I18.t('gc.previewEmpty');
-        send.disabled = true; send.classList.add('off');
-      } else {
-        pre.textContent = plain;
-        send.disabled = false; send.classList.remove('off');
-      }
-      send.onclick = async () => {
-        send.disabled = true;
-        const orig = send.textContent;
-        send.textContent = I18.t('gc.sending');
-        try {
-          const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
-          const buttons = packet.buttons || [[{ text:'📊 Open Dashboard / 開啟平台', url: dashUrl }]];
-          await GC.telegram.send(packet.text, packet.photos, buttons);
-          if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
-          GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
-          m.classList.remove('open');
-        } catch (e) {
-          if (telegramState) telegramState.textContent = '✕ ' + e.message;
-          GC.toast('❌ ' + e.message, 'error');
-        }
-        send.disabled = false; send.textContent = orig;
-      };
+      const customText = typeof C.telegramBuilder === 'function'
+        ? await C.telegramBuilder({ period, mode, ref: periodRef, scope, slot, lang, cfg: C })
+        : null;
+      const built = customText == null ? GC.telegram.buildText(C, period, mode, periodRef, scope, slot, lang) : customText;
+      const packet = typeof built === 'string' ? { text: built, photos: [] } : (built || { text: '', photos: [] });
+      const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
+      const buttons = packet.buttons || [[{text:'📊 Open Dashboard / 開啟平台',url:dashUrl}]];
+      await GC.telegram.send(packet.text, packet.photos, buttons);
+      if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
+      GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
     } catch (e) {
-      pre.textContent = '⚠️ ' + e.message;
-      send.disabled = true; send.classList.add('off');
+      if (telegramState) telegramState.textContent = '✕ ' + e.message;
+      GC.toast('❌ ' + I18.t('gc.upFail') + ': ' + e.message, 'error');
     }
+    if (sendTelegram) sendTelegram.disabled = false;
   }
-  if (sendTelegram) sendTelegram.onclick = openTelegramPreview;
+  if (sendTelegram) sendTelegram.onclick = sendCurrentTelegram;
 
   if (C.importSchema) {
     const importMount = bar.querySelector('#gcImport');
-    /* 匯入改用彈窗（原本的大卡片已移除，避免同頁重複區塊） */
     const openImport = () => {
-      let m = document.getElementById('gcImpModal');
-      if (!m) {
-        m = document.createElement('div');
-        m.id = 'gcImpModal'; m.className = 'gc-tg-ov';
-        m.innerHTML =
-          '<div class="gc-tg-box">' +
-            '<div class="gc-tg-head">' +
-              '<span class="gc-tg-title">📥 <span data-i="gc.smartImport"></span></span>' +
-              '<button type="button" class="gc-tg-x" id="gcImpX">✕</button>' +
-            '</div>' +
-            '<div class="gc-tg-body"><div id="gcImpHost"></div></div>' +
-          '</div>';
-        document.body.appendChild(m);
-        m.querySelector('#gcImpX').onclick = () => m.classList.remove('open');
-        m.onclick = e => { if (e.target === m) m.classList.remove('open'); };
-      }
-      /* 把匯入元件搬進彈窗（只搬一次） */
-      const host = m.querySelector('#gcImpHost');
-      if (importMount && importMount.parentNode !== host) {
-        importMount.hidden = false;
-        host.appendChild(importMount);
-      }
-      I18.apply(m);
-      m.classList.add('open');
+      const sec = bar.querySelector('.gc-import-sec');
+      if (sec) { sec.scrollIntoView({ behavior: 'smooth', block: 'center' }); sec.classList.add('gc-import-focus'); setTimeout(() => sec.classList.remove('gc-import-focus'), 900); }
     };
     const importButton = bar.querySelector('[data-gc-import]');
     if (importButton) importButton.onclick = openImport;
@@ -1612,8 +1473,7 @@ GC.attach = function (cfg) {
   /* ── 重新整理儀表板 ── */
   function refresh() {
     const all  = C.read() || [];
-    let view = GC.period.filter(all, period, C.dateField, periodRef);
-    if (C.scopeField && scope && scope !== 'all') view = view.filter(r => String(r && r[C.scopeField] || '') === String(scope));
+    let view = GC.telegram.filter(all, C, period, periodRef, scope, slot);
     const cards = [
       { label: I18.t('gc.records'), value: view.length, color: '#1A3E78' },
       { label: I18.t('gc.total'),   value: all.length, sub: I18.t('gc.all'), color: '#5A6478' }
@@ -1632,12 +1492,6 @@ GC.attach = function (cfg) {
       : null;
 
     GC.dash.render('#gcDash', { cards, bars });
-    /* 統計數字改用 header 樣式的小字，取代原本的大卡片 */
-    const hs = bar.querySelector('#gcHStats');
-    if (hs) hs.innerHTML = cards.map(function (c) {
-      return '<span class="gc-hstat"><b>' + U.escapeHtml(c.value) + '</b>' +
-             U.escapeHtml(c.label) + '</span>';
-    }).join('');
 
     const note = bar.querySelector('#gcCloudNote');
     if (note) note.textContent =
@@ -1648,45 +1502,31 @@ GC.attach = function (cfg) {
   /* ── 分頁內工具列：面板保持可見，避免智慧匯入／雲端按鈕被藏起來 ── */
   const panel = bar.querySelector('#gcPanel');
   if (panel) panel.classList.add('open');
-  window.addEventListener('gc:langchange', () => { renderScope(); refresh(); });
+  window.addEventListener('gc:langchange', () => { renderScope(); renderLanguage(); renderSlot(); refresh(); });
 
   refresh();
-  /* ── 自動刷新：模組自己存檔後，面板數字要跟著動（修 ehs 顯示 0 的問題）── */
-  let _lastSig = '';
-  function autoRefresh() {
-    try {
-      const all = C.read() || [];
-      const last = all.length ? all[all.length - 1] : null;
-      const sig = all.length + '|' + (last && last[C.idField] || '') + '|' + (last && last.updatedAt || '');
-      if (sig !== _lastSig) { _lastSig = sig; refresh(); }
-    } catch (e) {}
-  }
-  autoRefresh();
-  setInterval(autoRefresh, 1500);
-  window.addEventListener('storage', autoRefresh);
-  window.addEventListener('gc:datachange', function () { refresh(); });
-
-  return { refresh, getPeriod: () => period, sendTelegram: openTelegramPreview, openTelegram: openTelegramPreview };
+  return { refresh, getPeriod: () => period, sendTelegram: sendCurrentTelegram };
 };
 
 /* ── 面板樣式 ── */
 const BAR_CSS = `
 .gc-tools-card{display:block;width:100%;max-width:none;margin:0 0 16px;font-family:inherit;scroll-margin-top:12px}
+.gc-legacy-hidden{display:none!important}
 .gc-panel{position:static;width:100%;background:#fff;border:1px solid #D8DCE6;border-radius:13px;box-shadow:0 4px 18px rgba(15,20,32,.1);display:flex;max-height:none;overflow:visible;flex-direction:column}
 .gc-panel.open{display:flex}
 .gc-panel-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid #EEF1F6;background:#F7F8FA;border-radius:13px 13px 0 0}
 .gc-panel-title{font-weight:700;font-size:13px;color:#1A3E78;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .gc-storage-badge{font-size:10px;color:#16653A;background:#E8F7EE;border:1px solid #BCE7CB;border-radius:12px;padding:3px 8px;white-space:nowrap}
-.gc-panel-body{display:grid;grid-template-columns:minmax(260px,1.05fr) minmax(240px,.85fr) minmax(300px,1.2fr);gap:14px;padding:14px;overflow:visible}
+.gc-panel-body{display:grid;grid-template-columns:minmax(320px,1fr) minmax(380px,1.15fr);gap:14px;padding:14px;overflow:visible}
 .gc-sec{min-width:0;margin:0}
 .gc-sec:last-child{margin-bottom:0}
 .gc-import-sec{min-width:0}
 .gc-import-focus{outline:3px solid rgba(78,111,255,.25);outline-offset:3px;border-radius:9px;transition:outline .2s}
 .gc-sec-t{font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px}
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
-@media(max-width:1050px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-import-sec{grid-column:1/-1}}
+@media(max-width:1050px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-import-sec{grid-column:auto}}
 @media(max-width:560px){
-  .gc-action-strip{align-items:center;flex-wrap:wrap;overflow:visible;white-space:normal;padding:8px 9px}
+  .gc-action-strip{align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;white-space:nowrap;padding:8px 9px}
   .gc-action-heading,.gc-action-label{width:auto;margin-left:0}
   .gc-action-strip #gcTopCloud,.gc-action-strip .gc-cloud-btns,.gc-action-strip .gc-period,.gc-mode{width:auto;flex:0 0 auto}
   .gc-action-strip .gc-cloud-btn,.gc-action-strip .gc-pd-btn,.gc-mode-btn,.gc-action-btn{flex:0 0 auto;justify-content:center;min-height:38px;touch-action:manipulation}

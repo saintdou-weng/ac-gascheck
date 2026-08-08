@@ -1650,18 +1650,24 @@ function buildTGmsg(type,date){
 }
 // 共用上方 Telegram 按鈕使用的詳細報告：保留每個日期、區域、時段、溫度、濕度與狀態，
 // 不再只送「za / zb」分組筆數。訊息上限前保留完整列，避免 Telegram 拒收過長內容。
-function buildTGPeriodMsg(period,mode,ref){
+function tempTelegramText(zh,en,km,lang){
+  if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
+  return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
+}
+function tempTelegramSlotMatch(r,slot){ return !slot||slot==='all'||String(r.p||'')===String(slot); }
+function buildTGPeriodMsg(period,mode,ref,slot,lang){
   const all=getR();
-  const view=(typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'d',ref):all.slice();
-  const periodName={day:'Today / 今日',week:'This Week / 本週',month:'This Month / 本月',year:'This Year / 今年',all:'All / 全部'}[period]||period;
-  const modeName={summary:'Summary / 摘要',review:'Review / 審查',approval:'Approval / 核可'}[mode]||'Summary / 摘要';
+  const view=((typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'d',ref):all.slice()).filter(r=>tempTelegramSlotMatch(r,slot));
+  const periodName={day:tempTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:tempTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:tempTelegramText('本月','This Month','ខែនេះ',lang),year:tempTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:tempTelegramText('全部','All','ទាំងអស់',lang)}[period]||period;
+  const modeName={summary:tempTelegramText('摘要','Summary','សង្ខេប',lang),review:tempTelegramText('審查','Review','ពិនិត្យ',lang),approval:tempTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
+  const slotName={all:tempTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:tempTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:tempTelegramText('下午','Afternoon','ពេលរសៀល',lang)}[slot||'all']||slot||'all';
   const temps=view.filter(r=>r.t!==''&&r.t!=null&&!isNaN(r.t)).map(r=>+r.t), hums=view.filter(r=>r.h!==''&&r.h!=null&&!isNaN(r.h)).map(r=>+r.h);
   const photos=[];
   view.forEach(r=>{(typeof GC!=='undefined'&&GC.util?GC.util.asArray(r.photos):Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^data:image\//i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
   const avg=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'--';
   const anomalies=view.filter(isAnom).length, zoneCount=new Set(view.map(r=>r.z).filter(Boolean)).size;
-  const lines=['🌡️ <b>VRT Temperature & Humidity / 溫濕度</b>','📅 '+periodName,'🧾 Message type / 訊息類型: '+modeName,'━━━━━━━━━━━━━━━━','📊 <b>Dashboard / 儀表板</b>','• Records / 記錄: <b>'+view.length+'</b> | Zones / 區域: '+zoneCount,'• Avg Temp / 平均溫度: '+avg(temps)+'°C | Avg Hum / 平均濕度: '+avg(hums)+'%','• Anomaly / 異常: <b>'+anomalies+'</b>','━━━━━━━━━━━━━━━━'];
-  if(!view.length){lines.push('No records / 暫無記錄','⏰ '+new Date().toLocaleString());return {text:lines.join('\n'),photos:photos};}
+  const lines=['🌡️ <b>'+tempTelegramText('VRT 溫濕度','VRT Temperature & Humidity','VRT សីតុណ្ហភាព និងសំណើម',lang)+'</b>','📅 '+periodName,'⏱️ '+tempTelegramText('時段','Slot','ពេលវេលា',lang)+': '+slotName,'🧾 '+tempTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeName,'━━━━━━━━━━━━━━━━','📊 <b>'+tempTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+tempTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b> | '+tempTelegramText('區域','Zones','តំបន់',lang)+': '+zoneCount,'• '+tempTelegramText('平均溫度','Avg Temp','សីតុណ្ហភាពមធ្យម',lang)+': '+avg(temps)+'°C | '+tempTelegramText('平均濕度','Avg Hum','សំណើមមធ្យម',lang)+': '+avg(hums)+'%','• '+tempTelegramText('異常','Anomaly','មិនប្រក្រតី',lang)+': <b>'+anomalies+'</b>','━━━━━━━━━━━━━━━━'];
+  if(!view.length){lines.push(tempTelegramText('暫無記錄','No records','គ្មានកំណត់ត្រា',lang),'⏰ '+new Date().toLocaleString());return {text:lines.join('\n'),photos:photos};}
   const zones=getZ();
   const dates=[...new Set(view.map(r=>String(r.d||'').slice(0,10)).filter(Boolean))].sort();
   let count=0;
@@ -1670,15 +1676,15 @@ function buildTGPeriodMsg(period,mode,ref){
     view.filter(r=>String(r.d||'').slice(0,10)===date).sort((a,b)=>String(a.z).localeCompare(String(b.z))||String(a.p).localeCompare(String(b.p))).forEach(r=>{
       if(count>=90)return;
       const z=zones.find(x=>x.id===r.z);
-      const name=z?((z.en||z.zh||z.id)+' / '+(z.zh||z.en||z.id)):String(r.z||'?');
-      const per=r.p==='morning'?'Morning / 早上':'Afternoon / 下午';
+      const name=z?(lang==='zh'?(z.zh||z.en||z.id):lang==='en'?(z.en||z.zh||z.id):lang==='km'?(z.km||z.en||z.zh||z.id):((z.en||z.zh||z.id)+' / '+(z.zh||z.en||z.id))):String(r.z||'?');
+      const per=r.p==='morning'?tempTelegramText('早上','Morning','ពេលព្រឹក',lang):tempTelegramText('下午','Afternoon','ពេលរសៀល',lang);
       const ts=tSt(r.t),hs=hSt(r.h);
-      const status=[ts&&T(ts.k),hs&&T(hs.k)].filter(Boolean).join(' / ')||T('ok');
+      const status=[ts&&tempTelegramText(T(ts.k),({cold:'Cold',cool:'Cool',ok:'Normal',warm:'Warm',hot:'Hot'}[ts.k]||ts.k),ts.k,lang),hs&&tempTelegramText(T(hs.k),({dry:'Dry',humid:'Humid',vhum:'Very Humid'}[hs.k]||hs.k),hs.k,lang)].filter(Boolean).join(' / ')||tempTelegramText('正常','Normal','ធម្មតា',lang);
       lines.push('🏭 '+name+' | '+per+' | 🌡️ '+(r.t!==''&&r.t!=null?r.t+'°C':'--')+' | 💧 '+(r.h!==''&&r.h!=null?r.h+'%':'--')+' | '+status+(r.wx?' | '+_wxLabel(r.wx):''));
       count++;
     });
   });
-  lines.push('━━━━━━━━━━━━━━━━','⚠️ Anomaly / 異常: '+anomalies+' | 📋 Records / 記錄: '+view.length,'⏰ '+new Date().toLocaleString());
+  lines.push('━━━━━━━━━━━━━━━━','⚠️ '+tempTelegramText('異常','Anomaly','មិនប្រក្រតី',lang)+': '+anomalies+' | 📋 '+tempTelegramText('記錄','Records','កំណត់ត្រា',lang)+': '+view.length,'⏰ '+new Date().toLocaleString());
   const out=lines.join('\n');
   return {text:out.length>3900?out.slice(0,3860)+'\n… (more records omitted / 其餘記錄略)':out,photos:photos};
 }
@@ -2047,7 +2053,10 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       toCloud:enrichRec,
       fromCloud:normalizeRec,
       periodRef:true,
-      telegramBuilder:({period,mode,ref})=>buildTGPeriodMsg(period,mode,ref),
+      telegramSlots:[{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'},{value:'morning',zh:'早上 08:00–09:00',en:'Morning 08:00–09:00',km:'ពេលព្រឹក 08:00–09:00'},{value:'afternoon',zh:'下午 15:30–16:30',en:'Afternoon 15:30–16:30',km:'ពេលរសៀល 15:30–16:30'}],
+      telegramSlotFilter:(r,slot)=>tempTelegramSlotMatch(r,slot),
+      telegramLanguage:true,
+      telegramBuilder:({period,mode,ref,slot,lang})=>buildTGPeriodMsg(period,mode,ref,slot,lang),
       extra:()=>({zones:getZ(),zonesMode:'merge'}),
       onRemote:(d)=>{if(d&&Array.isArray(d.zones)){const z=mergeTempZones(getZ(),d.zones);if(JSON.stringify(z)!==JSON.stringify(getZ())){setZ(z);renderAll();}}},
       importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "note": ["備註", "note", "notes", "ចំណាំ"]},
