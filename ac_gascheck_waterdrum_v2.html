@@ -475,32 +475,32 @@ document.addEventListener('click', function(e) {
 <!-- Currency Settings Panel -->
 <div id="currency-panel">
   <button class="cpanel-close" onclick="toggleCurrencyPanel()">✕</button>
-  <h3>💱 單價 & 匯率設定</h3>
+  <h3>💱 <span data-key="currency_settings">單價與匯率設定</span></h3>
   <div class="cpanel-row">
-    <label class="cpanel-label">🏭 工廠預設單價 Factory Price (Riels/drum)</label>
+    <label class="cpanel-label">🏭 <span data-key="factory_default_price">工廠預設單價（瑞爾／桶）</span></label>
     <input class="cpanel-input" id="cp-fac-price" type="number" min="0" placeholder="2000"
       oninput="saveDefaultPrices()">
   </div>
   <div class="cpanel-row">
-    <label class="cpanel-label">🏠 宿舍預設單價 Staff Price (Riels/drum)</label>
+    <label class="cpanel-label">🏠 <span data-key="staff_default_price">宿舍預設單價（瑞爾／桶）</span></label>
     <input class="cpanel-input" id="cp-sta-price" type="number" min="0" placeholder="2000"
       oninput="saveDefaultPrices()">
   </div>
   <div class="cpanel-row">
-    <label class="cpanel-label">💱 匯率 Exchange Rate (1 USD = ? KHR)</label>
+    <label class="cpanel-label">💱 <span data-key="exchange_rate">匯率（1 USD = ? KHR）</span></label>
     <input class="cpanel-input" id="cp-rate" type="number" min="1" placeholder="4100"
       oninput="updateCurrencyRate(this.value)">
     <div id="cpanel-preview">1 USD = 4,100 KHR</div>
   </div>
   <div class="cpanel-row">
-    <label class="cpanel-label">💲 顯示貨幣 Display Currency</label>
+    <label class="cpanel-label">💲 <span data-key="display_currency">顯示貨幣</span></label>
     <select class="cpanel-input" id="cp-currency"
       onchange="updateDisplayCurrency(this.value)">
       <option value="KHR">KHR (Riels ៛)</option>
       <option value="USD">USD ($)</option>
     </select>
   </div>
-  <button onclick="applyAndCloseCurrency()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">✅ 套用</button>
+  <button onclick="applyAndCloseCurrency()" style="width:100%;background:#2563eb;color:#fff;border:none;border-radius:7px;padding:9px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">✅ <span data-key="apply">套用</span></button>
 </div>
 
 <!-- HEADER — onboarding style -->
@@ -834,7 +834,7 @@ const LANGS = {
     tab_entry:'Data Entry', tab_analysis:'Analysis', tab_history:'History',
     tab_import:'Import Excel', tab_alerts:'Alerts', tab_telegram:'Telegram',
     add_record:'Add Record', export:'Export', save:'Save', cancel:'Cancel',
-    year:'Year', month:'Month', date:'Date', time:'Time', qty:'Qty',
+    day:'Day', week:'Week', year:'Year', month:'Month', date:'Date', time:'Time', qty:'Qty',
     price:'Price (Riels)', ttl:'TTL (Riels)', action:'Action',
     factory:'Factory', staff_house:'Staff House',
     today:'Today', clear_month:'Clear Month', monthly_record:'Monthly Record',
@@ -861,6 +861,12 @@ const LANGS = {
     anomaly_price_inconsist:'Inconsistent price',
     confirm_clear:'Clear all data for this month?', clear:'Clear',
     delete:'Delete', total_row:'TOTAL',
+    currency_settings:'Price & Exchange Rate',
+    factory_default_price:'Factory default price (Riels/drum)',
+    staff_default_price:'Staff-house default price (Riels/drum)',
+    exchange_rate:'Exchange rate (1 USD = ? KHR)',
+    display_currency:'Display currency', apply:'Apply',
+    default_price_saved:'Default prices saved', applied:'Applied',
     month_names:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
     all_months:'All Months',
   },
@@ -869,7 +875,7 @@ const LANGS = {
     tab_entry:'數據輸入', tab_analysis:'分析', tab_history:'歷史記錄',
     tab_import:'匯入Excel', tab_alerts:'異常提醒', tab_telegram:'Telegram',
     add_record:'新增記錄', export:'匯出', save:'儲存', cancel:'取消',
-    year:'年', month:'月', date:'日期', time:'時間', qty:'數量',
+    day:'日', week:'週', year:'年', month:'月', date:'日期', time:'時間', qty:'數量',
     price:'單價(瑞爾)', ttl:'合計(瑞爾)', action:'操作',
     factory:'工廠', staff_house:'員工宿舍',
     today:'今天', clear_month:'清除本月', monthly_record:'月度記錄',
@@ -896,6 +902,12 @@ const LANGS = {
     anomaly_price_inconsist:'單價不一致',
     confirm_clear:'確定清除本月所有數據？', clear:'清除',
     delete:'刪除', total_row:'合計',
+    currency_settings:'單價與匯率設定',
+    factory_default_price:'工廠預設單價（瑞爾／桶）',
+    staff_default_price:'宿舍預設單價（瑞爾／桶）',
+    exchange_rate:'匯率（1 USD = ? KHR）',
+    display_currency:'顯示貨幣', apply:'套用',
+    default_price_saved:'預設單價已儲存', applied:'已套用',
     month_names:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
     all_months:'所有月份',
   },
@@ -904,7 +916,7 @@ const LANGS = {
     tab_entry:'បញ្ចូលទិន្នន័យ', tab_analysis:'វិភាគ', tab_history:'ប្រវត្តិ',
     tab_import:'នាំចូល Excel', tab_alerts:'ការជូនដំណឹង', tab_telegram:'Telegram',
     add_record:'បន្ថែមកំណត់ត្រា', export:'នាំចេញ', save:'រក្សាទុក', cancel:'បោះបង់',
-    year:'ឆ្នាំ', month:'ខែ', date:'កាលបរិច្ឆេទ', time:'ម៉ោង', qty:'បរិមាណ',
+    day:'ថ្ងៃ', week:'សប្តាហ៍', year:'ឆ្នាំ', month:'ខែ', date:'កាលបរិច្ឆេទ', time:'ម៉ោង', qty:'បរិមាណ',
     price:'តម្លៃ(រៀល)', ttl:'សរុប(រៀល)', action:'សកម្មភាព',
     factory:'រោងចក្រ', staff_house:'ផ្ទះបុគ្គលិក',
     today:'ថ្ងៃនេះ', clear_month:'លុបខែ', monthly_record:'កំណត់ត្រាប្រចាំខែ',
@@ -931,6 +943,12 @@ const LANGS = {
     anomaly_price_inconsist:'តម្លៃមិនស្ថិតស្ថេរ',
     confirm_clear:'លុបទិន្នន័យទាំងអស់ក្នុងខែ?', clear:'លុប',
     delete:'លុប', total_row:'សរុប',
+    currency_settings:'កំណត់តម្លៃ និងអត្រាប្តូរប្រាក់',
+    factory_default_price:'តម្លៃលំនាំដើមរោងចក្រ (រៀល/ធុង)',
+    staff_default_price:'តម្លៃលំនាំដើមផ្ទះបុគ្គលិក (រៀល/ធុង)',
+    exchange_rate:'អត្រាប្តូរប្រាក់ (1 USD = ? KHR)',
+    display_currency:'រូបិយប័ណ្ណបង្ហាញ', apply:'អនុវត្ត',
+    default_price_saved:'បានរក្សាទុកតម្លៃលំនាំដើម', applied:'បានអនុវត្ត',
     month_names:['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'],
     all_months:'គ្រប់ខែ',
   },
@@ -956,6 +974,9 @@ function setLang(lang) {
   });
   applyTranslations();
   if (typeof loadMonthData === 'function') loadMonthData();
+  if (typeof renderAnalysis === 'function') renderAnalysis();
+  if (typeof renderHistory === 'function') renderHistory();
+  if (typeof renderAlerts === 'function') renderAlerts();
 }
 
 function applyTranslations() {
@@ -966,6 +987,7 @@ function applyTranslations() {
   });
   document.getElementById('app-title').textContent = T('app_title');
   document.getElementById('app-subtitle').textContent = T('app_subtitle');
+  [['pb-day','day'],['pb-week','week'],['pb-month','month'],['pb-year','year']].forEach(function(x){const el=document.getElementById(x[0]);if(el)el.textContent=T(x[1]);});
   populateSelects();
 }
 
@@ -1083,7 +1105,7 @@ function saveDefaultPrices() {
     if (!row.sQty && !row.sPrice) row.sPrice = sp;
   });
   renderTable();
-  showToast('✅ 預設單價已儲存', 'success');
+  showToast('✅ ' + T('default_price_saved'), 'success');
 }
 
 function getDefaultFacPrice() {
@@ -1707,24 +1729,125 @@ function processExcelImport(file) {
   reader.readAsArrayBuffer(file);
 }
 
+/* Common Smart Import: parse the real Water Drum workbook (.xlsx/.xls/.xlsb).
+   Each month sheet contains Factory in columns B:I and Staff House in J:Q. */
+function parseWaterSmartImport(file) {
+  function clean(v) { return String(v == null ? '' : v).trim(); }
+  function num(v) {
+    if (v == null || v === '') return 0;
+    if (typeof v === 'number') return isFinite(v) ? v : 0;
+    var raw = String(v).trim();
+    if (/(?:change\s*date|no\s*order)/i.test(raw)) return 0;
+    var s = raw.replace(/[\s,，]/g, '').replace(/[^0-9.+-]/g, '');
+    var n = parseFloat(s);
+    return isNaN(n) ? 0 : n;
+  }
+  function xlTime(v) {
+    if (v == null || v === '') return '';
+    if (v instanceof Date && !isNaN(v)) {
+      return String(v.getHours()).padStart(2,'0') + ':' + String(v.getMinutes()).padStart(2,'0');
+    }
+    if (typeof v === 'number' && v >= 0 && v < 1) {
+      var mins = Math.round(v * 1440) % 1440;
+      return String(Math.floor(mins / 60)).padStart(2,'0') + ':' + String(mins % 60).padStart(2,'0');
+    }
+    var s = clean(v).replace(';', ':');
+    var m = s.match(/(?:1899|1900|1904)[-\/]\d{1,2}[-\/]\d{1,2}[ T](\d{1,2}):(\d{2})/);
+    if (m) return String(+m[1]).padStart(2,'0') + ':' + m[2];
+    m = s.match(/^(\d{1,2}):(\d{2})(?::\d{2})?\s*(AM|PM)?$/i);
+    if (m) {
+      var h = +m[1], ap = (m[3] || '').toUpperCase();
+      if (ap === 'PM' && h < 12) h += 12;
+      if (ap === 'AM' && h === 12) h = 0;
+      return String(h).padStart(2,'0') + ':' + m[2];
+    }
+    return s;
+  }
+  function isBusinessRow(row) {
+    return [row[1],row[2],row[3],row[4],row[5],row[6],row[7],row[8],
+      row[9],row[10],row[11],row[12],row[13],row[14],row[15],row[16],row[17]]
+      .some(function(v){ return v != null && clean(v) !== ''; });
+  }
+
+  return new Promise(function(resolve, reject) {
+    var reader = new FileReader();
+    reader.onerror = function(){ reject(reader.error || new Error('Unable to read file')); };
+    reader.onload = function(e) {
+      try {
+        var wb = XLSX.read(e.target.result, {type:'array', cellDates:false, raw:true});
+        var MON = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+        var objects = [], usedSheets = [];
+        wb.SheetNames.forEach(function(sn) {
+          var ws = wb.Sheets[sn];
+          if (!ws || !ws['!ref']) return;
+          var range = XLSX.utils.decode_range(ws['!ref']);
+          range.e.c = Math.min(range.e.c, 17);
+          range.e.r = Math.min(range.e.r, 80);
+          var raw = XLSX.utils.sheet_to_json(ws, {header:1, defval:null, raw:true, range:range});
+          var title = clean((raw[0] || []).join(' ')).toLowerCase();
+          if (title.indexOf('water drum record') < 0) return;
+          var yearMatch = title.match(/\b(20\d{2})\b/) || String(sn).match(/\b(20\d{2})\b/);
+          var year = yearMatch ? +yearMatch[1] : new Date().getFullYear();
+          var sheet = String(sn).toLowerCase().trim();
+          var mi = MON.findIndex(function(m){ return sheet === m || sheet.indexOf(m) === 0; });
+          if (mi < 0) mi = MON.findIndex(function(m){ return title.indexOf(m) >= 0; });
+          if (mi < 0) return;
+          var month = mi + 1, before = objects.length;
+
+          raw.forEach(function(row) {
+            if (!row) return;
+            var d = typeof row[0] === 'number' ? Math.round(row[0]) : parseInt(clean(row[0]), 10);
+            if (!d || d < 1 || d > 31 || !isBusinessRow(row)) return;
+            var fQty = num(row[2]), fPrice = num(row[3]), fTtl = num(row[4]);
+            var sQty = num(row[10]), sPrice = num(row[11]), sTtl = num(row[12]);
+            var fTime = xlTime(row[1]), sTime = xlTime(row[9]);
+            var fCheck = clean(row[5]), fSupplier = clean(row[6]), fInvoice = clean(row[7]), fPhone = clean(row[8]);
+            var sCheck = clean(row[13]), sSupplier = clean(row[14]), sInvoice = clean(row[15]), sPhone = clean(row[16]);
+            var remark = clean(row[17]);
+            var factoryEvent = !!(fTime || fQty || fTtl || fCheck || fInvoice);
+            var staffEvent = !!(sTime || sQty || sTtl || sCheck || sInvoice);
+            if (!factoryEvent && !staffEvent && !remark) return;
+            var mm = String(month).padStart(2,'0'), dd = String(d).padStart(2,'0');
+            objects.push({
+              id:'wdr_' + year + '_' + mm + '_' + d,
+              date:year + '-' + mm + '-' + dd, year:year, month:month, day:d,
+              fTime:fTime, fQty:fQty, fPrice:fPrice, fTtl:fTtl || fQty * fPrice,
+              sTime:sTime, sQty:sQty, sPrice:sPrice, sTtl:sTtl || sQty * sPrice,
+              fCheck:fCheck, fSupplier:fSupplier, fInvoice:fInvoice, fPhone:fPhone,
+              sCheck:sCheck, sSupplier:sSupplier, sInvoice:sInvoice, sPhone:sPhone,
+              checkBy:fCheck || sCheck, supplier:fSupplier || sSupplier,
+              invoice:fInvoice || sInvoice,
+              note:[remark, fPhone, sPhone].filter(Boolean).join(' / '), anomaly:[]
+            });
+          });
+          if (objects.length > before) usedSheets.push(sn);
+        });
+        if (!objects.length) throw new Error('No Water Drum month records found');
+        resolve({objects:objects, headers:[], map:{}, sheetName:usedSheets.join(', '), summary:usedSheets.length + ' month sheet(s)'});
+      } catch(err) { reject(err); }
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+
 function wdrConfirmImportIdx(idx) {
   var res = window._wdrImportResults && window._wdrImportResults[idx];
-  if (!res) { showToast('Import data not found', 'error'); return; }
+  if (!res) { showToast(waterImportUi('missing'), 'error'); return; }
   saveMonthData(res.year, res.month, res.rows);
-  showToast('✅ Imported ' + res.sheetName + ' (' + res.rows.length + ' rows)', 'success');
+  showToast('✅ ' + waterImportUi('sheet', res.sheetName, res.rows.length), 'success');
   if (res.year === currentYear && res.month === currentMonth) loadMonthData();
   renderHistory();
 }
 
 function wdrImportAll() {
   var all = window._wdrImportResults;
-  if (!all || !all.length) { showToast('No import data', 'error'); return; }
+  if (!all || !all.length) { showToast(waterImportUi('missing'), 'error'); return; }
   var total = 0;
   all.forEach(function(res) {
     saveMonthData(res.year, res.month, res.rows);
     total += res.rows.length;
   });
-  showToast('✅ Imported ' + all.length + ' months, ' + total + ' rows', 'success');
+  showToast('✅ ' + waterImportUi('months', all.length, total), 'success');
   loadMonthData(); renderHistory();
 }
 
@@ -1738,9 +1861,15 @@ function importAllMonths(allResults) {
   });
   document.getElementById('import-preview').innerHTML =
     '<div style="background:#f0fdf4;border:1px solid #86efac;border-radius:10px;padding:16px;text-align:center">'+
-    '✅ 已匯入 '+allResults.length+' 個月份，共 '+count+' 筆記錄</div>';
-  showToast('✅ 已匯入 '+allResults.length+' 個月份','success');
+    '✅ '+waterImportUi('months',allResults.length,count)+'</div>';
+  showToast('✅ '+waterImportUi('months',allResults.length,count),'success');
   renderHistory();
+}
+
+function waterImportUi(kind, a, b) {
+  if (kind === 'missing') return currentLang === 'zh' ? '找不到匯入資料' : (currentLang === 'km' ? 'រកមិនឃើញទិន្នន័យនាំចូល' : 'Import data not found');
+  if (kind === 'sheet') return currentLang === 'zh' ? ('已匯入 '+a+'（'+b+' 筆）') : (currentLang === 'km' ? ('បាននាំចូល '+a+' ('+b+' កំណត់ត្រា)') : ('Imported '+a+' ('+b+' rows)'));
+  return currentLang === 'zh' ? ('已匯入 '+a+' 個月份，共 '+b+' 筆記錄') : (currentLang === 'km' ? ('បាននាំចូល '+a+' ខែ សរុប '+b+' កំណត់ត្រា') : ('Imported '+a+' months, '+b+' rows'));
 }
 
 
@@ -1840,7 +1969,7 @@ function loadTgConfig() {
   const s = localStorage.getItem('wdr_tg_config');
   const c = s ? JSON.parse(s) : {};
   // Use GASCHECK platform defaults if not set
-  document.getElementById('tg-token').value = c.token || '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
+  document.getElementById('tg-token').value = '';
   document.getElementById('tg-chat').value  = c.chat  || '-5113064563';
   // Apply currency settings
   const ri = document.getElementById('wdr-exchange-rate');
@@ -1895,20 +2024,13 @@ function previewTelegramMessage() {
 }
 
 async function sendToTelegram() {
-  const token = document.getElementById('tg-token').value.trim();
-  const chat = document.getElementById('tg-chat').value.trim();
-  if(!token || !chat) { showToast(T('no_token'), 'error'); return; }
+  const chat = document.getElementById('tg-chat').value.trim() || '-5113064563';
   const type = document.getElementById('tg-report-type').value;
   const year = parseInt(document.getElementById('tg-year').value);
   const month = parseInt(document.getElementById('tg-month').value);
   const msg = buildTelegramMessage(type, year, month);
   try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ chat_id: chat, text: msg, parse_mode: 'Markdown', reply_markup:{inline_keyboard:[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_waterdrum_v2.html'}]]} })
-    });
-    const data = await res.json();
+    const data = await GC.telegram.send(msg,[],[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_waterdrum_v2.html'}]],chat,'waterdrum');
     if(data.ok) showToast(T('sent_ok'), 'success');
     else showToast('Telegram error: ' + (data.description||'Unknown'), 'error');
   } catch(e) {
@@ -1955,7 +2077,7 @@ function applyAndCloseCurrency() {
   var p=document.getElementById('currency-panel');
   if(p) p.classList.remove('open');
   if(typeof renderSummaryCards==='function') renderSummaryCards();
-  showToast('✅ 已套用');
+  showToast('✅ ' + T('applied'));
 }
 
 // ── window: expose all onclick functions ──
@@ -2125,7 +2247,7 @@ function buildWaterTelegram(opt){
     GC.attach({
       tool:'waterdrum',
       title:'Water 水錶',
-      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec',
+      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'date',
       idField:'id',
       groupField:'zone',
@@ -2137,9 +2259,11 @@ function buildWaterTelegram(opt){
       telegramSlotFilter:function(r,slot){return !slot||slot==='all'||waterTelegramSlotMatch(r.fTime,slot)||waterTelegramSlotMatch(r.sTime,slot);},
       telegramLanguage:true,
       telegramBuilder:buildWaterTelegram,
+      importAccept:'.xlsx,.xls,.xlsb',
+      importParser:parseWaterSmartImport,
       importSchema:{"year": ["年", "year", "ឆ្នាំ"], "month": ["月", "month", "ខែ"], "zone": ["區域", "zone", "តំបន់"], "name": ["名稱", "name", "ឈ្មោះ"], "reading_start": ["期初", "start", "readingstart", "ដើមគ្រា"], "reading_end": ["期末", "end", "readingend", "ចុងគ្រា"], "notes": ["備註", "note", "ចំណាំ"]},
     read(){ try{
-        return getAllKeys().reduce((out,k)=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/),rows=JSON.parse(localStorage.getItem(k)||'[]');if(!m||!Array.isArray(rows))return out;return out.concat(rows.map(row=>Object.assign({},row,{id:'wdr_'+m[1]+'_'+m[2]+'_'+row.day,date:m[1]+'-'+m[2]+'-'+String(row.day).padStart(2,'0'),year:+m[1],month:+m[2],updatedAt:localStorage.getItem('wdr_last_saved')||''})));},[]);
+        return getAllKeys().reduce((out,k)=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/);if(!m)return out;let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(ignore){return out;}if(!Array.isArray(rows))return out;return out.concat(rows.map(row=>Object.assign({},row,{id:'wdr_'+m[1]+'_'+m[2]+'_'+row.day,date:m[1]+'-'+m[2]+'-'+String(row.day).padStart(2,'0'),year:+m[1],month:+m[2],updatedAt:localStorage.getItem('wdr_last_saved')||''})));},[]);
       }catch(e){ return []; } },
     write(list){ try{
         const buckets={};(list||[]).forEach(r=>{const d=String(r.date||'');const y=String(r.year||d.slice(0,4)),m=String(r.month||d.slice(5,7)).padStart(2,'0');if(!/^\d{4}$/.test(y)||!/^(0[1-9]|1[0-2])$/.test(m))return;const row=Object.assign({},r.row||r);delete row.id;delete row.date;delete row.year;delete row.month;delete row.updatedAt;delete row.zone;buckets[y+'_'+m]=buckets[y+'_'+m]||[];const ix=buckets[y+'_'+m].findIndex(x=>String(x.day)===String(row.day));if(ix>=0)buckets[y+'_'+m][ix]=row;else buckets[y+'_'+m].push(row);});Object.keys(buckets).forEach(k=>{buckets[k].sort((a,b)=>(+a.day||0)- (+b.day||0));const p=k.split('_');saveMonthData(+p[0],+p[1],buckets[k]);});

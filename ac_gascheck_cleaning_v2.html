@@ -437,6 +437,7 @@ var i18n = (() => {
       'data-mgmt':'數據管理','export-all':'匯出全部 JSON','restore':'還原備份','clear-all':'清除全部',
       'ci-smell':'氣味','ci-light':'燈光','ci-floor':'地板','ci-door':'門','ci-corner':'角落','ci-ceiling':'天花',
       'pass':'✓ 通過','fail':'✗ 不通過','select':'— 選擇 —','records':'筆','items':'個','selected':'已選','confirm-delete':'確定刪除？','confirm-area-delete':'確定刪除地點？','saved':'已儲存','deleted':'已刪除','uploading':'☁ 上傳中…','uploaded':'☁ 已上傳','downloading':'⬇ 下載中…','downloaded':'⬇ 已下載並更新','no-data':'無資料','edit':'編輯','new-area':'新區域','all-pass':'全部通過','anomaly':'異常','normal':'正常','shift-day':'Day 日班','shift-night':'Night 夜班','note-ph':'請填寫異常情況或補充說明...','search-ph':'姓名/地點...','name-ph':'姓名 Name','cleaner-ph':'Cleaner name','location-example':'例：車縫區廁所 A','desc-example':'例：車縫區西南角','cancel':'取消','save':'儲存','yes':'確認','no':'取消',
+      'status-all':'全部','status-pass':'✅ 通過','status-fail':'⚠️ 有異常','missing-location':'請輸入地點名稱','location-added':'地點已新增',
     },
     en:{
       'tb-title':'Cleaning Management','t-dash':'Dashboard','t-rec':'New Record','t-hist':'History',
@@ -466,6 +467,7 @@ var i18n = (() => {
       'data-mgmt':'Data Management','export-all':'Export All JSON','restore':'Restore Backup','clear-all':'Clear All',
       'ci-smell':'Smell','ci-light':'Light','ci-floor':'Floor','ci-door':'Door','ci-corner':'Corner','ci-ceiling':'Ceiling',
       'pass':'✓ Pass','fail':'✗ Fail','select':'— Select —','records':'records','items':'items','selected':'selected','confirm-delete':'Delete this record?','confirm-area-delete':'Delete this location?','saved':'Saved','deleted':'Deleted','uploading':'☁ Uploading…','uploaded':'☁ Uploaded','downloading':'⬇ Downloading…','downloaded':'⬇ Downloaded and updated','no-data':'No data','edit':'Edit','new-area':'New area','all-pass':'All passed','anomaly':'Anomaly','normal':'Normal','shift-day':'Day shift','shift-night':'Night shift','note-ph':'Enter anomaly or additional notes...','search-ph':'Name/location...','name-ph':'Name','cleaner-ph':'Cleaner name','location-example':'e.g. Sewing toilet A','desc-example':'e.g. southwest corner','cancel':'Cancel','save':'Save','yes':'Confirm','no':'Cancel',
+      'status-all':'All','status-pass':'✅ Pass','status-fail':'⚠️ Anomaly','missing-location':'Enter a location name','location-added':'Location added',
     },
     km:{
       'tb-title':'ប្រព័ន្ធគ្រប់គ្រងការសំអាត','t-dash':'ផ្ទាំង','t-rec':'បន្ថែម','t-hist':'ប្រវត្តិ',
@@ -497,6 +499,7 @@ var i18n = (() => {
       'data-mgmt':'ការគ្រប់គ្រងទិន្នន័យ','export-all':'នាំចេញ JSON ទាំងអស់','restore':'ស្តារបម្រុងទុក','clear-all':'លុបទាំងអស់',
       'ci-smell':'ក្លិន','ci-light':'អំពូល','ci-floor':'ជាន់','ci-door':'ទ្វារ','ci-corner':'ជ្រុង','ci-ceiling':'ពិដាន',
       'pass':'✓ ជាប់','fail':'✗ ធ្លាក់','select':'— ជ្រើស —','records':'កំណត់ត្រា','items':'ធាតុ','selected':'បានជ្រើស','confirm-delete':'លុបកំណត់ត្រានេះ?','confirm-area-delete':'លុបទីតាំងនេះ?','saved':'បានរក្សាទុក','deleted':'បានលុប','uploading':'☁ កំពុងផ្ទុកឡើង…','uploaded':'☁ បានផ្ទុកឡើង','downloading':'⬇ កំពុងទាញយក…','downloaded':'⬇ បានទាញយក និងធ្វើបច្ចុប្បន្នភាព','no-data':'គ្មានទិន្នន័យ','edit':'កែ','new-area':'តំបន់ថ្មី','all-pass':'ជាប់ទាំងអស់','anomaly':'មិនប្រក្រតី','normal':'ធម្មតា','shift-day':'វេនថ្ងៃ','shift-night':'វេនយប់','note-ph':'បញ្ចូលភាពមិនប្រក្រតី ឬកំណត់សម្គាល់បន្ថែម...','search-ph':'ឈ្មោះ/ទីតាំង...','name-ph':'ឈ្មោះ','cleaner-ph':'ឈ្មោះអ្នកសម្អាត','location-example':'ឧ. បង្គន់តំបន់ដេរ','desc-example':'ឧ. ជ្រុងនិរតី','cancel':'បោះបង់','save':'រក្សាទុក','yes':'បញ្ជាក់','no':'បោះបង់',
+      'status-all':'ទាំងអស់','status-pass':'✅ ជាប់','status-fail':'⚠️ មិនប្រក្រតី','missing-location':'សូមបញ្ចូលឈ្មោះទីតាំង','location-added':'បានបន្ថែមទីតាំង',
     }
   };
   let _l = (() => {
@@ -524,8 +527,15 @@ var i18n = (() => {
       const key=id==='r-note'?'note-ph':id==='hl-search'?'search-ph':id==='a-name'?'location-example':id==='a-resp'||id==='b-resp'?'cleaner-ph':id==='new-cleaner'||id==='new-checker'?'name-ph':'desc-example';
       el.placeholder=i18n.t(key);
     });
+    applyCleaningSelectLanguage();
     state.populate();
-    setTimeout(()=>{ if(typeof applyCleaningStaticLanguage==='function') applyCleaningStaticLanguage(); },0);
+    setTimeout(()=>{
+      if(typeof renderSlots==='function')renderSlots();
+      if(typeof hist!=='undefined'&&hist&&typeof hist.query==='function')hist.query();
+      if(typeof binMap!=='undefined'&&binMap&&typeof binMap.render==='function')binMap.render();
+      if(typeof areas!=='undefined'&&areas&&typeof areas.render==='function')areas.render();
+      if(typeof applyCleaningStaticLanguage==='function')applyCleaningStaticLanguage();
+    },0);
   };
   const t = (k) => {
     const d=D[_l]||D.zh;
@@ -534,6 +544,39 @@ var i18n = (() => {
   const get = () => _l;
   return { set, t, get };
 })();
+
+function applyCleaningSelectLanguage(){
+  const l=i18n.get();
+  const labels={
+    'hl-status':{
+      '':{zh:'全部',en:'All',km:'ទាំងអស់'},pass:{zh:'✅ 通過',en:'✅ Pass',km:'✅ ជាប់'},fail:{zh:'⚠️ 有異常',en:'⚠️ Anomaly',km:'⚠️ មិនប្រក្រតី'}
+    },
+    'b-area':{
+      Cutting:{zh:'Cutting 裁剪',en:'Cutting',km:'ផ្នែកកាត់'},Sewing:{zh:'Sewing 車縫',en:'Sewing',km:'ផ្នែកដេរ'},Finishing:{zh:'Finishing 成衣',en:'Finishing',km:'ផ្នែកបញ្ចប់'},Warehouse:{zh:'Warehouse 倉庫',en:'Warehouse',km:'ឃ្លាំង'},Canteen:{zh:'Canteen 飯堂',en:'Canteen',km:'អាហារដ្ឋាន'},Office:{zh:'Office 辦公室',en:'Office',km:'ការិយាល័យ'},Toilet:{zh:'Toilet 廁所',en:'Toilet',km:'បង្គន់'},Entrance:{zh:'Entrance 入口',en:'Entrance',km:'ច្រកចូល'}
+    },
+    'b-type':{
+      general:{zh:'General 一般',en:'General',km:'ទូទៅ'},fabric:{zh:'Fabric 布料',en:'Fabric',km:'ក្រណាត់'},plastic:{zh:'Plastic 塑膠',en:'Plastic',km:'ប្លាស្ទិក'},metal:{zh:'Metal 金屬',en:'Metal',km:'លោហៈ'},paper:{zh:'Paper 紙張',en:'Paper',km:'ក្រដាស'},hazard:{zh:'Hazard ⚠️ 危廢',en:'Hazardous Waste',km:'សំណល់គ្រោះថ្នាក់'}
+    },
+    'b-freq':{
+      Daily:{zh:'Daily 每日',en:'Daily',km:'ប្រចាំថ្ងៃ'},'2x/Day':{zh:'2x/Day',en:'2x/Day',km:'២ ដង/ថ្ងៃ'},Weekly:{zh:'Weekly 每週',en:'Weekly',km:'ប្រចាំសប្តាហ៍'}
+    },
+    'a-type':{
+      toilet:{zh:'🚻 廁所',en:'🚻 Toilet',km:'🚻 បង្គន់'},factory:{zh:'🏭 廠房',en:'🏭 Factory',km:'🏭 រោងចក្រ'},office:{zh:'🏢 辦公室',en:'🏢 Office',km:'🏢 ការិយាល័យ'},canteen:{zh:'🍽️ 飯堂',en:'🍽️ Canteen',km:'🍽️ អាហារដ្ឋាន'},warehouse:{zh:'📦 倉庫',en:'📦 Warehouse',km:'📦 ឃ្លាំង'},entrance:{zh:'🚪 入口',en:'🚪 Entrance',km:'🚪 ច្រកចូល'},other:{zh:'📌 其他',en:'📌 Other',km:'📌 ផ្សេងៗ'}
+    }
+  };
+  Object.keys(labels).forEach(function(id){
+    const el=document.getElementById(id);if(!el)return;
+    Array.from(el.options||[]).forEach(function(o){const x=labels[id][o.value];if(x)o.textContent=x[l]||x.en;});
+  });
+}
+function cleaningAreaTypeLabel(type){
+  const l=i18n.get(), map={
+    '廁所':{zh:'廁所',en:'Toilet',km:'បង្គន់'},'廠房':{zh:'廠房',en:'Factory',km:'រោងចក្រ'},
+    '辦公室':{zh:'辦公室',en:'Office',km:'ការិយាល័យ'},'飯堂':{zh:'飯堂',en:'Canteen',km:'អាហារដ្ឋាន'},
+    '倉庫':{zh:'倉庫',en:'Warehouse',km:'ឃ្លាំង'},'入口':{zh:'入口',en:'Entrance',km:'ច្រកចូល'}
+  };
+  const x=map[String(type||'')];return x?(x[l]||x.en):(type||'');
+}
 
 /* 舊版清潔頁有一批直接寫在 render／SVG／原生 option 裡的文字。
    用原始文字記憶做三語轉換，切換語言時不會把上一種語言再套一次，也不會碰輸入資料。 */
@@ -701,8 +744,8 @@ var api = (() => {
     const c=state.db().cfg || {};
     /* 舊版 Cleaning 會把空白 Token／Chat ID 當成「不需要發送」而靜默返回，
        也曾指向另一個舊 GAS。現在統一使用核心固定入口；Token 只留在 GAS。 */
-    if(!c.gasUrl)c.gasUrl=(typeof GC!=='undefined'&&GC.cloud&&GC.cloud.gasUrl)||localStorage.getItem('ac_gascheck_gas_url')||'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
-    if(!c.chatId)c.chatId='-5113064563';
+    c.gasUrl=(typeof GC!=='undefined'&&GC.cloud&&GC.cloud.gasUrl)||'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
+    c.chatId='-5113064563';
     return c;
   };
   const post = async (payload) => {
@@ -719,12 +762,13 @@ var api = (() => {
   };
   const tg = async (msg,photos,buttons) => {
     if(!msg || !String(msg).trim()) throw new Error('Telegram 訊息是空的');
+    const c=cfg();
     const keyboard=buttons||[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_cleaning_v2.html'}]];
     const packetPhotos=Array.isArray(photos)?photos.slice(0,5):[];
     /* 優先走共用 GAS，避免在 HTML 暴露 Bot Token，也避免舊 URL／CORS 問題。 */
     if(typeof GC!=='undefined'&&GC.telegram&&typeof GC.telegram.send==='function')
-      return GC.telegram.send(String(msg),packetPhotos,keyboard);
-    const res=await post({action:'telegram',text:String(msg),photos:packetPhotos,buttons:keyboard});
+      return GC.telegram.send(String(msg),packetPhotos,keyboard,c.chatId,'cleaning');
+    const res=await post({action:'telegram',tool:'cleaning',chatId:c.chatId,text:String(msg),photos:packetPhotos,buttons:keyboard});
     if(!res||res.ok===false) throw new Error((res&&res.error)||'Telegram 發送失敗');
     return res;
   };
@@ -1079,8 +1123,8 @@ var binMap = (() => {
     const zones=getZones();
     const grand=Object.values(getTotals()).reduce((s,v)=>s+v,0);
     const el=document.getElementById('bin-count-lbl');
-    if(el) el.textContent=grand+' 個';
-    if(!zones.length){tbody.innerHTML='<tr><td colspan="5" class="es">暫無資料</td></tr>';return;}
+    if(el) el.textContent=grand+' '+i18n.t('items');
+    if(!zones.length){tbody.innerHTML='<tr><td colspan="5" class="es">'+i18n.t('no-data')+'</td></tr>';return;}
     tbody.innerHTML=zones.map(z=>{
       const total=Object.values(z.bins).reduce((s,v)=>s+v,0);
       const binsStr=Object.entries(z.bins).map(([no,q])=>{const it=getItemByNo(no);return it?`${it.emoji}×${q}`:'';}).filter(Boolean).join(' ');
@@ -1279,18 +1323,18 @@ var areas = (() => {
     grid.innerHTML=locs.map(l=>{
       const cnt=state.db().records.filter(r=>r.locId===l.id).length;
       const icon=LOC_ICONS[l.type]||'📌';
-      return`<div class="alc"><span class="ali">${icon}</span><div class="aln">${esc(l.name)}</div><div class="alct">${esc(l.type)} · ${cnt} 筆</div><button onclick="delArea('${l.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;margin-top:4px">✕</button></div>`;
+      return`<div class="alc"><span class="ali">${icon}</span><div class="aln">${esc(l.name)}</div><div class="alct">${esc(cleaningAreaTypeLabel(l.type))} · ${cnt} ${i18n.t('records')}</div><button onclick="delArea('${l.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:11px;margin-top:4px">✕</button></div>`;
     }).join('');
   };
   const showAdd = () => document.getElementById('add-area-card').style.display='block';
   const hideAdd = () => document.getElementById('add-area-card').style.display='none';
   const add = () => {
     const name=gv('a-name').trim(), type=gv('a-type'), resp=gv('a-resp');
-    if(!name){ui.toast('⚠️ 請輸入地點名稱');return;}
+    if(!name){ui.toast('⚠️ '+i18n.t('missing-location'));return;}
     state.db().locations.push({id:'loc'+Date.now(),name,type,resp});
     state.save(); render(); state.populate();
     ['a-name','a-resp'].forEach(id=>sv(id,'')); hideAdd();
-    ui.toast('✅ 地點已新增');
+    ui.toast('✅ '+i18n.t('location-added'));
   };
   const exportXL = () => {
     const db=state.db();
@@ -1402,7 +1446,7 @@ function renderSlots(){
   const slots=state.db().slots||DEF_SLOTS;
   const sel=state.getSlots();
   wrap.innerHTML=slots.map(s=>`<div class="sl ${sel.includes(s)?'sel':'none'}" onclick="state.toggleSlot('${s}')">${s}</div>`).join('');
-  const cnt=document.getElementById('sel-slot-count');if(cnt)cnt.textContent=sel.length+' 已選';
+  const cnt=document.getElementById('sel-slot-count');if(cnt)cnt.textContent=sel.length+' '+i18n.t('selected');
 }
 
 function renderCheckGrid(){
@@ -1458,9 +1502,9 @@ function renderSlotTags(){
 }
 
 function slot_del(i){state.db().slots.splice(i,1);state.save();renderSlotTags();renderSlots();}
-function delRec(id){if(!confirm('確定刪除？'))return;state.db().records=state.db().records.filter(r=>r.id!==id);state.save();hist.query();api.post({action:'delete',tool:'cleaning',id:id}).catch(function(){});}
-function delBin(id){if(!confirm('確定刪除？'))return;state.db().bins=state.db().bins.filter(b=>b.id!==id);state.save();binMap.render();}
-function delArea(id){if(!confirm('確定刪除地點？'))return;state.db().locations=state.db().locations.filter(l=>l.id!==id);state.save();areas.render();state.populate();}
+function delRec(id){if(!confirm(i18n.t('confirm-delete')))return;state.db().records=state.db().records.filter(r=>r.id!==id);state.save();hist.query();api.post({action:'delete',tool:'cleaning',id:id}).catch(function(){});}
+function delBin(id){if(!confirm(i18n.t('confirm-delete')))return;state.db().bins=state.db().bins.filter(b=>b.id!==id);state.save();binMap.render();}
+function delArea(id){if(!confirm(i18n.t('confirm-area-delete')))return;state.db().locations=state.db().locations.filter(l=>l.id!==id);state.save();areas.render();state.populate();}
 function calcSixsScore(){sixs.calcScore();sixs.updateHeader();}
 
 function updateDbInfo(){
@@ -1597,7 +1641,7 @@ function buildCleaningTelegram(opt){
     GC.attach({
       tool:'cleaning',
       title:'Cleaning 清潔',
-      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec',
+      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'date',
       idField:'id',
       groupField:'locId',

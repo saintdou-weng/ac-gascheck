@@ -646,7 +646,7 @@ function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2
 // CONFIG — 連接現有 GAS
 // ════════════════════════════════
 // ⚠️ 部署 Asset GAS 後，將下方 URL 替換為新的部署 URL
-const GAS_URL = localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
+const GAS_URL = localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
 
 // ════════════════════════════════
 // USERS (同 PO 系統角色，另加 GA 同仁)
@@ -840,8 +840,52 @@ function setLang(l){
   document.getElementById('ba-a').textContent=l==='zh'?'→ 點擊核可':'→ Approve';
   // Rebuild filter selects
   rebuildSelects();
+  buildLoginList();
+  setTimeout(applyAssetStaticLanguage,0);
   localStorage.setItem('vrt_lang',l);
   render();
+}
+
+const ASSET_UI_WORDS={
+  '資產管理系統':{en:'Asset Management System',km:'ប្រព័ន្ធគ្រប់គ្រងទ្រព្យសម្បត្តិ'},
+  '新增資產':{en:'Add Asset',km:'បន្ថែមទ្រព្យសម្បត្តិ'},
+  '必填欄位':{en:'Required fields',km:'វាលត្រូវបំពេញ'},
+  '位置與保管':{en:'Location & Custody',km:'ទីតាំង និងការរក្សាទុក'},
+  '移除照片':{en:'Remove Photo',km:'លុបរូបថត'},
+  '打印標簽':{en:'Print Labels',km:'បោះពុម្ពស្លាក'},
+  '待處理申請':{en:'Pending Requests',km:'សំណើកំពុងរង់ចាំ'},
+  '目前無待處理項目':{en:'No pending requests',km:'គ្មានសំណើកំពុងរង់ចាំ'},
+  '待審查':{en:'Pending Review',km:'រង់ចាំពិនិត្យ'},
+  '待核可':{en:'Pending Approval',km:'រង់ចាំអនុម័ត'},
+  '申請原因':{en:'Reason',km:'មូលហេតុ'},
+  '提交申請':{en:'Submit Request',km:'ដាក់ស្នើ'},
+  '所有資產異動記錄':{en:'All asset activity records',km:'កំណត់ត្រាបម្រែបម្រួលទ្រព្យសម្បត្តិទាំងអស់'},
+  '筆記錄':{en:'records',km:'កំណត់ត្រា'},'已選':{en:'selected',km:'បានជ្រើស'},
+  '刪除':{en:'Delete',km:'លុប'},'申請':{en:'Request',km:'ស្នើសុំ'},
+  '共':{en:'Total',km:'សរុប'},'筆':{en:'records',km:'កំណត់ត្រា'}
+};
+const ASSET_ORIGINAL_TEXT=new WeakMap();let _assetApplying=false,_assetTimer=0;
+function applyAssetStaticLanguage(){
+  if(!document.body||_assetApplying)return;_assetApplying=true;
+  try{
+    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;
+    while(node=walker.nextNode()){
+      const p=node.parentElement;if(!p||['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(p.tagName)||p.closest('.gc-head-tools'))continue;
+      const base=ASSET_ORIGINAL_TEXT.has(node)?ASSET_ORIGINAL_TEXT.get(node):node.nodeValue;ASSET_ORIGINAL_TEXT.set(node,base);
+      if(lang==='zh'){if(node.nodeValue!==base)node.nodeValue=base;continue;}
+      let out=base;
+      Object.keys(ASSET_UI_WORDS).sort((a,b)=>b.length-a.length).forEach(function(k){if(out.indexOf(k)>=0)out=out.split(k).join(ASSET_UI_WORDS[k][lang]||ASSET_UI_WORDS[k].en);});
+      if(/[A-Za-z]/.test(out)&&/[\u3400-\u9fff]/.test(out)){
+        out=out.replace(/[\u3400-\u9fff]+/g,' ').replace(/([–—-])\s*[\/／]+\s*/g,'$1 ').replace(/^\s*[\/／:：·]+\s*/,'').replace(/\s*[\/／]+\s*(?=[A-Za-z])/g,' ').replace(/\s{2,}/g,' ');
+      }
+      if(node.nodeValue!==out)node.nodeValue=out;
+    }
+  }finally{_assetApplying=false;}
+}
+if(typeof MutationObserver!=='undefined'){
+  const obs=new MutationObserver(function(){if(_assetApplying)return;clearTimeout(_assetTimer);_assetTimer=setTimeout(applyAssetStaticLanguage,40);});
+  const start=function(){if(document.body)obs.observe(document.body,{subtree:true,childList:true});};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 }
 
 function rebuildSelects(){
@@ -1993,7 +2037,7 @@ const _lang=localStorage.getItem('vrt_lang')||'zh';lang=_lang;
 rebuildSelects();setLang(lang);buildLoginList();
 </script>
 <script>
-var AC_TG_TOKEN_DEFAULT = '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
+var AC_TG_TOKEN_DEFAULT = '';
 var AC_TG_CHAT_DEFAULT  = '-5113064563';
 
 (function(){
@@ -2031,7 +2075,7 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
     GC.attach({
       tool:'asset',
       title:'Asset 資產',
-      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec',
+      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'purchase_date',
       idField:'id',
       groupField:'category',

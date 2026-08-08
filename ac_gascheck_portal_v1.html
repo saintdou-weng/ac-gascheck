@@ -20,6 +20,8 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;
 .hdr-t1{font-size:16px;font-weight:700;color:var(--w)}
 .hdr-t2{font-size:9.5px;color:var(--mt);margin-top:1px;letter-spacing:.08em;text-transform:uppercase}
 .hdr-r{margin-left:auto;display:flex;gap:5px;align-items:center;flex-shrink:0}
+.ha{width:28px;height:28px;border:1px solid rgba(255,255,255,.16);border-radius:7px;background:rgba(255,255,255,.08);color:#fff;cursor:pointer;font-size:13px;padding:0}
+.ha:hover{background:rgba(255,255,255,.16)}
 .lang-sw{display:flex;background:rgba(0,0,0,.22);border-radius:7px;overflow:hidden;border:1px solid rgba(255,255,255,.1)}
 .lb{padding:4px 9px;border:none;background:transparent;color:var(--mt);cursor:pointer;font-size:10px;font-weight:700;font-family:inherit;transition:.15s}
 .lb.on{background:var(--acc);color:#fff}
@@ -94,6 +96,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;
     <div class="hdr-t2">VANTAGE RIVER TEXTILES · SHV</div>
   </div>
   <div class="hdr-r">
+    <button class="ha" onclick="pushAll()" title="Upload">☁↑</button>
+    <button class="ha" onclick="pullAll()" title="Download">☁↓</button>
+    <button class="ha" onclick="sendTgMenu()" title="Telegram">✈</button>
     <div class="lang-sw">
       <button class="lb on" onclick="setLang('zh')">中</button>
       <button class="lb"    onclick="setLang('en')">EN</button>
@@ -144,14 +149,14 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;
 </div>
 
 <!-- Cloud bar -->
-<div class="cbar" onclick="togglePanel()">
+<div class="cbar">
   <div class="cdot" id="cDot"></div>
   <span class="clbl" id="cLbl">GAS 未設定</span>
-  <span class="cts"  id="cTs">⚙ 點此設定</span>
+  <span class="cts"  id="cTs">AUTO</span>
 </div>
 
 <!-- GAS Config panel -->
-<div class="gp" id="gasPanel">
+<div class="gp gc-legacy-hidden" id="gasPanel">
   <div class="gp-lbl">GAS URL (AC_GASCHECK_CORE)</div>
   <input id="gasInput" type="text" placeholder="https://script.google.com/macros/s/…/exec">
 
@@ -169,10 +174,10 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;
 </div>
 
 <!-- Log -->
-<div class="logw" id="logWrap"><span class="ll-info">AC GASCHECK Portal v2.0 就緒</span></div>
+<div class="logw gc-legacy-hidden" id="logWrap"><span class="ll-info">AC GASCHECK Portal v2.0 Ready</span></div>
 
 <!-- Bottom actions -->
-<div class="bot">
+<div class="bot gc-legacy-hidden">
   <button class="ab tg" onclick="sendTgMenu()">📱 <span id="bt-tg">Telegram 選單</span></button>
   <button class="ab"    onclick="toggleLog()">  📝 <span id="bt-log">操作紀錄</span></button>
 </div>
@@ -188,11 +193,12 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;
 var GAS_KEY   = 'ac_gascheck_gas_url';
 var LANG_KEY  = 'ac_gascheck_lang';
 var META_KEY  = 'ac_gascheck_meta';
-var BOT_TOKEN = '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
+// Bot Token 僅保留在 Apps Script；前端不再暴露憑證或直接呼叫 Telegram API。
+var BOT_TOKEN = '';
 var CHAT_ID   = '-5113064563';
 var BASE_URL  = 'https://saintdou-weng.github.io/ac-gascheck/';
 
-var GAS_URL  = localStorage.getItem(GAS_KEY)  || '';
+var GAS_URL  = 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
 var LANG     = localStorage.getItem(LANG_KEY)  || 'zh';
 var _logOpen = false;
 
@@ -271,7 +277,7 @@ var MODS = [
   {id:'dormitory',   lsKey:'vrt_dorm_hub_v2'  },
   {id:'cleaning',    lsKey:'vrt_clean_hub_v2' },
   {id:'keymovement', lsKey:'vrt_keys'          },
-  {id:'ehs',         lsKey:'vrt_ehs_hub_v2'   },
+  {id:'ehs',         lsKey:'vrt_waste_v3'      },
   {id:'waterdrum',   lsKey:'wdr_data'          },
   {id:'temperature', lsKey:'vrt_th_r'          },
 ];
@@ -618,26 +624,12 @@ function sendTgMenu() {
     [{text:'♻️ EHS',       url:BASE_URL+'ac_gascheck_ehs_v2.html'         },{text:'💧 Water', url:BASE_URL+'ac_gascheck_waterdrum_v2.html'}],
     [{text:'🌡️ Temp',      url:BASE_URL+'ac_gascheck_temperature_v2.html' },{text:'🏠 Portal',url:BASE_URL+'ac_gascheck_portal_v1.html'}],
   ];
-  function sendDirect(){
-    fetch('https://api.telegram.org/bot'+BOT_TOKEN+'/sendMessage',{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        chat_id:CHAT_ID,text:text,parse_mode:'HTML',
-        reply_markup:{inline_keyboard:buttons.map(function(row){return row.map(function(b){return{text:b.text,url:b.url};});})}
-      })
-    }).then(function(r){return r.json();}).then(function(d){
-      if(d.ok){toast('✅ Telegram 已發送');log('✓ TG menu (direct)','ok');}
-      else{toast('❌ '+d.description);log('✗ TG: '+d.description,'err');}
-    }).catch(function(e){toast('❌ '+e.message);log('✗ '+e.message,'err');});
-  }
-  if(GAS_URL){
-    gasPost({action:'telegramMenu',text:text,buttons:buttons})
-      .then(function(d){
-        if(d.ok!==false){toast('✅ Telegram 已發送');log('✓ TG menu via GAS','ok');}
-        else sendDirect();
-      })
-      .catch(sendDirect);
-  } else sendDirect();
+  gasPost({action:'telegramMenu',chatId:CHAT_ID,text:text,buttons:buttons})
+    .then(function(d){
+      if(d.ok!==false){toast('✅ Telegram 已發送');log('✓ TG menu via GAS','ok');}
+      else{toast('❌ '+(d.error||'Telegram 發送失敗'));log('✗ TG via GAS','err');}
+    })
+    .catch(function(e){toast('❌ '+e.message);log('✗ '+e.message,'err');});
 }
 
 // ── Helpers ───────────────────────────────────────────────────

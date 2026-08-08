@@ -672,10 +672,58 @@ var i18n = (() => {
     const warn=document.getElementById('warn-out');
     if(warn&&l==='en') warn.textContent='⚠️ Move-out: confirm all items returned. Note damaged/lost items in remarks.';
     if(warn&&l==='zh') warn.textContent='⚠️ 搬出請確認所有物品已勾選歸還。未歸還或損壞物品請填備註。';
+    setTimeout(applyDormStaticLanguage,0);
   };
   const t = k => (D[_l]||D.zh)[k] || (D.zh)[k] || k;
   return { set, t, get:()=>_l };
 })();
+
+const DORM_UI_WORDS={
+  '點擊循環：空白 → ✓N 正常 → ✗X 異常 → − N/A → 空白':'Click cycle: blank → ✓N Normal → ✗X Abnormal → − N/A → blank',
+  '選擇條件後查詢':'Select filters to query','點擊「刷新」載入':'Click Refresh to load','Dashboard 刷新 (秒)':'Dashboard refresh (sec)',
+  '宿舍物品清單':'Dormitory Item Checklist','可新增/刪減':'Items can be added or removed','在住人員總表':'Resident Roster',
+  '新增違規記錄':'New Violation','儲存宿舍設定':'Save Dormitory Settings','宿舍管理':'Dormitory Management','宿舍設定':'Dormitory Settings',
+  '設施巡查':'Facility Inspection','儲存巡查':'Save Inspection','巡查歷史':'Inspection History','巡查人員':'Inspectors',
+  '待審核':'Pending','已核可':'Approved','已退件':'Rejected','記錄查詢':'Records Query','違規清單':'Violation List',
+  '違規類型':'Violation Type','環境髒亂':'Untidy Environment','噪音擾人':'Noise Disturbance','未登記訪客':'Unregistered Visitor',
+  '財產損壞':'Property Damage','未繳費':'Unpaid Fee','嚴重程度':'Severity','處理措施':'Action Taken','儲存違規':'Save Violation',
+  '宿舍名稱':'Dormitory Name','預設季度':'Default Quarter','房號清單':'Room List','審核人員':'Reviewers','核可人員':'Approvers',
+  '數據管理':'Data Management','清除全部':'Clear All','重設預設':'Reset Defaults','新增物品':'Add Item','儲存草稿':'Save Draft',
+  '帶 * 為必填':'* Required','暫無記錄':'No records','選擇房號':'Select Room','物品名稱':'Item','領取':'Received','簽核欄位':'Approval Fields',
+  '在住人數':'Residents','使用房間':'Rooms Used','在住總表':'Residents','申請表單':'Application','房號':'Room No.','搬入日期':'Move-in Date',
+  '搬入日':'Move-in Date','提交時間':'Submitted','申請人':'Applicant','審核人':'Reviewer','核可人':'Approver','記錄人':'Recorded By','查詢後顯示':'Results appear after query',
+  '全部':'All','月份':'Month','有異常':'Anomaly','全正常':'All Normal','地點':'Location','外籍宿舍':'Expat Dorm','當地宿舍':'Local Dorm',
+  '工廠':'Factory','辦公室':'Office','房間':'Room','廁所':'WC','姓名':'Name','性別':'Gender','工號':'Employee ID','部門':'Department',
+  '電話':'Phone','狀態':'Status','備註':'Notes','備注':'Notes','日期':'Date','類型':'Type','描述':'Description','原因':'Reason','嚴重':'Serious',
+  '搬入':'Move-in','搬出':'Move-out','男':'Male','女':'Female','查詢':'Query','刷新':'Refresh','今天':'Today','平台':'Portal',
+  '匯入':'Import','匯出':'Export','還原':'Restore','清空':'Clear','新增':'Add','筆':'records','日':'Day','週':'Week','月':'Month','年':'Year'
+};
+const DORM_UI_KM={
+  '宿舍管理':'ការគ្រប់គ្រងអន្តេវាសិកដ្ឋាន','設施巡查':'ការត្រួតពិនិត្យសម្ភារៈ','在住人數':'អ្នករស់នៅ','使用房間':'បន្ទប់ប្រើប្រាស់',
+  '姓名':'ឈ្មោះ','性別':'ភេទ','工號':'លេខបុគ្គលិក','部門':'ផ្នែក','電話':'ទូរស័ព្ទ','日期':'កាលបរិច្ឆេទ','狀態':'ស្ថានភាព','申請人':'អ្នកដាក់ពាក្យ','審核人':'អ្នកពិនិត្យ','備注':'កំណត់សម្គាល់',
+  '地點':'ទីតាំង','全部':'ទាំងអស់','查詢':'ស្វែងរក','匯入':'នាំចូល','匯出':'នាំចេញ','新增':'បន្ថែម','清除全部':'លុបទាំងអស់'
+};
+const DORM_ORIGINAL_TEXT=new WeakMap();let _dormApplying=false,_dormTimer=0;
+function applyDormStaticLanguage(){
+  if(!document.body||_dormApplying)return;_dormApplying=true;
+  try{
+    const l=i18n.get(),walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;
+    while(node=walker.nextNode()){
+      const p=node.parentElement;if(!p||['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(p.tagName)||p.closest('.gc-head-tools'))continue;
+      const base=DORM_ORIGINAL_TEXT.has(node)?DORM_ORIGINAL_TEXT.get(node):node.nodeValue;DORM_ORIGINAL_TEXT.set(node,base);
+      if(l==='zh'){if(node.nodeValue!==base)node.nodeValue=base;continue;}
+      let out=base;
+      Object.keys(DORM_UI_WORDS).sort((a,b)=>b.length-a.length).forEach(function(k){if(out.indexOf(k)>=0)out=out.split(k).join(l==='km'?(DORM_UI_KM[k]||DORM_UI_WORDS[k]):DORM_UI_WORDS[k]);});
+      if(/[A-Za-z]/.test(out)&&/[\u3400-\u9fff]/.test(out))out=out.replace(/[\u3400-\u9fff]+/g,' ').replace(/([–—-])\s*[\/／]+\s*/g,'$1 ').replace(/^\s*[\/／:：·]+\s*/,'').replace(/\s*[\/／]+\s*(?=[A-Za-z])/g,' ').replace(/\s{2,}/g,' ');
+      if(node.nodeValue!==out)node.nodeValue=out;
+    }
+  }finally{_dormApplying=false;}
+}
+if(typeof MutationObserver!=='undefined'){
+  const obs=new MutationObserver(function(){if(_dormApplying)return;clearTimeout(_dormTimer);_dormTimer=setTimeout(applyDormStaticLanguage,40);});
+  const start=function(){if(document.body)obs.observe(document.body,{subtree:true,childList:true});};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+}
 
 // ═══════════════════════════════════════════════════════════════
 // DATE ENGINE — sewing-style with prev/next
@@ -812,9 +860,9 @@ var cfg = (() => {
   let _cfg = {};
   const load = () => {
     try { _cfg=JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e){}
-    if(!_cfg.gasUrl)    _cfg.gasUrl=localStorage.getItem('ac_gascheck_gas_url')||'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
-    if(!_cfg.botToken)  _cfg.botToken=localStorage.getItem('ac_gascheck_tg_token')||'8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
-    if(!_cfg.chatId)    _cfg.chatId=localStorage.getItem('ac_gascheck_tg_chat')||'-5113064563';
+    _cfg.gasUrl='https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
+    _cfg.botToken='';
+    _cfg.chatId='-5113064563';
     if(!_cfg.approverTgId) _cfg.approverTgId='5026942575';
     if(!_cfg.dormName)  _cfg.dormName='VRT Dormitory';
     if(!_cfg.rooms)     _cfg.rooms=['A-101','A-102','A-103','A-201','A-202','A-203','B-101','B-102','B-103'];
@@ -831,9 +879,9 @@ var cfg = (() => {
     updateCloudBadge();
   };
   const save = () => {
-    _cfg.gasUrl    = gv('cfg-gas');
-    _cfg.botToken  = gv('cfg-token');
-    _cfg.chatId    = gv('cfg-chat');
+    _cfg.gasUrl    = 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
+    _cfg.botToken  = '';
+    _cfg.chatId    = '-5113064563';
     _cfg.approverTgId = gv('cfg-apvid');
     if(_cfg.gasUrl) localStorage.setItem('ac_gascheck_gas_url',_cfg.gasUrl);
     localStorage.setItem(CFG_KEY, JSON.stringify(_cfg));
@@ -938,20 +986,18 @@ var settings = (() => {
 // ═══════════════════════════════════════════════════════════════
 var tgPost = async (body) => {
   const c=cfg.get();
-  const token = c.botToken || '8618516219:AAELNq_Iux_jL5k0lustjTcf_eCBGc7iwKI';
-  const chatId= c.chatId   || '-5167815203';
-  const payload = Object.assign({chat_id:chatId, parse_mode:'HTML'}, body);
+  const chatId= c.chatId || '-5113064563';
+  const payload = Object.assign({chat_id:chatId, parse_mode:'HTML'}, body||{});
   let suppliedMarkup = payload.reply_markup;
   if(typeof suppliedMarkup === 'string'){ try{suppliedMarkup=JSON.parse(suppliedMarkup);}catch(e){suppliedMarkup=null;} }
   const rows = suppliedMarkup && suppliedMarkup.inline_keyboard ? suppliedMarkup.inline_keyboard.slice() : [];
   rows.push([{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_dormitory_v2.html'}]);
   payload.reply_markup = {inline_keyboard:rows};
   try {
-    const r=await fetch(`https://api.telegram.org/bot${token}/sendMessage`,{
-      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)
-    });
-    return await r.json();
-  } catch(e) { return null; }
+    if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.send)
+      return await GC.telegram.send(payload.text||'',[],rows,chatId,'dormitory');
+    return await gasPost({action:'telegram',tool:'dormitory',chatId:chatId,text:payload.text||'',buttons:rows});
+  } catch(e) { return {ok:false,error:e.message}; }
 };
 
 var gasGet = async (params) => {
@@ -1757,7 +1803,7 @@ function goApply(t) {
     GC.attach({
       tool:'dormitory',
       title:'Dormitory 宿舍',
-      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec',
+      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'date',
       idField:'id',
       groupField:'roomNo',

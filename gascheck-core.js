@@ -91,7 +91,7 @@ const U = GC.util = {
    ═══════════════════════════════════════════════════════════ */
 const STORAGE = GC.storage = (() => {
   const DB_NAME = 'ac_gascheck_data_v1', STORE = 'kv';
-  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_th_z|vrt_th_r|vrt_keys|vrt_waste_v3|vrt_dorm_hub_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_default_fac_price|wdr_default_sta_price|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
+  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_th_z|vrt_th_r|vrt_keys|vrt_waste_v3|vrt_ehs_cfg_v1|vrt_dorm_hub_v2|vrt_dorm_cfg_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_default_fac_price|wdr_default_sta_price|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
   const storageProto = typeof Storage !== 'undefined' ? Storage.prototype : null;
   const native = storageProto ? {
     get: storageProto.getItem,
@@ -233,7 +233,7 @@ const BASE_DICT = {
     'gc.photo':'照片','gc.addPhoto':'加照片','gc.takePhoto':'拍照','gc.chooseFile':'選檔案',
     'gc.photoTooBig':'照片過大，已自動壓縮','gc.removePhoto':'移除照片','gc.noPhoto':'無照片',
     'gc.smartImport':'智慧匯入','gc.dropHere':'拖曳檔案到此，或點擊選擇',
-    'gc.supportFmt':'支援 Excel (.xlsx/.xls) 與 CSV','gc.importing':'解析中…',
+    'gc.supportFmt':'支援 Excel (.xlsx/.xls/.xlsb) 與 CSV','gc.importing':'解析中…',
     'gc.imported':'筆已匯入','gc.importFail':'匯入失敗','gc.mapCols':'欄位對應',
     'gc.dashboard':'儀表板','gc.total':'總計','gc.records':'筆記錄',
     'gc.noData':'尚無資料','gc.export':'匯出','gc.search':'搜尋',
@@ -245,7 +245,11 @@ const BASE_DICT = {
     'gc.summary':'摘要','gc.review':'審查','gc.approval':'Approval','gc.quickActions':'快速操作',
     'gc.directHint':'上方按鈕可直接同步、匯入與發送，不需填網址／Token／Chat ID',
     'gc.sentTelegram':'Telegram 已發送','gc.noApproval':'沒有待審查／待核可資料',
-    'gc.pendingApproval':'待審查／待核可','gc.mode':'訊息類型','gc.dataType':'資料類型','gc.refDate':'基準日期'
+    'gc.pendingApproval':'待審查／待核可','gc.mode':'訊息類型','gc.dataType':'資料類型','gc.refDate':'基準日期',
+    'gc.cloudReady':'雲端已設定','gc.targetGroup':'目標群組','gc.defaultGroup':'AC GASCHECK 群組',
+    'gc.preview':'預覽','gc.send':'發送','gc.periodMode':'期間模式','gc.periodValue':'期間',
+    'gc.telegramTitle':'發送到 Telegram','gc.importTitle':'智慧匯入資料','gc.noPeriodData':'此期間沒有資料',
+    'gc.bilingualKm':'中／英／柬三語','gc.selectScope':'選擇資料','gc.menuLanguage':'介面語言'
   },
   en: {
     'gc.upload':'Upload','gc.download':'Download','gc.sync':'Syncing…',
@@ -257,7 +261,7 @@ const BASE_DICT = {
     'gc.photo':'Photo','gc.addPhoto':'Add Photo','gc.takePhoto':'Camera','gc.chooseFile':'Choose File',
     'gc.photoTooBig':'Photo compressed','gc.removePhoto':'Remove','gc.noPhoto':'No photo',
     'gc.smartImport':'Smart Import','gc.dropHere':'Drop file here or click to select',
-    'gc.supportFmt':'Supports Excel (.xlsx/.xls) and CSV','gc.importing':'Parsing…',
+    'gc.supportFmt':'Supports Excel (.xlsx/.xls/.xlsb) and CSV','gc.importing':'Parsing…',
     'gc.imported':'rows imported','gc.importFail':'Import failed','gc.mapCols':'Column Mapping',
     'gc.dashboard':'Dashboard','gc.total':'Total','gc.records':'records',
     'gc.noData':'No data','gc.export':'Export','gc.search':'Search',
@@ -269,7 +273,11 @@ const BASE_DICT = {
     'gc.summary':'Summary','gc.review':'Review','gc.approval':'Approval','gc.quickActions':'Quick actions',
     'gc.directHint':'Use the buttons above to sync, import and send; no URL/token/chat ID entry is needed',
     'gc.sentTelegram':'Telegram sent','gc.noApproval':'No pending review/approval records',
-    'gc.pendingApproval':'Pending review/approval','gc.mode':'Message type','gc.dataType':'Data type','gc.refDate':'As of'
+    'gc.pendingApproval':'Pending review/approval','gc.mode':'Message type','gc.dataType':'Data type','gc.refDate':'As of',
+    'gc.cloudReady':'Cloud configured','gc.targetGroup':'Target group','gc.defaultGroup':'AC GASCHECK Group',
+    'gc.preview':'Preview','gc.send':'Send','gc.periodMode':'Period mode','gc.periodValue':'Period',
+    'gc.telegramTitle':'Send to Telegram','gc.importTitle':'Smart Import Data','gc.noPeriodData':'No data in this period',
+    'gc.bilingualKm':'Chinese / English / Khmer','gc.selectScope':'Select data','gc.menuLanguage':'Interface language'
   },
   km: {
     'gc.upload':'ផ្ទុកឡើង','gc.download':'ទាញយក','gc.sync':'កំពុងធ្វើសមកាលកម្ម…',
@@ -281,7 +289,7 @@ const BASE_DICT = {
     'gc.photo':'រូបថត','gc.addPhoto':'បន្ថែមរូបថត','gc.takePhoto':'ថតរូប','gc.chooseFile':'ជ្រើសឯកសារ',
     'gc.photoTooBig':'រូបថតត្រូវបានបង្ហាប់','gc.removePhoto':'លុបចេញ','gc.noPhoto':'គ្មានរូបថត',
     'gc.smartImport':'នាំចូលឆ្លាតវៃ','gc.dropHere':'ទម្លាក់ឯកសារនៅទីនេះ ឬចុចដើម្បីជ្រើស',
-    'gc.supportFmt':'គាំទ្រ Excel (.xlsx/.xls) និង CSV','gc.importing':'កំពុងវិភាគ…',
+    'gc.supportFmt':'គាំទ្រ Excel (.xlsx/.xls/.xlsb) និង CSV','gc.importing':'កំពុងវិភាគ…',
     'gc.imported':'ជួរបាននាំចូល','gc.importFail':'ការនាំចូលបរាជ័យ','gc.mapCols':'ការផ្គូផ្គងជួរឈរ',
     'gc.dashboard':'ផ្ទាំងគ្រប់គ្រង','gc.total':'សរុប','gc.records':'កំណត់ត្រា',
     'gc.noData':'គ្មានទិន្នន័យ','gc.export':'នាំចេញ','gc.search':'ស្វែងរក',
@@ -293,7 +301,11 @@ const BASE_DICT = {
     'gc.summary':'សង្ខេប','gc.review':'ពិនិត្យ','gc.approval':'Approval','gc.quickActions':'សកម្មភាពរហ័ស',
     'gc.directHint':'ប្រើប៊ូតុងខាងលើដើម្បីធ្វើសមកាលកម្ម នាំចូល និងផ្ញើ ដោយមិនចាំបាច់បញ្ចូល URL/token/chat ID',
     'gc.sentTelegram':'បានផ្ញើ Telegram','gc.noApproval':'គ្មានទិន្នន័យកំពុងរង់ចាំពិនិត្យ/អនុម័ត',
-    'gc.pendingApproval':'កំពុងរង់ចាំពិនិត្យ/អនុម័ត','gc.mode':'ប្រភេទសារ','gc.dataType':'ប្រភេទទិន្នន័យ','gc.refDate':'កាលបរិច្ឆេទយោង'
+    'gc.pendingApproval':'កំពុងរង់ចាំពិនិត្យ/អនុម័ត','gc.mode':'ប្រភេទសារ','gc.dataType':'ប្រភេទទិន្នន័យ','gc.refDate':'កាលបរិច្ឆេទយោង',
+    'gc.cloudReady':'បានកំណត់ Cloud','gc.targetGroup':'ក្រុមគោលដៅ','gc.defaultGroup':'ក្រុម AC GASCHECK',
+    'gc.preview':'មើលជាមុន','gc.send':'ផ្ញើ','gc.periodMode':'របៀបរយៈពេល','gc.periodValue':'រយៈពេល',
+    'gc.telegramTitle':'ផ្ញើទៅ Telegram','gc.importTitle':'នាំចូលទិន្នន័យឆ្លាតវៃ','gc.noPeriodData':'គ្មានទិន្នន័យក្នុងរយៈពេលនេះ',
+    'gc.bilingualKm':'ចិន / អង់គ្លេស / ខ្មែរ','gc.selectScope':'ជ្រើសទិន្នន័យ','gc.menuLanguage':'ភាសាចំណុចប្រទាក់'
   }
 };
 
@@ -591,10 +603,13 @@ const PHOTO = GC.photo = {
       });
     }
     render();
+    const rerenderOnLanguage = function () { render(); };
+    global.addEventListener('gc:langchange', rerenderOnLanguage);
     return {
       get: () => photos.slice(),
       set: arr => { photos = (arr || []).slice(); render(); },
-      clear: () => { photos = []; render(); }
+      clear: () => { photos = []; render(); },
+      destroy: () => { global.removeEventListener('gc:langchange', rerenderOnLanguage); }
     };
   },
 
@@ -825,7 +840,7 @@ const IMPORT = GC.import = {
     if (!el) return null;
     opt = opt || {};
     const id = U.uid('imp');
-    const accept = opt.accept || '.xlsx,.xls,.csv';
+    const accept = opt.accept || '.xlsx,.xls,.xlsb,.csv';
 
     el.innerHTML =
       `<div class="gc-import" id="${id}_dz">
@@ -1250,9 +1265,9 @@ GC.telegram = {
     lines.push('━━━━━━━━━━━━━━━━', '⏰ ' + U.ymdhms());
     return lines.join('\n');
   },
-  async send(text, photos, buttons) {
+  async send(text, photos, buttons, chatId, tool) {
     if (!text) throw new Error('No Telegram text');
-    const res = await CLOUD.post({ action: 'telegram', text: text, photos: Array.isArray(photos) ? photos.slice(0, 5) : [], buttons: Array.isArray(buttons) ? buttons : [] });
+    const res = await CLOUD.post({ action: 'telegram', text: text, photos: Array.isArray(photos) ? photos.slice(0, 5) : [], buttons: Array.isArray(buttons) ? buttons : [], chatId: chatId || DEFAULT_CHAT_ID, tool: tool || '' });
     if (!res || res.ok === false) throw new Error((res && res.error) || 'Telegram request failed');
     return res;
   }
@@ -1263,6 +1278,397 @@ GC.telegram = {
    11. ATTACH — 通用掛載面板（不動模組內部程式碼）
    ═══════════════════════════════════════════════════════════ */
 GC.attach = function (cfg) {
+  cfg = cfg || {};
+  if (!cfg.__storageReady && STORAGE && STORAGE.ready) {
+    const next = Object.assign({}, cfg, { __storageReady: true });
+    STORAGE.ready.then(function () { GC.attach(next); });
+    return { refresh: function () {}, getPeriod: function () { return 'month'; } };
+  }
+
+  const C = Object.assign({
+    dateField: 'date', idField: 'id', groupField: null, scopeField: null,
+    weather: false, photo: false, weatherField: 'weather', photoField: 'photos',
+    importSchema: null, importParser: null, importAccept: null, telegramScopes: null, telegramSlots: null,
+    telegramSlotFilter: null, telegramSlotField: null, telegramGroups: null,
+    telegramDefaultLanguage: 'bi', telegramDefaultSlot: 'all', hideLegacyTools: true
+  }, cfg || {});
+  if (!C.scopeField && C.groupField) C.scopeField = C.groupField;
+
+  CLOUD.setUrl(DEFAULT_GAS_URL);
+  const oldInstance = document.querySelector('.gc-head-tools[data-gc-tool="' + C.tool + '"]');
+  if (oldInstance) oldInstance.remove();
+  document.querySelectorAll('.gc-common-modal[data-gc-tool="' + C.tool + '"]').forEach(function (x) { x.remove(); });
+
+  const hostMap = {
+    asset: '.tb-right', cleaning: '.topbar', dormitory: '.topbar',
+    ehs: '.topbar', keymovement: '.topbar-right',
+    temperature: '.hd-r', waterdrum: '.header-actions'
+  };
+  const host = document.querySelector(C.headerMount || hostMap[C.tool] || '.topbar, .hd-r, .header-actions') || document.body;
+  const tools = document.createElement('div');
+  tools.className = 'gc-head-tools';
+  tools.dataset.gcTool = C.tool || '';
+  tools.innerHTML = [
+    '<span class="gc-cloud-state"><i></i><span data-i="gc.cloudReady">' + U.escapeHtml(I18.t('gc.cloudReady')) + '</span></span>',
+    '<span class="gc-head-cloud"></span>',
+    '<button type="button" class="gc-head-btn gc-head-tg" data-gc-open-tg title="' + U.escapeHtml(I18.t('gc.telegramTitle')) + '">✈️<span data-i="gc.telegram">' + U.escapeHtml(I18.t('gc.telegram')) + '</span></button>',
+    C.importSchema ? '<button type="button" class="gc-head-btn gc-head-import" data-gc-open-import title="' + U.escapeHtml(I18.t('gc.importTitle')) + '">📥<span data-i="gc.smartImport">' + U.escapeHtml(I18.t('gc.smartImport')) + '</span></button>' : '',
+    '<span class="gc-head-langs" aria-label="' + U.escapeHtml(I18.t('gc.menuLanguage')) + '">',
+      '<button type="button" data-gc-ui-lang="zh">中</button>',
+      '<button type="button" data-gc-ui-lang="en">EN</button>',
+      '<button type="button" data-gc-ui-lang="km">ខ្មែរ</button>',
+    '</span>'
+  ].join('');
+  host.appendChild(tools);
+
+  /* 舊語言列、雲端列、匯入頁與連線設定全部收起；業務頁、記錄按鈕及照片發送保留。 */
+  const hide = function (el) { if (el && !el.closest('.gc-head-tools')) el.classList.add('gc-legacy-hidden'); };
+  const hideBlock = function (el) {
+    if (!el) return;
+    const block = el.closest('.card, .sec, .section, .panel, .pnl, .tab-content') || el.parentElement;
+    hide(block || el);
+  };
+  if (C.hideLegacyTools !== false) {
+    ['.lang-sw', '.lgp', '.lang-grp', '.lang-toggle', '.lsw', '.lang-switch', '#cloud-badge']
+      .forEach(function (sel) { document.querySelectorAll(sel).forEach(hide); });
+    if (C.tool === 'keymovement') host.querySelectorAll('.lang-btn').forEach(hide);
+    ['#gas-panel', '#gas-panel-card', '#tab-import', '#tab-tg', '#nav-import', '#nav-telegram',
+      '#tab-telegram', '#pnl-import', '#pnl-tg', '#pnl-telegram', '#panel-import',
+      '#panel-telegram', '#section-import'].forEach(function (sel) {
+        document.querySelectorAll(sel).forEach(hide);
+      });
+    document.querySelectorAll('[onclick*="switchTab(\'import\')"], [onclick*="switchTab(\'tg\')"], [onclick*="switchTab(\'telegram\')"]')
+      .forEach(hide);
+    ['#cfg-gas', '#cfg-token', '#cfg-chat', '#tg-tok', '#tg-chat', '#tg-token', '#tg-period', '#gas-url', '#i-ie']
+      .forEach(function (sel) { document.querySelectorAll(sel).forEach(hideBlock); });
+    document.querySelectorAll('[onclick*="openImport"], [onclick*="uploadCloud"], [onclick*="downloadCloud"], [onclick*="cloud.push"], [onclick*="cloud.pull"], [onclick*="syncUp"], [onclick*="syncDown"], [onclick*="saveToGAS"], [onclick*="loadFromGAS"]')
+      .forEach(hide);
+  }
+
+  let period = 'month';
+  let periodRef = U.ymd(new Date());
+  let mode = 'summary';
+  let scope = 'all';
+  let slot = C.telegramDefaultSlot || 'all';
+  let lang = C.telegramDefaultLanguage || 'bi';
+  let previewToken = 0;
+  let currentPacket = null;
+
+  const cloudOpt = {
+    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', extra: C.extra,
+    toCloud: C.toCloud, fromCloud: C.fromCloud,
+    getList: function () { return C.read() || []; },
+    setList: function (list) { C.write(list); },
+    onRemote: function (d) { if (C.onRemote) C.onRemote(d || {}); },
+    onDone: function () {
+      refreshPeriodOptions();
+      if (C.onSync) C.onSync();
+      const state = tools.querySelector('.gc-cloud-state');
+      if (state) state.classList.add('ok');
+    }
+  };
+  GC.mountCloudButtons(tools.querySelector('.gc-head-cloud'), cloudOpt);
+
+  const tgModal = document.createElement('div');
+  tgModal.className = 'gc-common-modal';
+  tgModal.dataset.gcTool = C.tool || '';
+  tgModal.innerHTML = [
+    '<div class="gc-modal-card gc-tg-modal" role="dialog" aria-modal="true">',
+      '<div class="gc-modal-head"><strong>✈️ <span data-i="gc.telegramTitle">' + U.escapeHtml(I18.t('gc.telegramTitle')) + '</span></strong><button type="button" data-gc-close>×</button></div>',
+      '<div class="gc-modal-body">',
+        '<label class="gc-field gc-field-wide"><span data-i="gc.mode">' + U.escapeHtml(I18.t('gc.mode')) + '</span><span class="gc-seg">',
+          '<button type="button" class="on" data-gc-mode="summary">📄 <span data-i="gc.summary">' + U.escapeHtml(I18.t('gc.summary')) + '</span></button>',
+          '<button type="button" data-gc-mode="review">🔎 <span data-i="gc.review">' + U.escapeHtml(I18.t('gc.review')) + '</span></button>',
+          '<button type="button" data-gc-mode="approval">✅ <span data-i="gc.approval">' + U.escapeHtml(I18.t('gc.approval')) + '</span></button>',
+        '</span></label>',
+        '<label class="gc-field"><span data-i="gc.selectScope">' + U.escapeHtml(I18.t('gc.selectScope')) + '</span><select data-gc-scope></select></label>',
+        '<label class="gc-field"><span data-i="gc.periodMode">' + U.escapeHtml(I18.t('gc.periodMode')) + '</span><select data-gc-period></select></label>',
+        '<label class="gc-field"><span data-i="gc.periodValue">' + U.escapeHtml(I18.t('gc.periodValue')) + '</span><select data-gc-ref></select></label>',
+        '<label class="gc-field gc-slot-field"><span data-i="gc.slot">' + U.escapeHtml(I18.t('gc.slot')) + '</span><select data-gc-slot></select></label>',
+        '<label class="gc-field"><span data-i="gc.reportLanguage">' + U.escapeHtml(I18.t('gc.reportLanguage')) + '</span><select data-gc-lang></select></label>',
+        '<label class="gc-field"><span data-i="gc.targetGroup">' + U.escapeHtml(I18.t('gc.targetGroup')) + '</span><select data-gc-group></select></label>',
+        '<div class="gc-field gc-field-wide"><span data-i="gc.preview">' + U.escapeHtml(I18.t('gc.preview')) + '</span><div class="gc-preview" data-gc-preview></div></div>',
+      '</div>',
+      '<div class="gc-modal-foot"><span data-gc-send-state></span><button type="button" class="gc-cancel" data-gc-close data-i="gc.cancel">' + U.escapeHtml(I18.t('gc.cancel')) + '</button><button type="button" class="gc-primary" data-gc-send>✈️ <span data-i="gc.send">' + U.escapeHtml(I18.t('gc.send')) + '</span></button></div>',
+    '</div>'
+  ].join('');
+  document.body.appendChild(tgModal);
+
+  let importModal = null;
+  if (C.importSchema) {
+    importModal = document.createElement('div');
+    importModal.className = 'gc-common-modal';
+    importModal.dataset.gcTool = C.tool || '';
+    importModal.innerHTML = [
+      '<div class="gc-modal-card gc-import-dialog" role="dialog" aria-modal="true">',
+        '<div class="gc-modal-head"><strong>📥 <span data-i="gc.importTitle">' + U.escapeHtml(I18.t('gc.importTitle')) + '</span></strong><button type="button" data-gc-close>×</button></div>',
+        '<div class="gc-import-hint" data-i="gc.directHint">' + U.escapeHtml(I18.t('gc.directHint')) + '</div>',
+        '<div class="gc-import-mount"></div>',
+      '</div>'
+    ].join('');
+    document.body.appendChild(importModal);
+    GC.import.mount(importModal.querySelector('.gc-import-mount'), {
+      schema: C.importSchema,
+      parse: C.importParser,
+      accept: C.importAccept || '.xlsx,.xls,.xlsb,.csv',
+      onData: function (rows, meta) {
+        const cur = C.read() || [];
+        rows.forEach(function (r) {
+          r[C.idField] = r[C.idField] || U.uid('imp');
+          r.updatedAt = U.now();
+          delete r._raw;
+        });
+        const merged = typeof C.mergeImport === 'function' ? C.mergeImport(cur, rows) : cur.concat(rows);
+        C.write(merged);
+        refreshPeriodOptions();
+        GC.toast('✅ ' + rows.length + ' ' + I18.t('gc.imported') + ' — ' + (meta.fileName || ''), 'success');
+        if (C.onImport) C.onImport(rows);
+      }
+    });
+  }
+
+  const scopeSelect = tgModal.querySelector('[data-gc-scope]');
+  const periodSelect = tgModal.querySelector('[data-gc-period]');
+  const refSelect = tgModal.querySelector('[data-gc-ref]');
+  const slotSelect = tgModal.querySelector('[data-gc-slot]');
+  const langSelect = tgModal.querySelector('[data-gc-lang]');
+  const groupSelect = tgModal.querySelector('[data-gc-group]');
+  const preview = tgModal.querySelector('[data-gc-preview]');
+  const sendState = tgModal.querySelector('[data-gc-send-state]');
+  const sendButton = tgModal.querySelector('[data-gc-send]');
+
+  function option(value, label) {
+    return '<option value="' + U.escapeHtml(value) + '">' + U.escapeHtml(label) + '</option>';
+  }
+  function itemValue(item) { return typeof item === 'string' ? item : item.value; }
+  function itemLabel(item, useLang) {
+    if (typeof item === 'string') return item;
+    const l = useLang || I18.lang;
+    return item[l] || item.en || item.zh || item.km || item.value;
+  }
+  function scopeItems() {
+    if (Array.isArray(C.telegramScopes) && C.telegramScopes.length) return C.telegramScopes;
+    const field = C.scopeField || C.groupField;
+    const seen = new Set();
+    (C.read() || []).forEach(function (r) {
+      const v = String(r && r[field] != null ? r[field] : '').trim();
+      if (v) seen.add(v);
+    });
+    return [{ value: 'all', zh: '全部', en: 'All', km: 'ទាំងអស់' }]
+      .concat(Array.from(seen).sort().map(function (v) { return { value: v, zh: v, en: v, km: v }; }));
+  }
+  function renderScope() {
+    const items = scopeItems();
+    scopeSelect.innerHTML = items.map(function (x) { return option(itemValue(x), itemLabel(x)); }).join('');
+    if (!items.some(function (x) { return String(itemValue(x)) === String(scope); })) scope = itemValue(items[0]) || 'all';
+    scopeSelect.value = scope;
+  }
+  function renderPeriods() {
+    const keys = { day: 'gc.day', week: 'gc.week', month: 'gc.month', year: 'gc.year', all: 'gc.all' };
+    periodSelect.innerHTML = ['day', 'week', 'month', 'year', 'all']
+      .map(function (x) { return option(x, I18.t(keys[x])); }).join('');
+    periodSelect.value = period;
+  }
+  function renderSlots() {
+    const items = Array.isArray(C.telegramSlots) && C.telegramSlots.length
+      ? C.telegramSlots
+      : [{ value: 'all', zh: '全部時段', en: 'All slots', km: 'គ្រប់ពេល' }];
+    slotSelect.innerHTML = items.map(function (x) { return option(itemValue(x), itemLabel(x, lang === 'bi' ? I18.lang : lang)); }).join('');
+    if (!items.some(function (x) { return String(itemValue(x)) === String(slot); })) slot = itemValue(items[0]) || 'all';
+    slotSelect.value = slot;
+    tgModal.querySelector('.gc-slot-field').classList.toggle('gc-field-muted', !C.telegramSlots);
+  }
+  function renderLanguages() {
+    langSelect.innerHTML = [
+      option('bi', I18.t('gc.bilingual')), option('zh', I18.t('gc.chinese')),
+      option('en', I18.t('gc.english')), option('km', I18.t('gc.khmer'))
+    ].join('');
+    langSelect.value = lang;
+  }
+  function renderGroups() {
+    const items = Array.isArray(C.telegramGroups) && C.telegramGroups.length
+      ? C.telegramGroups
+      : [{ value: C.chatId || DEFAULT_CHAT_ID, zh: I18.t('gc.defaultGroup'), en: I18.t('gc.defaultGroup'), km: I18.t('gc.defaultGroup') }];
+    groupSelect.innerHTML = items.map(function (x) { return option(itemValue(x), itemLabel(x)); }).join('');
+  }
+  function dateFromRecord(raw) {
+    if (raw == null || raw === '') return null;
+    const s = String(raw);
+    const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(s) ? s + 'T00:00:00' : raw);
+    return isNaN(d) ? null : d;
+  }
+  function periodReference(d, p) {
+    const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+    if (p === 'week') x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+    if (p === 'month') x.setDate(1);
+    if (p === 'year') { x.setMonth(0); x.setDate(1); }
+    return U.ymd(x);
+  }
+  function refLabel(ref, p) {
+    const d = new Date(ref + 'T00:00:00');
+    if (p === 'year') return String(d.getFullYear());
+    if (p === 'month') return ref.slice(0, 7);
+    if (p === 'week') {
+      const end = new Date(d); end.setDate(end.getDate() + 6);
+      return d.getFullYear() + '-W' + String(U.weekNo(d)).padStart(2, '0') + ' (' + ref.slice(5) + '–' + U.ymd(end).slice(5) + ')';
+    }
+    if (p === 'all') return I18.t('gc.all');
+    return ref;
+  }
+  function refreshPeriodOptions() {
+    const refs = new Set();
+    (C.read() || []).forEach(function (r) {
+      const d = dateFromRecord(r && r[C.dateField]);
+      if (d) refs.add(periodReference(d, period));
+    });
+    if (period === 'all') refs.add(U.ymd(new Date()));
+    if (!refs.size) refs.add(periodReference(new Date(), period));
+    const values = Array.from(refs).sort().reverse();
+    if (!values.includes(periodRef)) periodRef = values[0];
+    refSelect.innerHTML = values.map(function (x) { return option(x, refLabel(x, period)); }).join('');
+    refSelect.value = periodRef;
+    refSelect.disabled = period === 'all';
+  }
+  function collectPhotos() {
+    const list = GC.telegram.filter(C.read() || [], C, period, periodRef, scope, slot);
+    const out = [];
+    list.forEach(function (r) {
+      U.asArray(r && r[C.photoField]).forEach(function (p) {
+        if (typeof p === 'string' && p.indexOf('data:image/') === 0 && out.length < 5) out.push(p);
+      });
+    });
+    return out;
+  }
+  async function buildPacket() {
+    const custom = typeof C.telegramBuilder === 'function'
+      ? await C.telegramBuilder({ period: period, mode: mode, ref: periodRef, scope: scope, slot: slot, lang: lang, cfg: C })
+      : null;
+    const built = custom == null ? GC.telegram.buildText(C, period, mode, periodRef, scope, slot, lang) : custom;
+    const packet = typeof built === 'string' ? { text: built } : (built || {});
+    if (!Array.isArray(packet.photos) || !packet.photos.length) packet.photos = collectPhotos();
+    const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
+    if (!packet.buttons) packet.buttons = [[{ text: '📊 Open Dashboard / 開啟平台', url: dashUrl }]];
+    return packet;
+  }
+  async function updatePreview() {
+    const token = ++previewToken;
+    preview.classList.add('busy');
+    try {
+      const packet = await buildPacket();
+      if (token !== previewToken) return;
+      currentPacket = packet;
+      preview.innerHTML = String(packet.text || '').replace(/\n/g, '<br>');
+      if (packet.photos && packet.photos.length) {
+        const photoLabel = lang === 'en' ? 'Photos' : (lang === 'km' ? 'រូបថត' : (lang === 'zh' ? '照片' : I18.t('gc.photo')));
+        preview.innerHTML += '<div class="gc-preview-photo">📷 ' + packet.photos.length + ' ' + U.escapeHtml(photoLabel) + '</div>';
+      }
+    } catch (e) {
+      if (token === previewToken) {
+        currentPacket = null;
+        preview.textContent = '❌ ' + e.message;
+      }
+    }
+    if (token === previewToken) preview.classList.remove('busy');
+  }
+  function refreshModal() {
+    renderScope();
+    renderPeriods();
+    renderSlots();
+    renderLanguages();
+    renderGroups();
+    refreshPeriodOptions();
+    I18.apply(tgModal);
+    updatePreview();
+  }
+  function setModalOpen(modal, yes) {
+    if (!modal) return;
+    modal.classList.toggle('open', !!yes);
+    document.body.classList.toggle('gc-modal-open', !!document.querySelector('.gc-common-modal.open'));
+  }
+  function openTelegram() {
+    refreshModal();
+    sendState.textContent = '';
+    setModalOpen(tgModal, true);
+  }
+  async function sendCurrentTelegram() {
+    sendButton.disabled = true;
+    sendState.textContent = I18.t('gc.sync');
+    try {
+      const packet = currentPacket || await buildPacket();
+      await GC.telegram.send(packet.text, packet.photos, packet.buttons, groupSelect.value || DEFAULT_CHAT_ID, C.tool);
+      sendState.textContent = '✓ ' + I18.t('gc.sentTelegram');
+      GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
+      setTimeout(function () { setModalOpen(tgModal, false); }, 450);
+    } catch (e) {
+      sendState.textContent = '✕ ' + e.message;
+      GC.toast('❌ ' + e.message, 'error');
+    }
+    sendButton.disabled = false;
+  }
+
+  tgModal.querySelectorAll('[data-gc-close]').forEach(function (b) { b.onclick = function () { setModalOpen(tgModal, false); }; });
+  tgModal.addEventListener('click', function (e) { if (e.target === tgModal) setModalOpen(tgModal, false); });
+  tgModal.querySelectorAll('[data-gc-mode]').forEach(function (b) {
+    b.onclick = function () {
+      mode = b.dataset.gcMode || 'summary';
+      tgModal.querySelectorAll('[data-gc-mode]').forEach(function (x) { x.classList.toggle('on', x === b); });
+      updatePreview();
+    };
+  });
+  scopeSelect.onchange = function () { scope = scopeSelect.value || 'all'; updatePreview(); };
+  periodSelect.onchange = function () { period = periodSelect.value || 'month'; refreshPeriodOptions(); updatePreview(); };
+  refSelect.onchange = function () { periodRef = refSelect.value || U.ymd(new Date()); updatePreview(); };
+  slotSelect.onchange = function () { slot = slotSelect.value || 'all'; updatePreview(); };
+  langSelect.onchange = function () { lang = langSelect.value || 'bi'; renderSlots(); updatePreview(); };
+  groupSelect.onchange = updatePreview;
+  sendButton.onclick = sendCurrentTelegram;
+  tools.querySelector('[data-gc-open-tg]').onclick = openTelegram;
+
+  if (importModal) {
+    importModal.querySelectorAll('[data-gc-close]').forEach(function (b) { b.onclick = function () { setModalOpen(importModal, false); }; });
+    importModal.addEventListener('click', function (e) { if (e.target === importModal) setModalOpen(importModal, false); });
+    tools.querySelector('[data-gc-open-import]').onclick = function () { I18.apply(importModal); setModalOpen(importModal, true); };
+  }
+
+  let applyingModuleLanguage = false;
+  function renderHeaderLanguage() {
+    tools.querySelectorAll('[data-gc-ui-lang]').forEach(function (b) {
+      b.classList.toggle('on', b.dataset.gcUiLang === I18.lang);
+    });
+    I18.apply(tools);
+  }
+  function applyModuleLanguage(l) {
+    if (applyingModuleLanguage || !['zh', 'en', 'km'].includes(l)) return;
+    applyingModuleLanguage = true;
+    try {
+      if (I18.lang !== l) I18.set(l);
+      if (typeof global.setLang === 'function') global.setLang(l);
+      else if (global.i18n && typeof global.i18n.set === 'function') global.i18n.set(l);
+    } catch (e) { console.warn('[AC GASCHECK] language:', e); }
+    applyingModuleLanguage = false;
+    renderHeaderLanguage();
+    if (tgModal.classList.contains('open')) refreshModal();
+  }
+  tools.querySelectorAll('[data-gc-ui-lang]').forEach(function (b) {
+    b.onclick = function () { applyModuleLanguage(b.dataset.gcUiLang); };
+  });
+  window.addEventListener('gc:langchange', function () {
+    renderHeaderLanguage();
+    if (tgModal.classList.contains('open')) refreshModal();
+    if (importModal && importModal.classList.contains('open')) I18.apply(importModal);
+  });
+
+  applyModuleLanguage(I18.lang);
+  refreshPeriodOptions();
+  return {
+    refresh: refreshPeriodOptions,
+    getPeriod: function () { return period; },
+    sendTelegram: openTelegram,
+    openImport: function () { if (importModal) setModalOpen(importModal, true); }
+  };
+};
+
+GC.attachLegacy = function (cfg) {
   /* cfg = {
        tool, title, lsKey,
        read()  -> Array   讀取記錄陣列
@@ -1531,6 +1937,50 @@ GC.attach = function (cfg) {
 const BAR_CSS = `
 .gc-tools-card{display:block;width:100%;max-width:none;margin:0 0 16px;font-family:inherit;scroll-margin-top:12px}
 .gc-legacy-hidden{display:none!important}
+.gc-head-tools{display:flex;align-items:center;justify-content:flex-end;gap:7px;margin-left:auto;min-width:0;font-family:inherit;flex-wrap:nowrap}
+.gc-cloud-state{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 10px;border:1px solid #C9D6E4;border-radius:18px;color:#4D6078;background:#fff;font:600 11px/1.1 inherit;white-space:nowrap}
+.gc-cloud-state i{display:block;width:7px;height:7px;border-radius:50%;background:#8BA0B8}
+.gc-cloud-state.ok i{background:#2DD879;box-shadow:0 0 0 3px rgba(45,216,121,.14)}
+.gc-head-tools .gc-cloud-btns{gap:5px}
+.gc-head-tools .gc-cloud-btn,.gc-head-btn{height:36px;min-width:38px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #0E6B55;border-radius:8px;background:#0E6B55;color:#fff;font:700 12px/1 inherit;cursor:pointer;white-space:nowrap;box-shadow:none}
+.gc-head-tools .gc-cloud-btn:hover,.gc-head-btn:hover{background:#095A47;border-color:#095A47}
+.gc-head-import{background:#815C12;border-color:#815C12;color:#fff}
+.gc-head-tg{background:#0876A8;border-color:#0876A8;color:#fff}
+.gc-head-langs{height:36px;display:inline-flex;align-items:stretch;border:1px solid #CBD5E1;border-radius:8px;overflow:hidden;background:#fff}
+.gc-head-langs button{min-width:38px;padding:0 8px;border:0;border-right:1px solid #CBD5E1;background:#fff;color:#334155;font:700 11px/1 inherit;cursor:pointer}
+.gc-head-langs button:last-child{border-right:0}
+.gc-head-langs button.on{background:#17B981;color:#fff}
+.gc-modal-open{overflow:hidden!important}
+.gc-common-modal{display:none;position:fixed;inset:0;z-index:2147483000;padding:22px;background:rgba(8,18,35,.62);backdrop-filter:blur(3px);align-items:center;justify-content:center;font-family:inherit;color:#1E2A3B}
+.gc-common-modal.open{display:flex}
+.gc-modal-card{width:min(760px,96vw);max-height:92vh;display:flex;flex-direction:column;background:#fff;border:1px solid #D8E0EB;border-radius:20px;box-shadow:0 28px 80px rgba(3,14,31,.34);overflow:hidden;animation:gcModalIn .16s ease-out}
+@keyframes gcModalIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
+.gc-modal-head{display:flex;align-items:center;gap:10px;padding:17px 22px;border-bottom:1px solid #E6EAF0}
+.gc-modal-head strong{flex:1;font-size:17px;color:#172238}
+.gc-modal-head button{width:36px;height:36px;border:0;border-radius:9px;background:transparent;color:#718096;font-size:27px;line-height:1;cursor:pointer}
+.gc-modal-head button:hover{background:#F1F5F9;color:#1E293B}
+.gc-modal-body{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;padding:20px 22px;overflow:auto}
+.gc-field{display:flex;flex-direction:column;gap:7px;min-width:0;color:#63718A;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
+.gc-field-wide{grid-column:1/-1}
+.gc-field select{width:100%;height:46px;padding:0 13px;border:1px solid #C9D5E5;border-radius:10px;background:#fff;color:#233149;font:500 14px/1 inherit;text-transform:none;outline:none}
+.gc-field select:focus{border-color:#1685B7;box-shadow:0 0 0 3px rgba(22,133,183,.12)}
+.gc-field-muted{opacity:.62}
+.gc-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;background:#E9EEF5;border-radius:11px}
+.gc-seg button{height:42px;border:0;border-radius:8px;background:transparent;color:#3F4E66;font:700 13px/1 inherit;cursor:pointer}
+.gc-seg button.on{background:#fff;color:#0876A8;box-shadow:0 1px 4px rgba(15,35,60,.16)}
+.gc-preview{min-height:150px;max-height:260px;overflow:auto;padding:15px;border:1px solid #D9E2EF;border-radius:11px;background:#F3F7FC;color:#33445E;font:500 12px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:0;text-transform:none;word-break:break-word}
+.gc-preview.busy{opacity:.55}
+.gc-preview-photo{margin-top:9px;padding-top:8px;border-top:1px dashed #BAC7D8;color:#16714A;font-weight:800}
+.gc-modal-foot{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:14px 22px;border-top:1px solid #E6EAF0;background:#FAFBFD}
+.gc-modal-foot [data-gc-send-state]{flex:1;color:#177245;font-size:12px;font-weight:700}
+.gc-modal-foot button{height:43px;padding:0 20px;border-radius:10px;font:800 13px/1 inherit;cursor:pointer}
+.gc-cancel{border:1px solid #CBD5E1;background:#fff;color:#334155}
+.gc-primary{border:1px solid #0876A8;background:#0876A8;color:#fff}
+.gc-primary:disabled{opacity:.5;cursor:wait}
+.gc-import-dialog{width:min(680px,96vw)}
+.gc-import-hint{margin:18px 20px 0;padding:12px 14px;border-left:4px solid #4E6FFF;border-radius:8px;background:#EEF3FF;color:#4A5872;font-size:12px;line-height:1.5}
+.gc-import-mount{padding:18px 20px 22px;overflow:auto}
+.gc-import-dialog .gc-import{min-height:220px}
 .gc-panel{position:static;width:100%;background:#fff;border:1px solid #D8DCE6;border-radius:13px;box-shadow:0 4px 18px rgba(15,20,32,.1);display:flex;max-height:none;overflow:visible;flex-direction:column}
 .gc-panel.open{display:flex}
 .gc-panel-head{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:11px 14px;border-bottom:1px solid #EEF1F6;background:#F7F8FA;border-radius:13px 13px 0 0}
@@ -1545,6 +1995,19 @@ const BAR_CSS = `
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
 @media(max-width:1050px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-import-sec{grid-column:auto}}
 @media(max-width:560px){
+  .gc-head-tools{gap:4px;overflow-x:auto;scrollbar-width:none;max-width:calc(100vw - 82px);flex-shrink:1}
+  .gc-head-tools::-webkit-scrollbar{display:none}
+  .gc-cloud-state span,.gc-head-tools .gc-cloud-btn span,.gc-head-btn span{display:none}
+  .gc-cloud-state{min-width:30px;width:30px;padding:0;justify-content:center}
+  .gc-head-tools .gc-cloud-btn,.gc-head-btn{width:36px;padding:0}
+  .gc-head-langs button{min-width:34px;padding:0 5px}
+  .gc-common-modal{padding:8px;align-items:flex-end}
+  .gc-modal-card{width:100%;max-height:94vh;border-radius:18px 18px 0 0}
+  .gc-modal-head{padding:14px 16px}
+  .gc-modal-body{grid-template-columns:1fr;padding:15px 16px;gap:12px}
+  .gc-field-wide{grid-column:auto}
+  .gc-modal-foot{padding:12px 16px}
+  .gc-preview{min-height:120px;max-height:210px}
   .gc-action-strip{align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;white-space:nowrap;padding:8px 9px}
   .gc-action-heading,.gc-action-label{width:auto;margin-left:0}
   .gc-action-strip #gcTopCloud,.gc-action-strip .gc-cloud-btns,.gc-action-strip .gc-period,.gc-mode{width:auto;flex:0 0 auto}

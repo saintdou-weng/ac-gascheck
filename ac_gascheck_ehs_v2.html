@@ -437,7 +437,7 @@ function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2
   return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
 /* ========== CONFIG ========== */
 const CFG_KEY = 'vrt_ehs_cfg_v1';
-const TG_BOT   = '8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM';
+const TG_BOT   = '';
 const TG_GROUP = '-5113064563';
 const PAUL_UID = '5026942575';
 const SUPPLIERS = ['K.S.W.M','SONYAPICH'];
@@ -488,6 +488,10 @@ const EHS_LABELS = [
   ['日期 *','Date *','កាលបរិច្ឆេទ *'],['姓名 *','Name *','ឈ្មោះ *'],['供應商 *','Supplier *','អ្នកផ្គត់ផ្គង់ *'],
   ['車牌','Vehicle No.','លេខយានយន្ត'],['固體','Solid','រឹង'],['工業','Industrial','ឧស្សាហកម្ម'],
   ['重量(kg)','Weight (kg)','ទម្ងន់ (kg)'],['Time In *','Time In *','ពេលចូល *'],['Time Out','Time Out','ពេលចេញ'],
+  ['日期','Date','កាលបរិច្ឆេទ'],['姓名','Name','ឈ្មោះ'],['廢料類型','Waste Type','ប្រភេទសំណល់'],
+  ['重量','Weight','ទម្ងន់'],['停留','Duration','រយៈពេល'],['異常','Anomaly','មិនប្រក្រតី'],
+  ['指標','Metric','សូចនាករ'],['當期','Current','បច្ចុប្បន្ន'],['上期','Previous','មុន'],['變化','Change','ការផ្លាស់ប្តូរ'],
+  ['請選擇期間後查詢','Select a period to query','ជ្រើសរយៈពេលដើម្បីស្វែងរក'],
   ['Gate Keeper','Gate Keeper','អ្នកយាមច្រក'],['備註','Remark','ចំណាំ'],['新增一行','Add Row','បន្ថែមជួរ'],
   ['清除全部','Clear All','លុបទាំងអស់'],['Waste 記錄','Waste Records','Waste Records'],
   ['綜合報表分析','Consolidated Report','របាយការណ៍សង្ខេប'],['歷史記錄查詢','History Query','ស្វែងរកប្រវត្តិ'],
@@ -507,10 +511,27 @@ const EHS_PARTS = [
   ['合計','Total','សរុប'],['回收次數','Recycling Count','ចំនួនកែច្នៃ'],['異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី'],
   ['目標','Target','គោលដៅ'],['達標','Target Met','ដល់គោលដៅ'],['未達標','Below Target','មិនដល់គោលដៅ'],['送審','Submit for Review','ដាក់ស្នើពិនិត្យ'],
   ['等待核可','Waiting for Approval','កំពុងរង់ចាំអនុម័ត'],['清除全部','Clear All','លុបទាំងអស់'],
+  ['批次提交','Batch Submit','ដាក់ស្នើជាក្រុម'],['尚無記錄','No records','គ្មានកំណត់ត្រា'],['請選擇','Select','ជ្រើស'],
   ['共','Total','សរុប'],['筆','records','កំណត់ត្រា'],['趟','trips','ជើង'],['狀態','Status','ស្ថានភាព'],
   ['等待','Waiting','រង់ចាំ'],['核可','Approval','អនុម័ត'],['內部','Recycle','Recycle'],['出入','Waste Entry / Exit','Waste Entry / Exit'],
   ['廢料','Recycling','សំណល់'],['資料','Data','ទិន្នន័យ'],['設定','Settings','ការកំណត់'],['天','days','ថ្ងៃ']
 ].map(x=>({zh:x[0],en:x[1],km:x[2]}));
+EHS_PARTS.unshift(
+  {zh:'本月月報已送審，等待 Paul 核可',en:'This month report was submitted; waiting for Paul approval',km:'របាយការណ៍ខែនេះបានដាក់ស្នើ កំពុងរង់ចាំ Paul អនុម័ត'},
+  {zh:'送審本月月報',en:'Submit This Month Report',km:'ដាក់ស្នើរបាយការណ៍ខែនេះ'},
+  {zh:'新增一行',en:'Add Row',km:'បន្ថែមជួរ'},
+  {zh:'— 選擇 —',en:'— Select —',km:'— ជ្រើស —'},
+  {zh:'Waste 記錄',en:'Waste Records',km:'កំណត់ត្រា Waste'},
+  {zh:'綜合報表分析',en:'Consolidated Report',km:'របាយការណ៍សង្ខេប'},
+  {zh:'Recycle 趨勢',en:'Recycle Trend',km:'និន្នាការ Recycle'},
+  {zh:'記錄趟數',en:'Trips',km:'ចំនួនជើង'},
+  {zh:'期間比較 Period Comparison',en:'Period Comparison',km:'ការប្រៀបធៀបរយៈពេល'},
+  {zh:'歷史記錄查詢',en:'History Query',km:'ស្វែងរកប្រវត្តិ'},
+  {zh:'請選擇條件查詢',en:'Select filters to query',km:'ជ្រើសលក្ខខណ្ឌដើម្បីស្វែងរក'},
+  {zh:'照片 Photos',en:'Photos',km:'រូបថត'},
+  {zh:'確定 OK',en:'OK',km:'យល់ព្រម'},
+  {zh:'回收',en:'Recycle',km:'Recycle'}
+);
 EHS_PARTS.push(
   {zh:'Telegram/雲端',en:'Telegram / Cloud',km:'Telegram / Cloud'},
   {zh:'快速操作',en:'Quick actions',km:'សកម្មភាពរហ័ស'},
@@ -524,6 +545,14 @@ EHS_LABELS.forEach(x=>[x.zh,x.en,x.km].forEach(v=>EHS_EXACT.set(v,x)));
 const EHS_ORIGINAL_TEXT = new WeakMap();
 let _ehsApplying = false;
 let _ehsTimer = 0;
+function ehsText(zh,en,km){return lang==='en'?en:(lang==='km'?(km||en):zh);}
+function ehsYearLabel(y){return lang==='zh'?y+'年':(lang==='km'?'ឆ្នាំ '+y:String(y));}
+function ehsMonthLabel(m){
+  if(lang==='zh')return m+'月';
+  if(lang==='km')return 'ខែ '+m;
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]||String(m);
+}
+function ehsDayLabel(d){return lang==='zh'?d+'日':(lang==='km'?'ថ្ងៃទី '+d:String(d));}
 function applyEhsStaticLanguage(){
   if(!document.body || _ehsApplying)return;
   _ehsApplying = true;
@@ -557,7 +586,13 @@ function setLang(l){
   document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.textContent.trim()===({zh:'中',en:'EN',km:'ខ្មែរ'}[l])));
   document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(T[l]&&T[l][k])el.textContent=T[l][k];});
   if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==l)GC.i18n.set(l);
+  const stamp=document.getElementById('ts-sub');if(stamp){const now=new Date(),locale=l==='zh'?'zh-TW':(l==='km'?'km-KH':'en-GB');stamp.textContent='Vantage River Textiles · '+now.toLocaleString(locale,{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
   scheduleEhsLanguageApply();
+  setTimeout(function(){
+    ['a-p-year','b-p-year','r-year','h-year'].forEach(function(id){const s=document.getElementById(id);if(!s)return;Array.from(s.options).forEach(function(o){if(o.value)o.textContent=ehsYearLabel(+o.value);else o.textContent=ehsText('全年份','All years','គ្រប់ឆ្នាំ');});});
+    ['a-p-month','b-p-month','r-month','h-month'].forEach(function(id){const s=document.getElementById(id);if(!s)return;Array.from(s.options).forEach(function(o){if(o.value)o.textContent=ehsMonthLabel(+o.value);else o.textContent=ehsText('全年','All year','ពេញមួយឆ្នាំ');});});
+    if(document.getElementById('a-p-year')&&document.getElementById('a-p-year').options.length){renderAAnalysis();renderBAnalysis();renderReport();}
+  },0);
 }
 function scheduleEhsLanguageApply(){
   clearTimeout(_ehsTimer);
@@ -606,7 +641,7 @@ function buildYearSelect(selId,changeHandler){
   const now=new Date();
   sel.innerHTML='';
   for(let y=now.getFullYear();y>=now.getFullYear()-3;y--){
-    const o=document.createElement('option');o.value=y;o.textContent=y+'年';
+    const o=document.createElement('option');o.value=y;o.textContent=ehsYearLabel(y);
     if(y===now.getFullYear())o.selected=true;
     sel.appendChild(o);
   }
@@ -616,7 +651,7 @@ function buildMonthSelect(selId,changeHandler){
   const sel=document.getElementById(selId);const now=new Date();
   sel.innerHTML='';
   for(let m=1;m<=12;m++){
-    const o=document.createElement('option');o.value=m;o.textContent=m+'月';
+    const o=document.createElement('option');o.value=m;o.textContent=ehsMonthLabel(m);
     if(m===now.getMonth()+1)o.selected=true;
     sel.appendChild(o);
   }
@@ -656,7 +691,7 @@ function renderAAnalysis(){
   if(aPeriod==='year'){
     for(let m=1;m<=12;m++){
       const mRecs=recs.filter(r=>new Date(r.date).getFullYear()===yr&&(new Date(r.date).getMonth()+1)===m);
-      labels.push(m+'月');
+      labels.push(ehsMonthLabel(m));
       plastic.push(mRecs.reduce((s,r)=>s+(+r.plastic_kg||0),0));
       fabric.push(mRecs.reduce((s,r)=>s+(+r.fabric_kg||0),0));
       core.push(mRecs.reduce((s,r)=>s+(+r.core_kg||0),0));
@@ -668,7 +703,7 @@ function renderAAnalysis(){
       const ds=yr+'-'+String(mo).padStart(2,'0')+'-'+String(d2).padStart(2,'0');
       const dr=recs.filter(r=>r.date===ds);
       if(dr.length||totals.some(v=>v>0)||d2<=days){
-        labels.push(d2+'日');
+        labels.push(ehsDayLabel(d2));
         plastic.push(dr.reduce((s,r)=>s+(+r.plastic_kg||0),0));
         fabric.push(dr.reduce((s,r)=>s+(+r.fabric_kg||0),0));
         core.push(dr.reduce((s,r)=>s+(+r.core_kg||0),0));
@@ -689,7 +724,7 @@ function renderAAnalysis(){
   }
 
   const totalKg=totals.reduce((a,b)=>a+b,0);
-  document.getElementById('a-stat-total').textContent='合計: '+totalKg.toFixed(0)+' kg';
+  document.getElementById('a-stat-total').textContent=ehsText('合計','Total','សរុប')+': '+totalKg.toFixed(0)+' kg';
 
   if(chartAInst)chartAInst.destroy();
   const ctx=document.getElementById('chartA').getContext('2d');
@@ -709,7 +744,7 @@ function renderAAnalysis(){
     <div class="stat-card"><div class="stat-val" style="color:#3b82f6">${tP.toFixed(0)}</div><div class="stat-lbl">Plastic (kg)</div></div>
     <div class="stat-card"><div class="stat-val" style="color:#10b981">${tF.toFixed(0)}</div><div class="stat-lbl">Fabric (kg)</div></div>
     <div class="stat-card"><div class="stat-val" style="color:#f59e0b">${tC.toFixed(0)}</div><div class="stat-lbl">Core (kg)</div></div>
-    <div class="stat-card"><div class="stat-val">${recs.filter(r=>new Date(r.date).getFullYear()===yr).length}</div><div class="stat-lbl">回收次數 (年)</div></div>
+    <div class="stat-card"><div class="stat-val">${recs.filter(r=>new Date(r.date).getFullYear()===yr).length}</div><div class="stat-lbl">${ehsText('回收次數（年）','Recycling Count (Year)','ចំនួនកែច្នៃ (ឆ្នាំ)')}</div></div>
   `;
 }
 
@@ -730,12 +765,12 @@ function renderBAnalysis(){
     const n=filterRecs.filter(r=>r.supplier===s).length;
     const cls=n>=SUP_TARGET?'ok':n>=2?'warn':'alert';
     const cntCls=n>=SUP_TARGET?'ok':n>=2?'warn':'alert';
-    const pct=bPeriod==='year'?'年':'月';
+    const pct=bPeriod==='year'?ehsText('年','Year','ឆ្នាំ'):ehsText('月','Month','ខែ');
     return `<div class="sup-card ${cls}">
       <div class="sup-name">${s}</div>
       <div class="sup-count ${cntCls}">${n}</div>
-      <div class="sup-sub">趟 / 目標 ${SUP_TARGET} 趟 (${pct})</div>
-      ${n<SUP_TARGET?`<div style="margin-top:6px;font-size:11px;color:var(--red)">⚠️ 差 ${SUP_TARGET-n} 趟未達標</div>`:'<div style="margin-top:6px;font-size:11px;color:var(--green)">✅ 達標</div>'}
+      <div class="sup-sub">${ehsText('趟','trips','ជើង')} / ${ehsText('目標','Target','គោលដៅ')} ${SUP_TARGET} (${pct})</div>
+      ${n<SUP_TARGET?`<div style="margin-top:6px;font-size:11px;color:var(--red)">⚠️ ${ehsText('尚差','Remaining','នៅខ្វះ')} ${SUP_TARGET-n} ${ehsText('趟','trips','ជើង')}</div>`:`<div style="margin-top:6px;font-size:11px;color:var(--green)">✅ ${ehsText('達標','Target met','ដល់គោលដៅ')}</div>`}
     </div>`;
   }).join('');
 
@@ -744,7 +779,7 @@ function renderBAnalysis(){
   if(bPeriod==='year'){
     for(let m=1;m<=12;m++){
       const mRecs=recs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===yr&&(dt.getMonth()+1)===m;});
-      labels.push(m+'月');
+      labels.push(ehsMonthLabel(m));
       kswmData.push(mRecs.filter(r=>r.supplier==='K.S.W.M').length);
       sonData.push(mRecs.filter(r=>r.supplier==='SONYAPICH').length);
     }
@@ -753,7 +788,7 @@ function renderBAnalysis(){
     filterRecs.forEach(r=>{const w='W'+getWeek(new Date(r.date));weeks[w]=weeks[w]||{K:0,S:0};
       if(r.supplier==='K.S.W.M')weeks[w].K++;else if(r.supplier==='SONYAPICH')weeks[w].S++;});
     Object.keys(weeks).sort().forEach(w=>{labels.push(w);kswmData.push(weeks[w].K);sonData.push(weeks[w].S);});
-    if(!labels.length){labels=['無資料'];kswmData=[0];sonData=[0];}
+    if(!labels.length){labels=[ehsText('無資料','No data','គ្មានទិន្នន័យ')];kswmData=[0];sonData=[0];}
   } else {
     for(let w=1;w<=52;w++){
       const wRecs=recs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===yr&&getWeek(dt)===w;});
@@ -772,9 +807,9 @@ function renderBAnalysis(){
     data:{labels,datasets:[
       {label:'K.S.W.M',data:kswmData,backgroundColor:'rgba(37,99,235,.7)'},
       {label:'SONYAPICH',data:sonData,backgroundColor:'rgba(220,38,38,.7)'},
-      {label:'目標/週期',data:labels.map(()=>SUP_TARGET),type:'line',borderColor:'#f59e0b',borderDash:[5,5],pointRadius:0,borderWidth:2,fill:false}
+      {label:ehsText('目標／週期','Target / Period','គោលដៅ / រយៈពេល'),data:labels.map(()=>SUP_TARGET),type:'line',borderColor:'#f59e0b',borderDash:[5,5],pointRadius:0,borderWidth:2,fill:false}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,title:{display:true,text:'趟數'}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,title:{display:true,text:ehsText('趟數','Trips','ចំនួនជើង')}}}}
   });
 
   const totalTrips=filterRecs.length;
@@ -782,10 +817,10 @@ function renderBAnalysis(){
   const sTotal=filterRecs.filter(r=>r.supplier==='SONYAPICH').length;
   const anomCount=filterRecs.filter(r=>r.anomaly).length;
   document.getElementById('b-stats').innerHTML=`
-    <div class="stat-card"><div class="stat-val">${totalTrips}</div><div class="stat-lbl">總趟數</div></div>
+    <div class="stat-card"><div class="stat-val">${totalTrips}</div><div class="stat-lbl">${ehsText('總趟數','Total Trips','ចំនួនជើងសរុប')}</div></div>
     <div class="stat-card"><div class="stat-val" style="color:#2563eb">${kTotal}</div><div class="stat-lbl">K.S.W.M</div></div>
     <div class="stat-card"><div class="stat-val" style="color:#dc2626">${sTotal}</div><div class="stat-lbl">SONYAPICH</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:${anomCount>0?'var(--orange)':'var(--green)'}">${anomCount}</div><div class="stat-lbl">異常記錄</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:${anomCount>0?'var(--orange)':'var(--green)'}">${anomCount}</div><div class="stat-lbl">${ehsText('異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី')}</div></div>
   `;
 
   // Check pending monthly approval
@@ -799,10 +834,10 @@ function renderBAnalysis(){
 
   // This month records table
   const moRecs=recs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===yr&&(dt.getMonth()+1)===mo;}).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  document.getElementById('b-month-label').textContent=yr+'年'+mo+'月 共'+moRecs.length+'筆';
+  document.getElementById('b-month-label').textContent=ehsYearLabel(yr)+' '+ehsMonthLabel(mo)+' · '+ehsText('共','Total','សរុប')+' '+moRecs.length+' '+ehsText('筆','records','កំណត់ត្រា');
   const tbody=document.getElementById('b-month-body');
   if(!moRecs.length){
-    tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--dim)">本月尚無記錄</td></tr>';
+    tbody.innerHTML='<tr><td colspan="10" style="text-align:center;padding:16px;color:var(--dim)">'+ehsText('本月尚無記錄','No records this month','គ្មានកំណត់ត្រាក្នុងខែនេះ')+'</td></tr>';
   }else{
     tbody.innerHTML=moRecs.map((r,i)=>{
       const wtype=[(r.solid_waste?'<span class="badge badge-solid">固</span>':''),
@@ -816,7 +851,7 @@ function renderBAnalysis(){
   }
   const kN=moRecs.filter(r=>r.supplier==='K.S.W.M').length;
   const sN=moRecs.filter(r=>r.supplier==='SONYAPICH').length;
-  document.getElementById('b-month-footer').textContent=`K.S.W.M: ${kN}趟 | SONYAPICH: ${sN}趟 | 合計: ${moRecs.length}趟`;
+  document.getElementById('b-month-footer').textContent=`K.S.W.M: ${kN} ${ehsText('趟','trips','ជើង')} | SONYAPICH: ${sN} ${ehsText('趟','trips','ជើង')} | ${ehsText('合計','Total','សរុប')}: ${moRecs.length}`;
 }
 
 /* ========== REPORT ========== */
@@ -847,7 +882,7 @@ function renderReport(){
 
   document.getElementById('r-stats').innerHTML=`
     <div class="stat-card"><div class="stat-val">${curTotalKg.toFixed(0)}</div><div class="stat-lbl">Recycle (kg)</div></div>
-    <div class="stat-card"><div class="stat-val">${curInt.length}</div><div class="stat-lbl">回收次數</div></div>
+    <div class="stat-card"><div class="stat-val">${curInt.length}</div><div class="stat-lbl">${ehsText('回收次數','Recycling Count','ចំនួនកែច្នៃ')}</div></div>
     <div class="stat-card"><div class="stat-val">${curTrips}</div><div class="stat-lbl">Waste Records</div></div>
     <div class="stat-card"><div class="stat-val">${SUPPLIERS.filter(s=>curGate.filter(r=>r.supplier===s).length>=SUP_TARGET).length}/${SUPPLIERS.length}</div><div class="stat-lbl">供應商達標</div></div>
   `;
@@ -855,7 +890,7 @@ function renderReport(){
   // Chart 1 — internal monthly
   const mLabels=[];const mTotals=[];
   for(let m=1;m<=12;m++){
-    mLabels.push(m+'月');
+    mLabels.push(ehsMonthLabel(m));
     mTotals.push(intRecs.filter(r=>new Date(r.date).getFullYear()===yr&&(new Date(r.date).getMonth()+1)===m).reduce((s,r)=>s+(+r.total_kg||0),0));
   }
   if(chartR1Inst)chartR1Inst.destroy();
@@ -867,7 +902,7 @@ function renderReport(){
   // Chart 2 — gate trips monthly
   const gLabels=[];const kswmM=[];const sonM=[];
   for(let m=1;m<=12;m++){
-    gLabels.push(m+'月');
+    gLabels.push(ehsMonthLabel(m));
     const mG=gateRecs.filter(r=>new Date(r.date).getFullYear()===yr&&(new Date(r.date).getMonth()+1)===m);
     kswmM.push(mG.filter(r=>r.supplier==='K.S.W.M').length);
     sonM.push(mG.filter(r=>r.supplier==='SONYAPICH').length);
@@ -1053,7 +1088,7 @@ async function submitModA(){
     showToast('✅ 已提交 '+valid.length+' 筆至雲端');
   }catch(e){showToast('⚠️ 本機已儲存 ('+valid.length+' 筆)，雲端離線');}
   aRows=[];renderABatch();
-  btn.disabled=false;btn.innerHTML='📨 批次提交 (<span id="a-row-count">0</span> 筆)';
+  btn.disabled=false;btn.innerHTML='📨 '+ehsText('批次提交','Batch Submit','ដាក់ស្នើជាក្រុម')+' (<span id="a-row-count">0</span> '+ehsText('筆','records','កំណត់ត្រា')+')';
   renderAAnalysis();
 }
 
@@ -1073,7 +1108,7 @@ function renderBBatch(){
       <td><input class="bi" type="date" style="min-width:110px" value="${r.date}" onchange="updateBRow('${r.id}','date',this.value)"></td>
       <td><input class="bi" type="text" style="min-width:90px" placeholder="Na Rin" value="${r.name}" list="b-namelist" onchange="updateBRow('${r.id}','name',this.value)"></td>
       <td><select class="bi" style="min-width:100px" onchange="updateBRow('${r.id}','supplier',this.value);autoFillB('${r.id}',this)">
-        <option value="" ${!r.supplier?'selected':''}>— 選擇 —</option>
+        <option value="" ${!r.supplier?'selected':''}>${ehsText('— 選擇 —','— Select —','— ជ្រើស —')}</option>
         <option value="K.S.W.M" ${r.supplier==='K.S.W.M'?'selected':''}>K.S.W.M</option>
         <option value="SONYAPICH" ${r.supplier==='SONYAPICH'?'selected':''}>SONYAPICH</option>
         <option value="OTHER" ${r.supplier==='OTHER'?'selected':''}>Other</option>
@@ -1127,7 +1162,7 @@ async function submitModB(){
     showToast('✅ 已提交 '+valid.length+' 筆至雲端');
   }catch(e){showToast('⚠️ 本機已儲存 ('+valid.length+' 筆)，雲端離線');}
   bRows=[];renderBBatch();
-  btn.disabled=false;btn.innerHTML='📨 批次提交 (<span id="b-row-count">0</span> 筆)';
+  btn.disabled=false;btn.innerHTML='📨 '+ehsText('批次提交','Batch Submit','ដាក់ស្នើជាក្រុម')+' (<span id="b-row-count">0</span> '+ehsText('筆','records','កំណត់ត្រា')+')';
   renderBAnalysis();
 }
 
@@ -1461,7 +1496,11 @@ function parseEhsSmartImport(file){
         const norm=function(v){return text(v).toLowerCase().replace(/[\s_\-\/()（）:：.]/g,'');};
         const isDate=function(v){
           const s=text(v),iso=excelDateToISO(s);
-          return /^\d{4}-\d{2}-\d{2}$/.test(iso)?iso:'';
+          // 舊範本某些隱藏／重複分頁只有「2026」單一數字；若把它當 Excel
+          // 序號會變成 1905-07-18。EHS 工作表只接受合理營運年份，排除這種假日期。
+          if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return '';
+          const y=parseInt(iso.slice(0,4),10);
+          return y>=2000&&y<=2100?iso:'';
         };
         const sheetMonth=function(name,raw,limit){
           let year='';
@@ -1649,10 +1688,9 @@ async function fetchGAS(payload){
   const res=await fetch(url,{mode:'cors'});return res.json();
 }
 function sendTG(text,chatId){
-  fetch('https://api.telegram.org/bot'+TG_BOT+'/sendMessage',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({chat_id:chatId,text,parse_mode:'HTML'})
-  }).catch(()=>{});
+  if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.send)
+    return GC.telegram.send(text,[],[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_ehs_v2.html'}]],chatId||TG_GROUP,'ehs').catch(()=>{});
+  return Promise.resolve(false);
 }
 
 /* ========== HELPERS ========== */
@@ -1667,8 +1705,8 @@ function getWeek(d){
     setLang(lang); buildYearSelect('a-p-year',renderAAnalysis); buildMonthSelect('a-p-month',renderAAnalysis);
     buildYearSelect('b-p-year',renderBAnalysis); buildMonthSelect('b-p-month',renderBAnalysis);
     buildYearSelect('r-year',renderReport); buildMonthSelect('r-month',renderReport); buildYearSelect('h-year',queryHistory);
-    const hy=document.getElementById('h-year'); const allOpt=document.createElement('option');allOpt.value='';allOpt.textContent='全年份';hy.insertBefore(allOpt,hy.firstChild);
-    const tick=()=>{const now=new Date();document.getElementById('ts-sub').textContent='Vantage River Textiles · '+now.toLocaleString('zh-TW',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});};
+    const hy=document.getElementById('h-year'); const allOpt=document.createElement('option');allOpt.value='';allOpt.textContent=ehsText('全年份','All years','គ្រប់ឆ្នាំ');hy.insertBefore(allOpt,hy.firstChild);
+    const tick=()=>{const now=new Date();const locale=lang==='zh'?'zh-TW':(lang==='km'?'km-KH':'en-GB');document.getElementById('ts-sub').textContent='Vantage River Textiles · '+now.toLocaleString(locale,{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});};
     tick();setInterval(tick,30000); addARow();addBRow(); renderAAnalysis();renderBAnalysis();
   };
   if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
@@ -1684,9 +1722,9 @@ var cfg = (() => {
   const load = () => {
     try { _cfg = JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e) {}
     const fixedGasUrl='https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
-    if(!_cfg.gasUrl || /AKfycbyRm/.test(_cfg.gasUrl)) _cfg.gasUrl=fixedGasUrl;
-    if(!_cfg.botToken) _cfg.botToken = TG_BOT  || '8619620911:AAHAaXvCVs6N1g0WNxzl84k6MshNd_lKTeM';
-    if(!_cfg.chatId || _cfg.chatId==='-4002295659') _cfg.chatId=TG_GROUP || '-5113064563';
+    _cfg.gasUrl=fixedGasUrl;
+    _cfg.botToken='';
+    _cfg.chatId=TG_GROUP || '-5113064563';
     // Populate settings inputs
     var g = document.getElementById('cfg-gas');
     var b = document.getElementById('cfg-token');
@@ -1742,20 +1780,16 @@ var cfg = (() => {
    ═══════════════════════════════════════════════════════════════ */
 var tgPost = async (body) => {
   var c = cfg.get();
-  var token  = c.botToken || TG_BOT;
   var chatId = c.chatId   || TG_GROUP;
   var payload = Object.assign({chat_id: chatId, parse_mode: 'HTML'}, body);
   var rows = payload.reply_markup && payload.reply_markup.inline_keyboard ? payload.reply_markup.inline_keyboard.slice() : [];
   rows.push([{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_ehs_v2.html'}]);
   payload.reply_markup = {inline_keyboard:rows};
   try {
-    var r = await fetch('https://api.telegram.org/bot'+token+'/sendMessage', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify(payload)
-    });
-    return await r.json();
-  } catch(e) { return null; }
+    if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.send)
+      return await GC.telegram.send(payload.text||'',[],rows,chatId,'ehs');
+    return await gasPost({action:'telegram',tool:'ehs',chatId:chatId,text:payload.text||'',buttons:rows});
+  } catch(e) { return {ok:false,error:e.message}; }
 };
 
 var gasGet = async (params) => {

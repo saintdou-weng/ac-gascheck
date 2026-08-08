@@ -678,8 +678,45 @@ function setLang(l) {
     if(I18N[l][k]) el.textContent = I18N[l][k];
   });
   renderAll();
+  setTimeout(applyKeyStaticLanguage,0);
 }
 function t(k) { return I18N[lang][k] || I18N['zh'][k] || k; }
+
+const KEY_UI_WORDS={
+  '鑰匙動態管理系統':'Key Movement Management','暫無異常':'No anomalies','全部鑰匙已歸還':'All keys returned','無記錄':'No records',
+  '未歸還':'Outstanding','已歸還':'Returned','遺失':'Lost','全部部門':'All Departments','全部狀態':'All Status',
+  '一般鑰匙':'Standard Key','卡片鑰匙':'Card Key','摩托車鑰匙':'Motorcycle Key','汽車鑰匙':'Car Key','捲簾門':'Roller Shutter',
+  '掛鎖':'Padlock','密碼鎖':'Combination Lock','設備鑰匙':'Equipment Key','宿舍門':'Dorm Door','辦公室門':'Office Door',
+  '輕微損耗':'Minor Wear','損壞':'Damaged','良好':'Good','倉庫':'Warehouse','裁剪':'Cutting','車間':'Workshop','成品':'Finished Goods',
+  '馬克':'Marking','品管':'QC','外籍人員宿舍':'Foreign Staff Dorm','當地人員宿舍':'Local Staff Dorm','外籍宿舍':'Foreign Dorm',
+  '當地宿舍':'Local Dorm','辦公室':'Office','行政中心':'Admin Center','加照片':'Add Photo'
+};
+const KEY_UI_KM={
+  '鑰匙動態管理系統':'ប្រព័ន្ធគ្រប់គ្រងចលនាសោ','暫無異常':'គ្មានភាពមិនប្រក្រតី','全部鑰匙已歸還':'សោទាំងអស់បានប្រគល់','無記錄':'គ្មានកំណត់ត្រា',
+  '未歸還':'មិនទាន់ប្រគល់','已歸還':'បានប្រគល់','遺失':'បាត់','全部部門':'គ្រប់ផ្នែក','全部狀態':'គ្រប់ស្ថានភាព',
+  '倉庫':'ឃ្លាំង','裁剪':'កាត់','車間':'រោងជាង','辦公室':'ការិយាល័យ','行政中心':'មជ្ឈមណ្ឌលរដ្ឋបាល','加照片':'បន្ថែមរូបថត'
+};
+const KEY_ORIGINAL_TEXT=new WeakMap();let _keyApplying=false,_keyTimer=0;
+function applyKeyStaticLanguage(){
+  if(!document.body||_keyApplying)return;_keyApplying=true;
+  try{
+    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;
+    while(node=walker.nextNode()){
+      const p=node.parentElement;if(!p||['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(p.tagName)||p.closest('.gc-head-tools'))continue;
+      const base=KEY_ORIGINAL_TEXT.has(node)?KEY_ORIGINAL_TEXT.get(node):node.nodeValue;KEY_ORIGINAL_TEXT.set(node,base);
+      if(lang==='zh'){if(node.nodeValue!==base)node.nodeValue=base;continue;}
+      let out=base;
+      Object.keys(KEY_UI_WORDS).sort((a,b)=>b.length-a.length).forEach(function(k){if(out.indexOf(k)>=0)out=out.split(k).join(lang==='km'?(KEY_UI_KM[k]||KEY_UI_WORDS[k]):KEY_UI_WORDS[k]);});
+      if(/[A-Za-z]/.test(out)&&/[\u3400-\u9fff]/.test(out))out=out.replace(/[\u3400-\u9fff]+/g,' ').replace(/([–—-])\s*[\/／]+\s*/g,'$1 ').replace(/^\s*[\/／:：·]+\s*/,'').replace(/\s*[\/／]+\s*(?=[A-Za-z])/g,' ').replace(/\s{2,}/g,' ');
+      if(node.nodeValue!==out)node.nodeValue=out;
+    }
+  }finally{_keyApplying=false;}
+}
+if(typeof MutationObserver!=='undefined'){
+  const obs=new MutationObserver(function(){if(_keyApplying)return;clearTimeout(_keyTimer);_keyTimer=setTimeout(applyKeyStaticLanguage,40);});
+  const start=function(){if(document.body)obs.observe(document.body,{subtree:true,childList:true});};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+}
 
 // ==================== DATA ====================
 var records = [];
@@ -1337,7 +1374,7 @@ function exportAllData() {
 
 // ==================== TELEGRAM ====================
 function getTgSettings() {
-  return { token: localStorage.getItem('ac_gascheck_tg_token') || '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw', chat: localStorage.getItem('ac_gascheck_tg_chat') || '-5113064563' };
+  return { token: 'server-managed', chat: '-5113064563' };
 }
 function saveTgSettings() {
   localStorage.setItem('tg_token', document.getElementById('tg-token').value.trim());
@@ -1386,11 +1423,8 @@ async function testTelegram() {
 
 async function sendTgMessage(token, chat, text) {
   try {
-    const r = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ chat_id:chat, text, parse_mode:'Markdown', reply_markup:{inline_keyboard:[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_keymovement_v2.html'}]]} })
-    });
-    const d = await r.json();
+    const buttons=[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_keymovement_v2.html'}]];
+    const d = await GC.telegram.send(text,[],buttons,chat||'-5113064563','keymovement');
     if(d.ok) showToast('Telegram 發送成功 ✓', 'success');
     else showToast('發送失敗: ' + d.description, 'error');
   } catch(e) {
@@ -1552,7 +1586,7 @@ window.updateRecord = updateRecord;
     GC.attach({
       tool:'keymovement',
       title:'Key 鑰匙管理',
-      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec',
+      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'datetime',
       idField:'id',
       groupField:'key_name',

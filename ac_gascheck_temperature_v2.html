@@ -251,7 +251,7 @@ tbody tr:hover{background:var(--bg);}
       <button class="pbtn on" id="rbam" onclick="setRP('morning')">早上</button>
       <button class="pbtn" id="rbpm" onclick="setRP('afternoon')">下午</button>
     </div>
-    <div class="rec-weather"><span class="clbl">🌤️ 天氣 Weather</span><div id="rec-wx"></div></div>
+    <div class="rec-weather"><span class="clbl" id="i-rec-weather">🌤️ 天氣 Weather</span><div id="rec-wx"></div></div>
     <input type="text" id="rec-note" style="width:180px" placeholder="備註（可選）">
     <button class="btn bp ml" onclick="saveAllRec()" id="i-saveall">💾 全部儲存</button>
     <button class="btn bg sm" onclick="syncUp()" id="i-upload-after-save" disabled>⬆ 上傳</button>
@@ -641,7 +641,7 @@ km:{
 let LANG='zh', DP='morning', RP='morning', HV='month', AV='month', HP=1;
 const PER_PAGE=30;
 let editZID=null, cfCB=null;
-const GAS_DEFAULT_URL='https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec';
+const GAS_DEFAULT_URL='https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
 const LSZ='vrt_th_z', LSR='vrt_th_r', LSTH='vrt_th_th', LSTG='vrt_th_tg', LSGAS='vrt_th_gas', LSLANG='vrt_th_lang';
 
 try { LANG=localStorage.getItem(LSLANG)||'zh'; } catch(e) {}
@@ -756,14 +756,16 @@ function setLang(l){
   try{localStorage.setItem(LSLANG,l);}catch(e){}
   document.querySelectorAll('.lbtn').forEach(b=>b.classList.toggle('on',b.textContent.trim()===(l==='zh'?'中文':l==='en'?'EN':'ខ្មែរ')));
   if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==l)GC.i18n.set(l);
-  applyI18n(); renderAll();
+  applyI18n(); renderAll(); tick();
+  // renderAll 內部分頁會更新日期導覽；下一個 event loop 再套用一次，避免沿用切換前的月份名稱。
+  setTimeout(renderHNavLabel,0);
 }
 window.addEventListener('gc:langchange',e=>{
   const l=e&&e.detail&&e.detail.lang;
   if(!D[l]||l===LANG)return;
   LANG=l; try{localStorage.setItem(LSLANG,l);}catch(ex){}
   document.querySelectorAll('.lbtn').forEach(b=>b.classList.toggle('on',b.textContent.trim()===(l==='zh'?'中文':l==='en'?'EN':'ខ្មែរ')));
-  applyI18n(); renderAll();
+  applyI18n(); renderAll(); setTimeout(renderHNavLabel,0);
 });
 function applyI18n(){
   // Map of elementId → translation key (or [key, isPH] for placeholders)
@@ -772,11 +774,11 @@ function applyI18n(){
     'i-tab-dash':'tab-dash','i-tab-rec':'tab-rec','i-tab-hist':'tab-hist',
     'i-tab-anal':'tab-anal','i-tab-zones':'tab-zones','i-tab-alert':'tab-alert','i-tab-set':'tab-set',
     // Dashboard
-    'i-addrec':'addrec',
+    'i-addrec':'addrec','i-date':'date','i-date2':'date','i-rec-weather':'wx',
     // Record
     'i-saveall':'saveall','i-clear':'clr','i-today-recs':'today_recs','i-clrtoday':'clrtoday',
     // History
-    'i-filter':'filter','i-allz':'allz','i-allp':'allp','i-am2':'am','i-pm2':'pm','i-expxl':'expxl',
+    'i-filter':'filter','i-filter-lbl':'filter','i-allz':'allz','i-allp':'allp','i-am2':'am','i-pm2':'pm','i-expxl':'expxl',
     // Analysis
     'i-filter2':'filter','i-cht':'cht','i-chh':'chh','i-cha':'cha','i-chs':'chs',
     // Zones
@@ -799,7 +801,7 @@ function applyI18n(){
     // Info
     'i-appinfo':'appinfo','i-irc':'irc','i-izn':'izn','i-ifc':'ifc','i-ilc':'ilc','i-ist':'ist',
     // Zone modal
-    'i-znzh':'znzh','i-znen':'znen','i-znkm':'znkm','i-zncol':'zncol','i-znact':'znact','i-zndesc':'zndesc',
+    'i-znzh':'znzh','i-znen':'znen','i-znkm':'znkm','i-zncol':'zncol','i-znact':'znact','i-zndesc':'zndesc','zm-tit':'addztit',
     'i-cancel':'cancel','i-cancel2':'cancel','i-cancel3':'cancel',
     'i-save':'save','i-save2':'save',
     // Record edit modal
@@ -1099,7 +1101,9 @@ function renderHNavLabel(){
   const t=document.getElementById('hto')?.value;
   const el=document.getElementById('h-nav-label');if(!el)return;
   if(!f&&!t){el.textContent='--';return;}
-  const mns=T('months')||['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const activeButton=document.querySelector('.gc-head-langs [data-gc-ui-lang].on');
+  const activeLang=(activeButton&&activeButton.dataset.gcUiLang)||(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang)||LANG;
+  const mns=(D[activeLang]&&D[activeLang].months)||['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
   if(HV==='day'){
     el.textContent=f===t?f:(f+' → '+t);
   } else if(HV==='week'){
@@ -1704,22 +1708,15 @@ function prevTG(){
   const p=document.getElementById('tg-prev');p.textContent=typeof packet==='string'?packet:(packet.text||'');p.style.display='block';
 }
 async function sendTG(){
-  const cfg=getTG();if(!cfg.tok||!cfg.chat){toast('請設定 Bot Token 和 Chat ID','err');return;}
+  const cfg=getTG();
   const period=(document.getElementById('tg-period')||{}).value||'month';
   const mode=(document.getElementById('tg-type')||{}).value||'summary';
   const ref=(document.getElementById('tg-date')||{}).value||today();
   const packet=typeof buildTGPeriodMsg==='function'?buildTGPeriodMsg(period,mode,ref):{text:buildTGmsg('daily',ref)};
-  const msg=(typeof packet==='string'?packet:(packet.text||''))+'\n\n📊 Open Dashboard / 開啟平台: https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html';
+  const msg=typeof packet==='string'?packet:(packet.text||'');
   if(!msg||!msg.trim()){toast('訊息內容為空，請確認日期有記錄','err');return;}
   try{
-    // Telegram API 要用 application/json（不是 text/plain）
-    const r=await fetch('https://api.telegram.org/bot'+cfg.tok+'/sendMessage',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({chat_id:cfg.chat, text:msg})
-      // 不加 parse_mode，用純文字避免特殊字元報錯
-    });
-    const d=await r.json();
+    const d=await GC.telegram.send(msg,(packet&&packet.photos)||[],[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html'}]],cfg.chat||'-5113064563','temperature');
     d.ok?toast('Telegram 發送成功 ✅','ok'):toast('Telegram 錯誤: '+(d.description||''),'err');
   }catch(ex){toast('網路錯誤: '+ex.message,'err');}
 }
@@ -2011,7 +2008,7 @@ window.addEventListener('load',function(){
 });
 </script><script>
 // AC_GASCHECK Platform TG Defaults
-var AC_TG_TOKEN_DEFAULT = '8673221735:AAH0KoC89DPLNu4D70inRfkY2xwedLkXjnw';
+var AC_TG_TOKEN_DEFAULT = '';
 var AC_TG_CHAT_DEFAULT  = '-5113064563';
 
 (function(){
@@ -2049,7 +2046,7 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
     GC.attach({
       tool:'temperature',
       title:'Temperature 溫濕度',
-      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbyRmex6EmpUKGEzrswyFwO_aySAFg2d7tJuUaFBKtlAuOEwVc2TRerP7zbFilitVvZ8Sg/exec',
+      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'d',
       idField:'id',
       groupField:'z',
