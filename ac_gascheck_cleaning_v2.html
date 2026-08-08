@@ -237,7 +237,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
   </div>
   <div class="br">
     <button class="btn bp" id="btn-save" onclick="rec.save()">💾 <span data-i="btn-save">儲存記錄</span></button>
-    <button class="btn bg" onclick="rec.saveTg()">📤 <span data-i="btn-tg">Telegram</span></button>
+    <button class="btn bg" onclick="rec.sendTelegramRecord()">📤 <span data-i="btn-tg">Telegram</span></button>
     <button class="btn bo" onclick="rec.clear()">🔄 <span data-i="btn-clear">清除</span></button>
   </div>
 </div></div>
@@ -717,13 +717,14 @@ var api = (() => {
     const r=await fetch(c.gasUrl+'?'+qs);
     return r.json();
   };
-  const tg = async (msg,buttons) => {
+  const tg = async (msg,photos,buttons) => {
     if(!msg || !String(msg).trim()) throw new Error('Telegram 訊息是空的');
     const keyboard=buttons||[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_cleaning_v2.html'}]];
+    const packetPhotos=Array.isArray(photos)?photos.slice(0,5):[];
     /* 優先走共用 GAS，避免在 HTML 暴露 Bot Token，也避免舊 URL／CORS 問題。 */
     if(typeof GC!=='undefined'&&GC.telegram&&typeof GC.telegram.send==='function')
-      return GC.telegram.send(String(msg),[],keyboard);
-    const res=await post({action:'telegram',text:String(msg),photos:[],buttons:keyboard});
+      return GC.telegram.send(String(msg),packetPhotos,keyboard);
+    const res=await post({action:'telegram',text:String(msg),photos:packetPhotos,buttons:keyboard});
     if(!res||res.ok===false) throw new Error((res&&res.error)||'Telegram 發送失敗');
     return res;
   };
@@ -855,14 +856,33 @@ var rec = (() => {
     ui.toast('✅ '+i18n.t('saved'));
     clear();
   };
-  const saveTg = async () => {
+  const sendTelegramRecord = async () => {
     const date=gv('r-date'),locId=gv('r-loc'),cleaner=gv('r-cleaner');
-    const loc=locName(locId);
-    const chks=state.getChk();
-    const fails=CHK_ITEMS.filter(k=>chks[k]===false).map(k=>i18n.t('ci-'+k));
-    const msg=`🧹 <b>VRT Cleaning / សម្អាត</b>\n📅 ${date}  📍 ${loc}\n👷 ${cleaner}\n⏰ ${state.getSlots().join(', ')||'—'}\n${fails.length?'❌ '+i18n.t('anomaly')+': '+fails.join(', '):'✅ '+i18n.t('all-pass')}\n${gv('r-note')?'📝 '+gv('r-note'):''}`;
-    try { await api.tg(msg); ui.toast('📤 Telegram 已發送'); }
-    catch(e) { ui.toast('❌ Telegram：'+e.message); }
+    if(!date||!locId||!cleaner){ui.toast('⚠️ '+i18n.t('rec-hint'));return;}
+    const loc=locName(locId), chks=state.getChk();
+    const photos=window._phCtl?window._phCtl.get():[];
+    const tx=(zh,en,km)=>typeof GC!=='undefined'&&GC.telegram?GC.telegram.text(zh,en,km,'bi'):zh+' / '+en;
+    const escT=v=>typeof GC!=='undefined'&&GC.util?GC.util.escapeHtml(v):String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const checks=CHK_ITEMS.map(k=>CHK_ICONS[k]+' '+(chks[k]===false?'✗':'✓')).join('  ');
+    const failed=CHK_ITEMS.filter(k=>chks[k]===false).map(k=>{
+      const labels={smell:['氣味','Smell','ក្លិន'],light:['燈光','Light','អំពូល'],floor:['地板','Floor','ជាន់'],door:['門','Door','ទ្វារ'],corner:['角落','Corner','ជ្រុង'],ceiling:['天花','Ceiling','ពិដាន']}[k]||[k,k,k];
+      return tx(labels[0],labels[1],labels[2]);
+    });
+    const lines=[
+      (failed.length?'⚠️':'✅')+' <b>'+tx('VRT 清潔記錄','VRT Cleaning Record','កំណត់ត្រាសម្អាត VRT')+'</b>',
+      '━━━━━━━━━━━━━━━━',
+      '📅 '+escT(date)+'  📍 '+escT(loc),
+      '👷 '+escT(cleaner)+(gv('r-checker')?'  🔎 '+escT(gv('r-checker')):''),
+      '⏰ '+escT(state.getSlots().join(', ')||'—'),
+      (failed.length?'❌ '+tx('異常','Fail','ធ្លាក់')+': '+failed.join(', '):'✅ '+tx('全部通過','All passed','ជាប់ទាំងអស់')),
+      checks
+    ];
+    if(gv('r-note'))lines.push('📝 '+escT(gv('r-note')));
+    if(photos.length)lines.push('📷 '+photos.length+' '+tx('張照片','photo(s)','រូបថត'));
+    try {
+      await api.tg(lines.join('\n'),photos,[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_cleaning_v2.html'}]]);
+      ui.toast('📤 Telegram 已發送');
+    } catch(e) { ui.toast('❌ Telegram：'+e.message); }
   };
   const clear = () => {
     ['r-date','r-loc','r-shift','r-cleaner','r-checker','r-note','r-photo-n'].forEach(id=>sv(id,''));
@@ -871,7 +891,7 @@ var rec = (() => {
     state.resetChk(); state.resetSlots();
     renderCheckGrid(); renderSlots();
   };
-  return {save, saveTg, clear};
+  return {save, sendTelegramRecord, saveTg:sendTelegramRecord, clear};
 })();
 
 /* ═══ HISTORY MODULE ═══ */
@@ -1526,6 +1546,14 @@ function cleaningTelegramText(zh,en,km,lang){
   if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
   return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
 }
+function cleaningTelegramItem(k,lang){
+  const labels={
+    smell:['氣味','Smell','ក្លិន'], light:['燈光','Light','អំពូល'],
+    floor:['地板','Floor','ជាន់'], door:['門','Door','ទ្វារ'],
+    corner:['角落','Corner','ជ្រុង'], ceiling:['天花','Ceiling','ពិដាន']
+  }[k]||[k,k,k];
+  return cleaningTelegramText(labels[0],labels[1],labels[2],lang);
+}
 function cleaningTelegramSlotFilter(r,slot){
   if(!slot||slot==='all')return true;
   const slots=(typeof GC!=='undefined'&&GC.util?GC.util.asArray(r&&r.slots):Array.isArray(r&&r.slots)?r.slots:[]).map(String);
@@ -1549,7 +1577,7 @@ function buildCleaningTelegram(opt){
   if(!view.length) lines.push('⚠️ '+cleaningTelegramText('該期間沒有清潔記錄','No cleaning records in selected period','គ្មានកំណត់ត្រាសម្អាតក្នុងរយៈពេលនេះ',lang));
   view.slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))).slice(0,60).forEach(function(r){
     const bad=Object.values(r.checks||{}).some(v=>v===false);
-    const badItems=(typeof CHK_ITEMS!=='undefined'?CHK_ITEMS:[]).filter(function(k){return r.checks&&r.checks[k]===false;}).map(function(k){return typeof i18n!=='undefined'?i18n.t('ci-'+k):k;});
+    const badItems=(typeof CHK_ITEMS!=='undefined'?CHK_ITEMS:[]).filter(function(k){return r.checks&&r.checks[k]===false;}).map(function(k){return cleaningTelegramItem(k,lang);});
     lines.push('🧹 '+esc(r.date||'—')+' | '+esc(typeof locName==='function'?locName(r.locId):r.locId||'—')+' | '+esc(r.cleaner||'—')+' | '+(bad?'❌ '+cleaningTelegramText('異常','Fail','ធ្លាក់',lang):'✅ '+cleaningTelegramText('通過','Pass','ជាប់',lang)));
     if(r.checker)lines.push('   🔎 '+esc(r.checker));
     if(badItems.length)lines.push('   ⚠️ '+esc(badItems.join(', ')));

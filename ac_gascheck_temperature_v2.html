@@ -1654,6 +1654,14 @@ function tempTelegramText(zh,en,km,lang){
   if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
   return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
 }
+function tempTelegramStatus(k,lang){
+  const labels={cold:['過冷','Too cold','ត្រជាក់ពេក'],cool:['涼爽','Cool','ត្រជាក់'],ok:['正常','Normal','ធម្មតា'],warm:['偏熱','Warm','ក្តៅ'],hot:['過熱','Too hot','ក្តៅពេក'],dry:['過乾','Dry','ស្ងួត'],humid:['偏濕','Humid','សើម'],vhum:['過濕','Very humid','សើមខ្លាំង']}[k]||[k,k,k];
+  return tempTelegramText(labels[0],labels[1],labels[2],lang);
+}
+function tempTelegramWeather(k,lang){
+  const labels={sunny:['晴','Sunny','មេឃស្រឡះ'],cloudy:['多雲','Cloudy','មានពពក'],rain:['雨','Rain','ភ្លៀង'],heavyRain:['大雨','Heavy rain','ភ្លៀងខ្លាំង'],storm:['雷雨','Storm','ព្យុះ'],hot:['酷熱','Hot','ក្ដៅ'],humid:['潮濕','Humid','សើម']}[k];
+  return labels?tempTelegramText(labels[0],labels[1],labels[2],lang):String(k||'');
+}
 function tempTelegramSlotMatch(r,slot){ return !slot||slot==='all'||String(r.p||'')===String(slot); }
 function buildTGPeriodMsg(period,mode,ref,slot,lang){
   const all=getR();
@@ -1679,14 +1687,14 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
       const name=z?(lang==='zh'?(z.zh||z.en||z.id):lang==='en'?(z.en||z.zh||z.id):lang==='km'?(z.km||z.en||z.zh||z.id):((z.en||z.zh||z.id)+' / '+(z.zh||z.en||z.id))):String(r.z||'?');
       const per=r.p==='morning'?tempTelegramText('早上','Morning','ពេលព្រឹក',lang):tempTelegramText('下午','Afternoon','ពេលរសៀល',lang);
       const ts=tSt(r.t),hs=hSt(r.h);
-      const status=[ts&&tempTelegramText(T(ts.k),({cold:'Cold',cool:'Cool',ok:'Normal',warm:'Warm',hot:'Hot'}[ts.k]||ts.k),ts.k,lang),hs&&tempTelegramText(T(hs.k),({dry:'Dry',humid:'Humid',vhum:'Very Humid'}[hs.k]||hs.k),hs.k,lang)].filter(Boolean).join(' / ')||tempTelegramText('正常','Normal','ធម្មតា',lang);
-      lines.push('🏭 '+name+' | '+per+' | 🌡️ '+(r.t!==''&&r.t!=null?r.t+'°C':'--')+' | 💧 '+(r.h!==''&&r.h!=null?r.h+'%':'--')+' | '+status+(r.wx?' | '+_wxLabel(r.wx):''));
+      const status=[ts&&tempTelegramStatus(ts.k,lang),hs&&tempTelegramStatus(hs.k,lang)].filter(Boolean).join(' / ')||tempTelegramText('正常','Normal','ធម្មតា',lang);
+      lines.push('🏭 '+name+' | '+per+' | 🌡️ '+(r.t!==''&&r.t!=null?r.t+'°C':'--')+' | 💧 '+(r.h!==''&&r.h!=null?r.h+'%':'--')+' | '+status+(r.wx?' | '+tempTelegramWeather(r.wx,lang):''));
       count++;
     });
   });
   lines.push('━━━━━━━━━━━━━━━━','⚠️ '+tempTelegramText('異常','Anomaly','មិនប្រក្រតី',lang)+': '+anomalies+' | 📋 '+tempTelegramText('記錄','Records','កំណត់ត្រា',lang)+': '+view.length,'⏰ '+new Date().toLocaleString());
   const out=lines.join('\n');
-  return {text:out.length>3900?out.slice(0,3860)+'\n… (more records omitted / 其餘記錄略)':out,photos:photos};
+  return {text:out.length>3900?out.slice(0,3860)+'\n… '+tempTelegramText('其餘記錄略','More records omitted','កំណត់ត្រាបន្ថែមត្រូវបានរំលង',lang):out,photos:photos};
 }
 function prevTG(){
   const period=(document.getElementById('tg-period')||{}).value||'month';

@@ -1197,36 +1197,55 @@ GC.telegram = {
   },
   buildText(cfg, period, mode, ref, scope, slot, lang) {
     cfg = cfg || {};
+    const label = (key, zhFallback, enFallback, kmFallback) => {
+      const dict = I18.dict || {};
+      const zh = dict.zh && dict.zh[key] != null ? dict.zh[key] : zhFallback;
+      const en = dict.en && dict.en[key] != null ? dict.en[key] : (enFallback || zhFallback);
+      const km = dict.km && dict.km[key] != null ? dict.km[key] : (kmFallback || en);
+      return GC.telegram.text(zh, en, km, lang || I18.lang);
+    };
     const all = typeof cfg.read === 'function' ? (cfg.read() || []) : [];
     const list = Array.isArray(all) ? all : [];
     let view = GC.telegram.filter(list, cfg, period || 'month', ref, scope, slot);
     const pending = view.filter(GC.telegram.pending);
     const periodLabels = {
-      day: I18.t('gc.today'), week: I18.t('gc.thisWeek'), month: I18.t('gc.thisMonth'),
-      year: I18.t('gc.thisYear'), all: I18.t('gc.all')
+      day: label('gc.today', '今日', 'Today', 'ថ្ងៃនេះ'),
+      week: label('gc.thisWeek', '本週', 'This Week', 'សប្ដាហ៍នេះ'),
+      month: label('gc.thisMonth', '本月', 'This Month', 'ខែនេះ'),
+      year: label('gc.thisYear', '今年', 'This Year', 'ឆ្នាំនេះ'),
+      all: label('gc.all', '全部', 'All', 'ទាំងអស់')
     };
-    const modeLabels = { summary: I18.t('gc.summary'), review: I18.t('gc.review'), approval: I18.t('gc.approval') };
-    const title = U.escapeHtml(cfg.title || cfg.tool || 'AC GASCHECK');
+    const modeLabels = {
+      summary: label('gc.summary', '摘要', 'Summary', 'សង្ខេប'),
+      review: label('gc.review', '審查', 'Review', 'ពិនិត្យ'),
+      approval: label('gc.approval', '核可', 'Approval', 'អនុម័ត')
+    };
+    const titleMap = {
+      asset: ['VRT 資產', 'VRT Asset', 'VRT ទ្រព្យសម្បត្តិ'],
+      dormitory: ['VRT 宿舍', 'VRT Dormitory', 'VRT អន្តេវាសិកដ្ឋាន'],
+      keymovement: ['VRT 鑰匙管理', 'VRT Key Management', 'VRT គ្រប់គ្រងសោ']
+    }[cfg.tool];
+    const title = U.escapeHtml(titleMap ? GC.telegram.text(titleMap[0], titleMap[1], titleMap[2], lang || I18.lang) : (cfg.title || cfg.tool || 'AC GASCHECK'));
     const lines = [
       '♻️ <b>' + title + '</b>',
       '📅 ' + U.escapeHtml(periodLabels[period] || period || I18.t('gc.thisMonth')),
-      (slot && slot !== 'all' ? '⏱️ ' + U.escapeHtml(I18.t('gc.slot')) + ': ' + U.escapeHtml((cfg.telegramSlots || []).find(x => (typeof x === 'string' ? x : x.value) === slot) ? GC.telegram.slotText((cfg.telegramSlots || []).find(x => (typeof x === 'string' ? x : x.value) === slot), lang) : slot) : ''),
-      '📊 ' + U.escapeHtml(I18.t('gc.records')) + ': <b>' + view.length + '</b> / ' +
-        U.escapeHtml(I18.t('gc.total')) + ': ' + list.length,
-      '🧾 ' + U.escapeHtml(I18.t('gc.mode')) + ': ' + U.escapeHtml(modeLabels[mode] || modeLabels.summary)
+      (slot && slot !== 'all' ? '⏱️ ' + U.escapeHtml(label('gc.slot', '發送時段', 'Send time slot', 'ពេលវេលាផ្ញើ')) + ': ' + U.escapeHtml((cfg.telegramSlots || []).find(x => (typeof x === 'string' ? x : x.value) === slot) ? GC.telegram.slotText((cfg.telegramSlots || []).find(x => (typeof x === 'string' ? x : x.value) === slot), lang) : slot) : ''),
+      '📊 ' + U.escapeHtml(label('gc.records', '記錄', 'Records', 'កំណត់ត្រា')) + ': <b>' + view.length + '</b> / ' +
+        U.escapeHtml(label('gc.total', '總計', 'Total', 'សរុប')) + ': ' + list.length,
+      '🧾 ' + U.escapeHtml(label('gc.mode', '訊息類型', 'Message type', 'ប្រភេទសារ')) + ': ' + U.escapeHtml(modeLabels[mode] || modeLabels.summary)
     ];
     const photoCount = cfg.photoField ? view.filter(r => U.asArray(r && r[cfg.photoField]).length).length : 0;
     const weatherCount = cfg.weatherField ? view.filter(r => r && r[cfg.weatherField]).length : 0;
-    lines.push('━━━━━━━━━━━━━━━━', '📊 <b>Dashboard</b>');
-    lines.push('• Records: <b>' + view.length + '</b> | Photos: ' + photoCount + (cfg.weather ? ' | Weather: ' + weatherCount : ''));
+    lines.push('━━━━━━━━━━━━━━━━', '📊 <b>' + label('gc.dashboard', '儀表板', 'Dashboard', 'ផ្ទាំងគ្រប់គ្រង') + '</b>');
+    lines.push('• ' + label('gc.records', '記錄', 'Records', 'កំណត់ត្រា') + ': <b>' + view.length + '</b> | ' + label('gc.photo', '照片', 'Photos', 'រូបថត') + ': ' + photoCount + (cfg.weather ? ' | ' + label('gc.weather', '天氣', 'Weather', 'អាកាសធាតុ') + ': ' + weatherCount : ''));
     if (cfg.groupField) {
       const groups = GC.dash.groupBy(view, r => r && r[cfg.groupField]).slice(0, 8);
       groups.forEach(g => lines.push('• ' + U.escapeHtml(g.label) + ': ' + g.value));
     }
     if (mode === 'review' || mode === 'approval') {
       lines.push('━━━━━━━━━━━━━━━━');
-      lines.push('⏳ ' + U.escapeHtml(I18.t('gc.pendingApproval')) + ': <b>' + pending.length + '</b>');
-      if (!pending.length) lines.push('✅ ' + U.escapeHtml(I18.t('gc.noApproval')));
+      lines.push('⏳ ' + U.escapeHtml(label('gc.pendingApproval', '待審查／待核可', 'Pending review / approval', 'កំពុងរង់ចាំពិនិត្យ/អនុម័ត')) + ': <b>' + pending.length + '</b>');
+      if (!pending.length) lines.push('✅ ' + U.escapeHtml(label('gc.noApproval', '沒有待審查／待核可資料', 'No pending review/approval records', 'គ្មានទិន្នន័យកំពុងរង់ចាំពិនិត្យ/អនុម័ត')));
     }
     lines.push('━━━━━━━━━━━━━━━━', '⏰ ' + U.ymdhms());
     return lines.join('\n');
