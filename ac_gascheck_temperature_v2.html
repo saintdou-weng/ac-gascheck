@@ -74,6 +74,12 @@ input[type=checkbox]{width:18px;height:18px;cursor:pointer;accent-color:var(--pr
 .cbar{background:var(--card);border-radius:var(--r);padding:13px 18px;margin-bottom:16px;box-shadow:var(--shadow-sm);border:1px solid var(--border);display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
 .date-nav{display:flex;align-items:center;gap:4px}.date-nav button{height:32px;min-width:28px;border:1px solid var(--border);border-radius:7px;background:var(--card);color:var(--text);cursor:pointer;font-weight:700}.date-nav input{width:140px!important}
 .rec-weather{display:flex;align-items:center;gap:7px;flex:1 1 300px;min-width:260px}.rec-weather .gc-weather{gap:4px}.rec-weather .gc-wx-btn{min-width:42px;padding:4px 6px}.rec-weather .gc-wx-ic{font-size:15px}.rec-weather .gc-wx-tx{font-size:9px}
+.livewx{margin:0 0 14px;padding:14px 16px;border:1px solid #b9ddec;border-radius:14px;background:linear-gradient(135deg,#f0fbff,#fff 58%,#f2fbf6);box-shadow:var(--shadow-sm)}
+.livewx-head{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:11px}.livewx-head strong{font-size:14px;color:#174a66}.livewx-state{margin-left:auto;display:inline-flex;align-items:center;gap:5px;padding:4px 9px;border:1px solid #c9d8e4;border-radius:14px;background:#fff;color:#607086;font-size:10px;font-weight:700}.livewx-state.ok{color:#147047;border-color:#b7e4cc;background:#effbf4}.livewx-state.busy{color:#9a6700;border-color:#efd99b;background:#fff9e8}.livewx-state.err{color:#b4232c;border-color:#f2b8bc;background:#fff2f3}
+.livewx-body{display:grid;grid-template-columns:repeat(6,minmax(96px,1fr));gap:8px}.livewx-metric{min-width:0;padding:9px 10px;border:1px solid #dce8ef;border-radius:10px;background:rgba(255,255,255,.88)}.livewx-k{font-size:9px;font-weight:800;color:#8290a4;text-transform:uppercase;letter-spacing:.04em}.livewx-v{margin-top:3px;font-size:15px;font-weight:800;color:#1e3852;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.livewx-condition{grid-column:span 2}.livewx-empty{grid-column:1/-1;padding:7px 0;color:#6c7c91;font-size:12px;line-height:1.5}
+.livewx-actions{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:11px}.livewx-actions .btn{min-height:36px}.livewx-note{flex:1 1 330px;color:#6d7a8e;font-size:10px;line-height:1.45}.livewx-source{margin-top:8px;color:#7b889b;font-size:10px}.livewx-source strong{color:#52657b}.livewx-not-today{color:#a45b00;font-weight:700}
+@media(max-width:760px){.livewx-body{grid-template-columns:repeat(3,minmax(88px,1fr))}.livewx-condition{grid-column:span 2}}
+@media(max-width:460px){.livewx{padding:12px}.livewx-body{grid-template-columns:repeat(2,minmax(0,1fr))}.livewx-condition{grid-column:span 2}.livewx-head{margin-bottom:9px}.livewx-state{margin-left:0}.livewx-actions .btn{flex:1 1 auto;justify-content:center;padding:8px 10px}.livewx-note{flex-basis:100%}}
 .clbl{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;}
 /* STAT CARDS */
 .sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:18px;}
@@ -246,7 +252,7 @@ tbody tr:hover{background:var(--bg);}
 <div class="pnl" id="pnl-rec">
   <div class="cbar">
     <span class="clbl" id="i-date2">日期</span>
-    <div class="date-nav"><button type="button" onclick="shiftTempDate('rec-date',-1)">◀</button><input type="date" id="rec-date" style="width:155px"><button type="button" onclick="shiftTempDate('rec-date',1)">▶</button></div>
+    <div class="date-nav"><button type="button" onclick="shiftTempDate('rec-date',-1)">◀</button><input type="date" id="rec-date" style="width:155px" onchange="renderRec();ensureLiveWeather()"><button type="button" onclick="shiftTempDate('rec-date',1)">▶</button></div>
     <div class="ptog">
       <button class="pbtn on" id="rbam" onclick="setRP('morning')">早上</button>
       <button class="pbtn" id="rbpm" onclick="setRP('afternoon')">下午</button>
@@ -257,6 +263,22 @@ tbody tr:hover{background:var(--bg);}
     <button class="btn bp ml" onclick="saveAllRec()" id="i-saveall">💾 全部儲存</button>
     <button class="btn bg sm" onclick="syncUp()" id="i-upload-after-save" disabled>⬆ 上傳</button>
     <button class="btn bg" onclick="clearRI()" id="i-clear">清除</button>
+  </div>
+  <div class="livewx" id="live-wx-card">
+    <div class="livewx-head">
+      <strong id="i-livewx-title">🌐 柬埔寨即時天氣確認</strong>
+      <span class="livewx-state" id="live-wx-state">尚未更新</span>
+    </div>
+    <div class="livewx-body" id="live-wx-body">
+      <div class="livewx-empty" id="i-livewx-empty">按「更新天氣」取得西港目前天氣，再由檢查人確認是否採用建議。</div>
+    </div>
+    <div class="livewx-actions">
+      <button type="button" class="btn bg sm" id="i-livewx-refresh" onclick="refreshLiveWeather(false)">🔄 更新天氣</button>
+      <button type="button" class="btn bg sm" id="i-livewx-locate" onclick="refreshLiveWeather(true)">📍 使用本機位置</button>
+      <button type="button" class="btn bs sm" id="i-livewx-apply" onclick="applyLiveWeather()" disabled>✅ 採用建議</button>
+      <span class="livewx-note" id="i-livewx-note">資料只供比對；必須按「採用建議」才會帶入天氣，溫濕度仍以廠內儀器為準。</span>
+    </div>
+    <div class="livewx-source" id="live-wx-source"></div>
   </div>
   <div class="sm-t muted mb8" id="rec-plbl" style="margin-bottom:10px;"></div>
   <div class="rgrid" id="rec-zgrid"></div>
@@ -565,6 +587,10 @@ zh:{
   clbl_date:'日期',clbl_zone:'區域',clbl_per:'時段',clbl_tmp:'溫度°C',clbl_hum:'濕度%',clbl_stat:'狀態',clbl_note:'備註',clbl_checker:'檢查人',
   an_cnt:'記錄',an_avgt:'均溫°C',an_maxt:'最高°C',an_mint:'最低°C',an_avgh:'均濕%',an_maxh:'最高%',an_minh:'最低%',an_anom:'異常',
   rplbl_note_ph:'備註（可選）',checker_ph:'檢查人',today_recs:'今日已記錄',
+  livewx_title:'🌐 柬埔寨即時天氣確認',livewx_empty:'按「更新天氣」取得西港目前天氣，再由檢查人確認是否採用建議。',
+  livewx_refresh:'🔄 更新天氣',livewx_locate:'📍 使用本機位置',livewx_apply:'✅ 採用建議',livewx_note:'資料只供比對；必須按「採用建議」才會帶入天氣，溫濕度仍以廠內儀器為準。',
+  livewx_idle:'尚未更新',livewx_loading:'正在取得即時天氣…',livewx_ready:'即時資料已更新',livewx_cached:'顯示上次快取資料',livewx_error:'即時天氣連線失敗',livewx_applied:'已採用天氣建議',
+  livewx_location:'位置',livewx_condition:'目前天氣',livewx_temp:'室外溫度',livewx_cloud:'雲量',livewx_humidity:'室外濕度',livewx_rain:'一小時降雨',livewx_wind:'風速',livewx_suggest:'建議選擇',livewx_observed:'資料時間',livewx_source:'資料來源',livewx_default_loc:'柬埔寨・西港',livewx_device_loc:'本機位置',livewx_model:'約 30 分鐘更新的區域天氣預報',livewx_not_today:'目前選擇的記錄日期不是今天，只供參考，不能直接採用。',livewx_stale:'即時資料已超過 30 分鐘，請先更新天氣。',livewx_loc_fail:'無法取得本機位置，已改用西港位置。',
   view_day:'日',view_week:'週',view_month:'月',view_year:'年',
   months:['1月','2月','3月','4月','5月','6月','7月','8月','9月','10月','11月','12月'],
 },
@@ -599,6 +625,10 @@ en:{
   clbl_date:'Date',clbl_zone:'Zone',clbl_per:'Period',clbl_tmp:'Temp°C',clbl_hum:'Hum%',clbl_stat:'Status',clbl_note:'Notes',clbl_checker:'Inspector',
   an_cnt:'Records',an_avgt:'Avg°C',an_maxt:'Max°C',an_mint:'Min°C',an_avgh:'Avg%',an_maxh:'Max%',an_minh:'Min%',an_anom:'Anomalies',
   rplbl_note_ph:'Optional notes',checker_ph:'Inspector',today_recs:"Today's Records",
+  livewx_title:'🌐 Cambodia Live Weather Check',livewx_empty:'Select “Update weather” to load current Sihanoukville weather, then let the inspector confirm whether to use the suggestion.',
+  livewx_refresh:'🔄 Update weather',livewx_locate:'📍 Use device location',livewx_apply:'✅ Use suggestion',livewx_note:'Reference only. Weather changes only after “Use suggestion”; indoor temperature and humidity must still come from the factory instrument.',
+  livewx_idle:'Not updated',livewx_loading:'Loading live weather…',livewx_ready:'Live weather updated',livewx_cached:'Showing last cached weather',livewx_error:'Live weather connection failed',livewx_applied:'Weather suggestion applied',
+  livewx_location:'Location',livewx_condition:'Current weather',livewx_temp:'Outdoor temp',livewx_cloud:'Cloud cover',livewx_humidity:'Outdoor humidity',livewx_rain:'1-hour rain',livewx_wind:'Wind speed',livewx_suggest:'Suggested choice',livewx_observed:'Data time',livewx_source:'Source',livewx_default_loc:'Sihanoukville, Cambodia',livewx_device_loc:'Device location',livewx_model:'Regional weather forecast updated about every 30 minutes',livewx_not_today:'The selected record date is not today. Live weather is reference only and cannot be applied directly.',livewx_stale:'Live weather is over 30 minutes old. Update it before use.',livewx_loc_fail:'Device location was unavailable; Sihanoukville was used instead.',
   view_day:'Day',view_week:'Week',view_month:'Month',view_year:'Year',
   months:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
 },
@@ -633,6 +663,10 @@ km:{
   clbl_date:'កាលបរិច្ឆេទ',clbl_zone:'តំបន់',clbl_per:'វេលា',clbl_tmp:'°C',clbl_hum:'%',clbl_stat:'ស្ថានភាព',clbl_note:'ចំណាំ',clbl_checker:'អ្នកត្រួតពិនិត្យ',
   an_cnt:'កំណត់ត្រា',an_avgt:'មធ្យម°C',an_maxt:'ខ្ពស់°C',an_mint:'ទាប°C',an_avgh:'មធ្យម%',an_maxh:'ខ្ពស់%',an_minh:'ទាប%',an_anom:'ខុសប្រក្រតី',
   rplbl_note_ph:'កំណត់ចំណាំ',checker_ph:'អ្នកត្រួតពិនិត្យ',today_recs:'ការកត់ត្រាថ្ងៃនេះ',
+  livewx_title:'🌐 ពិនិត្យអាកាសធាតុបច្ចុប្បន្ននៅកម្ពុជា',livewx_empty:'ចុច «ធ្វើបច្ចុប្បន្នភាព» ដើម្បីយកអាកាសធាតុបច្ចុប្បន្ននៅក្រុងព្រះសីហនុ ហើយឱ្យអ្នកត្រួតពិនិត្យបញ្ជាក់។',
+  livewx_refresh:'🔄 ធ្វើបច្ចុប្បន្នភាព',livewx_locate:'📍 ប្រើទីតាំងឧបករណ៍',livewx_apply:'✅ ប្រើសំណើ',livewx_note:'សម្រាប់យោងប៉ុណ្ណោះ។ ត្រូវចុច «ប្រើសំណើ» ទើបបញ្ចូលអាកាសធាតុ; សីតុណ្ហភាព និងសំណើមក្នុងរោងចក្រត្រូវយកពីឧបករណ៍វាស់។',
+  livewx_idle:'មិនទាន់ធ្វើបច្ចុប្បន្នភាព',livewx_loading:'កំពុងទាញអាកាសធាតុ…',livewx_ready:'បានធ្វើបច្ចុប្បន្នភាព',livewx_cached:'កំពុងបង្ហាញទិន្នន័យចាស់',livewx_error:'មិនអាចភ្ជាប់អាកាសធាតុបាន',livewx_applied:'បានប្រើសំណើអាកាសធាតុ',
+  livewx_location:'ទីតាំង',livewx_condition:'អាកាសធាតុបច្ចុប្បន្ន',livewx_temp:'សីតុណ្ហភាពក្រៅ',livewx_cloud:'បរិមាណពពក',livewx_humidity:'សំណើមក្រៅ',livewx_rain:'ភ្លៀងក្នុង 1 ម៉ោង',livewx_wind:'ល្បឿនខ្យល់',livewx_suggest:'ជម្រើសណែនាំ',livewx_observed:'ពេលវេលាទិន្នន័យ',livewx_source:'ប្រភពទិន្នន័យ',livewx_default_loc:'ក្រុងព្រះសីហនុ កម្ពុជា',livewx_device_loc:'ទីតាំងឧបករណ៍',livewx_model:'ការព្យាករណ៍អាកាសធាតុតំបន់ ធ្វើបច្ចុប្បន្នភាពប្រហែល 30 នាទី',livewx_not_today:'កាលបរិច្ឆេទកំណត់ត្រាមិនមែនថ្ងៃនេះទេ។ ទិន្នន័យនេះសម្រាប់យោង និងមិនអាចប្រើដោយផ្ទាល់។',livewx_stale:'ទិន្នន័យលើស 30 នាទី។ សូមធ្វើបច្ចុប្បន្នភាពមុនប្រើ។',livewx_loc_fail:'មិនអាចយកទីតាំងឧបករណ៍បាន ដូច្នេះបានប្រើទីតាំងក្រុងព្រះសីហនុ។',
   view_day:'ថ្ងៃ',view_week:'សប្តាហ៍',view_month:'ខែ',view_year:'ឆ្នាំ',
   months:['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'],
 }};
@@ -644,7 +678,12 @@ let LANG='zh', DP='morning', RP='morning', HV='month', AV='month', HP=1;
 const PER_PAGE=30;
 let editZID=null, cfCB=null;
 const GAS_DEFAULT_URL='https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
-const LSZ='vrt_th_z', LSR='vrt_th_r', LSTH='vrt_th_th', LSTG='vrt_th_tg', LSGAS='vrt_th_gas', LSLANG='vrt_th_lang';
+const LSZ='vrt_th_z', LSR='vrt_th_r', LSTH='vrt_th_th', LSTG='vrt_th_tg', LSGAS='vrt_th_gas', LSLANG='vrt_th_lang', LSLIVEWX='vrt_th_live_weather_cache';
+const LIVE_WEATHER_DEFAULT={lat:10.625,lon:103.523,locationKey:'livewx_default_loc'};
+window._liveWeather=null;
+window._liveWeatherLoading=false;
+window._liveWeatherError=false;
+window._liveWeatherApplied=false;
 
 try { LANG=localStorage.getItem(LSLANG)||'zh'; } catch(e) {}
 
@@ -690,6 +729,8 @@ function compactTempRecords(list){
 }
 function tempStorageRecord(r){
   const out={id:r.id||'',z:r.z||'',d:r.d||'',p:r.p||'',t:r.t!==undefined?r.t:'',h:r.h!==undefined?r.h:'',wx:r.wx||'',checker:String(r.checker||'').slice(0,200),note:String(r.note||'').slice(0,2000),ts:r.ts||'',updatedAt:r.updatedAt||''};
+  const weatherObservation=parseWeatherObservation(r.weatherObservation||r.liveWeather);
+  if(weatherObservation)out.weatherObservation=weatherObservation;
   const photos=Array.isArray(r.photos)?r.photos.filter(p=>typeof p==='string'&&!/^data:image\//i.test(p)&&p.length<=4096):[];
   if(photos.length)out.photos=photos;
   return out;
@@ -779,6 +820,7 @@ function applyI18n(){
     'i-addrec':'addrec','i-date':'date','i-date2':'date','i-rec-weather':'wx',
     // Record
     'i-saveall':'saveall','i-clear':'clr','i-today-recs':'today_recs','i-clrtoday':'clrtoday',
+    'i-livewx-title':'livewx_title','i-livewx-empty':'livewx_empty','i-livewx-refresh':'livewx_refresh','i-livewx-locate':'livewx_locate','i-livewx-apply':'livewx_apply','i-livewx-note':'livewx_note',
     // History
     'i-filter':'filter','i-filter-lbl':'filter','i-allz':'allz','i-allp':'allp','i-am2':'am','i-pm2':'pm','i-expxl':'expxl',
     // Analysis
@@ -823,6 +865,7 @@ function applyI18n(){
   // Placeholder
   const rn=document.getElementById('rec-note');if(rn)rn.placeholder=T('rplbl_note_ph');
   const rc=document.getElementById('rec-checker');if(rc)rc.placeholder=T('checker_ph');
+  if(typeof renderLiveWeather==='function')renderLiveWeather();
   // Select option texts
   const hperiod=document.getElementById('hperiod');
   if(hperiod){hperiod.options[0].text=T('allp');hperiod.options[1].text=T('am');hperiod.options[2].text=T('pm');}
@@ -863,7 +906,7 @@ function showTab(n){
   document.getElementById('pnl-'+n).classList.add('on');
   document.getElementById('tab-'+n).classList.add('on');
   if(n==='dash')renderDash();
-  if(n==='rec')renderRec();
+  if(n==='rec'){renderRec();ensureLiveWeather();}
   if(n==='hist')renderHist();
   if(n==='anal')renderAnal();
   if(n==='zones')renderZones();
@@ -1003,6 +1046,7 @@ function renderRec(){
       if(ti&&r.t!=='')ti.value=r.t;if(hi&&r.h!=='')hi.value=r.h;prvSt(z.id);}
   });
   renderTodayCard(sel);
+  renderLiveWeather();
 }
 
 function prvSt(zid){
@@ -1021,6 +1065,7 @@ function saveAllRec(){
   const checker=document.getElementById('rec-checker').value.trim();
   const note=document.getElementById('rec-note').value;
   const wx=window._recWxCtl?window._recWxCtl.get():'';
+  const weatherObservation=weatherObservationForSave(wx,sel);
   const zones=getZ().filter(z=>z.on);
   let recs=getR();const newRecs=[];
   zones.forEach(z=>{
@@ -1029,7 +1074,7 @@ function saveAllRec(){
     if((t===''||t===undefined)&&(h===''||h===undefined))return;
     recs=recs.filter(r=>!(r.d===sel&&r.p===RP&&r.z===z.id));
     const rec={id:'r'+Date.now()+Math.random().toString(36).slice(2,5),z:z.id,d:sel,p:RP,
-      t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',wx,checker,note,ts:_localTS(),updatedAt:_localTS()};
+      t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',wx,weatherObservation,checker,note,ts:_localTS(),updatedAt:_localTS()};
     recs.push(rec);newRecs.push(rec);
   });
   setR(recs);toast(newRecs.length?T('saved')+' · '+T('syncup'):T('saved'),'ok');renderTodayCard(sel);updBadge();
@@ -1054,10 +1099,10 @@ function renderTodayCard(date){
   tb.innerHTML=`<div class="twrap"><table><thead><tr><th>${T('clbl_zone')}</th><th>${T('per')}</th><th>${T('clbl_tmp')}</th><th>${T('clbl_hum')}</th><th>${T('wxcol')}</th><th>${T('clbl_checker')}</th><th>${T('clbl_stat')}</th></tr></thead>
   <tbody>${recs.map(r=>{const z=zones.find(z=>z.id===r.z);const ts=tSt(r.t),hs=hSt(r.h);
     return `<tr><td><span style="display:inline-flex;align-items:center;gap:5px"><span style="width:8px;height:8px;border-radius:50%;background:${z?z.col:'#ccc'};display:inline-block"></span>${z?znm(z):'?'}</span></td>
-    <td>${r.p==='morning'?T('am'):T('pm')} ${r.wx?_wxLabel(r.wx):''}</td>
+    <td>${r.p==='morning'?T('am'):T('pm')} ${r.wx?_wxLabel(r.wx):''}${parseWeatherObservation(r.weatherObservation)?' 🌐':''}</td>
     <td class="${ts?ts.tc:''}">${r.t!==''?r.t+'°C':'--'}</td>
     <td class="${hs?hs.tc:''}">${r.h!==''?r.h+'%':'--'}</td>
-    <td style="white-space:nowrap">${_wxLabel(r.wx)}</td>
+    <td style="white-space:nowrap">${_wxLabel(r.wx)}${parseWeatherObservation(r.weatherObservation)?' 🌐':''}</td>
     <td>${r.checker||'—'}</td>
     <td>${ts&&ts.k!=='ok'?`<span class="bdg ${ts.cls}">${T(ts.k)}</span>`:''} ${hs&&hs.k!=='ok'?`<span class="bdg ${hs.cls}">${T(hs.k)}</span>`:''}</td>
     </tr>`;}).join('')}</tbody></table></div>`;
@@ -1161,7 +1206,7 @@ function renderHistTbl(recs,zones){
       <td>${r.p==='morning'?T('am').slice(0,2):T('pm').slice(0,2)}</td>
       <td class="${ts?ts.tc:''}">${r.t!==''?r.t+'°C':'--'}</td>
       <td class="${hs?hs.tc:''}">${r.h!==''?r.h+'%':'--'}</td>
-      <td style="white-space:nowrap">${_wxLabel(r.wx)}</td>
+      <td style="white-space:nowrap">${_wxLabel(r.wx)}${parseWeatherObservation(r.weatherObservation)?' 🌐':''}</td>
       <td>${r.checker||'—'}</td>
       <td>${ts&&ts.k!=='ok'?`<span class="bdg ${ts.cls}">${T(ts.k)}</span>`:''} ${hs&&hs.k!=='ok'?`<span class="bdg ${hs.cls}">${T(hs.k)}</span>`:''} ${cr?'🔴':an?'⚠️':''}</td>
       <td class="muted">${r.note||''}</td>
@@ -1453,6 +1498,144 @@ function _wxLabel(k){
   return k;
 }
 
+/* ── 柬埔寨即時天氣：MET Norway 區域天氣，只作現場判斷參考 ── */
+function liveWeatherText(zh,en,km){return LANG==='en'?en:(LANG==='km'?km:zh);}
+function liveWeatherCondition(code){
+  const raw=String(code==null?'':code).toLowerCase().replace(/_(day|night|polartwilight)$/,'');
+  const c=Number(code);let key='unknown';
+  if(raw&&!isFinite(c)){
+    if(raw.includes('thunder'))key='storm'; else if(raw.includes('heavyrain'))key='heavyRain';
+    else if(raw.includes('rain')||raw.includes('sleet'))key=raw.includes('showers')?'showers':'rain';
+    else if(raw.includes('snow'))key='snow'; else if(raw.includes('fog'))key='fog';
+    else if(raw==='clear_sky')key='clear'; else if(raw==='fair')key='mostlyClear';
+    else if(raw==='partlycloudy')key='partlyCloudy'; else if(raw==='cloudy')key='overcast';
+  } else if(c===0)key='clear'; else if(c===1)key='mostlyClear'; else if(c===2)key='partlyCloudy'; else if(c===3)key='overcast';
+  else if(c===45||c===48)key='fog'; else if(c>=51&&c<=57)key='drizzle';
+  else if(c===61||c===63||c===66)key='rain'; else if(c===65||c===67)key='heavyRain';
+  else if(c>=71&&c<=77)key='snow'; else if(c===80||c===81||c===85)key='showers';
+  else if(c===82||c===86)key='heavyRain'; else if(c===95||c===96||c===99)key='storm';
+  const labels={
+    clear:['☀️','晴朗','Clear','មេឃស្រឡះ'],mostlyClear:['🌤️','大致晴朗','Mostly clear','មេឃស្រឡះភាគច្រើន'],
+    partlyCloudy:['⛅','局部多雲','Partly cloudy','មានពពកខ្លះ'],overcast:['☁️','陰天','Overcast','មេឃអាប់'],fog:['🌫️','有霧','Fog','អ័ព្ទ'],
+    drizzle:['🌦️','毛毛雨','Drizzle','ភ្លៀងរលឹម'],rain:['🌧️','下雨','Rain','ភ្លៀង'],heavyRain:['🌧️','大雨','Heavy rain','ភ្លៀងខ្លាំង'],
+    showers:['🌦️','陣雨','Showers','ភ្លៀងធ្លាក់មួយភ្លែត'],storm:['⛈️','雷雨','Thunderstorm','ព្យុះផ្គររន្ទះ'],snow:['❄️','降雪','Snow','ព្រិល'],unknown:['🌡️','未分類','Unclassified','មិនបានចាត់ថ្នាក់']
+  }[key];
+  return {key:key,icon:labels[0],label:liveWeatherText(labels[1],labels[2],labels[3])};
+}
+function liveWeatherSuggestion(current){
+  const rawCode=current.weatherCode!==undefined?current.weatherCode:current.weather_code;
+  const symbol=String(rawCode==null?'':rawCode).toLowerCase(),code=Number(rawCode);
+  const temp=Number(current.temperature!==undefined?current.temperature:current.temperature_2m),hum=Number(current.humidity!==undefined?current.humidity:current.relative_humidity_2m);
+  const rain=Math.max(Number(current.precipitation)||0,Number(current.rain)||0,Number(current.showers)||0);
+  if(symbol.includes('thunder')||[95,96,99].includes(code))return 'storm';
+  if(symbol.includes('heavyrain')||[65,67,82,86].includes(code)||rain>=7.5)return 'heavyRain';
+  if(symbol.includes('rain')||symbol.includes('sleet')||symbol.includes('snow')||(code>=51&&code<=67)||(code>=80&&code<=86)||rain>0.1)return 'rain';
+  if(temp>=35)return 'hot';
+  if(hum>=85)return 'humid';
+  if(symbol.includes('clear_sky')||symbol==='fair'||code===0||code===1)return 'sunny';
+  return 'cloudy';
+}
+function parseWeatherObservation(value){
+  if(!value)return null;if(typeof value==='object')return value;
+  try{const out=JSON.parse(value);return out&&typeof out==='object'?out:null;}catch(e){return null;}
+}
+function loadLiveWeatherCache(){
+  if(window._liveWeather)return window._liveWeather;
+  try{
+    const cached=parseWeatherObservation(localStorage.getItem(LSLIVEWX));
+    if(cached&&cached.source==='MET Norway'){cached.cached=true;window._liveWeather=cached;}
+  }catch(e){}
+  return window._liveWeather;
+}
+function liveWeatherAgeMs(data){
+  const t=Date.parse((data&&data.fetchedAt)||'');return isNaN(t)?Infinity:Math.max(0,Date.now()-t);
+}
+function liveWeatherNumber(value,digits){
+  const n=Number(value);return isFinite(n)?n.toFixed(digits===undefined?0:digits):'--';
+}
+function liveWeatherTime(value){
+  if(!value)return '--';return String(value).replace('T',' ')+' ICT';
+}
+function liveWeatherMetric(label,value,extraClass){
+  return '<div class="livewx-metric '+(extraClass||'')+'"><div class="livewx-k">'+label+'</div><div class="livewx-v">'+value+'</div></div>';
+}
+function renderLiveWeather(){
+  const body=document.getElementById('live-wx-body'),state=document.getElementById('live-wx-state'),source=document.getElementById('live-wx-source'),apply=document.getElementById('i-livewx-apply');
+  if(!body||!state)return;
+  const data=loadLiveWeatherCache();
+  state.className='livewx-state';
+  if(window._liveWeatherLoading){state.classList.add('busy');state.textContent=T('livewx_loading');}
+  else if(window._liveWeatherError){state.classList.add('err');state.textContent=T('livewx_error');}
+  else if(window._liveWeatherApplied){state.classList.add('ok');state.textContent=T('livewx_applied');}
+  else if(data){state.classList.add('ok');state.textContent=T(data.cached?'livewx_cached':'livewx_ready');}
+  else state.textContent=T('livewx_idle');
+  if(!data){
+    body.innerHTML='<div class="livewx-empty">'+T('livewx_empty')+'</div>';if(source)source.textContent='';if(apply)apply.disabled=true;return;
+  }
+  const condition=liveWeatherCondition(data.weatherCode),selectedDate=(document.getElementById('rec-date')||{}).value||today();
+  const isToday=selectedDate===today(),fresh=liveWeatherAgeMs(data)<=30*60*1000;
+  const location=T(data.locationKey||'livewx_default_loc');
+  body.innerHTML=
+    liveWeatherMetric(T('livewx_location'),location,'livewx-condition')+
+    liveWeatherMetric(T('livewx_condition'),condition.icon+' '+condition.label,'livewx-condition')+
+    liveWeatherMetric(T('livewx_temp'),liveWeatherNumber(data.temperature,1)+'°C')+
+    liveWeatherMetric(T('livewx_cloud'),liveWeatherNumber(data.cloudCover,0)+'%')+
+    liveWeatherMetric(T('livewx_humidity'),liveWeatherNumber(data.humidity,0)+'%')+
+    liveWeatherMetric(T('livewx_rain'),liveWeatherNumber(data.precipitation,1)+' mm')+
+    liveWeatherMetric(T('livewx_wind'),liveWeatherNumber(data.windSpeed,1)+' km/h')+
+    liveWeatherMetric(T('livewx_suggest'),_wxLabel(data.suggested),'livewx-condition');
+  if(source)source.innerHTML='<strong>'+T('livewx_observed')+':</strong> '+liveWeatherTime(data.observedAt)+' · <strong>'+T('livewx_source')+':</strong> <a href="https://api.met.no/" target="_blank" rel="noopener">Weather data by MET Norway</a> · '+T('livewx_model')+(!isToday?'<br><span class="livewx-not-today">⚠️ '+T('livewx_not_today')+'</span>':(!fresh?'<br><span class="livewx-not-today">⚠️ '+T('livewx_stale')+'</span>':''));
+  if(apply)apply.disabled=window._liveWeatherLoading||!isToday||!fresh;
+}
+function liveWeatherDevicePosition(){
+  return new Promise((resolve,reject)=>{
+    if(!navigator.geolocation)return reject(new Error('Geolocation unavailable'));
+    navigator.geolocation.getCurrentPosition(pos=>resolve({lat:pos.coords.latitude,lon:pos.coords.longitude,locationKey:'livewx_device_loc'}),reject,{enableHighAccuracy:true,timeout:8000,maximumAge:300000});
+  });
+}
+async function refreshLiveWeather(useDevice){
+  if(window._liveWeatherLoading)return;
+  window._liveWeatherLoading=true;window._liveWeatherError=false;window._liveWeatherApplied=false;renderLiveWeather();
+  let place=Object.assign({},LIVE_WEATHER_DEFAULT);
+  if(useDevice){try{place=await liveWeatherDevicePosition();}catch(e){toast(T('livewx_loc_fail'),'inf');}}
+  let controller=null,timer=null;
+  try{
+    if(typeof AbortController!=='undefined'){controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);}
+    const url=(getGAS().url||GAS_DEFAULT_URL).trim();
+    if(!url)throw new Error('GAS URL not configured');
+    const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'weatherCurrent',latitude:place.lat,longitude:place.lon}),signal:controller?controller.signal:undefined});
+    if(!response.ok)throw new Error('HTTP '+response.status);
+    const payload=await response.json();
+    if(!payload||payload.ok===false||payload.temperature===undefined||payload.humidity===undefined)throw new Error((payload&&payload.error)||'Invalid weather response');
+    const packet=Object.assign({},payload,{source:'MET Norway',locationKey:place.locationKey,latitude:Number(place.lat),longitude:Number(place.lon),timezone:payload.timezone||'Asia/Phnom_Penh',suggested:liveWeatherSuggestion(payload),cached:false});
+    window._liveWeather=packet;window._liveWeatherError=false;
+    try{localStorage.setItem(LSLIVEWX,JSON.stringify(packet));}catch(e){}
+  }catch(e){
+    window._liveWeatherError=true;
+    toast(T('livewx_error')+': '+(e&&e.name==='AbortError'?'timeout':(e.message||e)),'err');
+  }finally{
+    if(timer)clearTimeout(timer);window._liveWeatherLoading=false;renderLiveWeather();
+  }
+}
+function ensureLiveWeather(){
+  const data=loadLiveWeatherCache(),selectedDate=(document.getElementById('rec-date')||{}).value||today();
+  renderLiveWeather();
+  if(selectedDate===today()&&(!data||liveWeatherAgeMs(data)>10*60*1000))refreshLiveWeather(false);
+}
+function applyLiveWeather(){
+  const data=loadLiveWeatherCache(),selectedDate=(document.getElementById('rec-date')||{}).value||today();
+  if(!data){toast(T('livewx_error'),'err');return;}
+  if(selectedDate!==today()){toast(T('livewx_not_today'),'inf');return;}
+  if(liveWeatherAgeMs(data)>30*60*1000){toast(T('livewx_stale'),'inf');return;}
+  if(window._recWxCtl)window._recWxCtl.set(data.suggested||'');
+  data.confirmedAs=data.suggested||'';data.confirmedAt=_localTS();window._liveWeatherApplied=true;renderLiveWeather();toast(T('livewx_applied'),'ok');
+}
+function weatherObservationForSave(weather,date){
+  const data=loadLiveWeatherCache();
+  if(!data||date!==today()||liveWeatherAgeMs(data)>2*60*60*1000)return null;
+  return Object.assign({},data,{cached:undefined,confirmedAs:weather||'',manualOverride:!!weather&&weather!==data.suggested,confirmedAt:_localTS()});
+}
+
 function openREmod(id){
   const r=getR().find(r=>r.id===id);if(!r)return;
   const zones=getZ();
@@ -1687,7 +1870,14 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
   const avg=a=>a.length?(a.reduce((x,y)=>x+y,0)/a.length).toFixed(1):'--';
   const anomalies=view.filter(isAnom).length, zoneCount=new Set(view.map(r=>r.z).filter(Boolean)).size;
   const checkers=[...new Set(view.map(r=>String(r.checker||r.checked_by||r.checkBy||'').trim()).filter(Boolean))];
+  const weatherObservations=view.map(r=>parseWeatherObservation(r.weatherObservation||r.liveWeather)).filter(Boolean).sort((a,b)=>String(b.observedAt||b.fetchedAt||'').localeCompare(String(a.observedAt||a.fetchedAt||'')));
+  const liveObservation=weatherObservations[0]||null;
   const lines=['🌡️ <b>'+tempTelegramText('VRT 溫濕度','VRT Temperature & Humidity','VRT សីតុណ្ហភាព និងសំណើម',lang)+'</b>','📅 '+periodName,'⏱️ '+tempTelegramText('時段','Slot','ពេលវេលា',lang)+': '+slotName,'🧾 '+tempTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeName,'━━━━━━━━━━━━━━━━','📊 <b>'+tempTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+tempTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b> | '+tempTelegramText('區域','Zones','តំបន់',lang)+': '+zoneCount,'• '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(checkers.join(', ')||'—'),'• '+tempTelegramText('平均溫度','Avg Temp','សីតុណ្ហភាពមធ្យម',lang)+': '+avg(temps)+'°C | '+tempTelegramText('平均濕度','Avg Hum','សំណើមមធ្យម',lang)+': '+avg(hums)+'%','• '+tempTelegramText('異常','Anomaly','មិនប្រក្រតី',lang)+': <b>'+anomalies+'</b>','━━━━━━━━━━━━━━━━'];
+  if(liveObservation){
+    lines.push('🌐 <b>'+tempTelegramText('即時室外天氣參考','Live outdoor weather reference','អាកាសធាតុខាងក្រៅបច្ចុប្បន្នសម្រាប់យោង',lang)+'</b>');
+    lines.push('• '+tempTelegramWeather(liveObservation.confirmedAs||liveObservation.suggested,lang)+' | 🌡️ '+liveWeatherNumber(liveObservation.temperature,1)+'°C | 💧 '+liveWeatherNumber(liveObservation.humidity,0)+'% | 🌧️ '+liveWeatherNumber(liveObservation.precipitation,1)+' mm');
+    lines.push('• MET Norway · '+String(liveObservation.observedAt||'').replace('T',' ')+' ICT','━━━━━━━━━━━━━━━━');
+  }
   if(!view.length){lines.push(tempTelegramText('暫無記錄','No records','គ្មានកំណត់ត្រា',lang),'⏰ '+new Date().toLocaleString());return {text:lines.join('\n'),photos:photos};}
   const zones=getZ();
   const dates=[...new Set(view.map(r=>String(r.d||'').slice(0,10)).filter(Boolean))].sort();
@@ -1747,6 +1937,7 @@ function enrichRec(r){
     temperature: r.t!==''&&r.t!==undefined?r.t:'',
     humidity:    r.h!==''&&r.h!==undefined?r.h:'',
     weather:     r.wx||r.weather||'',
+    weatherObservation:parseWeatherObservation(r.weatherObservation||r.liveWeather),
     checker:     r.checker||r.checked_by||r.checkBy||'',
     note:        r.note||'',
     photos:      r.photos||[],
@@ -1767,6 +1958,7 @@ function normalizeRec(r){
     t:    isNaN(t)?'':t,
     h:    isNaN(h)?'':h,
     wx:   r.weather||r.wx||'',
+    weatherObservation:parseWeatherObservation(r.weatherObservation||r.liveWeather),
     checker:r.checker||r.checked_by||r.checkBy||'',
     note: r.note||'',
     photos:Array.isArray(r.photos)?r.photos:[],
