@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v1.0
+   AC GASCheck — Shared Core  v2.3
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -1133,13 +1133,23 @@ GC.mountCloudButtons = function (mountEl, opt) {
   opt = opt || {};
   el.innerHTML =
     `<div class="gc-cloud-btns">
-       <button type="button" class="gc-cloud-btn" data-gc-up>☁️ <span data-i="gc.upload">${U.escapeHtml(I18.t('gc.upload'))}</span></button>
-       <button type="button" class="gc-cloud-btn" data-gc-down>⬇️ <span data-i="gc.download">${U.escapeHtml(I18.t('gc.download'))}</span></button>
+       <button type="button" class="gc-cloud-btn" data-gc-up title="${U.escapeHtml(I18.t('gc.upload'))}" aria-label="${U.escapeHtml(I18.t('gc.upload'))}"><span class="gc-btn-ico">☁️↑</span><span class="gc-btn-label" data-i="gc.upload">${U.escapeHtml(I18.t('gc.upload'))}</span></button>
+       <button type="button" class="gc-cloud-btn" data-gc-down title="${U.escapeHtml(I18.t('gc.download'))}" aria-label="${U.escapeHtml(I18.t('gc.download'))}"><span class="gc-btn-ico">☁️↓</span><span class="gc-btn-label" data-i="gc.download">${U.escapeHtml(I18.t('gc.download'))}</span></button>
      </div>`;
   const up = el.querySelector('[data-gc-up]'), down = el.querySelector('[data-gc-down]');
 
+  function busy(yes) {
+    up.disabled = !!yes;
+    down.disabled = !!yes;
+    el.setAttribute('aria-busy', yes ? 'true' : 'false');
+  }
+  function state(kind, text) {
+    if (typeof opt.onState === 'function') opt.onState(kind, text);
+  }
+
   up.onclick = async () => {
-    up.disabled = true;
+    busy(true);
+    state('busy', I18.t('gc.sync'));
     try {
       const local = opt.getList ? opt.getList() : [];
       const { res, list } = await CLOUD.upload(opt.tool, local, {
@@ -1149,20 +1159,31 @@ GC.mountCloudButtons = function (mountEl, opt) {
       if (res && res.ok !== false) {
         if (opt.setList) opt.setList(list);
         GC.toast('☁ ' + I18.t('gc.uploaded') + ' (' + list.length + ')', 'success');
+        state('ok', I18.t('gc.uploaded') + ' · ' + list.length);
         if (opt.onDone) opt.onDone(list);
-      } else GC.toast('❌ ' + I18.t('gc.upFail') + ': ' + ((res && res.error) || ''), 'error');
-    } catch (e) { GC.toast('❌ ' + I18.t('gc.upFail') + ': ' + e.message, 'error'); }
-    up.disabled = false;
+      } else {
+        const msg = I18.t('gc.upFail') + ': ' + ((res && res.error) || '');
+        GC.toast('❌ ' + msg, 'error'); state('error', msg);
+      }
+    } catch (e) {
+      const msg = I18.t('gc.upFail') + ': ' + e.message;
+      GC.toast('❌ ' + msg, 'error'); state('error', msg);
+    }
+    busy(false);
   };
 
   down.onclick = async () => {
-    down.disabled = true;
+    busy(true);
+    state('busy', I18.t('gc.sync'));
     try {
       const local = opt.getList ? opt.getList() : [];
       const r = await CLOUD.download(opt.tool, local, {
         idKey: opt.idKey, tsKey: opt.tsKey, fromCloud: opt.fromCloud
       });
-      if (r.empty) GC.toast('⚠ ' + I18.t('gc.noCloud'), 'warning');
+      if (r.empty) {
+        GC.toast('⚠ ' + I18.t('gc.noCloud'), 'warning');
+        state('warning', I18.t('gc.noCloud'));
+      }
       else {
         if (opt.onRemote) opt.onRemote(r.response || {});
         if (opt.setList) opt.setList(r.list);
@@ -1170,10 +1191,14 @@ GC.mountCloudButtons = function (mountEl, opt) {
           r.stat.added + ' ' + I18.t('gc.added') + ' / ' +
           r.stat.updated + ' ' + I18.t('gc.updated') + ' / ' +
           r.stat.kept + ' ' + I18.t('gc.kept'), 'success');
+        state('ok', I18.t('gc.downloaded') + ' · ' + r.list.length);
         if (opt.onDone) opt.onDone(r.list);
       }
-    } catch (e) { GC.toast('❌ ' + I18.t('gc.downFail') + ': ' + e.message, 'error'); }
-    down.disabled = false;
+    } catch (e) {
+      const msg = I18.t('gc.downFail') + ': ' + e.message;
+      GC.toast('❌ ' + msg, 'error'); state('error', msg);
+    }
+    busy(false);
   };
 };
 
@@ -1265,9 +1290,15 @@ GC.telegram = {
     lines.push('━━━━━━━━━━━━━━━━', '⏰ ' + U.ymdhms());
     return lines.join('\n');
   },
-  async send(text, photos, buttons, chatId, tool) {
+  async send(text, photos, buttons, chatId, tool, meta) {
     if (!text) throw new Error('No Telegram text');
-    const res = await CLOUD.post({ action: 'telegram', text: text, photos: Array.isArray(photos) ? photos.slice(0, 5) : [], buttons: Array.isArray(buttons) ? buttons : [], chatId: chatId || DEFAULT_CHAT_ID, tool: tool || '' });
+    const res = await CLOUD.post(Object.assign({
+      action: 'telegram', text: text,
+      photos: Array.isArray(photos) ? photos.slice(0, 5) : [],
+      buttons: Array.isArray(buttons) ? buttons : [],
+      chatId: chatId || DEFAULT_CHAT_ID,
+      tool: tool || ''
+    }, meta || {}));
     if (!res || res.ok === false) throw new Error((res && res.error) || 'Telegram request failed');
     return res;
   }
@@ -1296,30 +1327,40 @@ GC.attach = function (cfg) {
 
   CLOUD.setUrl(DEFAULT_GAS_URL);
   const oldInstance = document.querySelector('.gc-head-tools[data-gc-tool="' + C.tool + '"]');
-  if (oldInstance) oldInstance.remove();
+  if (oldInstance) {
+    const oldShell = oldInstance.closest('.gc-unified-shell');
+    (oldShell || oldInstance).remove();
+  }
   document.querySelectorAll('.gc-common-modal[data-gc-tool="' + C.tool + '"]').forEach(function (x) { x.remove(); });
 
-  const hostMap = {
-    asset: '.tb-right', cleaning: '.topbar', dormitory: '.topbar',
-    ehs: '.topbar', keymovement: '.topbar-right',
-    temperature: '.hd-r', waterdrum: '.header-actions'
+  const anchorMap = {
+    asset: '.topbar', cleaning: '.topbar', dormitory: '.topbar',
+    ehs: '.topbar', keymovement: '.topbar',
+    temperature: '.hd', waterdrum: '.header'
   };
-  const host = document.querySelector(C.headerMount || hostMap[C.tool] || '.topbar, .hd-r, .header-actions') || document.body;
+  const anchor = document.querySelector(C.headerMount || anchorMap[C.tool] || '.topbar, .hd, .header');
+  const shell = document.createElement('div');
+  shell.className = 'gc-unified-shell';
+  shell.dataset.gcTool = C.tool || '';
   const tools = document.createElement('div');
   tools.className = 'gc-head-tools';
   tools.dataset.gcTool = C.tool || '';
   tools.innerHTML = [
-    '<span class="gc-cloud-state"><i></i><span data-i="gc.cloudReady">' + U.escapeHtml(I18.t('gc.cloudReady')) + '</span></span>',
+    '<span class="gc-toolbar-title">☁️ <span data-i="gc.quickActions">' + U.escapeHtml(I18.t('gc.quickActions')) + '</span></span>',
+    '<span class="gc-cloud-state"><i></i><span class="gc-state-label" data-i="gc.cloudReady">' + U.escapeHtml(I18.t('gc.cloudReady')) + '</span></span>',
     '<span class="gc-head-cloud"></span>',
-    '<button type="button" class="gc-head-btn gc-head-tg" data-gc-open-tg title="' + U.escapeHtml(I18.t('gc.telegramTitle')) + '">✈️<span data-i="gc.telegram">' + U.escapeHtml(I18.t('gc.telegram')) + '</span></button>',
-    C.importSchema ? '<button type="button" class="gc-head-btn gc-head-import" data-gc-open-import title="' + U.escapeHtml(I18.t('gc.importTitle')) + '">📥<span data-i="gc.smartImport">' + U.escapeHtml(I18.t('gc.smartImport')) + '</span></button>' : '',
+    '<button type="button" class="gc-head-btn gc-head-tg" data-gc-open-tg title="' + U.escapeHtml(I18.t('gc.telegramTitle')) + '"><span class="gc-btn-ico">✈️</span><span class="gc-btn-label" data-i="gc.telegram">' + U.escapeHtml(I18.t('gc.telegram')) + '</span></button>',
+    C.importSchema ? '<button type="button" class="gc-head-btn gc-head-import" data-gc-open-import title="' + U.escapeHtml(I18.t('gc.importTitle')) + '"><span class="gc-btn-ico">📥</span><span class="gc-btn-label" data-i="gc.smartImport">' + U.escapeHtml(I18.t('gc.smartImport')) + '</span></button>' : '',
+    '<button type="button" class="gc-head-btn gc-head-export" data-gc-export title="' + U.escapeHtml(I18.t('gc.export')) + '"><span class="gc-btn-ico">💾</span><span class="gc-btn-label" data-i="gc.export">' + U.escapeHtml(I18.t('gc.export')) + '</span></button>',
     '<span class="gc-head-langs" aria-label="' + U.escapeHtml(I18.t('gc.menuLanguage')) + '">',
       '<button type="button" data-gc-ui-lang="zh">中</button>',
       '<button type="button" data-gc-ui-lang="en">EN</button>',
       '<button type="button" data-gc-ui-lang="km">ខ្មែរ</button>',
     '</span>'
   ].join('');
-  host.appendChild(tools);
+  shell.appendChild(tools);
+  if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(shell, anchor.nextSibling);
+  else document.body.insertBefore(shell, document.body.firstChild);
 
   /* 舊語言列、雲端列、匯入頁與連線設定全部收起；業務頁、記錄按鈕及照片發送保留。 */
   const hide = function (el) { if (el && !el.closest('.gc-head-tools')) el.classList.add('gc-legacy-hidden'); };
@@ -1331,7 +1372,7 @@ GC.attach = function (cfg) {
   if (C.hideLegacyTools !== false) {
     ['.lang-sw', '.lgp', '.lang-grp', '.lang-toggle', '.lsw', '.lang-switch', '#cloud-badge']
       .forEach(function (sel) { document.querySelectorAll(sel).forEach(hide); });
-    if (C.tool === 'keymovement') host.querySelectorAll('.lang-btn').forEach(hide);
+    if (C.tool === 'keymovement') document.querySelectorAll('.topbar .lang-btn').forEach(hide);
     ['#gas-panel', '#gas-panel-card', '#tab-import', '#tab-tg', '#nav-import', '#nav-telegram',
       '#tab-telegram', '#pnl-import', '#pnl-tg', '#pnl-telegram', '#panel-import',
       '#panel-telegram', '#section-import'].forEach(function (sel) {
@@ -1354,11 +1395,41 @@ GC.attach = function (cfg) {
   let previewToken = 0;
   let currentPacket = null;
 
+  function reportActivityMeta() {
+    const ref = periodRef || U.ymd(new Date());
+    return {
+      reportPeriod: period,
+      reportRef: ref,
+      reportMonth: String(ref).slice(0, 7),
+      reportMode: mode,
+      reportScope: scope,
+      reportSlot: slot,
+      reportLanguage: lang
+    };
+  }
+
+  function cloudExtra() {
+    const base = typeof C.extra === 'function' ? (C.extra() || {}) : (C.extra || {});
+    return Object.assign({}, base, reportActivityMeta());
+  }
+
+  function setCloudState(kind, message) {
+    const state = tools.querySelector('.gc-cloud-state');
+    const label = state && state.querySelector('.gc-state-label');
+    if (!state || !label) return;
+    state.classList.remove('ok', 'busy', 'warning', 'error');
+    if (kind) state.classList.add(kind);
+    label.removeAttribute('data-i');
+    label.textContent = message || I18.t('gc.cloudReady');
+    state.title = label.textContent;
+  }
+
   const cloudOpt = {
-    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', extra: C.extra,
+    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', extra: cloudExtra,
     toCloud: C.toCloud, fromCloud: C.fromCloud,
     getList: function () { return C.read() || []; },
     setList: function (list) { C.write(list); },
+    onState: setCloudState,
     onRemote: function (d) { if (C.onRemote) C.onRemote(d || {}); },
     onDone: function () {
       refreshPeriodOptions();
@@ -1368,6 +1439,42 @@ GC.attach = function (cfg) {
     }
   };
   GC.mountCloudButtons(tools.querySelector('.gc-head-cloud'), cloudOpt);
+
+  function exportLocalData() {
+    const list = C.read() || [];
+    if (!list.length) {
+      GC.toast('⚠ ' + I18.t('gc.noData'), 'warning');
+      return;
+    }
+    const safeRows = list.map(function (row) {
+      const out = {};
+      Object.keys(row || {}).forEach(function (key) {
+        const value = row[key];
+        out[key] = value && typeof value === 'object' ? JSON.stringify(value) : value;
+      });
+      return out;
+    });
+    const base = 'AC_GASCHECK_' + String(C.tool || 'data') + '_' + U.ymd(new Date());
+    try {
+      if (global.XLSX && global.XLSX.utils && global.XLSX.writeFile) {
+        const wb = global.XLSX.utils.book_new();
+        const ws = global.XLSX.utils.json_to_sheet(safeRows);
+        global.XLSX.utils.book_append_sheet(wb, ws, String(C.tool || 'Data').slice(0, 31));
+        global.XLSX.writeFile(wb, base + '.xlsx');
+      } else {
+        const blob = new Blob([JSON.stringify({tool:C.tool, exportedAt:U.ymdhms(), records:list}, null, 2)], {type:'application/json'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = base + '.json';
+        document.body.appendChild(a); a.click();
+        setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 600);
+      }
+      GC.toast('💾 ' + I18.t('gc.export') + ' · ' + list.length, 'success');
+    } catch (e) {
+      GC.toast('❌ ' + I18.t('gc.export') + ': ' + e.message, 'error');
+    }
+  }
+  const exportButton = tools.querySelector('[data-gc-export]');
+  if (exportButton) exportButton.onclick = exportLocalData;
 
   const tgModal = document.createElement('div');
   tgModal.className = 'gc-common-modal';
@@ -1595,7 +1702,10 @@ GC.attach = function (cfg) {
     sendState.textContent = I18.t('gc.sync');
     try {
       const packet = currentPacket || await buildPacket();
-      await GC.telegram.send(packet.text, packet.photos, packet.buttons, groupSelect.value || DEFAULT_CHAT_ID, C.tool);
+      await GC.telegram.send(
+        packet.text, packet.photos, packet.buttons,
+        groupSelect.value || DEFAULT_CHAT_ID, C.tool, reportActivityMeta()
+      );
       sendState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
       setTimeout(function () { setModalOpen(tgModal, false); }, 450);
@@ -1636,6 +1746,16 @@ GC.attach = function (cfg) {
       b.classList.toggle('on', b.dataset.gcUiLang === I18.lang);
     });
     I18.apply(tools);
+    const up = tools.querySelector('[data-gc-up]');
+    const down = tools.querySelector('[data-gc-down]');
+    const tg = tools.querySelector('[data-gc-open-tg]');
+    const imp = tools.querySelector('[data-gc-open-import]');
+    const exp = tools.querySelector('[data-gc-export]');
+    if (up) { up.title = I18.t('gc.upload'); up.setAttribute('aria-label', up.title); }
+    if (down) { down.title = I18.t('gc.download'); down.setAttribute('aria-label', down.title); }
+    if (tg) tg.title = I18.t('gc.telegramTitle');
+    if (imp) imp.title = I18.t('gc.importTitle');
+    if (exp) exp.title = I18.t('gc.export');
   }
   function applyModuleLanguage(l) {
     if (applyingModuleLanguage || !['zh', 'en', 'km'].includes(l)) return;
@@ -1937,16 +2057,26 @@ GC.attachLegacy = function (cfg) {
 const BAR_CSS = `
 .gc-tools-card{display:block;width:100%;max-width:none;margin:0 0 16px;font-family:inherit;scroll-margin-top:12px}
 .gc-legacy-hidden{display:none!important}
-.gc-head-tools{display:flex;align-items:center;justify-content:flex-end;gap:7px;margin-left:auto;min-width:0;font-family:inherit;flex-wrap:nowrap}
+.gc-unified-shell{position:relative;z-index:35;width:100%;border-bottom:1px solid #DCE6EF;background:linear-gradient(90deg,#F8FBFD 0%,#FFFFFF 50%,#F2FAF8 100%);box-shadow:0 3px 12px rgba(22,52,80,.08);font-family:inherit}
+.gc-head-tools{width:100%;max-width:1600px;min-width:0;margin:0 auto;padding:8px 14px;display:flex;align-items:center;justify-content:flex-start;gap:7px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;font-family:inherit}
+.gc-head-tools::-webkit-scrollbar{display:none}
+.gc-toolbar-title{display:inline-flex;align-items:center;gap:5px;color:#183B66;font:800 12px/1 inherit;white-space:nowrap;margin-right:2px}
 .gc-cloud-state{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 10px;border:1px solid #C9D6E4;border-radius:18px;color:#4D6078;background:#fff;font:600 11px/1.1 inherit;white-space:nowrap}
 .gc-cloud-state i{display:block;width:7px;height:7px;border-radius:50%;background:#8BA0B8}
 .gc-cloud-state.ok i{background:#2DD879;box-shadow:0 0 0 3px rgba(45,216,121,.14)}
+.gc-cloud-state.busy i{background:#E9A21B;box-shadow:0 0 0 3px rgba(233,162,27,.15);animation:gcPulse 1s ease-in-out infinite}
+.gc-cloud-state.warning i{background:#E9A21B}.gc-cloud-state.error i{background:#D8424A;box-shadow:0 0 0 3px rgba(216,66,74,.13)}
+@keyframes gcPulse{50%{opacity:.35;transform:scale(.75)}}
 .gc-head-tools .gc-cloud-btns{gap:5px}
-.gc-head-tools .gc-cloud-btn,.gc-head-btn{height:36px;min-width:38px;padding:0 10px;display:inline-flex;align-items:center;justify-content:center;gap:5px;border:1px solid #0E6B55;border-radius:8px;background:#0E6B55;color:#fff;font:700 12px/1 inherit;cursor:pointer;white-space:nowrap;box-shadow:none}
-.gc-head-tools .gc-cloud-btn:hover,.gc-head-btn:hover{background:#095A47;border-color:#095A47}
-.gc-head-import{background:#815C12;border-color:#815C12;color:#fff}
-.gc-head-tg{background:#0876A8;border-color:#0876A8;color:#fff}
+.gc-head-tools .gc-cloud-btn,.gc-head-btn{height:38px;min-width:40px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #B9D9EA;border-radius:9px;background:#EDF8FC;color:#126B91;font:800 12px/1 inherit;cursor:pointer;white-space:nowrap;box-shadow:none;transition:.16s}
+.gc-head-tools .gc-cloud-btn:hover{background:#DDF2FA;border-color:#65B5D6}
+.gc-head-btn:hover{transform:translateY(-1px);filter:brightness(.98)}
+.gc-btn-ico{font-size:15px;line-height:1}.gc-btn-label{white-space:nowrap}
+.gc-head-import{background:#FFF8E8;border-color:#EBCB83;color:#865C08}
+.gc-head-tg{background:#EEF3FF;border-color:#B8C8F0;color:#3156A5}
+.gc-head-export{background:#F7F8FA;border-color:#D5DCE5;color:#48586C}
 .gc-head-langs{height:36px;display:inline-flex;align-items:stretch;border:1px solid #CBD5E1;border-radius:8px;overflow:hidden;background:#fff}
+.gc-head-langs{margin-left:auto;flex:0 0 auto}
 .gc-head-langs button{min-width:38px;padding:0 8px;border:0;border-right:1px solid #CBD5E1;background:#fff;color:#334155;font:700 11px/1 inherit;cursor:pointer}
 .gc-head-langs button:last-child{border-right:0}
 .gc-head-langs button.on{background:#17B981;color:#fff}
@@ -1995,11 +2125,11 @@ const BAR_CSS = `
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
 @media(max-width:1050px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-import-sec{grid-column:auto}}
 @media(max-width:560px){
-  .gc-head-tools{gap:4px;overflow-x:auto;scrollbar-width:none;max-width:calc(100vw - 82px);flex-shrink:1}
-  .gc-head-tools::-webkit-scrollbar{display:none}
-  .gc-cloud-state span,.gc-head-tools .gc-cloud-btn span,.gc-head-btn span{display:none}
+  .gc-head-tools{gap:5px;padding:7px 8px;overflow-x:auto}
+  .gc-toolbar-title,.gc-state-label,.gc-btn-label{display:none!important}
   .gc-cloud-state{min-width:30px;width:30px;padding:0;justify-content:center}
-  .gc-head-tools .gc-cloud-btn,.gc-head-btn{width:36px;padding:0}
+  .gc-head-tools .gc-cloud-btn,.gc-head-btn{width:38px;min-width:38px;padding:0}
+  .gc-head-langs{margin-left:auto}
   .gc-head-langs button{min-width:34px;padding:0 5px}
   .gc-common-modal{padding:8px;align-items:flex-end}
   .gc-modal-card{width:100%;max-height:94vh;border-radius:18px 18px 0 0}
@@ -2025,7 +2155,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '2.2';
+GC.version = '2.3';
 global.GC = GC;
 global.GASCheckCore = GC;
 
