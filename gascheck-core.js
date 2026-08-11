@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v2.3
+   AC GASCheck — Shared Core  v2.4
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -897,9 +897,15 @@ const IMPORT = GC.import = {
         return;
       }
       const fileNames = metas.map(m => m.fileName).join(', ');
+      const warnings = [];
+      metas.forEach(function (m) {
+        const list = m && m.summary && Array.isArray(m.summary.warnings) ? m.summary.warnings : [];
+        list.forEach(function (w) { if (w && !warnings.includes(String(w))) warnings.push(String(w)); });
+      });
       status('✅ ' + allObjects.length + ' ' + I18.t('gc.imported') +
         (metas.length > 1 ? ' · ' + metas.length + ' files' : '') +
-        (errors.length ? ' · ' + errors.length + ' failed' : ''), errors.length ? 'warning' : 'ok');
+        (errors.length ? ' · ' + errors.length + ' failed' : '') +
+        (warnings.length ? ' · ⚠️ ' + warnings.join(' | ') : ''), (errors.length || warnings.length) ? 'warning' : 'ok');
       if (opt.onData) {
         const first = metas[0] || {};
         opt.onData(allObjects, Object.assign({}, first, {
@@ -2155,7 +2161,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '2.3';
+GC.version = '2.4';
 global.GC = GC;
 global.GASCheckCore = GC;
 

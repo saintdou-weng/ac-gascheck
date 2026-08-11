@@ -30,7 +30,7 @@ body{font-family:'Inter','Noto Sans TC',sans-serif;background:var(--bg);color:va
 .tab.active{color:var(--accent);border-bottom-color:var(--accent)}
 .tab-content{display:none}
 .tab-content.active{display:block}
-.main{padding:12px;max-width:1200px;margin:0 auto}
+.main{padding:12px;max-width:1600px;margin:0 auto}
 .sec{background:var(--white);border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-bottom:10px}
 .sec-head{background:var(--col);border-bottom:1px solid var(--border2);padding:7px 12px;font-size:10px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--accent-dark);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .sec-head .note{font-size:10px;color:#9ca3af;font-weight:400;letter-spacing:0;text-transform:none}
@@ -40,6 +40,9 @@ body{font-family:'Inter','Noto Sans TC',sans-serif;background:var(--bg);color:va
 .ptoggle button{padding:4px 14px;font-size:12px;font-weight:600;border:none;background:transparent;cursor:pointer;color:var(--dim);transition:all .15s}
 .ptoggle button.active{background:var(--accent);color:#fff}
 .period-select{padding:4px 8px;border:1px solid var(--border);border-radius:5px;font-size:12px;color:var(--text)}
+.period-nav{width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:#fff;color:var(--text2);cursor:pointer;font-weight:700}
+.period-nav:hover{background:var(--accent-bg);border-color:var(--accent);color:var(--accent)}
+.period-summary{font-size:11px;color:var(--dim);font-weight:500}
 /* BATCH INPUT TABLE */
 .batch-wrap{overflow-x:auto;padding:0}
 .batch-table{width:100%;border-collapse:collapse;font-size:12px;min-width:600px}
@@ -87,6 +90,14 @@ select.bi{cursor:pointer}
 .stat-card{background:var(--col);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;text-align:center}
 .stat-val{font-size:22px;font-weight:700;color:var(--accent)}
 .stat-lbl{font-size:10px;color:var(--dim);margin-top:2px}
+.stat-prev{font-size:10px;color:var(--dim);margin-top:5px;padding-top:5px;border-top:1px solid var(--border2)}
+.stat-change{font-weight:700;margin-left:4px}.stat-change.up{color:var(--green)}.stat-change.down{color:var(--red)}
+.record-toolbar{margin-left:auto;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.record-total{font-size:11px;color:var(--dim);font-weight:500;letter-spacing:0;text-transform:none}
+.row-actions{display:flex;gap:5px;white-space:nowrap}.row-mini{padding:4px 8px;font-size:11px}
+.month-link{border:1px solid var(--border);background:#fff;border-radius:5px;padding:4px 8px;cursor:pointer;color:var(--blue);font-size:11px;font-weight:600}
+.month-link:hover{background:#eff6ff}
+.report-charts{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border2)}
 /* CHART — 固定父容器，避免 Chart.js 在資料少／視窗變化時反覆縮放 */
 .chart-wrap{height:280px;min-height:280px;padding:12px;position:relative;overflow:hidden}
 .chart-wrap canvas{display:block;width:100%!important;height:100%!important;max-height:none}
@@ -113,7 +124,7 @@ select.bi{cursor:pointer}
 /* PENDING BAR */
 .pending-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fef9c3;border-bottom:1px solid #fde047;font-size:12px}
 /* RESPONSIVE */
-@media(max-width:600px){.sup-grid{grid-template-columns:1fr}}
+@media(max-width:720px){.sup-grid{grid-template-columns:1fr}.period-bar{align-items:flex-start}.ptoggle{width:100%;overflow-x:auto}.ptoggle button{flex:1;padding:7px 10px}.period-summary{width:100%}.chart-wrap{height:235px;min-height:235px}.record-toolbar{margin-left:0;width:100%}.main{padding:8px}.stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}.report-charts{grid-template-columns:1fr}.report-charts>div:first-child{border-right:0!important;border-bottom:1px solid var(--border2)}}
 @media print{.topbar,.tabs,.btn-row,.lang-toggle,#toast,.no-print{display:none!important}body{background:#fff}.main{max-width:none;padding:0}}
 
 .ph-row-btn{border:1px solid #D8DCE6;background:#fff;border-radius:6px;padding:4px 9px;
@@ -166,17 +177,31 @@ select.bi{cursor:pointer}
     <div class="period-bar">
       <strong style="font-size:12px">♻️ Recycle 回收</strong>
       <div class="ptoggle" id="a-ptoggle">
-        <button class="active" onclick="setAPeriod('month',this)">月</button>
+        <button onclick="setAPeriod('day',this)">日</button>
         <button onclick="setAPeriod('week',this)">週</button>
+        <button class="active" onclick="setAPeriod('month',this)">月</button>
         <button onclick="setAPeriod('year',this)">年</button>
       </div>
+      <button class="period-nav" onclick="moveEhsPeriod('a',-1)" title="Previous">◀</button>
+      <input class="period-select" type="date" id="a-p-date" onchange="renderAAnalysis()" style="display:none">
       <select class="period-select" id="a-p-year" onchange="renderAAnalysis()"></select>
       <select class="period-select" id="a-p-month" onchange="renderAAnalysis()"></select>
+      <button class="period-nav" onclick="moveEhsPeriod('a',1)" title="Next">▶</button>
       <div style="flex:1"></div>
       <span id="a-stat-total" style="font-size:12px;font-weight:700;color:var(--accent)"></span>
     </div>
     <div class="chart-wrap"><canvas id="chartA"></canvas></div>
     <div class="stat-row" id="a-stats"></div>
+  </div>
+
+  <div class="sec" id="a-records">
+    <div class="sec-head">📋 <span>Recycle 記錄</span>
+      <span class="record-total" id="a-record-label"></span>
+      <span class="record-toolbar"><button class="btn btn-secondary row-mini" onclick="exportEhsPeriod('internal')">⬇ Excel</button></span>
+    </div>
+    <div class="htable-wrap"><table class="htable">
+      <thead id="a-record-head"></thead><tbody id="a-record-body"></tbody>
+    </table></div>
   </div>
 
   <!-- BATCH INPUT FORM -->
@@ -218,12 +243,16 @@ select.bi{cursor:pointer}
     <div class="period-bar">
       <strong style="font-size:12px">🗑️ Waste 廢料</strong>
       <div class="ptoggle" id="b-ptoggle">
-        <button class="active" onclick="setBPeriod('month',this)">月</button>
+        <button onclick="setBPeriod('day',this)">日</button>
         <button onclick="setBPeriod('week',this)">週</button>
+        <button class="active" onclick="setBPeriod('month',this)">月</button>
         <button onclick="setBPeriod('year',this)">年</button>
       </div>
+      <button class="period-nav" onclick="moveEhsPeriod('b',-1)" title="Previous">◀</button>
+      <input class="period-select" type="date" id="b-p-date" onchange="renderBAnalysis()" style="display:none">
       <select class="period-select" id="b-p-year" onchange="renderBAnalysis()"></select>
       <select class="period-select" id="b-p-month" onchange="renderBAnalysis()"></select>
+      <button class="period-nav" onclick="moveEhsPeriod('b',1)" title="Next">▶</button>
     </div>
 
     <!-- Supplier trip badges -->
@@ -252,7 +281,7 @@ select.bi{cursor:pointer}
           <tr>
             <th>日期 *</th><th>姓名 *</th><th>供應商 *</th><th>車牌</th>
             <th>固體</th><th>工業</th><th>重量(kg)</th>
-            <th>Time In *</th><th>Time Out</th><th>Gate Keeper</th><th>檢查人 Inspector</th><th>備註</th><th></th>
+            <th>Time In *</th><th>Time Out</th><th>Gate Keeper</th><th>檢查人 Inspector</th><th>備註</th><th>📷</th><th></th>
           </tr>
         </thead>
         <tbody id="b-batch-body"></tbody>
@@ -265,14 +294,16 @@ select.bi{cursor:pointer}
     </div>
   </div>
 
-  <!-- This month gate records -->
+  <!-- Selected-period Waste records -->
   <div class="sec" id="b-month-records">
-    <div class="sec-head">📋 Waste 記錄 <span class="note" id="b-month-label"></span></div>
+    <div class="sec-head">📋 Waste 記錄 <span class="note" id="b-month-label"></span>
+      <span class="record-toolbar"><button class="btn btn-secondary row-mini" onclick="exportEhsPeriod('gate')">⬇ Excel</button></span>
+    </div>
     <div class="htable-wrap">
       <table class="htable">
         <thead><tr>
           <th>#</th><th>日期</th><th>姓名</th><th>供應商</th><th>廢料類型</th>
-          <th>重量</th><th>Time In</th><th>Time Out</th><th>停留</th><th>檢查人</th><th>異常</th>
+          <th>重量 (kg)</th><th>Time In</th><th>Time Out</th><th>停留</th><th>檢查人</th><th>照片</th><th>異常</th><th>操作</th>
         </tr></thead>
         <tbody id="b-month-body"></tbody>
       </table>
@@ -287,22 +318,27 @@ select.bi{cursor:pointer}
     <div class="period-bar">
       <strong style="font-size:12px">📊 綜合報表分析</strong>
       <div class="ptoggle" id="r-ptoggle">
-        <button class="active" onclick="setRPeriod('month',this)">月</button>
+        <button onclick="setRPeriod('day',this)">日</button>
         <button onclick="setRPeriod('week',this)">週</button>
+        <button class="active" onclick="setRPeriod('month',this)">月</button>
         <button onclick="setRPeriod('year',this)">年</button>
       </div>
+      <button class="period-nav" onclick="moveEhsPeriod('r',-1)" title="Previous">◀</button>
+      <input class="period-select" type="date" id="r-date" onchange="renderReport()" style="display:none">
       <select class="period-select" id="r-year" onchange="renderReport()"></select>
       <select class="period-select" id="r-month" onchange="renderReport()"></select>
-      <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px" onclick="renderReport()">🔄</button>
+      <button class="period-nav" onclick="moveEhsPeriod('r',1)" title="Next">▶</button>
+      <span class="period-summary" id="r-period-label"></span>
+      <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px;margin-left:auto" onclick="exportReportComparison()">⬇ Excel</button>
     </div>
     <div class="stat-row" id="r-stats"></div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border2)">
+    <div class="report-charts">
       <div style="border-right:1px solid var(--border2)">
         <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)">Recycle 趨勢 (kg)</div>
         <div class="chart-wrap"><canvas id="chartR1"></canvas></div>
       </div>
       <div>
-        <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)">Waste 記錄趟數</div>
+        <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)">Waste 收料重量 (kg)</div>
         <div class="chart-wrap"><canvas id="chartR2"></canvas></div>
       </div>
     </div>
@@ -323,8 +359,8 @@ select.bi{cursor:pointer}
     <div class="period-bar">
       <strong style="font-size:12px">📋 歷史記錄查詢</strong>
       <select class="period-select" id="h-module" onchange="queryHistory()">
-        <option value="gate">Waste</option>
         <option value="internal">Recycle</option>
+        <option value="gate">Waste</option>
       </select>
       <select class="period-select" id="h-year" onchange="queryHistory()"></select>
       <select class="period-select" id="h-month" onchange="queryHistory()">
@@ -504,7 +540,10 @@ const EHS_LABELS = [
   ['月','Month','ខែ'],['週','Week','សប្ដាហ៍'],['年','Year','ឆ្នាំ'],['日','Day','ថ្ងៃ'],
   ['總趟數','Total Trips','ចំនួនជើងសរុប'],['異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី'],
   ['供應商達標','Suppliers Meeting Target','អ្នកផ្គត់ផ្គង់ដល់គោលដៅ'],['回收次數','Recycling Count','ចំនួនកែច្នៃ'],
-  ['Recycle (kg)','Recycle (kg)','Recycle (kg)'],['Waste 記錄','Waste Records','Waste Records']
+  ['Recycle (kg)','Recycle (kg)','Recycle (kg)'],['Waste 記錄','Waste Records','កំណត់ត្រា Waste'],
+  ['Recycle 記錄','Recycle Records','កំណត់ត្រា Recycle'],['Waste 收料重量 (kg)','Waste Received Weight (kg)','ទម្ងន់ Waste ទទួល (kg)'],
+  ['月份','Month','ខែ'],['總重量','Total Weight','ទម្ងន់សរុប'],['記錄','Records','កំណត់ត្រា'],['照片','Photos','រូបថត'],
+  ['操作','Actions','សកម្មភាព'],['查看','View','មើល'],['重量 (kg)','Weight (kg)','ទម្ងន់ (kg)']
 ].map(x=>({zh:x[0],en:x[1],km:x[2]}));
 const EHS_PARTS = [
   ['Recycle','Recycle','Recycle'],['Waste','Waste','Waste'],['內部廢料','Recycle','Recycle'],
@@ -592,7 +631,7 @@ function setLang(l){
   setTimeout(function(){
     ['a-p-year','b-p-year','r-year','h-year'].forEach(function(id){const s=document.getElementById(id);if(!s)return;Array.from(s.options).forEach(function(o){if(o.value)o.textContent=ehsYearLabel(+o.value);else o.textContent=ehsText('全年份','All years','គ្រប់ឆ្នាំ');});});
     ['a-p-month','b-p-month','r-month','h-month'].forEach(function(id){const s=document.getElementById(id);if(!s)return;Array.from(s.options).forEach(function(o){if(o.value)o.textContent=ehsMonthLabel(+o.value);else o.textContent=ehsText('全年','All year','ពេញមួយឆ្នាំ');});});
-    if(document.getElementById('a-p-year')&&document.getElementById('a-p-year').options.length){renderAAnalysis();renderBAnalysis();renderReport();}
+    if(document.getElementById('a-p-year')&&document.getElementById('a-p-year').options.length){renderAAnalysis();renderBAnalysis();renderReport();renderABatch();renderBBatch();const active=document.querySelector('.tab-content.active');if(active&&active.id==='tab-history')queryHistory();}
   },0);
 }
 function scheduleEhsLanguageApply(){
@@ -619,6 +658,10 @@ function switchTab(id){
   else{console.error('Missing tab pane: tab-'+id);return;}
   if(id === 'tg') { try { cfg.load(); } catch(e){} }
   if(id==='tg') cfg.load();
+  if(id==='modA')renderAAnalysis();
+  if(id==='modB')renderBAnalysis();
+  if(id==='report')renderReport();
+  if(id==='history')queryHistory();
 }
 
 /* ========== LOCAL STORAGE ========== */
@@ -636,6 +679,14 @@ function showToast(msg,dur=3000){
 /* ========== PERIOD SELECTS ========== */
 let aPeriod='month', bPeriod='month', rPeriod='month';
 let chartAInst, chartBInst, chartR1Inst, chartR2Inst;
+let ehsViewState={internal:[],gate:[]},ehsReportRows=[];
+function ehsSum(recs,field){return (recs||[]).reduce(function(s,r){return s+kgNumber(r&&r[field]);},0);}
+function ehsRecycleRowTotal(r){
+  if(!r)return 0;
+  const components=kgNumber(r.plastic_kg)+kgNumber(r.fabric_kg)+kgNumber(r.core_kg);
+  return kgNumber(r.total_kg)||components;
+}
+function ehsRecycleTotal(recs){return (recs||[]).reduce(function(s,r){return s+ehsRecycleRowTotal(r);},0);}
 
 function buildYearSelect(selId,changeHandler){
   const sel=document.getElementById(selId);
@@ -659,73 +710,98 @@ function buildMonthSelect(selId,changeHandler){
   sel.onchange=changeHandler;
 }
 
+function kgNumber(v){
+  if(typeof v==='number')return isFinite(v)?v:0;
+  const s=String(v==null?'':v).replace(/,/g,'').trim();
+  const m=s.match(/-?\d+(?:\.\d+)?/);
+  return m&&isFinite(+m[0])?+m[0]:0;
+}
+function kgDisplay(v){
+  const n=kgNumber(v);return n.toLocaleString(undefined,{maximumFractionDigits:2})+' kg';
+}
+function photoArray(v){
+  if(typeof GC!=='undefined'&&GC.util)return GC.util.asArray(v);
+  if(Array.isArray(v))return v;
+  if(typeof v==='string'&&v.trim().charAt(0)==='['){try{const a=JSON.parse(v);return Array.isArray(a)?a:[];}catch(e){return[];}}
+  return v?[v]:[];
+}
+function ehsYmd(v){
+  const s=String(v||'').trim(),m=s.match(/(\d{4})[-/](\d{1,2})[-/](\d{1,2})/);
+  if(m)return m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');
+  const d=new Date(v);return isNaN(d)?'':_localYMD(d);
+}
+function ehsDateLocal(v){const s=ehsYmd(v);return s?new Date(s+'T00:00:00'):new Date();}
+function ehsAddDays(v,n){const d=ehsDateLocal(v);d.setDate(d.getDate()+n);return _localYMD(d);}
+function ehsEsc(v){return typeof GC!=='undefined'&&GC.util?GC.util.escapeHtml(v):String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function ehsPeriodFor(prefix){return prefix==='a'?aPeriod:(prefix==='b'?bPeriod:rPeriod);}
+function ehsIds(prefix){return prefix==='r'?{date:'r-date',year:'r-year',month:'r-month'}:{date:prefix+'-p-date',year:prefix+'-p-year',month:prefix+'-p-month'};}
+function syncEhsPeriodControls(prefix){
+  const p=ehsPeriodFor(prefix),ids=ehsIds(prefix),date=document.getElementById(ids.date),year=document.getElementById(ids.year),month=document.getElementById(ids.month);
+  if(date)date.style.display=(p==='day'||p==='week')?'':'none';
+  if(year)year.style.display=(p==='month'||p==='year')?'':'none';
+  if(month)month.style.display=p==='month'?'':'none';
+}
+function ehsPeriodBounds(prefix,previous){
+  const p=ehsPeriodFor(prefix),ids=ehsIds(prefix),dateEl=document.getElementById(ids.date),yearEl=document.getElementById(ids.year),monthEl=document.getElementById(ids.month);
+  let ref=(dateEl&&dateEl.value)||_localYMD(),y=+(yearEl&&yearEl.value)||new Date().getFullYear(),m=+(monthEl&&monthEl.value)||new Date().getMonth()+1,start,end;
+  if(p==='day'){start=end=ref;}
+  else if(p==='week'){const d=ehsDateLocal(ref),dow=(d.getDay()+6)%7;d.setDate(d.getDate()-dow);start=_localYMD(d);end=ehsAddDays(start,6);}
+  else if(p==='month'){start=y+'-'+String(m).padStart(2,'0')+'-01';end=y+'-'+String(m).padStart(2,'0')+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');}
+  else{start=y+'-01-01';end=y+'-12-31';}
+  if(previous){
+    if(p==='day'){start=end=ehsAddDays(start,-1);}
+    else if(p==='week'){start=ehsAddDays(start,-7);end=ehsAddDays(end,-7);}
+    else if(p==='month'){let d=new Date(y,m-2,1);start=_localYMD(d);end=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(new Date(d.getFullYear(),d.getMonth()+1,0).getDate()).padStart(2,'0');}
+    else{start=(y-1)+'-01-01';end=(y-1)+'-12-31';}
+  }
+  const label=p==='day'?start:(p==='week'?start+' – '+end:(p==='month'?start.slice(0,7):start.slice(0,4)));
+  return {period:p,start:start,end:end,label:label};
+}
+function ehsFilterPeriod(recs,bounds){return (recs||[]).filter(function(r){const d=ehsYmd(r.date);return d&&d>=bounds.start&&d<=bounds.end;});}
+function ehsBuckets(bounds){
+  const out=[];
+  if(bounds.period==='year'){for(let m=1;m<=12;m++){const key=bounds.start.slice(0,4)+'-'+String(m).padStart(2,'0');out.push({key:key,label:ehsMonthLabel(m),start:key+'-01',end:key+'-'+String(new Date(+bounds.start.slice(0,4),m,0).getDate()).padStart(2,'0')});}return out;}
+  for(let d=bounds.start;d<=bounds.end;d=ehsAddDays(d,1))out.push({key:d,label:bounds.period==='month'?ehsDayLabel(+d.slice(8)):d.slice(5),start:d,end:d});
+  return out;
+}
+function moveEhsPeriod(prefix,delta){
+  const p=ehsPeriodFor(prefix),ids=ehsIds(prefix),date=document.getElementById(ids.date),year=document.getElementById(ids.year),month=document.getElementById(ids.month);
+  if(p==='day'||p==='week'){date.value=ehsAddDays(date.value||_localYMD(),delta*(p==='week'?7:1));}
+  else if(p==='month'){let d=new Date(+year.value,+month.value-1+delta,1);year.value=d.getFullYear();month.value=d.getMonth()+1;}
+  else year.value=+year.value+delta;
+  if(prefix==='a')renderAAnalysis();else if(prefix==='b')renderBAnalysis();else renderReport();
+}
+
 function setAPeriod(p,btn){
   aPeriod=p;
   document.querySelectorAll('#a-ptoggle button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('a-p-month').style.display=p==='week'?'none':'';
+  syncEhsPeriodControls('a');
   renderAAnalysis();
 }
 function setBPeriod(p,btn){
   bPeriod=p;
   document.querySelectorAll('#b-ptoggle button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('b-p-month').style.display=p==='week'?'none':'';
+  syncEhsPeriodControls('b');
   renderBAnalysis();
 }
 function setRPeriod(p,btn){
   rPeriod=p;
   document.querySelectorAll('#r-ptoggle button').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById('r-month').style.display=p==='week'?'none':'';
+  syncEhsPeriodControls('r');
   renderReport();
 }
 
 /* ========== MODULE A ANALYSIS ========== */
 function renderAAnalysis(){
-  const yr=parseInt(document.getElementById('a-p-year').value||new Date().getFullYear());
-  const mo=parseInt(document.getElementById('a-p-month').value||new Date().getMonth()+1);
-  const d=loadLocal();
-  let recs=d.internal.filter(r=>r.date);
-
-  let labels=[], plastic=[], fabric=[], core=[], totals=[];
-  if(aPeriod==='year'){
-    for(let m=1;m<=12;m++){
-      const mRecs=recs.filter(r=>new Date(r.date).getFullYear()===yr&&(new Date(r.date).getMonth()+1)===m);
-      labels.push(ehsMonthLabel(m));
-      plastic.push(mRecs.reduce((s,r)=>s+(+r.plastic_kg||0),0));
-      fabric.push(mRecs.reduce((s,r)=>s+(+r.fabric_kg||0),0));
-      core.push(mRecs.reduce((s,r)=>s+(+r.core_kg||0),0));
-      totals.push(mRecs.reduce((s,r)=>s+(+r.total_kg||0),0));
-    }
-  } else if(aPeriod==='month'){
-    const days=new Date(yr,mo,0).getDate();
-    for(let d2=1;d2<=days;d2++){
-      const ds=yr+'-'+String(mo).padStart(2,'0')+'-'+String(d2).padStart(2,'0');
-      const dr=recs.filter(r=>r.date===ds);
-      if(dr.length||totals.some(v=>v>0)||d2<=days){
-        labels.push(ehsDayLabel(d2));
-        plastic.push(dr.reduce((s,r)=>s+(+r.plastic_kg||0),0));
-        fabric.push(dr.reduce((s,r)=>s+(+r.fabric_kg||0),0));
-        core.push(dr.reduce((s,r)=>s+(+r.core_kg||0),0));
-        totals.push(dr.reduce((s,r)=>s+(+r.total_kg||0),0));
-      }
-    }
-  } else { // week
-    for(let w=1;w<=52;w++){
-      const wRecs=recs.filter(r=>{const d2=new Date(r.date);return d2.getFullYear()===yr&&getWeek(d2)===w;});
-      if(wRecs.length){
-        labels.push('W'+w);
-        plastic.push(wRecs.reduce((s,r)=>s+(+r.plastic_kg||0),0));
-        fabric.push(wRecs.reduce((s,r)=>s+(+r.fabric_kg||0),0));
-        core.push(wRecs.reduce((s,r)=>s+(+r.core_kg||0),0));
-        totals.push(wRecs.reduce((s,r)=>s+(+r.total_kg||0),0));
-      }
-    }
-  }
-
-  const totalKg=totals.reduce((a,b)=>a+b,0);
-  document.getElementById('a-stat-total').textContent=ehsText('合計','Total','សរុប')+': '+totalKg.toFixed(0)+' kg';
+  const recs=(loadLocal().internal||[]).filter(function(r){return ehsYmd(r.date);});
+  const bounds=ehsPeriodBounds('a'),view=ehsFilterPeriod(recs,bounds),buckets=ehsBuckets(bounds);
+  const labels=buckets.map(function(b){return b.label;}),plastic=[],fabric=[],core=[];
+  buckets.forEach(function(b){const rows=ehsFilterPeriod(recs,b);plastic.push(ehsSum(rows,'plastic_kg'));fabric.push(ehsSum(rows,'fabric_kg'));core.push(ehsSum(rows,'core_kg'));});
+  const totalKg=ehsRecycleTotal(view);
+  document.getElementById('a-stat-total').textContent=bounds.label+' · '+ehsText('合計','Total','សរុប')+': '+kgDisplay(totalKg);
 
   if(chartAInst)chartAInst.destroy();
   const ctx=document.getElementById('chartA').getContext('2d');
@@ -739,67 +815,49 @@ function renderAAnalysis(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:'kg'}}}}
   });
 
-  const tP=plastic.reduce((a,b)=>a+b,0);const tF=fabric.reduce((a,b)=>a+b,0);const tC=core.reduce((a,b)=>a+b,0);
+  const tP=ehsSum(view,'plastic_kg'),tF=ehsSum(view,'fabric_kg'),tC=ehsSum(view,'core_kg');
+  const photoCount=view.reduce(function(s,r){return s+photoArray(r.photos).length;},0);
   document.getElementById('a-stats').innerHTML=`
-    <div class="stat-card"><div class="stat-val">${totalKg.toFixed(0)}</div><div class="stat-lbl">Total (kg)</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:#3b82f6">${tP.toFixed(0)}</div><div class="stat-lbl">Plastic (kg)</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:#10b981">${tF.toFixed(0)}</div><div class="stat-lbl">Fabric (kg)</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:#f59e0b">${tC.toFixed(0)}</div><div class="stat-lbl">Core (kg)</div></div>
-    <div class="stat-card"><div class="stat-val">${recs.filter(r=>new Date(r.date).getFullYear()===yr).length}</div><div class="stat-lbl">${ehsText('回收次數（年）','Recycling Count (Year)','ចំនួនកែច្នៃ (ឆ្នាំ)')}</div></div>
+    <div class="stat-card"><div class="stat-val">${kgDisplay(totalKg)}</div><div class="stat-lbl">${ehsText('回收總重量','Recycle total weight','ទម្ងន់ Recycle សរុប')}</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:#3b82f6">${kgDisplay(tP)}</div><div class="stat-lbl">Plastic</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:#10b981">${kgDisplay(tF)}</div><div class="stat-lbl">Fabric</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:#f59e0b">${kgDisplay(tC)}</div><div class="stat-lbl">Core</div></div>
+    <div class="stat-card"><div class="stat-val">${view.length}</div><div class="stat-lbl">${ehsText('收料記錄','Receiving records','កំណត់ត្រាទទួល')}</div></div>
+    <div class="stat-card"><div class="stat-val">${photoCount}</div><div class="stat-lbl">${ehsText('照片','Photos','រូបថត')}</div></div>
   `;
+  ehsViewState.internal=view.slice();
+  renderARecordList(view,bounds);
+}
+
+function renderARecordList(view,bounds){
+  const head=document.getElementById('a-record-head'),body=document.getElementById('a-record-body'),label=document.getElementById('a-record-label');
+  label.textContent=bounds.label+' · '+view.length+' '+ehsText('筆','records','កំណត់ត្រា')+' · '+kgDisplay(ehsRecycleTotal(view));
+  if(bounds.period==='year'){
+    head.innerHTML='<tr><th>'+ehsText('月份','Month','ខែ')+'</th><th>Plastic (kg)</th><th>Fabric (kg)</th><th>Core (kg)</th><th>'+ehsText('總重量','Total weight','ទម្ងន់សរុប')+'</th><th>'+ehsText('記錄','Records','កំណត់ត្រា')+'</th><th>'+ehsText('照片','Photos','រូបថត')+'</th><th>'+ehsText('查看','View','មើល')+'</th></tr>';
+    const rows=ehsBuckets(bounds).map(function(b){const rs=ehsFilterPeriod(view,b),photos=rs.reduce(function(s,r){return s+photoArray(r.photos).length;},0);return '<tr><td><strong>'+ehsEsc(b.label)+'</strong></td><td>'+kgDisplay(ehsSum(rs,'plastic_kg'))+'</td><td>'+kgDisplay(ehsSum(rs,'fabric_kg'))+'</td><td>'+kgDisplay(ehsSum(rs,'core_kg'))+'</td><td><strong>'+kgDisplay(ehsRecycleTotal(rs))+'</strong></td><td>'+rs.length+'</td><td>📷 '+photos+'</td><td><button class="month-link" onclick="showRecycleMonth(\''+b.key+'\')">'+ehsText('查看明細','View records','មើលលម្អិត')+'</button></td></tr>';}).join('');
+    body.innerHTML=rows||'<tr><td colspan="8" class="empty-state">'+ehsText('尚無記錄','No records','គ្មានកំណត់ត្រា')+'</td></tr>';return;
+  }
+  head.innerHTML='<tr><th>'+ehsText('日期','Date','កាលបរិច្ឆេទ')+'</th><th>Plastic (kg)</th><th>Fabric (kg)</th><th>Core (kg)</th><th>'+ehsText('總重量','Total weight','ទម្ងន់សរុប')+'</th><th>'+ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')+'</th><th>'+ehsText('照片','Photos','រូបថត')+'</th><th>'+ehsText('備註','Remark','ចំណាំ')+'</th><th>'+ehsText('操作','Actions','សកម្មភាព')+'</th></tr>';
+  body.innerHTML=view.slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date));}).map(function(r){return '<tr><td><strong>'+ehsEsc(ehsYmd(r.date))+'</strong></td><td>'+kgDisplay(r.plastic_kg)+'</td><td>'+kgDisplay(r.fabric_kg)+'</td><td>'+kgDisplay(r.core_kg)+'</td><td><strong>'+kgDisplay(ehsRecycleRowTotal(r))+'</strong></td><td>'+ehsEsc(r.checked_by||'—')+'</td><td>'+(typeof GC!=='undefined'&&GC.photo?GC.photo.cell(photoArray(r.photos)):'📷 '+photoArray(r.photos).length)+'</td><td>'+ehsEsc(r.remark||'')+'</td><td><span class="row-actions"><button class="btn btn-secondary row-mini" onclick="editRecord(\''+ehsEsc(r.id)+'\',\'internal\')">✏️</button><button class="btn btn-danger row-mini" onclick="deleteRecord(\''+ehsEsc(r.id)+'\',\'internal\')">🗑️</button></span></td></tr>';}).join('')||'<tr><td colspan="9" class="empty-state">'+ehsText('此期間沒有 Recycle 記錄','No Recycle records in this period','គ្មានកំណត់ត្រា Recycle ក្នុងរយៈពេលនេះ')+'</td></tr>';
+}
+
+function showRecycleMonth(ym){
+  const parts=String(ym).split('-');aPeriod='month';document.getElementById('a-p-year').value=parts[0];document.getElementById('a-p-month').value=+parts[1];
+  document.querySelectorAll('#a-ptoggle button').forEach(function(b){b.classList.toggle('active',b.getAttribute('onclick').indexOf("'month'")>=0);});syncEhsPeriodControls('a');renderAAnalysis();
 }
 
 /* ========== MODULE B ANALYSIS ========== */
 function renderBAnalysis(){
-  const yr=parseInt(document.getElementById('b-p-year').value||new Date().getFullYear());
-  const mo=parseInt(document.getElementById('b-p-month').value||new Date().getMonth()+1);
-  const d=loadLocal();
-  let recs=d.gate.filter(r=>r.date);
-
-  let filterRecs=recs;
-  if(bPeriod==='year') filterRecs=recs.filter(r=>new Date(r.date).getFullYear()===yr);
-  else if(bPeriod==='month') filterRecs=recs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===yr&&(dt.getMonth()+1)===mo;});
-
-  // Supplier badges
-  const supGrid=document.getElementById('b-sup-grid');
-  supGrid.innerHTML=SUPPLIERS.map(s=>{
-    const n=filterRecs.filter(r=>r.supplier===s).length;
-    const cls=n>=SUP_TARGET?'ok':n>=2?'warn':'alert';
-    const cntCls=n>=SUP_TARGET?'ok':n>=2?'warn':'alert';
-    const pct=bPeriod==='year'?ehsText('年','Year','ឆ្នាំ'):ehsText('月','Month','ខែ');
-    return `<div class="sup-card ${cls}">
-      <div class="sup-name">${s}</div>
-      <div class="sup-count ${cntCls}">${n}</div>
-      <div class="sup-sub">${ehsText('趟','trips','ជើង')} / ${ehsText('目標','Target','គោលដៅ')} ${SUP_TARGET} (${pct})</div>
-      ${n<SUP_TARGET?`<div style="margin-top:6px;font-size:11px;color:var(--red)">⚠️ ${ehsText('尚差','Remaining','នៅខ្វះ')} ${SUP_TARGET-n} ${ehsText('趟','trips','ជើង')}</div>`:`<div style="margin-top:6px;font-size:11px;color:var(--green)">✅ ${ehsText('達標','Target met','ដល់គោលដៅ')}</div>`}
-    </div>`;
+  const db=loadLocal(),recs=(db.gate||[]).filter(function(r){return ehsYmd(r.date);});
+  const bounds=ehsPeriodBounds('b'),filterRecs=ehsFilterPeriod(recs,bounds),buckets=ehsBuckets(bounds);
+  const target=bPeriod==='year'?SUP_TARGET*12:(bPeriod==='month'?SUP_TARGET:1);
+  document.getElementById('b-sup-grid').innerHTML=SUPPLIERS.map(function(s){
+    const rows=filterRecs.filter(function(r){return r.supplier===s;}),n=rows.length,kg=ehsSum(rows,'weight_kg'),cls=n>=target?'ok':n>0?'warn':'alert';
+    return '<div class="sup-card '+cls+'"><div class="sup-name">'+s+'</div><div class="sup-count '+cls+'">'+n+'</div><div class="sup-sub">'+ehsText('收料趟數','Receiving trips','ចំនួនជើងទទួល')+' · <strong>'+kgDisplay(kg)+'</strong></div><div style="margin-top:6px;font-size:11px;color:var(--dim)">'+ehsText('期間目標','Period target','គោលដៅរយៈពេល')+': '+target+' '+ehsText('趟','trips','ជើង')+'</div></div>';
   }).join('');
 
-  // Chart — trips by period
-  let labels=[], kswmData=[], sonData=[];
-  if(bPeriod==='year'){
-    for(let m=1;m<=12;m++){
-      const mRecs=recs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===yr&&(dt.getMonth()+1)===m;});
-      labels.push(ehsMonthLabel(m));
-      kswmData.push(mRecs.filter(r=>r.supplier==='K.S.W.M').length);
-      sonData.push(mRecs.filter(r=>r.supplier==='SONYAPICH').length);
-    }
-  } else if(bPeriod==='month'){
-    const weeks={};
-    filterRecs.forEach(r=>{const w='W'+getWeek(new Date(r.date));weeks[w]=weeks[w]||{K:0,S:0};
-      if(r.supplier==='K.S.W.M')weeks[w].K++;else if(r.supplier==='SONYAPICH')weeks[w].S++;});
-    Object.keys(weeks).sort().forEach(w=>{labels.push(w);kswmData.push(weeks[w].K);sonData.push(weeks[w].S);});
-    if(!labels.length){labels=[ehsText('無資料','No data','គ្មានទិន្នន័យ')];kswmData=[0];sonData=[0];}
-  } else {
-    for(let w=1;w<=52;w++){
-      const wRecs=recs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===yr&&getWeek(dt)===w;});
-      if(wRecs.length){
-        labels.push('W'+w);
-        kswmData.push(wRecs.filter(r=>r.supplier==='K.S.W.M').length);
-        sonData.push(wRecs.filter(r=>r.supplier==='SONYAPICH').length);
-      }
-    }
-  }
+  const labels=buckets.map(function(b){return b.label;}),kswmData=[],sonData=[],otherData=[];
+  buckets.forEach(function(b){const rows=ehsFilterPeriod(recs,b);kswmData.push(ehsSum(rows.filter(function(r){return r.supplier==='K.S.W.M';}),'weight_kg'));sonData.push(ehsSum(rows.filter(function(r){return r.supplier==='SONYAPICH';}),'weight_kg'));otherData.push(ehsSum(rows.filter(function(r){return r.supplier!=='K.S.W.M'&&r.supplier!=='SONYAPICH';}),'weight_kg'));});
 
   if(chartBInst)chartBInst.destroy();
   const ctx=document.getElementById('chartB').getContext('2d');
@@ -808,143 +866,107 @@ function renderBAnalysis(){
     data:{labels,datasets:[
       {label:'K.S.W.M',data:kswmData,backgroundColor:'rgba(37,99,235,.7)'},
       {label:'SONYAPICH',data:sonData,backgroundColor:'rgba(220,38,38,.7)'},
-      {label:ehsText('目標／週期','Target / Period','គោលដៅ / រយៈពេល'),data:labels.map(()=>SUP_TARGET),type:'line',borderColor:'#f59e0b',borderDash:[5,5],pointRadius:0,borderWidth:2,fill:false}
+      {label:ehsText('其它','Other','ផ្សេងៗ'),data:otherData,backgroundColor:'rgba(245,158,11,.7)'}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,title:{display:true,text:ehsText('趟數','Trips','ចំនួនជើង')}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:'kg'}}}}
   });
 
   const totalTrips=filterRecs.length;
-  const kTotal=filterRecs.filter(r=>r.supplier==='K.S.W.M').length;
-  const sTotal=filterRecs.filter(r=>r.supplier==='SONYAPICH').length;
-  const anomCount=filterRecs.filter(r=>r.anomaly).length;
+  const totalKg=ehsSum(filterRecs,'weight_kg'),kTotal=filterRecs.filter(function(r){return r.supplier==='K.S.W.M';}).length,sTotal=filterRecs.filter(function(r){return r.supplier==='SONYAPICH';}).length;
+  const anomCount=filterRecs.filter(function(r){return r.anomaly;}).length,photoCount=filterRecs.reduce(function(s,r){return s+photoArray(r.photos).length;},0);
   document.getElementById('b-stats').innerHTML=`
-    <div class="stat-card"><div class="stat-val">${totalTrips}</div><div class="stat-lbl">${ehsText('總趟數','Total Trips','ចំនួនជើងសរុប')}</div></div>
+    <div class="stat-card"><div class="stat-val">${kgDisplay(totalKg)}</div><div class="stat-lbl">${ehsText('Waste 收料總重量','Waste received weight','ទម្ងន់ Waste ទទួលសរុប')}</div></div>
+    <div class="stat-card"><div class="stat-val">${totalTrips}</div><div class="stat-lbl">${ehsText('收料記錄','Receiving records','កំណត់ត្រាទទួល')}</div></div>
     <div class="stat-card"><div class="stat-val" style="color:#2563eb">${kTotal}</div><div class="stat-lbl">K.S.W.M</div></div>
     <div class="stat-card"><div class="stat-val" style="color:#dc2626">${sTotal}</div><div class="stat-lbl">SONYAPICH</div></div>
+    <div class="stat-card"><div class="stat-val">${photoCount}</div><div class="stat-lbl">${ehsText('照片','Photos','រូបថត')}</div></div>
     <div class="stat-card"><div class="stat-val" style="color:${anomCount>0?'var(--orange)':'var(--green)'}">${anomCount}</div><div class="stat-lbl">${ehsText('異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី')}</div></div>
   `;
 
   // Check pending monthly approval
-  const pending=(loadLocal().monthly||[]).find(r=>{
-    const key=yr+String(mo).padStart(2,'0');
+  const yr=+bounds.start.slice(0,4),mo=+bounds.start.slice(5,7);
+  const pending=(db.monthly||[]).find(r=>{
+    const key=yr+String(mo||new Date().getMonth()+1).padStart(2,'0');
     return r.reportId&&r.reportId.includes(key)&&r.status==='pending';
   });
   const pb=document.getElementById('b-pending-bar');
-  if(pending){pb.style.display='flex';document.getElementById('b-pending-id').textContent=pending.reportId;}
+  if(pending&&bPeriod==='month'){pb.style.display='flex';document.getElementById('b-pending-id').textContent=pending.reportId;}
   else{pb.style.display='none';}
+  document.getElementById('b-approval-row').style.display=bPeriod==='month'?'flex':'none';
 
-  // This month records table
-  const moRecs=recs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===yr&&(dt.getMonth()+1)===mo;}).sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  document.getElementById('b-month-label').textContent=ehsYearLabel(yr)+' '+ehsMonthLabel(mo)+' · '+ehsText('共','Total','សរុប')+' '+moRecs.length+' '+ehsText('筆','records','កំណត់ត្រា');
+  const moRecs=filterRecs.slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));});
+  document.getElementById('b-month-label').textContent=bounds.label+' · '+ehsText('共','Total','សរុប')+' '+moRecs.length+' '+ehsText('筆','records','កំណត់ត្រា')+' · '+kgDisplay(totalKg);
   const tbody=document.getElementById('b-month-body');
   if(!moRecs.length){
-    tbody.innerHTML='<tr><td colspan="11" style="text-align:center;padding:16px;color:var(--dim)">'+ehsText('本月尚無記錄','No records this month','គ្មានកំណត់ត្រាក្នុងខែនេះ')+'</td></tr>';
+    tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:16px;color:var(--dim)">'+ehsText('此期間沒有 Waste 記錄','No Waste records in this period','គ្មានកំណត់ត្រា Waste ក្នុងរយៈពេលនេះ')+'</td></tr>';
   }else{
     tbody.innerHTML=moRecs.map((r,i)=>{
       const wtype=[(r.solid_waste?'<span class="badge badge-solid">固</span>':''),
                    (r.industrial_waste?'<span class="badge badge-ind">工</span>':'')].filter(Boolean).join(' ')||'—';
       const anom=r.anomaly?'<span class="badge badge-anom">⚠️</span>':'—';
       const dur=r.duration_min!=null?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'—';
-      return `<tr><td>${i+1}</td><td>${r.date}</td><td>${r.name||'—'}</td><td><strong>${r.supplier||'—'}</strong></td>
-        <td>${wtype}</td><td>${r.weight_kg||'—'}</td><td>${r.time_in||'—'}</td><td>${r.time_out||'—'}</td>
-        <td>${dur}</td><td>${r.checked_by||'—'}</td><td>${anom}</td></tr>`;
+      const photos=photoArray(r.photos);
+      return `<tr><td>${i+1}</td><td>${ehsEsc(ehsYmd(r.date))}</td><td>${ehsEsc(r.name||'—')}</td><td><strong>${ehsEsc(r.supplier||'—')}</strong></td>
+        <td>${wtype}</td><td><strong>${kgDisplay(r.weight_kg)}</strong></td><td>${ehsEsc(r.time_in||'—')}</td><td>${ehsEsc(r.time_out||'—')}</td>
+        <td>${dur}</td><td>${ehsEsc(r.checked_by||'—')}</td><td>${typeof GC!=='undefined'&&GC.photo?GC.photo.cell(photos):'📷 '+photos.length}</td><td>${anom}</td><td><span class="row-actions"><button class="btn btn-secondary row-mini" onclick="editRecord('${ehsEsc(r.id)}','gate')">✏️</button><button class="btn btn-danger row-mini" onclick="deleteRecord('${ehsEsc(r.id)}','gate')">🗑️</button></span></td></tr>`;
     }).join('');
   }
   const kN=moRecs.filter(r=>r.supplier==='K.S.W.M').length;
   const sN=moRecs.filter(r=>r.supplier==='SONYAPICH').length;
-  document.getElementById('b-month-footer').textContent=`K.S.W.M: ${kN} ${ehsText('趟','trips','ជើង')} | SONYAPICH: ${sN} ${ehsText('趟','trips','ជើង')} | ${ehsText('合計','Total','សរុប')}: ${moRecs.length}`;
+  document.getElementById('b-month-footer').textContent=`K.S.W.M: ${kN} ${ehsText('趟','trips','ជើង')} | SONYAPICH: ${sN} ${ehsText('趟','trips','ជើង')} | ${ehsText('合計','Total','សរុប')}: ${moRecs.length} · ${kgDisplay(totalKg)}`;
+  ehsViewState.gate=filterRecs.slice();
 }
 
 /* ========== REPORT ========== */
 function renderReport(){
-  const yr=parseInt(document.getElementById('r-year').value||new Date().getFullYear());
-  const mo=parseInt(document.getElementById('r-month').value||new Date().getMonth()+1);
-  const d=loadLocal();
-  const intRecs=d.internal.filter(r=>r.date);
-  const gateRecs=d.gate.filter(r=>r.date);
+  const d=loadLocal(),intRecs=(d.internal||[]).filter(function(r){return ehsYmd(r.date);}),gateRecs=(d.gate||[]).filter(function(r){return ehsYmd(r.date);});
+  const curBounds=ehsPeriodBounds('r'),prevBounds=ehsPeriodBounds('r',true),curInt=ehsFilterPeriod(intRecs,curBounds),prevInt=ehsFilterPeriod(intRecs,prevBounds),curGate=ehsFilterPeriod(gateRecs,curBounds),prevGate=ehsFilterPeriod(gateRecs,prevBounds);
+  const curTotalKg=ehsRecycleTotal(curInt),prevTotalKg=ehsRecycleTotal(prevInt),curWasteKg=ehsSum(curGate,'weight_kg'),prevWasteKg=ehsSum(prevGate,'weight_kg');
+  const curPhotos=curInt.concat(curGate).reduce(function(s,r){return s+photoArray(r.photos).length;},0),prevPhotos=prevInt.concat(prevGate).reduce(function(s,r){return s+photoArray(r.photos).length;},0);
+  function change(cv,pv){if(!pv)return cv?'+'+Number(cv).toLocaleString():'—';const pct=(cv-pv)/pv*100;return (pct>=0?'▲ ':'▼ ')+Math.abs(pct).toFixed(1)+'%';}
+  function card(label,cv,pv,unit){const shown=unit==='kg'?kgDisplay(cv):Number(cv).toLocaleString();return '<div class="stat-card"><div class="stat-val">'+shown+'</div><div class="stat-lbl">'+label+'</div><div class="stat-prev">'+ehsText('上期','Previous','មុន')+': '+(unit==='kg'?kgDisplay(pv):Number(pv).toLocaleString())+' <span class="stat-change '+(cv>=pv?'up':'down')+'">'+change(cv,pv)+'</span></div></div>';}
+  document.getElementById('r-period-label').textContent=ehsText('當期','Current','បច្ចុប្បន្ន')+': '+curBounds.label+' · '+ehsText('上期','Previous','មុន')+': '+prevBounds.label;
+  document.getElementById('r-stats').innerHTML=[
+    card(ehsText('Recycle 總重量','Recycle total weight','ទម្ងន់ Recycle សរុប'),curTotalKg,prevTotalKg,'kg'),
+    card(ehsText('Recycle 收料記錄','Recycle receiving records','កំណត់ត្រាទទួល Recycle'),curInt.length,prevInt.length,'records'),
+    card(ehsText('Waste 收料總重量','Waste received weight','ទម្ងន់ Waste ទទួលសរុប'),curWasteKg,prevWasteKg,'kg'),
+    card(ehsText('Waste 收料記錄','Waste receiving records','កំណត់ត្រាទទួល Waste'),curGate.length,prevGate.length,'records'),
+    card(ehsText('照片','Photos','រូបថត'),curPhotos,prevPhotos,'records')
+  ].join('');
 
-  let curInt, prevInt, curGate, prevGate;
-  if(rPeriod==='year'){
-    curInt=intRecs.filter(r=>new Date(r.date).getFullYear()===yr);
-    prevInt=intRecs.filter(r=>new Date(r.date).getFullYear()===yr-1);
-    curGate=gateRecs.filter(r=>new Date(r.date).getFullYear()===yr);
-    prevGate=gateRecs.filter(r=>new Date(r.date).getFullYear()===yr-1);
-  }else{
-    curInt=intRecs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===yr&&(dt.getMonth()+1)===mo;});
-    const prevMo=mo===1?12:mo-1,prevYr=mo===1?yr-1:yr;
-    prevInt=intRecs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===prevYr&&(dt.getMonth()+1)===prevMo;});
-    curGate=gateRecs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===yr&&(dt.getMonth()+1)===mo;});
-    prevGate=gateRecs.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===prevYr&&(dt.getMonth()+1)===prevMo;});
-  }
-
-  const sumKg=(recs)=>recs.reduce((s,r)=>s+(+r.total_kg||0),0);
-  const curTotalKg=sumKg(curInt),prevTotalKg=sumKg(prevInt);
-  const curTrips=curGate.length,prevTrips=prevGate.length;
-
-  document.getElementById('r-stats').innerHTML=`
-    <div class="stat-card"><div class="stat-val">${curTotalKg.toFixed(0)}</div><div class="stat-lbl">Recycle (kg)</div></div>
-    <div class="stat-card"><div class="stat-val">${curInt.length}</div><div class="stat-lbl">${ehsText('回收次數','Recycling Count','ចំនួនកែច្នៃ')}</div></div>
-    <div class="stat-card"><div class="stat-val">${curTrips}</div><div class="stat-lbl">Waste Records</div></div>
-    <div class="stat-card"><div class="stat-val">${SUPPLIERS.filter(s=>curGate.filter(r=>r.supplier===s).length>=SUP_TARGET).length}/${SUPPLIERS.length}</div><div class="stat-lbl">供應商達標</div></div>
-  `;
-
-  // Chart 1 — internal monthly
-  const mLabels=[];const mTotals=[];
-  for(let m=1;m<=12;m++){
-    mLabels.push(ehsMonthLabel(m));
-    mTotals.push(intRecs.filter(r=>new Date(r.date).getFullYear()===yr&&(new Date(r.date).getMonth()+1)===m).reduce((s,r)=>s+(+r.total_kg||0),0));
-  }
+  const buckets=ehsBuckets(curBounds),mLabels=buckets.map(function(b){return b.label;}),mTotals=buckets.map(function(b){return ehsRecycleTotal(ehsFilterPeriod(intRecs,b));});
   if(chartR1Inst)chartR1Inst.destroy();
   chartR1Inst=new Chart(document.getElementById('chartR1').getContext('2d'),{
     type:'bar',data:{labels:mLabels,datasets:[{label:'Total (kg)',data:mTotals,backgroundColor:'rgba(16,185,129,.7)'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'kg'}}}}
   });
 
-  // Chart 2 — gate trips monthly
-  const gLabels=[];const kswmM=[];const sonM=[];
-  for(let m=1;m<=12;m++){
-    gLabels.push(ehsMonthLabel(m));
-    const mG=gateRecs.filter(r=>new Date(r.date).getFullYear()===yr&&(new Date(r.date).getMonth()+1)===m);
-    kswmM.push(mG.filter(r=>r.supplier==='K.S.W.M').length);
-    sonM.push(mG.filter(r=>r.supplier==='SONYAPICH').length);
-  }
+  const gLabels=mLabels.slice(),kswmM=[],sonM=[],otherM=[];
+  buckets.forEach(function(b){const rows=ehsFilterPeriod(gateRecs,b);kswmM.push(ehsSum(rows.filter(function(r){return r.supplier==='K.S.W.M';}),'weight_kg'));sonM.push(ehsSum(rows.filter(function(r){return r.supplier==='SONYAPICH';}),'weight_kg'));otherM.push(ehsSum(rows.filter(function(r){return r.supplier!=='K.S.W.M'&&r.supplier!=='SONYAPICH';}),'weight_kg'));});
   if(chartR2Inst)chartR2Inst.destroy();
   chartR2Inst=new Chart(document.getElementById('chartR2').getContext('2d'),{
     type:'bar',data:{labels:gLabels,datasets:[
       {label:'K.S.W.M',data:kswmM,backgroundColor:'rgba(37,99,235,.7)'},
       {label:'SONYAPICH',data:sonM,backgroundColor:'rgba(220,38,38,.7)'},
+      {label:ehsText('其它','Other','ផ្សេងៗ'),data:otherM,backgroundColor:'rgba(245,158,11,.7)'}
     ]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{y:{beginAtZero:true,title:{display:true,text:'趟'}}}}
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:'kg'}}}}
   });
 
-  // Comparison table
   const rows=[
-    {m:'Recycle Total (kg)',c:curTotalKg.toFixed(0),p:prevTotalKg.toFixed(0),cv:curTotalKg,pv:prevTotalKg},
-    {m:'Plastic (kg)',
-     c:curInt.reduce((s,r)=>s+(+r.plastic_kg||0),0).toFixed(0),
-     p:prevInt.reduce((s,r)=>s+(+r.plastic_kg||0),0).toFixed(0),
-     cv:curInt.reduce((s,r)=>s+(+r.plastic_kg||0),0),
-     pv:prevInt.reduce((s,r)=>s+(+r.plastic_kg||0),0)},
-    {m:'Fabric (kg)',
-     c:curInt.reduce((s,r)=>s+(+r.fabric_kg||0),0).toFixed(0),
-     p:prevInt.reduce((s,r)=>s+(+r.fabric_kg||0),0).toFixed(0),
-     cv:curInt.reduce((s,r)=>s+(+r.fabric_kg||0),0),
-     pv:prevInt.reduce((s,r)=>s+(+r.fabric_kg||0),0)},
-    {m:'Waste Records',c:curTrips,p:prevTrips,cv:curTrips,pv:prevTrips},
-    ...SUPPLIERS.map(s=>({
-      m:s+' 趟數',
-      c:curGate.filter(r=>r.supplier===s).length,
-      p:prevGate.filter(r=>r.supplier===s).length,
-      cv:curGate.filter(r=>r.supplier===s).length,
-      pv:prevGate.filter(r=>r.supplier===s).length,
-    }))
+    {m:ehsText('Recycle 總重量','Recycle total weight','ទម្ងន់ Recycle សរុប'),unit:'kg',cv:curTotalKg,pv:prevTotalKg},
+    {m:'Plastic',unit:'kg',cv:ehsSum(curInt,'plastic_kg'),pv:ehsSum(prevInt,'plastic_kg')},
+    {m:'Fabric',unit:'kg',cv:ehsSum(curInt,'fabric_kg'),pv:ehsSum(prevInt,'fabric_kg')},
+    {m:'Core',unit:'kg',cv:ehsSum(curInt,'core_kg'),pv:ehsSum(prevInt,'core_kg')},
+    {m:ehsText('Recycle 收料記錄','Recycle receiving records','កំណត់ត្រាទទួល Recycle'),unit:ehsText('筆','records','កំណត់ត្រា'),cv:curInt.length,pv:prevInt.length},
+    {m:ehsText('Waste 收料總重量','Waste received weight','ទម្ងន់ Waste ទទួលសរុប'),unit:'kg',cv:curWasteKg,pv:prevWasteKg},
+    {m:ehsText('Waste 收料記錄','Waste receiving records','កំណត់ត្រាទទួល Waste'),unit:ehsText('筆','records','កំណត់ត្រា'),cv:curGate.length,pv:prevGate.length},
+    {m:ehsText('照片','Photos','រូបថត'),unit:ehsText('張','photos','រូប'),cv:curPhotos,pv:prevPhotos}
   ];
-  document.getElementById('r-cmp-body').innerHTML=rows.map(r=>{
-    let chg='—',cls='';
-    if(r.pv>0){const pct=((r.cv-r.pv)/r.pv*100).toFixed(1);
-      chg=(r.cv>=r.pv?'▲':'▼')+Math.abs(pct)+'%';
-      cls=r.cv>r.pv?'color:var(--red)':'color:var(--green)';}
-    return `<tr><td>${r.m}</td><td><strong>${r.c}</strong></td><td>${r.p}</td><td style="${cls}">${chg}</td></tr>`;
+  ehsReportRows=rows.map(function(r){return {Metric:r.m,Current:r.cv,Previous:r.pv,Unit:r.unit,Change:change(r.cv,r.pv),CurrentPeriod:curBounds.label,PreviousPeriod:prevBounds.label};});
+  document.getElementById('r-cmp-body').innerHTML=rows.map(function(r){
+    const c=r.unit==='kg'?kgDisplay(r.cv):r.cv+' '+r.unit,p=r.unit==='kg'?kgDisplay(r.pv):r.pv+' '+r.unit;
+    return '<tr><td>'+ehsEsc(r.m)+'</td><td><strong>'+c+'</strong></td><td>'+p+'</td><td><strong>'+change(r.cv,r.pv)+'</strong></td></tr>';
   }).join('');
 }
 
@@ -958,9 +980,9 @@ function queryHistory(){
   const localData=loadLocal();
   let recs=(module==='gate'?localData.gate:localData.internal).filter(r=>{
     if(!r.date)return false;
-    const d=new Date(r.date);
-    if(year&&d.getFullYear()!==parseInt(year))return false;
-    if(month&&(d.getMonth()+1)!==parseInt(month))return false;
+    const ds=ehsYmd(r.date),ym=ds.slice(0,7).split('-');
+    if(year&&+ym[0]!==parseInt(year))return false;
+    if(month&&+ym[1]!==parseInt(month))return false;
     if(search&&!JSON.stringify(r).toLowerCase().includes(search))return false;
     return true;
   });
@@ -974,26 +996,26 @@ function renderHistoryTable(module,recs){
   if(!recs.length){wrap.innerHTML='<div class="empty-state">🔍 無符合記錄</div>';return;}
   let hdrs,rows;
   if(module==='internal'){
-    hdrs=['日期','Plastic(kg)','Fabric(kg)','Core(kg)','Total(kg)','檢查人','照片','備註','提交時間','操作'];
+    hdrs=[ehsText('日期','Date','កាលបរិច្ឆេទ'),'Plastic (kg)','Fabric (kg)','Core (kg)','Total (kg)',ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ'),ehsText('照片','Photos','រូបថត'),ehsText('備註','Remark','ចំណាំ'),ehsText('提交時間','Saved at','ពេលរក្សាទុក'),ehsText('操作','Actions','សកម្មភាព')];
     rows=recs.map(r=>`<tr>
-      <td>${r.date||''}</td><td>${r.plastic_kg||0}</td><td>${r.fabric_kg||0}</td>
-      <td>${r.core_kg||0}</td><td><strong>${r.total_kg||0}</strong></td><td>${r.checked_by||'—'}</td>
-      <td>${typeof GC!=='undefined'&&GC.photo?GC.photo.cell(r.photos):((r.photos||[]).length?'📷 '+r.photos.length:'—')}</td><td>${r.remark||''}</td>
+      <td>${ehsEsc(ehsYmd(r.date))}</td><td>${kgDisplay(r.plastic_kg)}</td><td>${kgDisplay(r.fabric_kg)}</td>
+      <td>${kgDisplay(r.core_kg)}</td><td><strong>${kgDisplay(r.total_kg)}</strong></td><td>${ehsEsc(r.checked_by||'—')}</td>
+      <td>${typeof GC!=='undefined'&&GC.photo?GC.photo.cell(photoArray(r.photos)):'📷 '+photoArray(r.photos).length}</td><td>${ehsEsc(r.remark||'')}</td>
       <td style="font-size:11px;color:var(--dim)">${(r.submitted_at||'').substring(0,16)}</td>
-      <td><button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteRecord('${r.id}','internal')">🗑️</button></td>
+      <td><span class="row-actions"><button class="btn btn-secondary row-mini" onclick="editRecord('${ehsEsc(r.id)}','internal')">✏️</button><button class="btn btn-danger row-mini" onclick="deleteRecord('${ehsEsc(r.id)}','internal')">🗑️</button></span></td>
     </tr>`).join('');
   }else{
-    hdrs=['日期','姓名','供應商','車牌','廢料','重量','Time In','Time Out','停留','檢查人','異常','操作'];
+    hdrs=[ehsText('日期','Date','កាលបរិច្ឆេទ'),ehsText('姓名','Name','ឈ្មោះ'),ehsText('供應商','Supplier','អ្នកផ្គត់ផ្គង់'),ehsText('車牌','Vehicle No.','លេខយានយន្ត'),ehsText('廢料類型','Waste type','ប្រភេទសំណល់'),ehsText('重量','Weight','ទម្ងន់')+' (kg)','Time In','Time Out',ehsText('停留','Duration','រយៈពេល'),ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ'),ehsText('照片','Photos','រូបថត'),ehsText('異常','Anomaly','មិនប្រក្រតី'),ehsText('操作','Actions','សកម្មភាព')];
     rows=recs.map(r=>{
       const wtype=[(r.solid_waste?'<span class="badge badge-solid">固</span>':''),
                    (r.industrial_waste?'<span class="badge badge-ind">工</span>':'')].filter(Boolean).join(' ')||'—';
       return `<tr>
         <td>${r.date||''}</td><td>${r.name||''}</td><td><strong>${r.supplier||''}</strong></td>
-        <td>${r.car_number||''}</td><td>${wtype}</td><td>${r.weight_kg||'—'}</td>
+        <td>${ehsEsc(r.car_number||'')}</td><td>${wtype}</td><td><strong>${kgDisplay(r.weight_kg)}</strong></td>
         <td>${r.time_in||''}</td><td>${r.time_out||'—'}</td>
         <td>${r.duration_min!=null?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'—'}</td><td>${r.checked_by||'—'}</td>
-        <td>${r.anomaly?'<span class="badge badge-anom">⚠️</span>':'—'}</td>
-        <td><button class="btn btn-danger" style="padding:3px 8px;font-size:11px" onclick="deleteRecord('${r.id}','gate')">🗑️</button></td>
+        <td>${typeof GC!=='undefined'&&GC.photo?GC.photo.cell(photoArray(r.photos)):'📷 '+photoArray(r.photos).length}</td><td>${r.anomaly?'<span class="badge badge-anom">⚠️</span>':'—'}</td>
+        <td><span class="row-actions"><button class="btn btn-secondary row-mini" onclick="editRecord('${ehsEsc(r.id)}','gate')">✏️</button><button class="btn btn-danger row-mini" onclick="deleteRecord('${ehsEsc(r.id)}','gate')">🗑️</button></span></td>
       </tr>`;
     }).join('');
   }
@@ -1009,16 +1031,17 @@ function openStoredPhotos(id){
   if(r&&typeof GC!=='undefined'&&GC.photo)GC.photo.lightbox(r.photos||[],0);
 }
 
-function deleteRecord(id,module){
+async function deleteRecord(id,module){
   if(!id||id==='undefined'){showToast('⚠️ 無效ID');return;}
-  if(!confirm('確定刪除此筆記錄？\n\n注意：只刪除本機儲存。'))return;
+  if(!confirm(ehsText('確定刪除此筆記錄？本機及雲端會一併刪除。','Delete this record from both this device and cloud?','លុបកំណត់ត្រានេះពីឧបករណ៍ និង Cloud មែនទេ?')))return;
   const ld=loadLocal();
   if(module==='gate')ld.gate=ld.gate.filter(r=>r.id!==id);
   else ld.internal=ld.internal.filter(r=>r.id!==id);
   saveLocal(ld);
-  historyData=historyData.filter(r=>r.id!==id);
-  renderHistoryTable(document.getElementById('h-module').value,historyData);
-  showToast('🗑️ 已刪除');
+  let cloudOk=false;
+  try{const res=typeof GC!=='undefined'&&GC.cloud?await GC.cloud.post({action:'delete',tool:'ehs',id:id}):await gasPost({action:'delete',tool:'ehs',id:id});cloudOk=!!(res&&res.ok!==false);}catch(e){}
+  refreshEhsAll();
+  showToast(cloudOk?ehsText('🗑️ 本機及雲端已刪除','🗑️ Deleted locally and from cloud','🗑️ បានលុបពីឧបករណ៍ និង Cloud'):ehsText('⚠️ 本機已刪除；雲端離線，稍後請再同步','⚠️ Deleted locally; cloud is offline','⚠️ បានលុបក្នុងឧបករណ៍; Cloud មិនអនឡាញ'));
 }
 
 function exportHistoryExcel(){
@@ -1027,6 +1050,31 @@ function exportHistoryExcel(){
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'VRT_Waste');
   XLSX.writeFile(wb,'VRT_Waste_Export_'+_localYMD()+'.xlsx');
   showToast('✅ 已下載');
+}
+
+function exportRowsExcel(rows,name){
+  if(!rows||!rows.length){showToast(ehsText('⚠️ 此期間沒有資料','⚠️ No data in this period','⚠️ គ្មានទិន្នន័យក្នុងរយៈពេលនេះ'));return;}
+  const safe=rows.map(function(r){const o={};Object.keys(r||{}).forEach(function(k){if(k==='photos'){o.photo_count=photoArray(r[k]).length;o.photos=photoArray(r[k]).join('\n');}else if(k==='weight_kg'||/_kg$/.test(k))o[k]=kgNumber(r[k]);else o[k]=r[k];});return o;});
+  const ws=XLSX.utils.json_to_sheet(safe),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,String(name||'EHS').slice(0,31));XLSX.writeFile(wb,'VRT_EHS_'+name+'_'+_localYMD()+'.xlsx');showToast(ehsText('✅ 已匯出 Excel','✅ Excel exported','✅ បាននាំចេញ Excel'));
+}
+function exportEhsPeriod(module){exportRowsExcel(ehsViewState[module]||[],module==='gate'?'Waste':'Recycle');}
+function exportReportComparison(){exportRowsExcel(ehsReportRows,'Comparison');}
+
+function editRecord(id,module){
+  const d=loadLocal(),r=(module==='gate'?d.gate:d.internal).find(function(x){return String(x.id)===String(id);});if(!r)return;
+  if(module==='internal'){
+    aRows=[{id:'EA-'+Date.now(),_editId:r.id,date:ehsYmd(r.date),plastic:kgNumber(r.plastic_kg),fabric:kgNumber(r.fabric_kg),core:kgNumber(r.core_kg),total:kgNumber(r.total_kg),checked_by:r.checked_by||'',remark:r.remark||'',photos:photoArray(r.photos)}];renderABatch();switchTab('modA');document.getElementById('a-batch-table').scrollIntoView({behavior:'smooth',block:'center'});
+  }else{
+    bRows=[{id:'EB-'+Date.now(),_editId:r.id,date:ehsYmd(r.date),name:r.name||'',supplier:r.supplier||'',car:r.car_number||'',solid:!!r.solid_waste,industrial:!!r.industrial_waste,kg:kgNumber(r.weight_kg),timein:r.time_in||'',timeout:r.time_out||'',gate:r.gate_keeper||'',checked_by:r.checked_by||'',remark:r.remark||'',photos:photoArray(r.photos)}];renderBBatch();switchTab('modB');document.getElementById('b-batch-table').scrollIntoView({behavior:'smooth',block:'center'});
+  }
+  showToast(ehsText('✏️ 已載入記錄，修改後按儲存','✏️ Record loaded; edit and save','✏️ បានផ្ទុកកំណត់ត្រា កែហើយរក្សាទុក'));
+}
+
+function refreshEhsAll(){
+  if(document.getElementById('a-p-year')&&document.getElementById('a-p-year').options.length)renderAAnalysis();
+  if(document.getElementById('b-p-year')&&document.getElementById('b-p-year').options.length)renderBAnalysis();
+  if(document.getElementById('r-year')&&document.getElementById('r-year').options.length)renderReport();
+  const active=document.querySelector('.tab-content.active');if(active&&active.id==='tab-history')queryHistory();
 }
 
 /* ========== MODULE A BATCH INPUT ========== */
@@ -1051,7 +1099,7 @@ function renderABatch(){
       <td><input class="bi" type="number" placeholder="0" value="${r.core||''}" min="0" onchange="updateARow('${r.id}','core',this.value);calcATotal('${r.id}',this)"></td>
       <td><input class="bi total-cell" type="number" id="a-total-${r.id}" value="${r.total||''}" readonly></td>
       <td><input class="bi" type="text" placeholder="${ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')}" value="${r.checked_by||''}" onchange="updateARow('${r.id}','checked_by',this.value)"></td>
-      <td><input class="bi" type="text" placeholder="備註..." value="${r.remark||''}" onchange="updateARow('${r.id}','remark',this.value)"></td>
+      <td><input class="bi" type="text" placeholder="${ehsText('備註...','Remark...','ចំណាំ...')}" value="${r.remark||''}" onchange="updateARow('${r.id}','remark',this.value)"></td>
       <td><button class="ph-row-btn" onclick="openRowPhotos('a','${r.id}')">${(r.photos&&r.photos.length)?'📷'+r.photos.length:'📷'}</button></td>
       <td><button class="del-row-btn" onclick="removeARow('${r.id}')">✕</button></td>
     </tr>`).join('');
@@ -1069,29 +1117,33 @@ function calcATotal(id,inputEl){
   document.getElementById('a-total-'+id).value=total||'';
   updateARow(id,'plastic',p);updateARow(id,'fabric',f);updateARow(id,'core',c);updateARow(id,'total',total);
 }
-function clearABatch(){if(!aRows.length)return;if(!confirm('清除所有未提交行？'))return;aRows=[];renderABatch();}
+function clearABatch(){if(!aRows.length)return;if(!confirm(ehsText('清除所有未提交內容？','Clear all unsaved entries?','លុបព័ត៌មានដែលមិនទាន់រក្សាទុកទាំងអស់?')))return;aRows=[];addARow();}
 
 async function submitModA(){
-  const valid=aRows.filter(r=>r.date&&(r.plastic||r.fabric||r.core));
+  const started=aRows.filter(function(r){return r.date||kgNumber(r.plastic)||kgNumber(r.fabric)||kgNumber(r.core)||String(r.checked_by||r.remark||'').trim()||photoArray(r.photos).length;});
+  const valid=aRows.filter(function(r){return r.date&&(kgNumber(r.plastic)||kgNumber(r.fabric)||kgNumber(r.core));});
+  if(started.length!==valid.length){showToast(ehsText('⚠️ 每筆已填內容都必須有日期及至少一個重量','⚠️ Every started row needs a date and at least one weight','⚠️ គ្រប់ជួរដែលបានបំពេញត្រូវមានកាលបរិច្ឆេទ និងទម្ងន់យ៉ាងហោចណាស់មួយ'));return;}
   if(!valid.length){showToast('⚠️ 請至少填寫一行有效記錄（日期 + 重量）');return;}
   const btn=document.getElementById('a-submit-btn');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 提交中...';
   const now=_localTS();
   const ld=loadLocal();
   const newRecs=valid.map(r=>({
-    id:'A-'+Date.now()+'-'+Math.random().toString(36).slice(2),
-    date:r.date,plastic_kg:+r.plastic||0,fabric_kg:+r.fabric||0,core_kg:+r.core||0,
-    total_kg:+r.total||0,checked_by:r.checked_by||'',remark:r.remark||'',photos:r.photos||[],submitted_at:now,updatedAt:now
+    id:r._editId||('A-'+Date.now()+'-'+Math.random().toString(36).slice(2)),module:'internal',sourceType:'recycle',
+    date:ehsYmd(r.date),plastic_kg:kgNumber(r.plastic),fabric_kg:kgNumber(r.fabric),core_kg:kgNumber(r.core),
+    total_kg:kgNumber(r.plastic)+kgNumber(r.fabric)+kgNumber(r.core),checked_by:r.checked_by||'',remark:r.remark||'',photos:photoArray(r.photos),submitted_at:now,updatedAt:now
   }));
-  ld.internal=[...ld.internal,...newRecs];
+  const editIds=new Set(valid.map(function(r){return String(r._editId||'');}).filter(Boolean));
+  ld.internal=(ld.internal||[]).filter(function(r){return !editIds.has(String(r.id));}).concat(newRecs);
   saveLocal(ld);
   try{
-    await fetchGAS({action:'batchImport',type:'internal',rows:newRecs});
+    const res=typeof GC!=='undefined'&&GC.cloud?await GC.cloud.post({action:'push',tool:'ehs',records:newRecs}):await gasPost({action:'push',tool:'ehs',records:newRecs});
+    if(!res||res.ok===false)throw new Error(res&&res.error||'cloud push failed');
     showToast('✅ 已提交 '+valid.length+' 筆至雲端');
   }catch(e){showToast('⚠️ 本機已儲存 ('+valid.length+' 筆)，雲端離線');}
-  aRows=[];renderABatch();
   btn.disabled=false;btn.innerHTML='📨 '+ehsText('批次提交','Batch Submit','ដាក់ស្នើជាក្រុម')+' (<span id="a-row-count">0</span> '+ehsText('筆','records','កំណត់ត្រា')+')';
-  renderAAnalysis();
+  aRows=[];addARow();
+  refreshEhsAll();
 }
 
 /* ========== MODULE B BATCH INPUT ========== */
@@ -1123,7 +1175,8 @@ function renderBBatch(){
       <td><input class="bi" type="text" style="min-width:80px" placeholder="03:30pm" value="${r.timeout}" onchange="updateBRow('${r.id}','timeout',this.value)"></td>
       <td><input class="bi" type="text" style="min-width:80px" placeholder="Kun Vin" value="${r.gate}" onchange="updateBRow('${r.id}','gate',this.value)"></td>
       <td><input class="bi" type="text" style="min-width:100px" placeholder="${ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')}" value="${r.checked_by||''}" onchange="updateBRow('${r.id}','checked_by',this.value)"></td>
-      <td><input class="bi" type="text" style="min-width:80px" placeholder="備註" value="${r.remark}" onchange="updateBRow('${r.id}','remark',this.value)"></td>
+      <td><input class="bi" type="text" style="min-width:80px" placeholder="${ehsText('備註','Remark','ចំណាំ')}" value="${r.remark}" onchange="updateBRow('${r.id}','remark',this.value)"></td>
+      <td><button class="ph-row-btn" onclick="openRowPhotos('b','${r.id}')">${(r.photos&&r.photos.length)?'📷'+r.photos.length:'📷'}</button></td>
       <td><button class="del-row-btn" onclick="removeBRow('${r.id}')">✕</button></td>
     </tr>`).join('');
 }
@@ -1139,11 +1192,13 @@ function autoFillB(id,sel){
   if(sel.value==='SONYAPICH'){if(!r.name){nameInp.value='Nhem Eoen';r.name='Nhem Eoen';}
     row.querySelectorAll('input[type=checkbox]')[1].checked=true;r.industrial=true;}
 }
-function clearBBatch(){if(!bRows.length)return;if(!confirm('清除所有未提交行？'))return;bRows=[];renderBBatch();}
+function clearBBatch(){if(!bRows.length)return;if(!confirm(ehsText('清除所有未提交內容？','Clear all unsaved entries?','លុបព័ត៌មានដែលមិនទាន់រក្សាទុកទាំងអស់?')))return;bRows=[];addBRow();}
 
 async function submitModB(){
-  const valid=bRows.filter(r=>r.date&&r.supplier);
-  if(!valid.length){showToast('⚠️ 請至少填寫一行有效記錄（日期 + 供應商）');return;}
+  const started=bRows.filter(function(r){return r.date||r.supplier||r.name||r.car||r.solid||r.industrial||String(r.kg||r.timein||r.timeout||r.gate||r.checked_by||r.remark||'').trim()||photoArray(r.photos).length;});
+  const valid=bRows.filter(function(r){return r.date&&r.supplier&&kgNumber(r.kg)>0;});
+  if(started.length!==valid.length){showToast(ehsText('⚠️ 每筆已填內容都必須有日期、供應商及大於 0 的重量；純數字自動視為 kg','⚠️ Every started row needs a date, supplier and weight above 0; plain numbers are treated as kg','⚠️ គ្រប់ជួរដែលបានបំពេញត្រូវមានកាលបរិច្ឆេទ អ្នកផ្គត់ផ្គង់ និងទម្ងន់លើស 0; លេខធម្មតាត្រូវចាត់ជា kg'));return;}
+  if(!valid.length){showToast(ehsText('⚠️ 每筆必須填日期、供應商及大於 0 的重量；未寫 kg 會自動視為 kg','⚠️ Date, supplier and weight above 0 are required; numbers without a unit are treated as kg','⚠️ ត្រូវបញ្ចូលកាលបរិច្ឆេទ អ្នកផ្គត់ផ្គង់ និងទម្ងន់លើស 0; លេខគ្មានឯកតាត្រូវចាត់ជា kg'));return;}
   const btn=document.getElementById('b-submit-btn');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 提交中...';
   const now=_localTS();
@@ -1151,23 +1206,25 @@ async function submitModB(){
   const newRecs=valid.map(r=>{
     const dur=calcDuration(r.timein,r.timeout);
     return{
-      id:'B-'+Date.now()+'-'+Math.random().toString(36).slice(2),
+      id:r._editId||('B-'+Date.now()+'-'+Math.random().toString(36).slice(2)),module:'gate',sourceType:'waste',
       date:r.date,name:r.name,supplier:r.supplier,car_number:r.car,
       solid_waste:r.solid?'V':'',industrial_waste:r.industrial?'V':'',
-      weight_kg:r.kg,time_in:r.timein,time_out:r.timeout,
+      weight_kg:kgNumber(r.kg),time_in:r.timein,time_out:r.timeout,
       duration_min:dur,gate_keeper:r.gate,checked_by:r.checked_by||'',remark:r.remark,
-      anomaly:dur>180,submitted_at:now,updatedAt:now
+      anomaly:dur>180,photos:photoArray(r.photos),submitted_at:now,updatedAt:now
     };
   });
-  ld.gate=[...ld.gate,...newRecs];
+  const editIds=new Set(valid.map(function(r){return String(r._editId||'');}).filter(Boolean));
+  ld.gate=(ld.gate||[]).filter(function(r){return !editIds.has(String(r.id));}).concat(newRecs);
   saveLocal(ld);
   try{
-    await fetchGAS({action:'batchImport',type:'gate',rows:newRecs});
+    const res=typeof GC!=='undefined'&&GC.cloud?await GC.cloud.post({action:'push',tool:'ehs',records:newRecs}):await gasPost({action:'push',tool:'ehs',records:newRecs});
+    if(!res||res.ok===false)throw new Error(res&&res.error||'cloud push failed');
     showToast('✅ 已提交 '+valid.length+' 筆至雲端');
   }catch(e){showToast('⚠️ 本機已儲存 ('+valid.length+' 筆)，雲端離線');}
-  bRows=[];renderBBatch();
   btn.disabled=false;btn.innerHTML='📨 '+ehsText('批次提交','Batch Submit','ដាក់ស្នើជាក្រុម')+' (<span id="b-row-count">0</span> '+ehsText('筆','records','កំណត់ត្រា')+')';
-  renderBAnalysis();
+  bRows=[];addBRow();
+  refreshEhsAll();
 }
 
 function calcDuration(tin,tout){
@@ -1548,11 +1605,19 @@ function parseEhsSmartImport(file){
           Object.keys(row).forEach(function(k){if((old[k]==null||old[k]==='')&&row[k]!=null&&row[k]!=='')old[k]=row[k];});
         };
         const recycle=new Map(),waste=new Map(),sheets=[];
+        let declaredRecycleKg=0;
         for(const sn of wb.SheetNames){
-          if(/^chart$/i.test(text(sn)))continue;
           const ws=wb.Sheets[sn];
           const raw=readRows(ws);
           if(!raw||raw.length<4)continue;
+          if(/^chart$/i.test(text(sn))){
+            const totalRow=raw.find(function(row){return row.some(function(cell){return norm(cell)==='totalkg';});});
+            if(totalRow){
+              const nums=totalRow.map(num).filter(function(n){return n>0;});
+              if(nums.length)declaredRecycleKg=nums[nums.length-1];
+            }
+            continue;
+          }
           const recycleHead=findHeader(raw,function(j){return j.indexOf('plastic')>=0&&(j.indexOf('fabric')>=0||j.indexOf('cutting')>=0);});
           if(recycleHead>=0){
             const month=sheetMonth(sn,raw,recycleHead+1);
@@ -1588,16 +1653,25 @@ function parseEhsSmartImport(file){
               const row=raw[i]||[],date=isDate(row[dateI]);
               if(!date)continue;
               const supplier=text(row[supplierI]);
-              const item={id:makeId('w'),module:'gate',sourceType:'waste',date:date,name:text(row[nameI]),id_number:text(row[idI]),supplier:supplier.toUpperCase().indexOf('K.S')>=0||supplier.toUpperCase().indexOf('KSWM')>=0?'K.S.W.M':supplier.toUpperCase().indexOf('SONY')>=0?'SONYAPICH':supplier,car_number:text(row[carI]),visitor_id:text(row[visitorI]),solid_waste:text(row[solidI])?'V':'',industrial_waste:text(row[indI])?'V':'',weight_kg:num(row[weightI])||text(row[weightI]),maintain_by:text(row[maintainI]),checked_by:text(row[checkI]),time_in:text(row[inI]),time_out:text(row[outI]),gate_keeper:text(row[keeperI]),photos:[],submitted_at:_localTS(),updatedAt:_localTS()};
+              const item={id:makeId('w'),module:'gate',sourceType:'waste',date:date,name:text(row[nameI]),id_number:text(row[idI]),supplier:supplier.toUpperCase().indexOf('K.S')>=0||supplier.toUpperCase().indexOf('KSWM')>=0?'K.S.W.M':supplier.toUpperCase().indexOf('SONY')>=0?'SONYAPICH':supplier,car_number:text(row[carI]),visitor_id:text(row[visitorI]),solid_waste:text(row[solidI])?'V':'',industrial_waste:text(row[indI])?'V':'',weight_kg:num(row[weightI]),maintain_by:text(row[maintainI]),checked_by:text(row[checkI]),time_in:text(row[inI]),time_out:text(row[outI]),gate_keeper:text(row[keeperI]),photos:[],submitted_at:_localTS(),updatedAt:_localTS()};
               if(!item.name&&!item.supplier&&!item.weight_kg&&!item.solid_waste&&!item.industrial_waste)continue;
               merge(waste,[item.date,item.name,item.supplier,item.car_number,item.time_in,item.time_out,item.weight_kg].join('|'),item);
             }
             sheets.push('Waste:'+sn);
           }
         }
-        const objects=Array.from(recycle.values()).concat(Array.from(waste.values())).sort(function(a,b){return String(a.date).localeCompare(String(b.date));});
+        const recycleRows=Array.from(recycle.values()),wasteRows=Array.from(waste.values());
+        const objects=recycleRows.concat(wasteRows).sort(function(a,b){return String(a.date).localeCompare(String(b.date));});
         if(!objects.length)throw new Error('找不到 Recycle 或 Waste 的有效欄位／資料');
-        resolve({objects:objects,headers:[],map:{},sheetName:sheets.join(', '),summary:{recycle:recycle.size,waste:waste.size,sheets:sheets}});
+        const detailedRecycleKg=recycleRows.reduce(function(sum,row){return sum+num(row.total_kg);},0),warnings=[];
+        if(declaredRecycleKg&&detailedRecycleKg&&Math.abs(declaredRecycleKg-detailedRecycleKg)>.01){
+          warnings.push(ehsText(
+            '年度總表 '+declaredRecycleKg.toLocaleString()+' kg 與每日明細 '+detailedRecycleKg.toLocaleString()+' kg 不一致；已採用可追溯日期／照片的每日明細',
+            'Yearly summary '+declaredRecycleKg.toLocaleString()+' kg differs from dated detail '+detailedRecycleKg.toLocaleString()+' kg; dated/photo detail was imported',
+            'សរុបប្រចាំឆ្នាំ '+declaredRecycleKg.toLocaleString()+' kg ខុសពីលម្អិតតាមកាលបរិច្ឆេទ '+detailedRecycleKg.toLocaleString()+' kg; បាននាំចូលលម្អិតដែលមានកាលបរិច្ឆេទ/រូបថត'
+          ));
+        }
+        resolve({objects:objects,headers:[],map:{},sheetName:sheets.join(', '),summary:{recycle:recycle.size,waste:waste.size,sheets:sheets,declaredRecycleKg:declaredRecycleKg,detailedRecycleKg:detailedRecycleKg,warnings:warnings}});
       }catch(err){reject(err);}
     };
     reader.readAsArrayBuffer(file);
@@ -1709,9 +1783,11 @@ function getWeek(d){
     setLang(lang); buildYearSelect('a-p-year',renderAAnalysis); buildMonthSelect('a-p-month',renderAAnalysis);
     buildYearSelect('b-p-year',renderBAnalysis); buildMonthSelect('b-p-month',renderBAnalysis);
     buildYearSelect('r-year',renderReport); buildMonthSelect('r-month',renderReport); buildYearSelect('h-year',queryHistory);
+    ['a-p-date','b-p-date','r-date'].forEach(function(id){const el=document.getElementById(id);if(el)el.value=_localYMD();});
+    syncEhsPeriodControls('a');syncEhsPeriodControls('b');syncEhsPeriodControls('r');
     const hy=document.getElementById('h-year'); const allOpt=document.createElement('option');allOpt.value='';allOpt.textContent=ehsText('全年份','All years','គ្រប់ឆ្នាំ');hy.insertBefore(allOpt,hy.firstChild);
     const tick=()=>{const now=new Date();const locale=lang==='zh'?'zh-TW':(lang==='km'?'km-KH':'en-GB');document.getElementById('ts-sub').textContent='Vantage River Textiles · '+now.toLocaleString(locale,{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});};
-    tick();setInterval(tick,30000); addARow();addBRow(); renderAAnalysis();renderBAnalysis();
+    tick();setInterval(tick,30000); addARow();addBRow(); renderAAnalysis();renderBAnalysis();renderReport();
   };
   if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 })();
@@ -1916,12 +1992,12 @@ function buildEhsTelegram(opt){
     rows.slice(0,28).forEach(function(r){
       if(r.sourceType==='waste'){
         const kinds=[];if(r.solid_waste)kinds.push(ehsTelegramText('固體','Solid','រឹង',lang));if(r.industrial_waste)kinds.push(ehsTelegramText('工業','Industrial','ឧស្សាហកម្ម',lang));
-        lines.push('🗑️ '+esc(r.date||'—')+' | '+esc(r.supplier||r.name||'Waste')+' | '+esc(kinds.join('/')||'Waste')+' | '+esc(r.weight_kg||'—')+' kg'+(r.checked_by?' | 👤 '+esc(r.checked_by):''));
+        lines.push('🗑️ '+esc(r.date||'—')+' | '+esc(r.supplier||r.name||'Waste')+' | '+esc(kinds.join('/')||'Waste')+' | '+esc(kgNumber(r.weight_kg))+' kg'+(r.checked_by?' | 👤 '+esc(r.checked_by):''));
         if(r.car_number||r.time_in||r.time_out)lines.push('   '+esc(r.car_number||'')+' '+esc(r.time_in||'')+'→'+esc(r.time_out||''));
       }else{
-        lines.push('♻️ '+esc(r.date||'—')+' | '+ehsTelegramText('塑膠','Plastic','ប្លាស្ទិក',lang)+' '+esc(r.plastic_kg||0)+' | '+ehsTelegramText('布料','Fabric','ក្រណាត់',lang)+' '+esc(r.fabric_kg||0)+' | '+ehsTelegramText('紙管','Core','ស្នូល',lang)+' '+esc(r.core_kg||0)+' | '+ehsTelegramText('總重','Total','សរុប',lang)+' <b>'+esc(r.total_kg||0)+'</b> kg'+(r.checked_by?' | 👤 '+esc(r.checked_by):''));
+        lines.push('♻️ '+esc(r.date||'—')+' | '+ehsTelegramText('塑膠','Plastic','ប្លាស្ទិក',lang)+' '+esc(kgNumber(r.plastic_kg))+' kg | '+ehsTelegramText('布料','Fabric','ក្រណាត់',lang)+' '+esc(kgNumber(r.fabric_kg))+' kg | '+ehsTelegramText('紙管','Core','ស្នូល',lang)+' '+esc(kgNumber(r.core_kg))+' kg | '+ehsTelegramText('總重','Total','សរុប',lang)+' <b>'+esc(ehsRecycleRowTotal(r))+'</b> kg'+(r.checked_by?' | 👤 '+esc(r.checked_by):''));
       }
-      (Array.isArray(r.photos)?r.photos:[]).forEach(function(p){if(/^data:image\//i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});
+      photoArray(r.photos).forEach(function(p){if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p)&&photos.length<5)photos.push(p);});
     });
     if(rows.length>28)lines.push('… '+(rows.length-28)+' more');
   }
@@ -1933,14 +2009,16 @@ function buildEhsTelegram(opt){
   return {text:lines.join('\n'),photos:photos};
 }
 function mergeEhsImport(current,incoming){
-  const out=(current||[]).map(function(r){return Object.assign({},r,{photos:Array.isArray(r.photos)?r.photos.slice():[]});});
+  const normalize=function(r){const waste=r&&((r.sourceType==='waste')||(r.module==='gate'));const out=Object.assign({},r,{date:ehsYmd(r&&r.date),photos:photoArray(r&&r.photos),module:waste?'gate':'internal',sourceType:waste?'waste':'recycle'});if(waste)out.weight_kg=kgNumber(out.weight_kg);else{out.plastic_kg=kgNumber(out.plastic_kg);out.fabric_kg=kgNumber(out.fabric_kg);out.core_kg=kgNumber(out.core_kg);out.total_kg=kgNumber(out.total_kg)||out.plastic_kg+out.fabric_kg+out.core_kg;}return out;};
+  const out=(current||[]).map(normalize);
   const key=function(r){return [r.sourceType||((r.module==='gate')?'waste':'recycle'),r.date,r.name||'',r.supplier||'',r.car_number||'',r.time_in||'',r.time_out||'',r.plastic_kg||'',r.fabric_kg||'',r.core_kg||'',r.total_kg||'',r.weight_kg||''].join('|');};
   const by=new Map(out.map(function(r){return [key(r),r];}));
   (incoming||[]).forEach(function(r){
     const k=key(r),old=by.get(k);
-    if(!old){const copy=Object.assign({},r,{photos:Array.isArray(r.photos)?r.photos.slice():[]});out.push(copy);by.set(k,copy);return;}
-    const photos=Array.from(new Set([...(old.photos||[]),...(r.photos||[])]));
-    Object.assign(old,r,{id:old.id,photos:photos,updatedAt:r.updatedAt||old.updatedAt});
+    const clean=normalize(r);
+    if(!old){out.push(clean);by.set(k,clean);return;}
+    const photos=Array.from(new Set([...(photoArray(old.photos)),...(photoArray(clean.photos))]));
+    Object.assign(old,clean,{id:old.id,photos:photos,updatedAt:clean.updatedAt||old.updatedAt});
   });
   return out;
 }
@@ -1977,13 +2055,15 @@ function mergeEhsImport(current,incoming){
       telegramBuilder:buildEhsTelegram,
       importParser:parseEhsSmartImport,
       mergeImport:mergeEhsImport,
-      importSchema:{"date": ["日期", "date", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "weight", "ទម្ងន់"], "suppliers": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "checked_by": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
+      importSchema:{"date": ["日期", "date", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "recycle weight", "ទម្ងន់"], "supplier": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "weight_kg": ["重量", "kg", "weight", "ទម្ងន់"], "checked_by": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
+      onSync:function(){setTimeout(refreshEhsAll,0);},
+      onImport:function(){setTimeout(refreshEhsAll,0);},
     read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_waste_v3')||'{}'); let o=[];
-        (Array.isArray(d.internal)?d.internal:[]).forEach(r=>o.push(Object.assign({module:'internal',sourceType:'recycle'},r,{sourceType:r.sourceType||'recycle'})));
-        (Array.isArray(d.gate)?d.gate:[]).forEach(r=>o.push(Object.assign({module:'gate',sourceType:'waste'},r,{sourceType:r.sourceType||'waste'})));
+        (Array.isArray(d.internal)?d.internal:[]).forEach(r=>o.push(Object.assign({module:'internal',sourceType:'recycle'},r,{date:ehsYmd(r.date),plastic_kg:kgNumber(r.plastic_kg),fabric_kg:kgNumber(r.fabric_kg),core_kg:kgNumber(r.core_kg),total_kg:kgNumber(r.total_kg)||kgNumber(r.plastic_kg)+kgNumber(r.fabric_kg)+kgNumber(r.core_kg),photos:photoArray(r.photos),sourceType:r.sourceType||'recycle'})));
+        (Array.isArray(d.gate)?d.gate:[]).forEach(r=>o.push(Object.assign({module:'gate',sourceType:'waste'},r,{date:ehsYmd(r.date),weight_kg:kgNumber(r.weight_kg),photos:photoArray(r.photos),sourceType:r.sourceType||'waste'})));
         return o; }catch(e){ return []; } },
     write(list){ try{ const d=JSON.parse(localStorage.getItem('vrt_waste_v3')||'{}'); const monthly=Array.isArray(d.monthly)?d.monthly:[]; d.gate=[];d.internal=[];
-        (list||[]).forEach(r=>{ const waste=r.sourceType==='waste'||r.module==='gate'; const clean=Object.assign({},r,{module:waste?'gate':'internal',sourceType:waste?'waste':'recycle'}); d[waste?'gate':'internal'].push(clean); });
+        (list||[]).forEach(r=>{ const waste=r.sourceType==='waste'||r.module==='gate'; const clean=Object.assign({},r,{date:ehsYmd(r.date),photos:photoArray(r.photos),module:waste?'gate':'internal',sourceType:waste?'waste':'recycle'});if(waste)clean.weight_kg=kgNumber(clean.weight_kg);else{clean.plastic_kg=kgNumber(clean.plastic_kg);clean.fabric_kg=kgNumber(clean.fabric_kg);clean.core_kg=kgNumber(clean.core_kg);clean.total_kg=kgNumber(clean.total_kg)||clean.plastic_kg+clean.fabric_kg+clean.core_kg;} d[waste?'gate':'internal'].push(clean); });
         d.monthly=monthly; localStorage.setItem('vrt_waste_v3',JSON.stringify(d)); }catch(e){} },
     });
   }
