@@ -1227,11 +1227,15 @@ GC.telegram = {
   filter(list, cfg, period, ref, scope, slot) {
     cfg = cfg || {};
     let view = PERIOD.filter(Array.isArray(list) ? list : [], period || 'month', cfg.dateField || 'date', ref);
-    if (cfg.scopeField && scope && scope !== 'all') view = view.filter(r => String(r && r[cfg.scopeField] || '') === String(scope));
-    if (slot && slot !== 'all' && typeof cfg.telegramSlotFilter === 'function') {
-      view = view.filter(r => cfg.telegramSlotFilter(r, slot));
-    } else if (slot && slot !== 'all' && cfg.telegramSlotField) {
-      view = view.filter(r => String(r && r[cfg.telegramSlotField] || '') === String(slot));
+    const scopes = (Array.isArray(scope) ? scope : [scope]).map(function (v) { return v == null ? '' : String(v); }).filter(Boolean);
+    const slots = (Array.isArray(slot) ? slot : [slot]).map(function (v) { return v == null ? '' : String(v); }).filter(Boolean);
+    if (cfg.scopeField && scopes.length && !scopes.includes('all')) {
+      view = view.filter(r => scopes.includes(String(r && r[cfg.scopeField] || '')));
+    }
+    if (slots.length && !slots.includes('all') && typeof cfg.telegramSlotFilter === 'function') {
+      view = view.filter(r => slots.some(function (value) { return cfg.telegramSlotFilter(r, value); }));
+    } else if (slots.length && !slots.includes('all') && cfg.telegramSlotField) {
+      view = view.filter(r => slots.includes(String(r && r[cfg.telegramSlotField] || '')));
     }
     return view;
   },
@@ -1243,6 +1247,7 @@ GC.telegram = {
   },
   buildText(cfg, period, mode, ref, scope, slot, lang) {
     cfg = cfg || {};
+    const slotItems = typeof cfg.telegramSlots === 'function' ? (cfg.telegramSlots() || []) : (cfg.telegramSlots || []);
     const label = (key, zhFallback, enFallback, kmFallback) => {
       const dict = I18.dict || {};
       const zh = dict.zh && dict.zh[key] != null ? dict.zh[key] : zhFallback;
@@ -1275,7 +1280,7 @@ GC.telegram = {
     const lines = [
       '♻️ <b>' + title + '</b>',
       '📅 ' + U.escapeHtml(periodLabels[period] || period || I18.t('gc.thisMonth')),
-      (slot && slot !== 'all' ? '⏱️ ' + U.escapeHtml(label('gc.slot', '發送時段', 'Send time slot', 'ពេលវេលាផ្ញើ')) + ': ' + U.escapeHtml((cfg.telegramSlots || []).find(x => (typeof x === 'string' ? x : x.value) === slot) ? GC.telegram.slotText((cfg.telegramSlots || []).find(x => (typeof x === 'string' ? x : x.value) === slot), lang) : slot) : ''),
+      (slot && !(Array.isArray(slot) ? slot.includes('all') : slot === 'all') ? '⏱️ ' + U.escapeHtml(label('gc.slot', '發送時段', 'Send time slot', 'ពេលវេលាផ្ញើ')) + ': ' + U.escapeHtml((Array.isArray(slot) ? slot : [slot]).map(function (value) { const found=slotItems.find(x => (typeof x === 'string' ? x : x.value) === value); return found ? GC.telegram.slotText(found, lang) : value; }).join(', ')) : ''),
       '📊 ' + U.escapeHtml(label('gc.records', '記錄', 'Records', 'កំណត់ត្រា')) + ': <b>' + view.length + '</b> / ' +
         U.escapeHtml(label('gc.total', '總計', 'Total', 'សរុប')) + ': ' + list.length,
       '🧾 ' + U.escapeHtml(label('gc.mode', '訊息類型', 'Message type', 'ប្រភេទសារ')) + ': ' + U.escapeHtml(modeLabels[mode] || modeLabels.summary)
@@ -1326,6 +1331,7 @@ GC.attach = function (cfg) {
     dateField: 'date', idField: 'id', groupField: null, scopeField: null,
     weather: false, photo: false, weatherField: 'weather', photoField: 'photos',
     importSchema: null, importParser: null, importAccept: null, telegramScopes: null, telegramSlots: null,
+    telegramScopeMultiple: false, telegramSlotMultiple: false, telegramScopeLabel: null,
     telegramSlotFilter: null, telegramSlotField: null, telegramGroups: null,
     telegramDefaultLanguage: 'bi', telegramDefaultSlot: 'all', hideLegacyTools: true
   }, cfg || {});
@@ -1395,8 +1401,8 @@ GC.attach = function (cfg) {
   let period = 'month';
   let periodRef = U.ymd(new Date());
   let mode = 'summary';
-  let scope = 'all';
-  let slot = C.telegramDefaultSlot || 'all';
+  let scope = C.telegramScopeMultiple ? ['all'] : 'all';
+  let slot = C.telegramSlotMultiple ? [C.telegramDefaultSlot || 'all'] : (C.telegramDefaultSlot || 'all');
   let lang = C.telegramDefaultLanguage || 'bi';
   let previewToken = 0;
   let currentPacket = null;
@@ -1408,8 +1414,8 @@ GC.attach = function (cfg) {
       reportRef: ref,
       reportMonth: String(ref).slice(0, 7),
       reportMode: mode,
-      reportScope: scope,
-      reportSlot: slot,
+      reportScope: Array.isArray(scope) ? scope.join(',') : scope,
+      reportSlot: Array.isArray(slot) ? slot.join(',') : slot,
       reportLanguage: lang
     };
   }
@@ -1494,10 +1500,10 @@ GC.attach = function (cfg) {
           '<button type="button" data-gc-mode="review">🔎 <span data-i="gc.review">' + U.escapeHtml(I18.t('gc.review')) + '</span></button>',
           '<button type="button" data-gc-mode="approval">✅ <span data-i="gc.approval">' + U.escapeHtml(I18.t('gc.approval')) + '</span></button>',
         '</span></label>',
-        '<label class="gc-field"><span data-i="gc.selectScope">' + U.escapeHtml(I18.t('gc.selectScope')) + '</span><select data-gc-scope></select></label>',
+        '<label class="gc-field"><span data-gc-scope-label>' + U.escapeHtml(I18.t('gc.selectScope')) + '</span><select data-gc-scope></select><span class="gc-multi-picks" data-gc-scope-picks hidden></span></label>',
         '<label class="gc-field"><span data-i="gc.periodMode">' + U.escapeHtml(I18.t('gc.periodMode')) + '</span><select data-gc-period></select></label>',
         '<label class="gc-field"><span data-i="gc.periodValue">' + U.escapeHtml(I18.t('gc.periodValue')) + '</span><select data-gc-ref></select></label>',
-        '<label class="gc-field gc-slot-field"><span data-i="gc.slot">' + U.escapeHtml(I18.t('gc.slot')) + '</span><select data-gc-slot></select></label>',
+        '<label class="gc-field gc-slot-field"><span data-i="gc.slot">' + U.escapeHtml(I18.t('gc.slot')) + '</span><select data-gc-slot></select><span class="gc-multi-picks" data-gc-slot-picks hidden></span></label>',
         '<label class="gc-field"><span data-i="gc.reportLanguage">' + U.escapeHtml(I18.t('gc.reportLanguage')) + '</span><select data-gc-lang></select></label>',
         '<label class="gc-field"><span data-i="gc.targetGroup">' + U.escapeHtml(I18.t('gc.targetGroup')) + '</span><select data-gc-group></select></label>',
         '<div class="gc-field gc-field-wide"><span data-i="gc.preview">' + U.escapeHtml(I18.t('gc.preview')) + '</span><div class="gc-preview" data-gc-preview></div></div>',
@@ -1541,9 +1547,12 @@ GC.attach = function (cfg) {
   }
 
   const scopeSelect = tgModal.querySelector('[data-gc-scope]');
+  const scopeLabel = tgModal.querySelector('[data-gc-scope-label]');
+  const scopePicks = tgModal.querySelector('[data-gc-scope-picks]');
   const periodSelect = tgModal.querySelector('[data-gc-period]');
   const refSelect = tgModal.querySelector('[data-gc-ref]');
   const slotSelect = tgModal.querySelector('[data-gc-slot]');
+  const slotPicks = tgModal.querySelector('[data-gc-slot-picks]');
   const langSelect = tgModal.querySelector('[data-gc-lang]');
   const groupSelect = tgModal.querySelector('[data-gc-group]');
   const preview = tgModal.querySelector('[data-gc-preview]');
@@ -1559,7 +1568,31 @@ GC.attach = function (cfg) {
     const l = useLang || I18.lang;
     return item[l] || item.en || item.zh || item.km || item.value;
   }
+  function selectionArray(value) {
+    const out = (Array.isArray(value) ? value : [value]).map(function (v) { return v == null ? '' : String(v); }).filter(Boolean);
+    return out.length ? out : ['all'];
+  }
+  function toggleSelection(current, value) {
+    value = String(value || 'all');
+    let next = selectionArray(current);
+    if (value === 'all') return ['all'];
+    next = next.filter(function (x) { return x !== 'all'; });
+    if (next.includes(value)) next = next.filter(function (x) { return x !== value; });
+    else next.push(value);
+    return next.length ? next : ['all'];
+  }
+  function renderPicks(mount, items, selected) {
+    const values = selectionArray(selected);
+    mount.innerHTML = items.map(function (item) {
+      const value = String(itemValue(item));
+      return '<button type="button" data-value="' + U.escapeHtml(value) + '" class="' + (values.includes(value) ? 'on' : '') + '">' + U.escapeHtml(itemLabel(item, lang === 'bi' ? I18.lang : lang)) + '</button>';
+    }).join('');
+  }
   function scopeItems() {
+    if (typeof C.telegramScopes === 'function') {
+      const dynamic = C.telegramScopes();
+      if (Array.isArray(dynamic) && dynamic.length) return dynamic;
+    }
     if (Array.isArray(C.telegramScopes) && C.telegramScopes.length) return C.telegramScopes;
     const field = C.scopeField || C.groupField;
     const seen = new Set();
@@ -1570,8 +1603,22 @@ GC.attach = function (cfg) {
     return [{ value: 'all', zh: '全部', en: 'All', km: 'ទាំងអស់' }]
       .concat(Array.from(seen).sort().map(function (v) { return { value: v, zh: v, en: v, km: v }; }));
   }
+  function renderScopeLabel() {
+    scopeLabel.textContent = C.telegramScopeLabel ? itemLabel(C.telegramScopeLabel, I18.lang) : I18.t('gc.selectScope');
+  }
   function renderScope() {
     const items = scopeItems();
+    if (C.telegramScopeMultiple) {
+      scopeSelect.hidden = true;
+      scopePicks.hidden = false;
+      const valid = new Set(items.map(function (x) { return String(itemValue(x)); }));
+      scope = selectionArray(scope).filter(function (x) { return valid.has(x); });
+      if (!scope.length) scope = ['all'];
+      renderPicks(scopePicks, items, scope);
+      return;
+    }
+    scopeSelect.hidden = false;
+    scopePicks.hidden = true;
     scopeSelect.innerHTML = items.map(function (x) { return option(itemValue(x), itemLabel(x)); }).join('');
     if (!items.some(function (x) { return String(itemValue(x)) === String(scope); })) scope = itemValue(items[0]) || 'all';
     scopeSelect.value = scope;
@@ -1583,13 +1630,26 @@ GC.attach = function (cfg) {
     periodSelect.value = period;
   }
   function renderSlots() {
-    const items = Array.isArray(C.telegramSlots) && C.telegramSlots.length
-      ? C.telegramSlots
+    const dynamicSlots = typeof C.telegramSlots === 'function' ? C.telegramSlots() : C.telegramSlots;
+    const items = Array.isArray(dynamicSlots) && dynamicSlots.length
+      ? dynamicSlots
       : [{ value: 'all', zh: '全部時段', en: 'All slots', km: 'គ្រប់ពេល' }];
+    if (C.telegramSlotMultiple) {
+      slotSelect.hidden = true;
+      slotPicks.hidden = false;
+      const valid = new Set(items.map(function (x) { return String(itemValue(x)); }));
+      slot = selectionArray(slot).filter(function (x) { return valid.has(x); });
+      if (!slot.length) slot = ['all'];
+      renderPicks(slotPicks, items, slot);
+      tgModal.querySelector('.gc-slot-field').classList.toggle('gc-field-muted', !dynamicSlots);
+      return;
+    }
+    slotSelect.hidden = false;
+    slotPicks.hidden = true;
     slotSelect.innerHTML = items.map(function (x) { return option(itemValue(x), itemLabel(x, lang === 'bi' ? I18.lang : lang)); }).join('');
     if (!items.some(function (x) { return String(itemValue(x)) === String(slot); })) slot = itemValue(items[0]) || 'all';
     slotSelect.value = slot;
-    tgModal.querySelector('.gc-slot-field').classList.toggle('gc-field-muted', !C.telegramSlots);
+    tgModal.querySelector('.gc-slot-field').classList.toggle('gc-field-muted', !dynamicSlots);
   }
   function renderLanguages() {
     langSelect.innerHTML = [
@@ -1665,6 +1725,7 @@ GC.attach = function (cfg) {
   }
   async function updatePreview() {
     const token = ++previewToken;
+    currentPacket = null;
     preview.classList.add('busy');
     try {
       const packet = await buildPacket();
@@ -1691,6 +1752,7 @@ GC.attach = function (cfg) {
     renderGroups();
     refreshPeriodOptions();
     I18.apply(tgModal);
+    renderScopeLabel();
     updatePreview();
   }
   function setModalOpen(modal, yes) {
@@ -1707,7 +1769,7 @@ GC.attach = function (cfg) {
     sendButton.disabled = true;
     sendState.textContent = I18.t('gc.sync');
     try {
-      const packet = currentPacket || await buildPacket();
+      const packet = await buildPacket();
       await GC.telegram.send(
         packet.text, packet.photos, packet.buttons,
         groupSelect.value || DEFAULT_CHAT_ID, C.tool, reportActivityMeta()
@@ -1732,10 +1794,22 @@ GC.attach = function (cfg) {
     };
   });
   scopeSelect.onchange = function () { scope = scopeSelect.value || 'all'; updatePreview(); };
+  scopePicks.onclick = function (e) {
+    const b = e.target.closest('button[data-value]');
+    if (!b) return;
+    scope = toggleSelection(scope, b.dataset.value);
+    renderScope(); updatePreview();
+  };
   periodSelect.onchange = function () { period = periodSelect.value || 'month'; refreshPeriodOptions(); updatePreview(); };
   refSelect.onchange = function () { periodRef = refSelect.value || U.ymd(new Date()); updatePreview(); };
   slotSelect.onchange = function () { slot = slotSelect.value || 'all'; updatePreview(); };
-  langSelect.onchange = function () { lang = langSelect.value || 'bi'; renderSlots(); updatePreview(); };
+  slotPicks.onclick = function (e) {
+    const b = e.target.closest('button[data-value]');
+    if (!b) return;
+    slot = toggleSelection(slot, b.dataset.value);
+    renderSlots(); updatePreview();
+  };
+  langSelect.onchange = function () { lang = langSelect.value || 'bi'; renderScope(); renderSlots(); updatePreview(); };
   groupSelect.onchange = updatePreview;
   sendButton.onclick = sendCurrentTelegram;
   tools.querySelector('[data-gc-open-tg]').onclick = openTelegram;
@@ -2101,6 +2175,10 @@ const BAR_CSS = `
 .gc-field select{width:100%;height:46px;padding:0 13px;border:1px solid #C9D5E5;border-radius:10px;background:#fff;color:#233149;font:500 14px/1 inherit;text-transform:none;outline:none}
 .gc-field select:focus{border-color:#1685B7;box-shadow:0 0 0 3px rgba(22,133,183,.12)}
 .gc-field-muted{opacity:.62}
+.gc-multi-picks{display:flex;flex-wrap:wrap;gap:7px;padding:8px;border:1px solid #C9D5E5;border-radius:10px;background:#F8FAFD;text-transform:none}
+.gc-multi-picks[hidden]{display:none}
+.gc-multi-picks button{min-height:38px;padding:8px 12px;border:1px solid #C9D5E5;border-radius:999px;background:#fff;color:#40506A;font:700 12px/1.15 inherit;cursor:pointer}
+.gc-multi-picks button.on{border-color:#1685B7;background:#0876A8;color:#fff;box-shadow:0 2px 7px rgba(8,118,168,.22)}
 .gc-seg{display:grid;grid-template-columns:repeat(3,1fr);gap:4px;padding:4px;background:#E9EEF5;border-radius:11px}
 .gc-seg button{height:42px;border:0;border-radius:8px;background:transparent;color:#3F4E66;font:700 13px/1 inherit;cursor:pointer}
 .gc-seg button.on{background:#fff;color:#0876A8;box-shadow:0 1px 4px rgba(15,35,60,.16)}

@@ -155,14 +155,14 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js"></script>
+<script src="./gascheck-core.js?v=27-cleaning-multiselect"></script>
 </head>
 <body>
 <div class="topbar">
   <div class="tb-logo">🧹</div>
   <div class="tb-info">
     <div class="tb-title" data-i="tb-title">清潔管理系統 · Cleaning Management</div>
-    <div class="tb-sub">VRT · Sihanoukville · v2.1</div>
+    <div class="tb-sub">VRT · Sihanoukville · v2.2</div>
   </div>
   <div class="tsl"><div class="tsd"></div><span id="ts-now">--:--</span></div>
   <div class="lgp">
@@ -218,7 +218,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
   <div class="card"><div class="ch"><span class="ch-icon">✏️</span><span class="ch-title" data-i="rec-title">新增清潔記錄</span><span class="ch-note" data-i="rec-hint">帶 * 為必填</span></div>
     <div class="fgrid c3">
       <div class="fg"><div class="fl"><span data-i="f-date">日期</span> <span style="color:var(--red)">*</span></div><div class="date-nav"><button type="button" onclick="shiftCleanDate('r-date',-1)">◀</button><input class="fi" type="date" id="r-date"><button type="button" onclick="shiftCleanDate('r-date',1)">▶</button></div></div>
-      <div class="fg"><div class="fl"><span data-i="f-loc">地點</span> <span style="color:var(--red)">*</span></div><select class="fi" id="r-loc"><option value="">— 選擇 —</option></select></div>
+      <div class="fg" style="grid-column:span 2"><div class="fl"><span data-i="f-loc">地點（可多選）</span> <span style="color:var(--red)">*</span><span id="sel-loc-count" style="float:right">0 已選</span></div><div class="sw" id="locs-wrap"></div></div>
       <div class="fg"><div class="fl"><span data-i="f-shift">班次</span></div><select class="fi" id="r-shift"><option value="Day">Day 日班</option><option value="Night">Night 夜班</option></select></div>
       <div class="fg"><div class="fl"><span data-i="f-cleaner">清潔員</span> <span style="color:var(--red)">*</span></div><select class="fi" id="r-cleaner"><option value="">— 選擇 —</option></select></div>
       <div class="fg"><div class="fl"><span data-i="f-checker">檢查員</span></div><select class="fi" id="r-checker"><option value="">— 選擇 —</option></select></div>
@@ -417,7 +417,7 @@ var i18n = (() => {
       'th-bin-freq':'頻率','th-bin-last':'最後清潔',
       'no-rec':'暫無記錄',
       'rec-title':'新增清潔記錄','rec-hint':'帶 * 為必填',
-      'f-date':'日期','f-loc':'地點','f-shift':'班次','f-cleaner':'清潔員',
+      'f-date':'日期','f-loc':'地點（可多選）','f-shift':'班次','f-cleaner':'清潔員',
       'f-checker':'檢查員','f-photo-n':'照片數','f-photo':'📷 照片','f-observer':'觀察員',
       'slots-title':'清潔時段','chk-title':'巡查項目','chk-hint':'點擊切換',
       'note-title':'備注 / 異常',
@@ -437,7 +437,7 @@ var i18n = (() => {
       'data-mgmt':'數據管理','export-all':'匯出全部 JSON','restore':'還原備份','clear-all':'清除全部',
       'ci-smell':'氣味','ci-light':'燈光','ci-floor':'地板','ci-door':'門','ci-corner':'角落','ci-ceiling':'天花',
       'pass':'✓ 通過','fail':'✗ 不通過','select':'— 選擇 —','records':'筆','items':'個','selected':'已選','confirm-delete':'確定刪除？','confirm-area-delete':'確定刪除地點？','saved':'已儲存','deleted':'已刪除','uploading':'☁ 上傳中…','uploaded':'☁ 已上傳','downloading':'⬇ 下載中…','downloaded':'⬇ 已下載並更新','no-data':'無資料','edit':'編輯','new-area':'新區域','all-pass':'全部通過','anomaly':'異常','normal':'正常','shift-day':'Day 日班','shift-night':'Night 夜班','note-ph':'請填寫異常情況或補充說明...','search-ph':'姓名/地點...','name-ph':'姓名 Name','cleaner-ph':'Cleaner name','location-example':'例：車縫區廁所 A','desc-example':'例：車縫區西南角','cancel':'取消','save':'儲存','yes':'確認','no':'取消',
-      'status-all':'全部','status-pass':'✅ 通過','status-fail':'⚠️ 有異常','missing-location':'請輸入地點名稱','location-added':'地點已新增',
+      'status-all':'全部','status-pass':'✅ 通過','status-fail':'⚠️ 有異常','missing-location':'請輸入地點名稱','location-added':'地點已新增','select-slot-warning':'請至少選擇一個清潔時段',
     },
     en:{
       'tb-title':'Cleaning Management','t-dash':'Dashboard','t-rec':'New Record','t-hist':'History',
@@ -450,7 +450,7 @@ var i18n = (() => {
       'th-area':'Area','th-bin-type':'Type','th-bin-loc':'Location','th-bin-resp':'Responsible','th-bin-freq':'Frequency','th-bin-last':'Last Clean',
       'no-rec':'No records',
       'rec-title':'New Cleaning Record','rec-hint':'* Required',
-      'f-date':'Date','f-loc':'Location','f-shift':'Shift','f-cleaner':'Cleaner','f-checker':'Checker','f-photo-n':'Photos','f-photo':'📷 Photos','f-observer':'Observer',
+      'f-date':'Date','f-loc':'Locations (multi-select)','f-shift':'Shift','f-cleaner':'Cleaner','f-checker':'Checker','f-photo-n':'Photos','f-photo':'📷 Photos','f-observer':'Observer',
       'slots-title':'Time Slots','chk-title':'Check Items','chk-hint':'Click to toggle',
       'note-title':'Notes / Anomaly',
       'btn-save':'Save Record','btn-tg':'Telegram','btn-clear':'Clear',
@@ -467,7 +467,7 @@ var i18n = (() => {
       'data-mgmt':'Data Management','export-all':'Export All JSON','restore':'Restore Backup','clear-all':'Clear All',
       'ci-smell':'Smell','ci-light':'Light','ci-floor':'Floor','ci-door':'Door','ci-corner':'Corner','ci-ceiling':'Ceiling',
       'pass':'✓ Pass','fail':'✗ Fail','select':'— Select —','records':'records','items':'items','selected':'selected','confirm-delete':'Delete this record?','confirm-area-delete':'Delete this location?','saved':'Saved','deleted':'Deleted','uploading':'☁ Uploading…','uploaded':'☁ Uploaded','downloading':'⬇ Downloading…','downloaded':'⬇ Downloaded and updated','no-data':'No data','edit':'Edit','new-area':'New area','all-pass':'All passed','anomaly':'Anomaly','normal':'Normal','shift-day':'Day shift','shift-night':'Night shift','note-ph':'Enter anomaly or additional notes...','search-ph':'Name/location...','name-ph':'Name','cleaner-ph':'Cleaner name','location-example':'e.g. Sewing toilet A','desc-example':'e.g. southwest corner','cancel':'Cancel','save':'Save','yes':'Confirm','no':'Cancel',
-      'status-all':'All','status-pass':'✅ Pass','status-fail':'⚠️ Anomaly','missing-location':'Enter a location name','location-added':'Location added',
+      'status-all':'All','status-pass':'✅ Pass','status-fail':'⚠️ Anomaly','missing-location':'Enter a location name','location-added':'Location added','select-slot-warning':'Select at least one cleaning time slot',
     },
     km:{
       'tb-title':'ប្រព័ន្ធគ្រប់គ្រងការសំអាត','t-dash':'ផ្ទាំង','t-rec':'បន្ថែម','t-hist':'ប្រវត្តិ',
@@ -478,7 +478,7 @@ var i18n = (() => {
       'th-date':'កាលបរិច្ឆេទ','th-loc':'ទីតាំង','th-cleaner':'អ្នកសំអាត','th-checker':'អ្នកត្រួតពិនិត្យ',
       'th-slots':'ពេលវេលា','th-items':'ចំណុចត្រួតពិនិត្យ','th-status':'ស្ថានភាព','th-note':'កំណត់សម្គាល់',
       'no-rec':'រកមិនឃើញ','rec-title':'កត់ត្រាការសម្អាតថ្មី','rec-hint':'* ត្រូវបំពេញ',
-      'f-date':'កាលបរិច្ឆេទ','f-loc':'ទីតាំង','f-shift':'វេន','f-cleaner':'អ្នកសំអាត',
+      'f-date':'កាលបរិច្ឆេទ','f-loc':'ទីតាំង (អាចជ្រើសច្រើន)','f-shift':'វេន','f-cleaner':'អ្នកសំអាត',
       'f-checker':'អ្នកត្រួតពិនិត្យ','f-photo':'📷 រូបថត','f-photo-n':'ចំនួនរូបថត',
       'slots-title':'ពេលវេលាសម្អាត','chk-title':'ចំណុចត្រួតពិនិត្យ','chk-hint':'ចុចដើម្បីប្តូរ',
       'note-title':'កំណត់សម្គាល់ / ភាពមិនប្រក្រតី','btn-save':'រក្សាទុក','btn-tg':'Telegram','btn-clear':'លុប',
@@ -499,7 +499,7 @@ var i18n = (() => {
       'data-mgmt':'ការគ្រប់គ្រងទិន្នន័យ','export-all':'នាំចេញ JSON ទាំងអស់','restore':'ស្តារបម្រុងទុក','clear-all':'លុបទាំងអស់',
       'ci-smell':'ក្លិន','ci-light':'អំពូល','ci-floor':'ជាន់','ci-door':'ទ្វារ','ci-corner':'ជ្រុង','ci-ceiling':'ពិដាន',
       'pass':'✓ ជាប់','fail':'✗ ធ្លាក់','select':'— ជ្រើស —','records':'កំណត់ត្រា','items':'ធាតុ','selected':'បានជ្រើស','confirm-delete':'លុបកំណត់ត្រានេះ?','confirm-area-delete':'លុបទីតាំងនេះ?','saved':'បានរក្សាទុក','deleted':'បានលុប','uploading':'☁ កំពុងផ្ទុកឡើង…','uploaded':'☁ បានផ្ទុកឡើង','downloading':'⬇ កំពុងទាញយក…','downloaded':'⬇ បានទាញយក និងធ្វើបច្ចុប្បន្នភាព','no-data':'គ្មានទិន្នន័យ','edit':'កែ','new-area':'តំបន់ថ្មី','all-pass':'ជាប់ទាំងអស់','anomaly':'មិនប្រក្រតី','normal':'ធម្មតា','shift-day':'វេនថ្ងៃ','shift-night':'វេនយប់','note-ph':'បញ្ចូលភាពមិនប្រក្រតី ឬកំណត់សម្គាល់បន្ថែម...','search-ph':'ឈ្មោះ/ទីតាំង...','name-ph':'ឈ្មោះ','cleaner-ph':'ឈ្មោះអ្នកសម្អាត','location-example':'ឧ. បង្គន់តំបន់ដេរ','desc-example':'ឧ. ជ្រុងនិរតី','cancel':'បោះបង់','save':'រក្សាទុក','yes':'បញ្ជាក់','no':'បោះបង់',
-      'status-all':'ទាំងអស់','status-pass':'✅ ជាប់','status-fail':'⚠️ មិនប្រក្រតី','missing-location':'សូមបញ្ចូលឈ្មោះទីតាំង','location-added':'បានបន្ថែមទីតាំង',
+      'status-all':'ទាំងអស់','status-pass':'✅ ជាប់','status-fail':'⚠️ មិនប្រក្រតី','missing-location':'សូមបញ្ចូលឈ្មោះទីតាំង','location-added':'បានបន្ថែមទីតាំង','select-slot-warning':'សូមជ្រើសរើសពេលវេលាសម្អាតយ៉ាងហោចណាស់មួយ',
     }
   };
   let _l = (() => {
@@ -675,7 +675,7 @@ const SIXS_CATS = [
 
 var state = (() => {
   let _db = {records:[],sixsRecords:[],locations:[],bins:[],cleaners:[],checkers:[],slots:[...DEF_SLOTS],cfg:{}};
-  let _selSlots = [], _chkState = {}, _sixsState = {};
+  let _selLocs = [], _selSlots = [], _chkState = {}, _sixsState = {};
 
   const load = () => {
     try {
@@ -705,6 +705,13 @@ var state = (() => {
   const resetChk = () => { _chkState={}; CHK_ITEMS.forEach(k=>_chkState[k]=null); };
   const getChk = () => _chkState;
   const setChk = (k,v) => { _chkState[k]=v; };
+  const getLocs = () => _selLocs.slice();
+  const toggleLoc = (id) => {
+    const i=_selLocs.indexOf(id);
+    if(i>=0) _selLocs.splice(i,1); else _selLocs.push(id);
+    renderRecordLocations();
+  };
+  const resetLocs = () => { _selLocs=[]; renderRecordLocations(); };
   const getSlots = () => _selSlots;
   const toggleSlot = (s) => {
     const i=_selSlots.indexOf(s);
@@ -717,7 +724,7 @@ var state = (() => {
   const setSixs = (cat,idx,v) => { if(!_sixsState[cat]) _sixsState[cat]={}; _sixsState[cat][idx]=v; calcSixsScore(); };
   const populate = () => {
     // Populate location selects
-    ['r-loc','s6-loc','hl-loc'].forEach(id => {
+    ['s6-loc','hl-loc'].forEach(id => {
       const el=document.getElementById(id); if(!el)return;
       const cur=el.value;
       el.innerHTML = `<option value="">${id==='hl-loc'?(i18n.t('fl-all')||'全部'):i18n.t('select')}</option>`;
@@ -732,10 +739,11 @@ var state = (() => {
     });
     const rc=document.getElementById('r-checker');
     if(rc){rc.innerHTML=`<option value="">${i18n.t('select')}</option>`;_db.checkers.forEach(n=>{const name=personName(n);rc.innerHTML+=`<option value="${esc(name)}">${esc(name)}</option>`;});}
+    renderRecordLocations();
     renderSlots();
     renderCheckGrid();
   };
-  return { load, save, db, resetChk, getChk, setChk, getSlots, toggleSlot, resetSlots, resetSixs, getSixs, setSixs, populate };
+  return { load, save, db, resetChk, getChk, setChk, getLocs, toggleLoc, resetLocs, getSlots, toggleSlot, resetSlots, resetSixs, getSixs, setSixs, populate };
 })();
 
 /* ═══ API MODULE ═══ */
@@ -882,45 +890,45 @@ function shiftCleanDate(id,delta){
   if(id==='s6-date'){const show=document.getElementById('s6-date-show');if(show)show.textContent=el.value;}
 }
 var rec = (() => {
+  const makeRecords = () => {
+    const date=gv('r-date'),locIds=state.getLocs(),cleaner=gv('r-cleaner'),slots=[...state.getSlots()];
+    if(!date||!locIds.length||!cleaner){ui.toast('⚠️ '+i18n.t('rec-hint'));return [];}
+    if(!slots.length){ui.toast('⚠️ '+i18n.t('select-slot-warning'));return [];}
+    const now=_localTS(), batchId='clean_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6);
+    const photos=(window._phCtl?window._phCtl.get():[]);
+    const checks=JSON.parse(JSON.stringify(state.getChk()));
+    return locIds.map(function(locId,index){
+      return {
+        id:batchId+'_'+index, batchId:batchId,
+        timestamp:now, updatedAt:now, date:date, locId:locId, shift:gv('r-shift'),
+        cleaner:cleaner, checker:gv('r-checker'), slots:slots.slice(),
+        checks:JSON.parse(JSON.stringify(checks)), note:gv('r-note'),
+        photos:photos.slice(), photoCount:photos.length, synced:false
+      };
+    });
+  };
   const save = async () => {
-    const date=gv('r-date'),locId=gv('r-loc'),cleaner=gv('r-cleaner');
-    if(!date||!locId||!cleaner){ui.toast('⚠️ '+i18n.t('rec-hint'));return;}
-    const chks=state.getChk();
-    const record={
-      id:Date.now().toString(36)+Math.random().toString(36).slice(2,5),
-      timestamp:_localTS(), updatedAt:_localTS(), date, locId, shift:gv('r-shift'),
-      cleaner, checker:gv('r-checker'), slots:[...state.getSlots()],
-      checks:JSON.parse(JSON.stringify(chks)), note:gv('r-note'),
-      photos:(window._phCtl?window._phCtl.get():[]),
-      photoCount:(window._phCtl?window._phCtl.get().length:0), synced:false
-    };
-    state.db().records.push(record);
+    const records=makeRecords(); if(!records.length)return;
+    Array.prototype.push.apply(state.db().records,records);
     state.save();
-    try { const cloudRes=await api.post({action:'push',tool:'cleaning',records:[record]}); if(cloudRes&&cloudRes.ok!==false){record.synced=true;state.save();} } catch(e){}
-    ui.toast('✅ '+i18n.t('saved'));
+    try { const cloudRes=await api.post({action:'push',tool:'cleaning',records:records}); if(cloudRes&&cloudRes.ok!==false){records.forEach(function(r){r.synced=true;});state.save();} } catch(e){}
+    ui.toast('✅ '+records.length+' '+i18n.t('records')+' '+i18n.t('saved'));
     clear();
   };
   const sendTelegramRecord = async () => {
-    const date=gv('r-date'),locId=gv('r-loc'),cleaner=gv('r-cleaner');
-    if(!date||!locId||!cleaner){ui.toast('⚠️ '+i18n.t('rec-hint'));return;}
-    const photos=window._phCtl?window._phCtl.get():[];
-    const draft={
-      date:date,locId:locId,cleaner:cleaner,checker:gv('r-checker'),
-      slots:[...state.getSlots()],checks:JSON.parse(JSON.stringify(state.getChk())),
-      note:gv('r-note'),photos:photos
-    };
-    const detail=formatCleaningTelegramRecord(draft,'bi',true);
+    const records=makeRecords(); if(!records.length)return;
+    const packet=buildCleaningSelectedRecordsTelegram(records,'bi');
     try {
-      await api.tg(detail.lines.join('\n'),photos,[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_cleaning_v2.html'}]]);
+      await api.tg(packet.text,packet.photos,[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_cleaning_v2.html'}]]);
       ui.toast('📤 Telegram 已發送');
     } catch(e) { ui.toast('❌ Telegram：'+e.message); }
   };
   const clear = () => {
-    ['r-date','r-loc','r-shift','r-cleaner','r-checker','r-note','r-photo-n'].forEach(id=>sv(id,''));
+    ['r-date','r-shift','r-cleaner','r-checker','r-note','r-photo-n'].forEach(id=>sv(id,''));
     if(window._phCtl) window._phCtl.clear();
     sv('r-date',de.fmt(new Date()));
-    state.resetChk(); state.resetSlots();
-    renderCheckGrid(); renderSlots();
+    state.resetChk(); state.resetLocs(); state.resetSlots();
+    renderCheckGrid(); renderRecordLocations(); renderSlots();
   };
   return {save, sendTelegramRecord, saveTg:sendTelegramRecord, clear};
 })();
@@ -1428,6 +1436,18 @@ function locName(id){const l=state.db().locations.find(l=>l.id===id);return l?l.
 function fmtChk(chks,k){const v=(chks||{})[k];return v===true?'PASS':v===false?'FAIL':'—';}
 function binEmoji(t){return{general:'🗑️',fabric:'🟢',plastic:'🟠',metal:'⚫',paper:'📄',hazard:'⚠️'}[t]||'🗑️';}
 
+function renderRecordLocations(){
+  const wrap=document.getElementById('locs-wrap');if(!wrap)return;
+  const selected=state.getLocs();
+  wrap.innerHTML=(state.db().locations||[]).map(function(loc){
+    const marker=String((loc.type||'')+' '+(loc.name||'')).toLowerCase();
+    const key=/toilet|廁所|បង្គន់/.test(marker)?'toilet':/factory|floor|廠|រោងចក្រ/.test(marker)?'factory':/office|辦公|ការិយាល័យ/.test(marker)?'office':/canteen|飯堂|食堂|អាហារដ្ឋាន/.test(marker)?'canteen':/warehouse|倉|ឃ្លាំង/.test(marker)?'warehouse':/entrance|入口|ច្រកចូល/.test(marker)?'entrance':'other';
+    const icon=LOC_ICONS[key]||LOC_ICONS.other||'📍';
+    return `<div class="sl ${selected.includes(loc.id)?'sel':'none'}" onclick="state.toggleLoc('${esc(loc.id)}')">${icon} ${esc(loc.name)}</div>`;
+  }).join('')||`<span style="padding:8px;color:var(--dim)">${i18n.t('no-data')}</span>`;
+  const cnt=document.getElementById('sel-loc-count');if(cnt)cnt.textContent=selected.length+' '+i18n.t('selected');
+}
+
 function renderSlots(){
   const wrap=document.getElementById('slots-wrap');if(!wrap)return;
   const slots=state.db().slots||DEF_SLOTS;
@@ -1640,6 +1660,29 @@ function formatCleaningTelegramRecord(r,lang,withTitle){
   if(photos.length)lines.push('📷 '+photos.length+' '+tx('張照片','photo(s)','រូបថត'));
   return {lines:lines,photos:photos};
 }
+function buildCleaningSelectedRecordsTelegram(records,lang){
+  records=Array.isArray(records)?records:[];
+  lang=lang||'bi';
+  const tx=function(zh,en,km){return cleaningTelegramText(zh,en,km,lang);};
+  const allSlots=Array.from(new Set(records.reduce(function(out,r){return out.concat(cleaningTelegramSlots(r));},[])));
+  const allLocations=Array.from(new Set(records.map(function(r){return typeof locName==='function'?locName(r.locId):(r.location||r.locId||'—');})));
+  const lines=[
+    '🧹 <b>'+tx('VRT 清潔記錄','VRT Cleaning Records','កំណត់ត្រាសម្អាត VRT')+'</b>',
+    '📅 '+cleaningTelegramEscape(records.length?cleaningTelegramDate(records[0].date):'—'),
+    '📍 '+tx('地點','Locations','ទីតាំង')+': '+cleaningTelegramEscape(allLocations.join(', ')||'—'),
+    '⏰ '+tx('檢查時間','Check time','ម៉ោងត្រួតពិនិត្យ')+': '+cleaningTelegramEscape(allSlots.join(', ')||'—'),
+    '📋 '+tx('記錄','Records','កំណត់ត្រា')+': <b>'+records.length+'</b>'
+  ];
+  const photos=[];
+  records.forEach(function(r){
+    const detail=formatCleaningTelegramRecord(r,lang,false);
+    lines.push('━━━━━━━━━━━━━━━━');
+    Array.prototype.push.apply(lines,detail.lines);
+    detail.photos.forEach(function(p){if(!photos.includes(p)&&photos.length<5)photos.push(p);});
+  });
+  lines.push('━━━━━━━━━━━━━━━━','⏰ '+(typeof _localTS==='function'?_localTS():new Date().toLocaleString()));
+  return {text:lines.join('\n'),photos:photos};
+}
 function cleaningTelegramSlotFilter(r,slot){
   if(!slot||slot==='all')return true;
   const slots=cleaningTelegramSlots(r).map(String);
@@ -1695,6 +1738,7 @@ function buildCleaningTelegram(opt){
       weather:false,
       photo:true,
       periodRef:true,
+      telegramScopeLabel:{zh:'選擇地點（可多選）',en:'Locations (multi-select)',km:'ទីតាំង (អាចជ្រើសច្រើន)'},
       telegramScopes:function(){return [{value:'all',zh:'全部地點',en:'All locations',km:'គ្រប់ទីតាំង'}].concat((state.db().locations||[]).map(function(x){return {value:x.id,zh:x.name,en:x.name,km:x.name};}));},
       telegramScopeMultiple:true,
       telegramSlots:function(){return [{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'}].concat((state.db().slots||DEF_SLOTS).map(function(x){return {value:x,zh:x,en:x,km:x};}));},
