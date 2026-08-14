@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v2.4
+   AC GASCheck — Shared Core  v2.5-smart-incremental
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -225,7 +225,8 @@ const STORAGE = GC.storage = (() => {
 const BASE_DICT = {
   zh: {
     'gc.upload':'上傳雲端','gc.download':'下載雲端','gc.sync':'同步中…',
-    'gc.uploaded':'已上傳雲端','gc.downloaded':'已下載並合併',
+    'gc.uploaded':'已上傳雲端','gc.downloaded':'已下載並合併','gc.cloudCurrent':'雲端已是最新',
+    'gc.autoSyncing':'Telegram 已發送，雲端背景同步中','gc.cloudPending':'雲端待補傳，連線後自動重試','gc.changedRows':'筆變更',
     'gc.upFail':'上傳失敗','gc.downFail':'下載失敗','gc.noCloud':'雲端尚無資料',
     'gc.merged':'筆已合併','gc.added':'筆新增','gc.updated':'筆更新','gc.kept':'筆本地保留',
     'gc.day':'日','gc.week':'週','gc.month':'月','gc.year':'年','gc.all':'全部',
@@ -253,7 +254,8 @@ const BASE_DICT = {
   },
   en: {
     'gc.upload':'Upload','gc.download':'Download','gc.sync':'Syncing…',
-    'gc.uploaded':'Uploaded to cloud','gc.downloaded':'Downloaded & merged',
+    'gc.uploaded':'Uploaded to cloud','gc.downloaded':'Downloaded & merged','gc.cloudCurrent':'Cloud already current',
+    'gc.autoSyncing':'Telegram sent; cloud syncing in background','gc.cloudPending':'Cloud upload pending; retries when online','gc.changedRows':'changed',
     'gc.upFail':'Upload failed','gc.downFail':'Download failed','gc.noCloud':'No cloud data',
     'gc.merged':'merged','gc.added':'added','gc.updated':'updated','gc.kept':'kept local',
     'gc.day':'Day','gc.week':'Week','gc.month':'Month','gc.year':'Year','gc.all':'All',
@@ -281,7 +283,8 @@ const BASE_DICT = {
   },
   km: {
     'gc.upload':'ផ្ទុកឡើង','gc.download':'ទាញយក','gc.sync':'កំពុងធ្វើសមកាលកម្ម…',
-    'gc.uploaded':'បានផ្ទុកឡើងលើ Cloud','gc.downloaded':'បានទាញយក និងបញ្ចូលគ្នា',
+    'gc.uploaded':'បានផ្ទុកឡើងលើ Cloud','gc.downloaded':'បានទាញយក និងបញ្ចូលគ្នា','gc.cloudCurrent':'Cloud ទាន់សម័យរួចហើយ',
+    'gc.autoSyncing':'បានផ្ញើ Telegram; កំពុងផ្ទុកទៅ Cloud នៅផ្ទៃខាងក្រោយ','gc.cloudPending':'រង់ចាំផ្ទុកទៅ Cloud ហើយនឹងសាកល្បងម្ដងទៀតពេលមានអ៊ីនធឺណិត','gc.changedRows':'បានផ្លាស់ប្ដូរ',
     'gc.upFail':'ការផ្ទុកឡើងបរាជ័យ','gc.downFail':'ការទាញយកបរាជ័យ','gc.noCloud':'គ្មានទិន្នន័យលើ Cloud',
     'gc.merged':'បានបញ្ចូលគ្នា','gc.added':'បានបន្ថែម','gc.updated':'បានធ្វើបច្ចុប្បន្នភាព','gc.kept':'រក្សាទុកក្នុងតំបន់',
     'gc.day':'ថ្ងៃ','gc.week':'សប្ដាហ៍','gc.month':'ខែ','gc.year':'ឆ្នាំ','gc.all':'ទាំងអស់',
@@ -459,7 +462,7 @@ const CLOUD = GC.cloud = {
    * @param {Array}  localList 本地清單
    * @param {object} opt {idKey,tsKey,extra}
    */
-  async upload(tool, localList, opt) {
+  async legacyUpload(tool, localList, opt) {
     opt = opt || {};
     const toCloud = typeof opt.toCloud === 'function' ? opt.toCloud : (r => r);
     const fromCloud = typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r);
@@ -482,14 +485,34 @@ const CLOUD = GC.cloud = {
   },
 
   /** 下載 + 安全合併（回傳合併後清單，不直接覆蓋） */
-  async download(tool, localList, opt) {
+  async legacyDownload(tool, localList, opt) {
     opt = opt || {};
     const d = await CLOUD.get({ action: 'pull', tool });
     const rawCloudList = (d && d.data && d.data.list) || (d && d.list) || [];
     const cloudList = (rawCloudList || []).map(typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r));
-    if (!cloudList.length) return { list: localList, stat: null, empty: true, response: d };
+    if (!cloudList.length) return { list: localList, stat: null, empty: true, response: (d && d.data) || d };
     const m = CLOUD.merge(localList, cloudList, opt.idKey, opt.tsKey);
-    return { list: m.list, stat: m.stat, empty: false, response: d };
+    return { list: m.list, stat: m.stat, empty: false, response: (d && d.data) || d };
+  },
+
+  /**
+   * HRA Pay v3.3 同款智慧增量同步。新版 GAS 可用 manifest/bucket 時只傳有變動的月份；
+   * 若網頁先更新、GAS 尚未重部署，會自動退回舊式安全合併，不會中斷現場作業。
+   */
+  async upload(tool, localList, opt) {
+    try { return await SMART.upload(tool, localList, opt || {}); }
+    catch (e) {
+      if (e && e.smartUnsupported) return CLOUD.legacyUpload(tool, localList, opt || {});
+      throw e;
+    }
+  },
+
+  async download(tool, localList, opt) {
+    try { return await SMART.download(tool, localList, opt || {}); }
+    catch (e) {
+      if (e && e.smartUnsupported) return CLOUD.legacyDownload(tool, localList, opt || {});
+      throw e;
+    }
   },
 
   /**
@@ -517,6 +540,258 @@ const CLOUD = GC.cloud = {
     return CLOUD.post({ type: 'notify', parse_mode: 'HTML', text });
   }
 };
+
+/* ═══════════════════════════════════════════════════════════
+   2.5 SMART SYNC — HRA Pay v3.3 manifest / month bucket model
+   · 先讀小型 manifest，比對後只上下載變動 bucket
+   · 雲端獨有歷史永遠保留；手機短資料不會覆蓋完整雲端
+   · 照片先轉 Drive 連結，避免重傳 base64 與 Sheet 配額
+   · sync state / pending marker 都是小設定，可留 localStorage
+   ═══════════════════════════════════════════════════════════ */
+const SMART = GC.smartSync = (() => {
+  const VERSION = '1.0';
+  const STATE_PREFIX = 'ac_gc_smart_sync_v1_';
+  const DATE_FIELDS = ['_syncPeriod','period','periodKey','date','d','recordDate','reportDate','purchase_date','issue_date','datetime','return_date','ts','yearMonth','month'];
+
+  function text(v) { return String(v == null ? '' : v); }
+  function stable(v) {
+    if (v === null || v === undefined) return 'null';
+    if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'string') return JSON.stringify(v);
+    if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']';
+    if (typeof v === 'object') return '{' + Object.keys(v).sort().filter(function (k) {
+      return !/^_smart/.test(k) && !/^(updatedAt|createdAt|savedAt|modifiedAt|timestamp|cloudUpdatedAt|lastCloudUpdatedAt)$/.test(k);
+    }).map(function (k) { return JSON.stringify(k) + ':' + stable(v[k]); }).join(',') + '}';
+    return JSON.stringify(text(v));
+  }
+  function fnv(str) {
+    let h = 2166136261 >>> 0;
+    for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return ('00000000' + (h >>> 0).toString(16)).slice(-8);
+  }
+  async function hash(str) {
+    try {
+      if (global.crypto && global.crypto.subtle && global.TextEncoder) {
+        const b = await global.crypto.subtle.digest('SHA-256', new global.TextEncoder().encode(str));
+        return Array.from(new Uint8Array(b)).map(x => x.toString(16).padStart(2, '0')).join('').slice(0, 24);
+      }
+    } catch (e) {}
+    return fnv(str) + '_' + str.length.toString(36);
+  }
+  function normDate(v, row) {
+    if (v instanceof Date && !isNaN(v)) return U.ymd(v);
+    const s = text(v).trim();
+    let m = s.match(/(20\d{2})[-\/.](\d{1,2})(?:[-\/.](\d{1,2}))?/);
+    if (m) return m[1] + '-' + String(+m[2]).padStart(2, '0') + (m[3] ? '-' + String(+m[3]).padStart(2, '0') : '');
+    m = s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](20\d{2})/);
+    if (m) return m[3] + '-' + String(+m[2]).padStart(2, '0') + '-' + String(+m[1]).padStart(2, '0');
+    if (row && /^20\d{2}$/.test(text(row.year)) && Number(row.month) >= 1 && Number(row.month) <= 12) {
+      return text(row.year) + '-' + String(Number(row.month)).padStart(2, '0');
+    }
+    return '';
+  }
+  function recordDate(row, opt) {
+    const fields = [];
+    if (opt && opt.dateField) fields.push(opt.dateField);
+    DATE_FIELDS.forEach(k => { if (!fields.includes(k)) fields.push(k); });
+    for (let i = 0; i < fields.length; i++) {
+      const d = normDate(row && row[fields[i]], row);
+      if (d) return d;
+    }
+    return '';
+  }
+  function semanticKey(row, opt) {
+    if (!row || typeof row !== 'object') return stable(row);
+    const keys = [opt && opt.idKey, '_syncId', '_k', 'id', 'uuid', 'recordId', 'code'].filter(Boolean);
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (row[k] !== undefined && row[k] !== null && row[k] !== '') return k + ':' + text(row[k]);
+    }
+    const d = recordDate(row, opt), parts = [];
+    ['type','kind','module','sourceType','zone','z','locId','name','supplier'].forEach(function (k) {
+      if (row[k] !== undefined && row[k] !== null && row[k] !== '') parts.push(k + '=' + text(row[k]));
+    });
+    if (d) parts.unshift('date=' + d);
+    return parts.length ? parts.join('|') : stable(row);
+  }
+  function bucketKey(row, opt) {
+    if (row && row._syncBucket) return text(row._syncBucket);
+    const d = recordDate(row, opt);
+    if (d) return 'm:' + d.slice(0, 7);
+    return 'h:' + ('0' + (parseInt(fnv(semanticKey(row, opt)), 16) % 32).toString(16)).slice(-2);
+  }
+  function stamp(x, opt) {
+    const fields = [opt && opt.tsKey, 'updatedAt','savedAt','modifiedAt','createdAt','timestamp'].filter(Boolean);
+    for (let i = 0; i < fields.length; i++) {
+      const v = x && x[fields[i]];
+      if (v) { const n = new Date(v).getTime(); if (!isNaN(n)) return n; }
+    }
+    return 0;
+  }
+  function mergeRows(a, b, opt) {
+    const map = new Map(), order = [];
+    (a || []).concat(b || []).forEach(function (row) {
+      const key = semanticKey(row, opt);
+      if (!map.has(key)) { order.push(key); map.set(key, row); return; }
+      const old = map.get(key), ta = stamp(old, opt), tb = stamp(row, opt);
+      if (tb > ta || (tb === ta && stable(row).length > stable(old).length)) map.set(key, Object.assign({}, old, row));
+      else map.set(key, Object.assign({}, row, old));
+    });
+    return order.map(k => map.get(k));
+  }
+  function sortRows(rows, opt) {
+    return (rows || []).slice().sort(function (a, b) {
+      const ka = semanticKey(a, opt), kb = semanticKey(b, opt);
+      return ka < kb ? -1 : ka > kb ? 1 : stable(a) < stable(b) ? -1 : 1;
+    });
+  }
+  async function buildBuckets(records, opt) {
+    const groups = {}, out = {};
+    (records || []).forEach(function (r) { const k = bucketKey(r, opt); (groups[k] || (groups[k] = [])).push(r); });
+    await Promise.all(Object.keys(groups).sort().map(async function (k) {
+      const rows = sortRows(groups[k], opt);
+      out[k] = { key:k, records:rows, count:rows.length, hash:await hash(stable(rows)) };
+    }));
+    return out;
+  }
+  function readState(tool) { try { return JSON.parse(localStorage.getItem(STATE_PREFIX + tool) || 'null'); } catch (e) { return null; } }
+  function writeState(tool, value) { try { localStorage.setItem(STATE_PREFIX + tool, JSON.stringify(value)); } catch (e) {} }
+  function dataOf(j) { return j && j.data !== undefined ? j.data : j; }
+  function unsupported(message) { const e = new Error(message || 'Smart sync endpoint unavailable'); e.smartUnsupported = true; return e; }
+  async function manifest(tool) {
+    const d = dataOf(await CLOUD.get({ action:'smartManifest', tool:tool }));
+    if (!d || typeof d.exists !== 'boolean') throw unsupported();
+    return d;
+  }
+  function monthsOf(records, opt) {
+    const m = new Set();
+    (records || []).forEach(function (r) { const d = recordDate(r, opt); if (d) m.add(d.slice(0, 7)); });
+    return Array.from(m).sort();
+  }
+  async function preparePhotos(records, tool, opt) {
+    const field = opt.photoField || 'photos';
+    return Promise.all((records || []).map(async function (row) {
+      const photos = U.asArray(row && row[field]);
+      if (!photos.some(p => typeof p === 'string' && p.indexOf('data:image/') === 0)) return row;
+      const copy = Object.assign({}, row);
+      copy[field] = await CLOUD.uploadPhotos(photos, tool, row && row[opt.idKey || 'id']);
+      return copy;
+    }));
+  }
+  async function legacyPull(tool, opt) {
+    const d = await CLOUD.get({ action:'pull', tool:tool });
+    const raw = (d && d.data && d.data.list) || (d && d.list) || [];
+    return { records:Array.isArray(raw) ? raw : [], meta:dataOf(d) || {} };
+  }
+  async function pushPrepared(tool, records, opt, remote, migrated) {
+    const local = await buildBuckets(records, opt);
+    const last = readState(tool) || {}, lastH = migrated ? {} : (last.hashes || {});
+    const remoteH = migrated ? {} : (remote.hashes || {}), changed = [], remoteChanged = [], conflicts = [];
+    const keys = new Set(Object.keys(local).concat(Object.keys(remoteH)));
+    keys.forEach(function (k) {
+      const lh = local[k] && local[k].hash || '', rh = remoteH[k] || '', base = lastH[k] || '';
+      if (lh && rh && lh === rh) return;
+      if (!base) {
+        if (lh && !rh) changed.push(k);
+        else if (!lh && rh) remoteChanged.push(k);
+        else if (lh && rh && lh !== rh) conflicts.push(k);
+        return;
+      }
+      const lc = lh !== base, rc = rh !== base;
+      if (lc && !rc && lh) changed.push(k);
+      else if (!lc && rc) remoteChanged.push(k);
+      else if (lc && rc && lh !== rh) conflicts.push(k);
+    });
+    if (!migrated && (remoteChanged.length || conflicts.length)) {
+      return { ok:false, needsPull:true, remoteChanged:remoteChanged, conflicts:conflicts };
+    }
+    const uploadId = 'gc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    let uploaded = 0;
+    for (let i = 0; i < changed.length; i++) {
+      const b = local[changed[i]];
+      const r = await CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records });
+      if (!r || r.ok === false) throw new Error((r && r.error) || 'Smart bucket upload failed');
+      uploaded += b.count;
+    }
+    const hashes = {}, counts = {};
+    Object.keys(local).forEach(function (k) { hashes[k] = local[k].hash; counts[k] = local[k].count; });
+    Object.keys(remoteH).forEach(function (k) { if (!hashes[k]) { hashes[k] = remoteH[k]; counts[k] = Number((remote.counts || {})[k]) || 0; } });
+    const meta = Object.assign({}, typeof opt.extra === 'function' ? (opt.extra() || {}) : (opt.extra || {}), {
+      periods: monthsOf(records, opt), _smartMetaHash: await hash(stable(typeof opt.extra === 'function' ? (opt.extra() || {}) : (opt.extra || {})))
+    });
+    const metaChanged = migrated || changed.length || meta._smartMetaHash !== (remote.metaHash || '');
+    if (!metaChanged) {
+      writeState(tool, { hashes:remoteH, counts:remote.counts || {}, metaHash:remote.metaHash || '', updatedAt:U.now() });
+      return { ok:true, skipped:true, uploaded:0, unchanged:records.length, changedBuckets:0, records:records };
+    }
+    const commit = await CLOUD.post({ action:'smartCommit', tool:tool, uploadId:uploadId, hashes:hashes, counts:counts,
+      recordCount:Object.keys(counts).reduce((n, k) => n + (Number(counts[k]) || 0), 0), meta:meta,
+      reportPeriod:meta.reportPeriod, reportRef:meta.reportRef, reportMonth:meta.reportMonth,
+      reportScope:meta.reportScope, reportSlot:meta.reportSlot, reportLanguage:meta.reportLanguage });
+    if (!commit || commit.ok === false) throw new Error((commit && commit.error) || 'Smart commit failed');
+    const ts = (dataOf(commit) && (dataOf(commit).timestamp || dataOf(commit).updatedAt)) || U.now();
+    writeState(tool, { hashes:hashes, counts:counts, metaHash:meta._smartMetaHash, updatedAt:ts });
+    return { ok:true, uploaded:uploaded, unchanged:Math.max(0, records.length - uploaded), changedBuckets:changed.length, migrated:!!migrated, records:records, response:commit };
+  }
+  async function upload(tool, localList, opt) {
+    opt = opt || {};
+    const toCloud = typeof opt.toCloud === 'function' ? opt.toCloud : (r => r);
+    const fromCloud = typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r);
+    let records = (localList || []).map(toCloud);
+    records = await preparePhotos(records, tool, opt);
+    let remote = await manifest(tool), migrated = false;
+    if (!remote.exists && remote.legacy) {
+      const old = await legacyPull(tool, opt);
+      records = mergeRows(records, old.records, opt);
+      if (typeof opt.onRemote === 'function') opt.onRemote(old.meta || {});
+      migrated = true;
+    }
+    let result = await pushPrepared(tool, records, opt, remote, migrated);
+    if (result.needsPull) {
+      const pulled = await download(tool, records, Object.assign({}, opt, { _cloudInput:true }));
+      const mergedCloud = (pulled.list || []).map(toCloud);
+      remote = await manifest(tool);
+      result = await pushPrepared(tool, mergedCloud, opt, remote, false);
+      records = mergedCloud;
+    }
+    result.list = records.map(fromCloud);
+    result.res = Object.assign({ ok:true, smart:true }, dataOf(result.response) || {}, result);
+    return result;
+  }
+  async function download(tool, localList, opt) {
+    opt = opt || {};
+    const toCloud = typeof opt.toCloud === 'function' ? opt.toCloud : (r => r);
+    const fromCloud = typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r);
+    let localRows = opt._cloudInput ? (localList || []) : (localList || []).map(toCloud);
+    const remote = await manifest(tool);
+    if (!remote.exists && remote.legacy) {
+      const old = await legacyPull(tool, opt);
+      const merged = mergeRows(localRows, old.records, opt);
+      const migrated = await pushPrepared(tool, merged, opt, remote, true);
+      return { list:merged.map(fromCloud), stat:{added:old.records.length,updated:0,kept:localRows.length,total:merged.length}, empty:false,
+        response:Object.assign({smart:true,migrated:true},old.meta||{}), downloaded:old.records.length, uploaded:migrated.uploaded || 0 };
+    }
+    if (!remote.exists) return { list:(localRows || []).map(fromCloud), stat:null, empty:true, response:remote, downloaded:0 };
+    const local = await buildBuckets(localRows, opt), out = {}, remoteH = remote.hashes || {};
+    let downloaded = 0, unchanged = 0, pending = 0;
+    const keys = Array.from(new Set(Object.keys(remoteH).concat(Object.keys(local)))).sort();
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i], lb = local[k], rh = remoteH[k] || '';
+      if (lb && rh && lb.hash === rh) { out[k] = lb.records; unchanged += lb.count; continue; }
+      if (lb && !rh) { out[k] = lb.records; pending += lb.count; continue; }
+      if (!rh) continue;
+      const bd = dataOf(await CLOUD.get({ action:'smartBucket', tool:tool, bucket:k })) || {};
+      const rows = Array.isArray(bd.records) ? bd.records : [];
+      downloaded += rows.length;
+      out[k] = lb ? mergeRows(lb.records, rows, opt) : rows;
+    }
+    const merged = sortRows(Object.keys(out).reduce((a, k) => a.concat(out[k] || []), []), opt);
+    writeState(tool, { hashes:remoteH, counts:remote.counts || {}, metaHash:remote.metaHash || '', updatedAt:U.now() });
+    return { list:merged.map(fromCloud), stat:{added:downloaded,updated:0,kept:unchanged,total:merged.length}, empty:false,
+      response:Object.assign({smart:true}, remote.meta || {}, {data:Object.assign({list:merged}, remote.meta || {})}), downloaded:downloaded,
+      unchanged:unchanged, pendingUpload:pending };
+  }
+  return { version:VERSION, upload, download, buildBuckets, mergeRows, semanticKey, bucketKey, stable, hash, readState };
+})();
 
 /* ═══════════════════════════════════════════════════════════
    3. PHOTO — 拍照 / 選檔 / 壓縮 / 縮圖
@@ -1135,7 +1410,7 @@ else document.addEventListener('DOMContentLoaded', injectCSS);
    ═══════════════════════════════════════════════════════════ */
 GC.mountCloudButtons = function (mountEl, opt) {
   const el = typeof mountEl === 'string' ? document.querySelector(mountEl) : mountEl;
-  if (!el) return;
+  if (!el) return null;
   opt = opt || {};
   el.innerHTML =
     `<div class="gc-cloud-btns">
@@ -1152,60 +1427,93 @@ GC.mountCloudButtons = function (mountEl, opt) {
   function state(kind, text) {
     if (typeof opt.onState === 'function') opt.onState(kind, text);
   }
+  const pendingKey = 'ac_gc_auto_sync_v1_' + String(opt.tool || 'tool');
+  let running = null, retryTimer = 0;
+  function markPending(reason) {
+    try { localStorage.setItem(pendingKey, JSON.stringify({ts:U.now(), reason:reason || 'auto'})); } catch (e) {}
+  }
+  function clearPending() { try { localStorage.removeItem(pendingKey); } catch (e) {} }
+  function hasPending() { try { return !!localStorage.getItem(pendingKey); } catch (e) { return false; } }
 
-  up.onclick = async () => {
+  async function runUpload(runOpt) {
+    runOpt = runOpt || {};
+    if (running) return running;
     busy(true);
-    state('busy', I18.t('gc.sync'));
-    try {
-      const local = opt.getList ? opt.getList() : [];
-      const { res, list } = await CLOUD.upload(opt.tool, local, {
-        idKey: opt.idKey, tsKey: opt.tsKey, extra: opt.extra,
-        toCloud: opt.toCloud, fromCloud: opt.fromCloud
-      });
-      if (res && res.ok !== false) {
+    state('busy', runOpt.auto ? I18.t('gc.autoSyncing') : I18.t('gc.sync'));
+    running = (async function () {
+      try {
+        const local = opt.getList ? opt.getList() : [];
+        const result = await CLOUD.upload(opt.tool, local, {
+          idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
+          extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote
+        });
+        const res = result && result.res, list = result && result.list || local;
+        if (res && res.ok === false) throw new Error(res.error || I18.t('gc.upFail'));
         if (opt.setList) opt.setList(list);
-        GC.toast('☁ ' + I18.t('gc.uploaded') + ' (' + list.length + ')', 'success');
-        state('ok', I18.t('gc.uploaded') + ' · ' + list.length);
-        if (opt.onDone) opt.onDone(list);
-      } else {
-        const msg = I18.t('gc.upFail') + ': ' + ((res && res.error) || '');
-        GC.toast('❌ ' + msg, 'error'); state('error', msg);
+        clearPending();
+        const uploaded = Number(result && result.uploaded) || 0;
+        const label = result && result.skipped ? I18.t('gc.cloudCurrent') : I18.t('gc.uploaded') + ' · ' + uploaded + ' ' + I18.t('gc.changedRows');
+        state('ok', label);
+        if (!runOpt.silent) GC.toast('☁ ' + label, 'success');
+        if (opt.onDone) opt.onDone(list, result);
+        return Object.assign({ok:true}, result || {});
+      } catch (e) {
+        markPending(runOpt.reason || 'retry');
+        const msg = runOpt.auto ? I18.t('gc.cloudPending') : I18.t('gc.upFail') + ': ' + e.message;
+        state(runOpt.auto ? 'warning' : 'error', msg);
+        if (!runOpt.silent) GC.toast('❌ ' + msg, 'error');
+        return {ok:false,error:e};
+      } finally {
+        busy(false); running = null;
       }
-    } catch (e) {
-      const msg = I18.t('gc.upFail') + ': ' + e.message;
-      GC.toast('❌ ' + msg, 'error'); state('error', msg);
-    }
-    busy(false);
-  };
+    })();
+    return running;
+  }
 
-  down.onclick = async () => {
+  async function runDownload(runOpt) {
+    runOpt = runOpt || {};
     busy(true);
     state('busy', I18.t('gc.sync'));
     try {
       const local = opt.getList ? opt.getList() : [];
       const r = await CLOUD.download(opt.tool, local, {
-        idKey: opt.idKey, tsKey: opt.tsKey, fromCloud: opt.fromCloud
+        idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
+        extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud
       });
       if (r.empty) {
-        GC.toast('⚠ ' + I18.t('gc.noCloud'), 'warning');
+        if (!runOpt.silent) GC.toast('⚠ ' + I18.t('gc.noCloud'), 'warning');
         state('warning', I18.t('gc.noCloud'));
       }
       else {
         if (opt.onRemote) opt.onRemote(r.response || {});
         if (opt.setList) opt.setList(r.list);
-        GC.toast('⬇ ' + I18.t('gc.downloaded') + ' — ' +
-          r.stat.added + ' ' + I18.t('gc.added') + ' / ' +
-          r.stat.updated + ' ' + I18.t('gc.updated') + ' / ' +
-          r.stat.kept + ' ' + I18.t('gc.kept'), 'success');
-        state('ok', I18.t('gc.downloaded') + ' · ' + r.list.length);
-        if (opt.onDone) opt.onDone(r.list);
+        const changed = Number(r.downloaded != null ? r.downloaded : (r.stat && r.stat.added)) || 0;
+        if (!runOpt.silent) GC.toast('⬇ ' + I18.t('gc.downloaded') + ' · ' + changed + ' ' + I18.t('gc.changedRows'), 'success');
+        state('ok', I18.t('gc.downloaded') + ' · ' + changed + ' ' + I18.t('gc.changedRows'));
+        if (opt.onDone) opt.onDone(r.list, r);
       }
+      return Object.assign({ok:true}, r || {});
     } catch (e) {
       const msg = I18.t('gc.downFail') + ': ' + e.message;
-      GC.toast('❌ ' + msg, 'error'); state('error', msg);
+      if (!runOpt.silent) GC.toast('❌ ' + msg, 'error');
+      state('error', msg);
+      return {ok:false,error:e};
+    } finally {
+      busy(false);
     }
-    busy(false);
-  };
+  }
+
+  function scheduleAuto(reason) {
+    markPending(reason || 'telegram');
+    state('busy', I18.t('gc.autoSyncing'));
+    clearTimeout(retryTimer);
+    retryTimer = setTimeout(function () { runUpload({silent:true,auto:true,reason:reason || 'telegram'}); }, 20);
+  }
+  up.onclick = function () { runUpload({silent:false,auto:false,reason:'manual'}); };
+  down.onclick = function () { runDownload({silent:false}); };
+  global.addEventListener('online', function () { if (hasPending()) scheduleAuto('online'); });
+  if (hasPending()) setTimeout(function () { scheduleAuto('resume'); }, 350);
+  return { upload:runUpload, download:runDownload, scheduleAuto:scheduleAuto, hasPending:hasPending };
 };
 
 /* ═══════════════════════════════════════════════════════════
@@ -1437,7 +1745,7 @@ GC.attach = function (cfg) {
   }
 
   const cloudOpt = {
-    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', extra: cloudExtra,
+    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, extra: cloudExtra,
     toCloud: C.toCloud, fromCloud: C.fromCloud,
     getList: function () { return C.read() || []; },
     setList: function (list) { C.write(list); },
@@ -1450,7 +1758,7 @@ GC.attach = function (cfg) {
       if (state) state.classList.add('ok');
     }
   };
-  GC.mountCloudButtons(tools.querySelector('.gc-head-cloud'), cloudOpt);
+  const cloudControl = GC.mountCloudButtons(tools.querySelector('.gc-head-cloud'), cloudOpt);
 
   function exportLocalData() {
     const list = C.read() || [];
@@ -1776,6 +2084,7 @@ GC.attach = function (cfg) {
       );
       sendState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
+      if (cloudControl && (mode === 'summary' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
       setTimeout(function () { setModalOpen(tgModal, false); }, 450);
     } catch (e) {
       sendState.textContent = '✕ ' + e.message;
@@ -2033,7 +2342,7 @@ GC.attachLegacy = function (cfg) {
   });
 
   const cloudOpt = {
-    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt',
+    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, extra:C.extra,
     toCloud: C.toCloud,
     fromCloud: C.fromCloud,
     getList: () => C.read() || [],
@@ -2042,7 +2351,7 @@ GC.attachLegacy = function (cfg) {
     onDone: () => { refresh(); if (C.onSync) C.onSync(); }
   };
   // 雲端按鈕固定放在頁面頂部快捷列，避免跑到頁面底部或被浮動圖示遮住。
-  GC.mountCloudButtons('#gcTopCloud', cloudOpt);
+  const cloudControl = GC.mountCloudButtons('#gcTopCloud', cloudOpt);
 
   const sendTelegram = bar.querySelector('[data-gc-send]');
   const telegramState = bar.querySelector('#gcTelegramState');
@@ -2060,6 +2369,7 @@ GC.attachLegacy = function (cfg) {
       await GC.telegram.send(packet.text, packet.photos, buttons);
       if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
+      if (cloudControl && (mode === 'summary' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
     } catch (e) {
       if (telegramState) telegramState.textContent = '✕ ' + e.message;
       GC.toast('❌ ' + I18.t('gc.upFail') + ': ' + e.message, 'error');
@@ -2239,7 +2549,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '2.4';
+GC.version = '2.5-smart-incremental';
 global.GC = GC;
 global.GASCheckCore = GC;
 

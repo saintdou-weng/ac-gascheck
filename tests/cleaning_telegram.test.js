@@ -77,10 +77,24 @@ assert(packet.text.includes('Cleaner'));
 assert(packet.text.includes('Checker'));
 assert.strictEqual(packet.photos.length, 2);
 
+const formPacket = context.buildCleaningSelectedRecordsTelegram(records.slice(0, 2), 'bi');
+assert(formPacket.text.includes('Office'));
+assert(formPacket.text.includes('Canteen'));
+assert(formPacket.text.includes('10:30, 14:30'));
+assert(formPacket.text.includes('👃'));
+assert(formPacket.text.includes('🧹'));
+assert(!formPacket.text.includes('T00:00:00.000Z'));
+assert.strictEqual(formPacket.photos.length, 2);
+
 const core = fs.readFileSync(path.join(root, 'gascheck-core.js'), 'utf8');
 assert(core.includes('telegramScopeMultiple: false'));
 assert(core.includes('telegramSlotMultiple: false'));
 assert(core.includes('scopePicks.onclick'));
 assert(core.includes('slotPicks.onclick'));
+assert(html.includes('id="locs-wrap"'));
+assert(html.includes('state.getLocs()'));
+assert(html.includes('telegramScopeMultiple:true'));
+assert(html.includes('telegramSlotMultiple:true'));
+assert(html.includes('gascheck-core.js?v=28-smart-sync'));
 
 console.log('Cleaning Telegram multi-location/multi-slot tests passed.');
