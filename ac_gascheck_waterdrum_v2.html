@@ -469,7 +469,7 @@ document.addEventListener('click', function(e) {
   font-size:18px; cursor:pointer; color:#94a3b8; }
 
 </style>
-<script src="./gascheck-core.js?v=31-key-batch-cleaner-map"></script>
+<script src="./gascheck-core.js?v=32-water-asset-authority"></script>
 </head>
 <body>
 <!-- Currency Settings Panel -->
@@ -2350,6 +2350,12 @@ function buildWaterTelegram(opt){
     }
     return currentRows.map((r,i)=>({r,i}));
   }
+  function attendanceStats(rows){
+    const values=(rows||[]).map(r=>+r.headcount||0).filter(n=>n>0);
+    const personDays=values.reduce((a,n)=>a+n,0);
+    return {headcount:values.length?Math.round(personDays/values.length):0,personDays,days:values.length};
+  }
+  V.attendanceStats=attendanceStats;
   window.renderTable = renderTable = function(){
     const tbody=document.getElementById('table-body');if(!tbody)return;
     const rrate=rate(), view=visibleRows();let html='';
@@ -2365,7 +2371,7 @@ function buildWaterTelegram(opt){
         '<td><input type="number" min="0" value="'+esc(row.headcount||'')+'" placeholder="0" onchange="updateRow('+idx+',\'headcount\',this.value)" style="width:72px"></td>'+
         '<td>'+photoCell(row,idx)+'</td><td><button class="btn btn-ghost btn-sm" onclick="clearRow('+idx+')">✕</button></td></tr>';
     });
-    const rows=view.map(x=>x.r),fq=rows.reduce((a,r)=>a+(+r.fQty||0),0),sq=rows.reduce((a,r)=>a+(+r.sQty||0),0),ft=rows.reduce((a,r)=>a+(+r.fTtl||0),0),st=rows.reduce((a,r)=>a+(+r.sTtl||0),0),hc=rows.reduce((a,r)=>a+(+r.headcount||0),0),pc=rows.reduce((a,r)=>a+(r.photos||[]).length,0);
+    const rows=view.map(x=>x.r),fq=rows.reduce((a,r)=>a+(+r.fQty||0),0),sq=rows.reduce((a,r)=>a+(+r.sQty||0),0),ft=rows.reduce((a,r)=>a+(+r.fTtl||0),0),st=rows.reduce((a,r)=>a+(+r.sTtl||0),0),hc=attendanceStats(rows).headcount,pc=rows.reduce((a,r)=>a+(r.photos||[]).length,0);
     html+='<tr class="total-row"><td>'+esc(T('total_row'))+'</td><td></td><td>'+fq+'</td><td></td><td>'+ft.toLocaleString()+' ៛<small>'+usd(ft,rrate)+'</small></td><td></td><td>'+sq+'</td><td></td><td>'+st.toLocaleString()+' ៛<small>'+usd(st,rrate)+'</small></td><td></td><td>'+hc+'</td><td>📷 '+pc+'</td><td><b>'+usd(ft+st,rrate)+'</b></td></tr>';
     tbody.innerHTML=html;
   };
@@ -2382,13 +2388,13 @@ function buildWaterTelegram(opt){
   };
 
   window.renderSummaryCards = renderSummaryCards = function(){
-    const rows=visibleRows().map(x=>x.r),fq=rows.reduce((a,r)=>a+(+r.fQty||0),0),sq=rows.reduce((a,r)=>a+(+r.sQty||0),0),ft=rows.reduce((a,r)=>a+calcTtl(r.fQty,r.fPrice),0),st=rows.reduce((a,r)=>a+calcTtl(r.sQty,r.sPrice),0),drums=fq+sq,liters=drums*20,persons=rows.reduce((a,r)=>a+(+r.headcount||0),0),per=persons?liters/persons:0,rr=rate();
+    const rows=visibleRows().map(x=>x.r),fq=rows.reduce((a,r)=>a+(+r.fQty||0),0),sq=rows.reduce((a,r)=>a+(+r.sQty||0),0),ft=rows.reduce((a,r)=>a+calcTtl(r.fQty,r.fPrice),0),st=rows.reduce((a,r)=>a+calcTtl(r.sQty,r.sPrice),0),drums=fq+sq,liters=drums*20,att=attendanceStats(rows),persons=att.headcount,per=persons?liters/persons:0,rr=rate();
     const el=document.getElementById('summary-cards');if(!el)return;
     el.innerHTML='<div class="summary-card blue"><div class="card-label">🏭 '+esc(T('factory'))+'</div><div class="card-value">'+fq+'</div><div class="card-sub">'+ft.toLocaleString()+' ៛ · '+usd(ft,rr)+'</div></div>'+
       '<div class="summary-card teal"><div class="card-label">🏠 '+esc(T('staff_house'))+'</div><div class="card-value">'+sq+'</div><div class="card-sub">'+st.toLocaleString()+' ៛ · '+usd(st,rr)+'</div></div>'+
       '<div class="summary-card amber"><div class="card-label">💰 '+esc(T('grand_total'))+'</div><div class="card-value">'+(ft+st).toLocaleString()+' ៛</div><div class="card-sub">'+usd(ft+st,rr)+'</div></div>'+
       '<div class="summary-card green"><div class="card-label">💧 '+waterTelegramText('用水量','Water','ទឹក',currentLang)+'</div><div class="card-value">'+liters.toLocaleString()+' L</div><div class="card-sub">'+drums+' × 20L</div></div>'+
-      '<div class="summary-card red"><div class="card-label">👥 '+waterTelegramText('人均用水','Per person','ទឹកក្នុងមនុស្សម្នាក់',currentLang)+'</div><div class="card-value">'+per.toFixed(1)+' L</div><div class="card-sub">'+persons+' person-days</div></div>';
+      '<div class="summary-card red"><div class="card-label">👥 '+waterTelegramText('人均用水','Per person','ទឹកក្នុងមនុស្សម្នាក់',currentLang)+'</div><div class="card-value">'+per.toFixed(1)+' L</div><div class="card-sub">'+waterTelegramText('出勤人數','Attendance','វត្តមាន',currentLang)+': '+persons+'</div></div>';
   };
 
   window.applyWaterDefaultsToMonth = function(){
@@ -2404,10 +2410,13 @@ function buildWaterTelegram(opt){
   };
   window.saveDefaultPrices = saveDefaultPrices = function(){ /* 明確按套用才寫入，避免輸入中改到舊月份 */ };
 
-  window.syncAttendanceHeadcount = async function(){
+  window.syncAttendanceHeadcount = async function(silent){
     if(!GC.attendance){showToast('Attendance bridge unavailable','error');return;}
-    const start=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-01',end=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(getDaysInMonth(currentYear,currentMonth)).padStart(2,'0');showToast('⏳ '+waterTelegramText('同步考勤人數…','Syncing attendance…','កំពុងធ្វើសមកាលកម្ម…',currentLang),'info');
-    const r=await GC.attendance.headcount(start,end);Object.keys(r.daily||{}).forEach(d=>{const day=+d.slice(8,10),row=currentRows.find(x=>+x.day===day);if(row)row.headcount=+r.daily[d]||0;});localStorage.setItem(headKey(currentYear,currentMonth),JSON.stringify(r.daily||{}));saveData(true);renderTable();renderSummaryCards();showToast(r.personDays?'✅ '+r.personDays+' person-days':waterTelegramText('找不到同網域考勤資料，可手動填人數','Attendance data not found; enter headcount manually','រកមិនឃើញទិន្នន័យវត្តមាន',currentLang),r.personDays?'success':'warning');
+    const start=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-01',end=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(getDaysInMonth(currentYear,currentMonth)).padStart(2,'0');if(!silent)showToast('⏳ '+waterTelegramText('同步考勤人數…','Syncing attendance…','កំពុងធ្វើសមកាលកម្ម…',currentLang),'info');
+    const r=await GC.attendance.headcount(start,end),headcount=+r.averageDaily||+r.headcount||0;
+    if(headcount>=20){Object.keys(r.daily||{}).forEach(d=>{const day=+d.slice(8,10),row=currentRows.find(x=>+x.day===day);if(row)row.headcount=+r.daily[d]||headcount;});localStorage.setItem(headKey(currentYear,currentMonth),JSON.stringify(r.daily||{}));saveData(true);renderTable();renderSummaryCards();if(!silent)showToast('✅ '+waterTelegramText('出勤人數','Attendance','វត្តមាន',currentLang)+': '+headcount,'success');}
+    else if(!silent)showToast(waterTelegramText('找不到同網域考勤資料，可手動填人數','Attendance data not found; enter headcount manually','រកមិនឃើញទិន្នន័យវត្តមាន',currentLang),'warning');
+    return r;
   };
 
   function allWaterRows(){
@@ -2417,16 +2426,16 @@ function buildWaterTelegram(opt){
   window.renderAnalysis = renderAnalysis = function(){
     const y=+(document.getElementById('an-year')||{}).value||currentYear,m=+(document.getElementById('an-month')||{}).value||currentMonth,ref=(document.getElementById('wdr-analysis-ref')||{}).value||_localYMD();let rows=allWaterRows();
     if(analysisPeriod==='day')rows=rows.filter(r=>r.date===ref);else if(analysisPeriod==='week'){const d=new Date(ref+'T00:00:00'),s=new Date(d);s.setDate(d.getDate()-((d.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+6);rows=rows.filter(r=>{const x=new Date(r.date+'T00:00:00');return x>=s&&x<=e;});}else if(analysisPeriod==='month')rows=rows.filter(r=>r.date.startsWith(y+'-'+String(m).padStart(2,'0')));else rows=rows.filter(r=>r.date.startsWith(y+'-'));
-    const drums=rows.reduce((a,r)=>a+(+r.fQty||0)+(+r.sQty||0),0),liters=drums*20,persons=rows.reduce((a,r)=>a+(+r.headcount||0),0),khr=rows.reduce((a,r)=>a+calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice),0),rr=rows.length?(+rows[rows.length-1].exchangeRate||4100):rate(),by={};rows.forEach(r=>{const key=analysisPeriod==='year'?r.date.slice(0,7):r.date;(by[key]||(by[key]={drums:0,liters:0,persons:0,khr:0}));by[key].drums+=(+r.fQty||0)+(+r.sQty||0);by[key].liters=by[key].drums*20;by[key].persons+=(+r.headcount||0);by[key].khr+=calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice);});
-    document.getElementById('analysis-content').innerHTML='<div class="summary-grid"><div class="summary-card blue"><div class="card-label">Drums</div><div class="card-value">'+drums+'</div></div><div class="summary-card teal"><div class="card-label">Liters</div><div class="card-value">'+liters.toLocaleString()+' L</div></div><div class="summary-card green"><div class="card-label">Person-days</div><div class="card-value">'+persons+'</div></div><div class="summary-card amber"><div class="card-label">L / person</div><div class="card-value">'+(persons?liters/persons:0).toFixed(1)+'</div></div><div class="summary-card red"><div class="card-label">Total</div><div class="card-value">'+khr.toLocaleString()+' ៛</div><div class="card-sub">'+usd(khr,rr)+'</div></div></div><div class="chart-card" style="margin-top:16px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Period</th><th>Drums</th><th>Liters</th><th>Person-days</th><th>L/person</th><th>Total KHR / USD</th></tr></thead><tbody>'+Object.keys(by).sort().map(k=>'<tr><td>'+k+'</td><td>'+by[k].drums+'</td><td>'+by[k].liters.toLocaleString()+' L</td><td>'+by[k].persons+'</td><td>'+(by[k].persons?by[k].liters/by[k].persons:0).toFixed(1)+'</td><td>'+by[k].khr.toLocaleString()+' ៛ / '+usd(by[k].khr,rr)+'</td></tr>').join('')+'</tbody></table></div>';
+    const drums=rows.reduce((a,r)=>a+(+r.fQty||0)+(+r.sQty||0),0),liters=drums*20,att=attendanceStats(rows),persons=att.headcount,khr=rows.reduce((a,r)=>a+calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice),0),rr=rows.length?(+rows[rows.length-1].exchangeRate||4100):rate(),by={};rows.forEach(r=>{const key=analysisPeriod==='year'?r.date.slice(0,7):r.date;(by[key]||(by[key]={drums:0,liters:0,attendance:[],khr:0}));by[key].drums+=(+r.fQty||0)+(+r.sQty||0);by[key].liters=by[key].drums*20;if(+r.headcount>0)by[key].attendance.push(+r.headcount);by[key].khr+=calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice);});
+    document.getElementById('analysis-content').innerHTML='<div class="summary-grid"><div class="summary-card blue"><div class="card-label">Drums</div><div class="card-value">'+drums+'</div></div><div class="summary-card teal"><div class="card-label">Liters</div><div class="card-value">'+liters.toLocaleString()+' L</div></div><div class="summary-card green"><div class="card-label">'+waterTelegramText('平均每日出勤','Avg daily attendance','វត្តមានមធ្យមប្រចាំថ្ងៃ',currentLang)+'</div><div class="card-value">'+persons+'</div></div><div class="summary-card amber"><div class="card-label">L / person</div><div class="card-value">'+(persons?liters/persons:0).toFixed(1)+'</div></div><div class="summary-card red"><div class="card-label">Total</div><div class="card-value">'+khr.toLocaleString()+' ៛</div><div class="card-sub">'+usd(khr,rr)+'</div></div></div><div class="chart-card" style="margin-top:16px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Period</th><th>Drums</th><th>Liters</th><th>Attendance</th><th>L/person</th><th>Total KHR / USD</th></tr></thead><tbody>'+Object.keys(by).sort().map(k=>{const hc=by[k].attendance.length?Math.round(by[k].attendance.reduce((a,n)=>a+n,0)/by[k].attendance.length):0;return '<tr><td>'+k+'</td><td>'+by[k].drums+'</td><td>'+by[k].liters.toLocaleString()+' L</td><td>'+hc+'</td><td>'+(hc?by[k].liters/hc:0).toFixed(1)+'</td><td>'+by[k].khr.toLocaleString()+' ៛ / '+usd(by[k].khr,rr)+'</td></tr>';}).join('')+'</tbody></table></div>';
   };
 
   window.waterTelegramSlotMatch = waterTelegramSlotMatch = function(time,slot){return !slot||slot==='all'||slotValue(time)===slot;};
   window.buildWaterTelegram = buildWaterTelegram = function(opt){
     opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode=opt.mode||'summary',slot=opt.slot||'all',lang=opt.lang||'bi';const all=typeof cfg.read==='function'?(cfg.read()||[]):[];const rows=GC.telegram.filter(all,cfg,period,opt.ref,'all',slot);
-    let fq=0,sq=0,ft=0,st=0,persons=0;const inspectors=new Set(),photos=[];rows.forEach(r=>{if(waterTelegramSlotMatch(r.fTime,slot)){fq+=+r.fQty||0;ft+=+r.fTtl||calcTtl(r.fQty,r.fPrice);}if(waterTelegramSlotMatch(r.sTime,slot)){sq+=+r.sQty||0;st+=+r.sTtl||calcTtl(r.sQty,r.sPrice);}persons+=+r.headcount||0;if(r.checkBy)inspectors.add(r.checkBy);(r.photos||[]).forEach(p=>{if(p&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
+    let fq=0,sq=0,ft=0,st=0;const inspectors=new Set(),photos=[];rows.forEach(r=>{if(waterTelegramSlotMatch(r.fTime,slot)){fq+=+r.fQty||0;ft+=+r.fTtl||calcTtl(r.fQty,r.fPrice);}if(waterTelegramSlotMatch(r.sTime,slot)){sq+=+r.sQty||0;st+=+r.sTtl||calcTtl(r.sQty,r.sPrice);}if(r.checkBy)inspectors.add(r.checkBy);(r.photos||[]).forEach(p=>{if(p&&!photos.includes(p)&&photos.length<5)photos.push(p);});});const persons=attendanceStats(rows).headcount;
     const rr=rows.length?(+rows[rows.length-1].exchangeRate||4100):rate(),drums=fq+sq,liters=drums*20,pLabel={day:waterTelegramText('日','Day','ថ្ងៃ',lang),week:waterTelegramText('週','Week','សប្ដាហ៍',lang),month:waterTelegramText('月','Month','ខែ',lang),year:waterTelegramText('年','Year','ឆ្នាំ',lang),all:waterTelegramText('全部','All','ទាំងអស់',lang)}[period]||period,mLabel={summary:waterTelegramText('摘要','Summary','សង្ខេប',lang),review:waterTelegramText('審查','Review','ពិនិត្យ',lang),approval:waterTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode,sLabel={all:waterTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:waterTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:waterTelegramText('下午','Afternoon','ពេលរសៀល',lang)}[slot]||slot;
-    const lines=['💧 <b>'+waterTelegramText('VRT 飲用水','VRT Drinking Water','VRT ទឹកផឹក',lang)+'</b>','📅 '+pLabel+' · ⏱️ '+sLabel+' · 🧾 '+mLabel,'━━━━━━━━━━━━━━━━','🏭 '+waterTelegramText('工廠','Factory','រោងចក្រ',lang)+': <b>'+fq+'</b> · '+ft.toLocaleString()+' KHR','🏠 '+waterTelegramText('宿舍','Staff House','ផ្ទះបុគ្គលិក',lang)+': <b>'+sq+'</b> · '+st.toLocaleString()+' KHR','💰 '+waterTelegramText('總額','Grand total','សរុប',lang)+': <b>'+(ft+st).toLocaleString()+' KHR / '+usd(ft+st,rr)+'</b>','💧 '+liters.toLocaleString()+' L ('+drums+' × 20L)','👥 '+waterTelegramText('人均','Per person','ក្នុងមនុស្សម្នាក់',lang)+': '+(persons?liters/persons:0).toFixed(1)+' L · '+persons+' person-days','👤 '+waterTelegramText('檢查員','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(Array.from(inspectors).join(', ')||'—'),'📷 '+photos.length,'━━━━━━━━━━━━━━━━','⏰ '+_localTS()];
+    const lines=['💧 <b>'+waterTelegramText('VRT 飲用水','VRT Drinking Water','VRT ទឹកផឹក',lang)+'</b>','📅 '+pLabel+' · ⏱️ '+sLabel+' · 🧾 '+mLabel,'━━━━━━━━━━━━━━━━','🏭 '+waterTelegramText('工廠','Factory','រោងចក្រ',lang)+': <b>'+fq+'</b> · '+ft.toLocaleString()+' KHR','🏠 '+waterTelegramText('宿舍','Staff House','ផ្ទះបុគ្គលិក',lang)+': <b>'+sq+'</b> · '+st.toLocaleString()+' KHR','💰 '+waterTelegramText('總額','Grand total','សរុប',lang)+': <b>'+(ft+st).toLocaleString()+' KHR / '+usd(ft+st,rr)+'</b>','💧 '+liters.toLocaleString()+' L ('+drums+' × 20L)','👥 '+waterTelegramText('出勤人數','Attendance','វត្តមាន',lang)+': '+persons+' · '+waterTelegramText('人均','Per person','ក្នុងមនុស្សម្នាក់',lang)+': '+(persons?liters/persons:0).toFixed(1)+' L','👤 '+waterTelegramText('檢查員','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(Array.from(inspectors).join(', ')||'—'),'📷 '+photos.length,'━━━━━━━━━━━━━━━━','⏰ '+_localTS()];
     return {text:lines.join('\n'),photos};
   };
 
@@ -2438,7 +2447,8 @@ function buildWaterTelegram(opt){
     const style=document.createElement('style');style.textContent='.wdr-slot{min-width:92px;padding:6px;border:1px solid #cbd5e1;border-radius:6px;background:white}.total-row small{display:block;font-size:10px;color:#2563eb;margin-top:2px}#main-table td{vertical-align:middle}';document.head.appendChild(style);
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureUI);else ensureUI();
-  if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(migrateMonthConfigs);else migrateMonthConfigs();
+  function repairAttendanceOnLoad(){setTimeout(function(){const s=attendanceStats(currentRows||[]);if(s.headcount<20&&window.GC&&GC.attendance)syncAttendanceHeadcount(true);},900);}
+  if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(function(){migrateMonthConfigs();repairAttendanceOnLoad();});else{migrateMonthConfigs();repairAttendanceOnLoad();}
 })();
 </script>
 

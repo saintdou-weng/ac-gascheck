@@ -287,7 +287,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
 }
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=31-key-batch-cleaner-map"></script>
+<script src="./gascheck-core.js?v=32-water-asset-authority"></script>
 </head>
 <body>
 
@@ -574,7 +574,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
     </div>
     <input type="file" id="imp-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleImportFile(event)">
     <div class="info-box" id="imp-info">
-      📋 <b>只匯入有資產編號 (AOA/AHA) 的列</b>，無編號的列會被跳過。<br>
+      📋 <b>只匯入正式三位數資產編號（如 AOA001／AHA001）</b>；無編號、裸碼與庫存彙總列會跳過。<br>
       支援欄位：資產編號, 資產名稱/Item, 品牌, 規格/型號, 取得日期, 保管人, 存放位置, 狀態, 備註<br>
       ※ AHA 編號自動歸類為宿舍 (Expat Dorm)，AOA 歸類為工廠 (Factory)。
     </div>
@@ -742,8 +742,10 @@ async function loadFromGAS(){
   } catch(e) {}
   if(d&&d.ok&&Array.isArray(d.records)){
     const merged=d.smart?d.records:((typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(local,d.records,'id','updatedAt').list:local.concat(d.records));
-    if(window.ASSET_V29)ASSET_V29.setTombstones(merged.filter(a=>a&&a._deleted));
-    assets=merged.filter(a=>!a||!a._deleted).map(a=>Object.assign({id:a.id||a.code,updatedAt:a.updatedAt||_localTS()},a));
+    const governed=window.ASSET_V29?ASSET_V29.cleanupMalformed(merged,'invalid_asset_code'):{active:merged.filter(a=>a&&!a._deleted),dead:merged.filter(a=>a&&a._deleted),removed:0};
+    if(window.ASSET_V29)ASSET_V29.setTombstones(governed.dead);
+    assets=governed.active.map(a=>Object.assign({id:a.id||a.code,updatedAt:a.updatedAt||_localTS()},a));
+    if(governed.removed&&window.ASSET_V29)ASSET_V29.queueCleanupSync(governed.removed);
     assets.forEach(a=>{const p=assetPhotoValue(a.photos);if(p&&a.code)photos[a.code]=p;});
     try { cnts=JSON.parse(localStorage.getItem('vrt_c7')||'{}'); } catch(e) { cnts={}; }
     try { pending=JSON.parse(localStorage.getItem('vrt_p7')||'[]'); } catch(e) { pending=[]; }
@@ -841,7 +843,7 @@ function setLang(l){
   // Import modal
   const ims=document.getElementById('imp-sub');if(ims)ims.textContent=l==='zh'?'匯入資產清單':'Import asset list';
   const imc=document.getElementById('imp-cta');if(imc)imc.textContent=l==='zh'?'點擊或拖拽 Excel 檔案':'Click or drag Excel file';
-  const imi=document.getElementById('imp-info');if(imi)imi.innerHTML=l==='zh'?'📋 <b>只匯入有資產編號 (AOA/AHA) 的列</b>，無編號的列會被跳過。<br>支援欄位：資產編號, 資產名稱/Item, 品牌, 規格/型號, 取得日期, 保管人, 存放位置, 狀態, 備註<br>※ AHA → 宿舍 (Expat Dorm)，AOA → 工廠 (Factory)':'📋 <b>Only rows with valid asset codes (AOA/AHA) will be imported</b>. Rows without codes are skipped.<br>Supported columns: Asset Code, Item, Brand, Model, Date, Custodian, Location, Status, Note<br>※ AHA → Expat Dorm, AOA → Factory';
+  const imi=document.getElementById('imp-info');if(imi)imi.innerHTML=l==='zh'?'📋 <b>只匯入正式三位數編碼（如 AOA001／AHA001）</b>；無編號、裸碼及庫存彙總列會跳過。<br>支援欄位：資產編號, 資產名稱/Item, 品牌, 規格/型號, 取得日期, 保管人, 存放位置, 狀態, 備註<br>※ AHA → 宿舍 (Expat Dorm)，AOA → 工廠 (Factory)':'📋 <b>Only formal three-digit asset codes such as AOA001/AHA001 are imported</b>. Bare codes, uncoded rows and inventory summaries are skipped.<br>Supported columns: Asset Code, Item, Brand, Model, Date, Custodian, Location, Status, Note<br>※ AHA → Expat Dorm, AOA → Factory';
   document.getElementById('th-code').textContent=l==='zh'?'編號':'Code';
   document.getElementById('th-name').textContent=l==='zh'?'品名':'Name';
   document.getElementById('th-spec').textContent=l==='zh'?'品牌/型號':'Brand/Model';
@@ -2085,14 +2087,40 @@ rebuildSelects();setLang(lang);buildLoginList();
 /* ═══ Asset v29 — 實際 Excel 智慧匯入、A4 標籤、歷史分析與角色發送 ═══ */
 (function(){
   const TOMBSTONE_KEY='vrt_asset_tombstones';
+  const AUTHORITY_KEY='vrt_asset_authority_v1';
   const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   const txt=v=>String(v==null?'':v).trim();
   function tombstones(){try{const a=JSON.parse(localStorage.getItem(TOMBSTONE_KEY)||'[]');return Array.isArray(a)?a:[];}catch(e){return[];}}
   function setTombstones(list){localStorage.setItem(TOMBSTONE_KEY,JSON.stringify(list||[]));}
   function addTombstone(asset,reason){const map=new Map(tombstones().map(x=>[String(x.id||x.code),x])),now=_localTS(),id=asset.id||asset.code;map.set(String(id),{id,code:asset.code,purchaseDate:asset.purchaseDate||today(),_deleted:true,deleteReason:reason||'delete',deletedAt:now,updatedAt:now});setTombstones(Array.from(map.values()));}
-  function hash(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
-  function stableCode(prefix,sheet,row,name,loc){return prefix+String(100000+(hash(sheet+'|'+row+'|'+name+'|'+loc)%899999)).padStart(6,'0');}
-  function normalizeCode(v,prefix,sheet,row,name,loc){let s=txt(v).toUpperCase().replace(/\s+/g,'');const m=s.match(/^(AOA|AHA)[-_]?(\d+)$/);if(m)return m[1]+String(+m[2]).padStart(3,'0');return stableCode(prefix,sheet,row,name,loc);}
+  function normalizeCode(v){let s=txt(v).toUpperCase().replace(/\s+/g,'');const m=s.match(/^(AOA|AHA)[-_]?(\d{1,3})$/);if(!m||+m[2]<1)return'';return m[1]+String(+m[2]).padStart(3,'0');}
+  function isFormalCode(v){return /^(AOA|AHA)\d{3}$/.test(normalizeCode(v));}
+  function assetScore(a){return ['name','brand','model','color','size','location','user','purchaseDate','remark','status'].reduce((n,k)=>n+(txt(a&&a[k])?1:0),0)+(Array.isArray(a&&a.history)?Math.min(5,a.history.length):0)+(assetPhotoValue(a&&a.photos)?4:0);}
+  function tombstoneOf(asset,reason,index){const now=_localTS(),id=asset&&((asset.id&&String(asset.id)!==String(asset.code))?asset.id:asset.code)||('invalid-asset-'+index);return{id,code:asset&&asset.code||'',purchaseDate:asset&&asset.purchaseDate||today(),_deleted:true,deleteReason:reason||'invalid_asset_code',deletedAt:now,updatedAt:now};}
+  function cleanupMalformed(list,reason){
+    const active=[],dead=[],byCode=new Map();let removed=0;
+    (list||[]).forEach(function(a,index){
+      if(!a)return;if(a._deleted){dead.push(a);return;}
+      const code=normalizeCode(a.code||a.id);
+      if(!code){dead.push(tombstoneOf(a,reason||'invalid_asset_code',index));removed++;return;}
+      if(a.id&&String(a.id)!==code){dead.push(tombstoneOf(a,'asset_id_normalized',index));removed++;}
+      const next=Object.assign({},a,{id:code,code});
+      if(!byCode.has(code)){byCode.set(code,next);return;}
+      const old=byCode.get(code),keep=assetScore(next)>assetScore(old)?next:old,drop=keep===next?old:next;
+      if(!assetPhotoValue(keep.photos)&&assetPhotoValue(drop.photos))keep.photos=drop.photos;
+      keep.history=[...(keep.history||[]),...(drop.history||[])].slice(-120);
+      byCode.set(code,keep);if(String(drop.id||drop.code)!==String(keep.id||keep.code))dead.push(tombstoneOf(drop,'duplicate_asset_code',index));removed++;
+    });
+    byCode.forEach(a=>active.push(a));
+    const deadMap=new Map();dead.forEach((d,i)=>deadMap.set(String(d.id||d.code||i),d));
+    try{localStorage.setItem(AUTHORITY_KEY,JSON.stringify({pattern:'^(AOA|AHA)\\d{3}$',source:'Asset Code for Expat Staffhouse.xlsx',updatedAt:_localTS()}));}catch(e){}
+    return{active,dead:Array.from(deadMap.values()),removed};
+  }
+  function queueCleanupSync(removed){
+    removed=+removed||0;if(!removed)return;try{localStorage.setItem('vrt_asset_cleanup_pending_v1',String(removed));}catch(e){}
+    let tries=0;function run(){tries++;if(window.GC&&GC.sync&&GC.sync.schedule){Promise.resolve(GC.sync.schedule('asset','invalid_asset_cleanup')).then(function(){localStorage.removeItem('vrt_asset_cleanup_pending_v1');}).catch(function(){});return;}if(tries<20)setTimeout(run,250);}
+    setTimeout(run,100);
+  }
   function excelDate(v){
     if(v instanceof Date&&!isNaN(v))return _localYMD(v);
     if(typeof v==='number'&&v>20000&&window.XLSX&&XLSX.SSF){const d=XLSX.SSF.parse_date_code(v);if(d)return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');}
@@ -2110,19 +2138,22 @@ rebuildSelects();setLang(lang);buildLoginList();
         let hi=-1;for(let r=0;r<Math.min(12,aoa.length);r++){const j=(aoa[r]||[]).map(txt).join('|');if((/資產編號|asset code/i.test(j)&&/資產名稱|物品名稱|\bitem\b/i.test(j))||(/物品名稱|item name/i.test(j)&&/數量|qty/i.test(j))||(/摘要\s*\/\s*事由|description/i.test(j)&&/入庫數量|stock in/i.test(j))){hi=r;break;}}if(hi<0)return;
         const h1=(aoa[hi]||[]).map(txt),h2=(aoa[hi+1]||[]).map(txt),max=Math.max(h1.length,h2.length),headers=Array.from({length:max},(_,i)=>(h1[i]+' '+h2[i]).trim().toLowerCase());
         const ci={code:col(headers,[/資產編號/,/asset code/]),name:col(headers,[/資產名稱/,/物品名稱/,/item name/,/^item\b/,/摘要.*事由/,/description/]),brand:col(headers,[/品牌/,/brand/]),model:col(headers,[/規格.*型號/,/model/]),date:col(headers,[/取得日期/,/acq.*date/,/^date/,/日期/]),dept:col(headers,[/保管部門/,/dept/]),user:col(headers,[/保管人/,/custodian/,/signature/,/經辦人/]),location:col(headers,[/存放位置/,/放置位置/,/location/]),status:col(headers,[/^狀態/,/status/,/condition check/]),remark:col(headers,[/備註/,/note/]),color:col(headers,[/顏色/,/color/]),size:col(headers,[/尺寸/,/dimension/]),qty:col(headers,[/數量/,/qty/]),stockIn:col(headers,[/入庫數量/,/stock in/]),issued:col(headers,[/發出數量/,/issued/]),balance:col(headers,[/結存數量/,/balance/])};
-        if(ci.name<0)return;const movement=ci.stockIn>=0||ci.issued>=0||ci.balance>=0,general=!movement&&ci.code<0&&ci.qty>=0,prefix=/admin|factory/i.test(sn)?'AOA':'AHA',isDorm=prefix==='AHA';let lastDate='';let before=importData.length;
-        for(let r=hi+1;r<aoa.length;r++){const row=aoa[r]||[],name=txt(row[ci.name]);if(!name||headerLike(name))continue;let date=ci.date>=0?excelDate(row[ci.date]):'';if(date)lastDate=date;else date=lastDate;const location=ci.location>=0?txt(row[ci.location]):'';let code=normalizeCode(ci.code>=0?row[ci.code]:'',prefix,sn,r+1,name,location);let qty=1;if(movement)qty=parseFloat(txt(row[ci.balance]).replace(/[^0-9.-]/g,''))||0;else if(ci.qty>=0)qty=parseFloat(txt(row[ci.qty]).replace(/[^0-9.-]/g,''))||1;
-          const remark=ci.remark>=0?txt(row[ci.remark]):'',color=ci.color>=0?txt(row[ci.color]):(!movement&&/^(black|white|grey|gray|red|blue|green|pink|brown|silver|ivory|.*色)/i.test(remark)?remark:'');
-          importData.push({existingCode:code,name,codeType:prefix,brand:ci.brand>=0?txt(row[ci.brand]):'',model:ci.model>=0?txt(row[ci.model]):'',color,size:ci.size>=0?txt(row[ci.size]):(ci.model>=0?txt(row[ci.model]):''),qty,unit:movement?'pcs':'pcs',unitPrice:0,zone:isDorm?'expat':'factory',location,user:ci.user>=0?txt(row[ci.user]):'',dept:ci.dept>=0?txt(row[ci.dept]):'',purchaseDate:date,remark:color===remark?'':remark,status:ci.status>=0?statusOf(row[ci.status]):'active',category:categoryOf(name,isDorm),_sheet:sn,_kind:movement?'movement':general?'inventory':'asset',stockIn:ci.stockIn>=0?+row[ci.stockIn]||0:0,issued:ci.issued>=0?+row[ci.issued]||0:0,balance:ci.balance>=0?parseFloat(txt(row[ci.balance]).replace(/[^0-9.-]/g,''))||0:qty,sourceRow:r+1});
+        /* Asset master imports must contain a real code column.  Aggregate
+           inventory/movement sheets are references, not thousands of assets. */
+        if(ci.code<0)return;const prefix=/admin|factory/i.test(sn)?'AOA':'AHA',isDorm=prefix==='AHA';let lastDate='';let before=importData.length;
+        for(let r=hi+1;r<aoa.length;r++){const row=aoa[r]||[],code=normalizeCode(row[ci.code]);if(!code)continue;const rawName=ci.name>=0?txt(row[ci.name]):'',name=rawName&&!headerLike(rawName)?rawName:code;let date=ci.date>=0?excelDate(row[ci.date]):'';if(date)lastDate=date;else date=lastDate;const location=ci.location>=0?txt(row[ci.location]):'',qty=ci.qty>=0?(parseFloat(txt(row[ci.qty]).replace(/[^0-9.-]/g,''))||1):1;
+          const remark=ci.remark>=0?txt(row[ci.remark]):'',color=ci.color>=0?txt(row[ci.color]):(/^(black|white|grey|gray|red|blue|green|pink|brown|silver|ivory|.*色)/i.test(remark)?remark:'');
+          importData.push({existingCode:code,name,codeType:code.slice(0,3),brand:ci.brand>=0?txt(row[ci.brand]):'',model:ci.model>=0?txt(row[ci.model]):'',color,size:ci.size>=0?txt(row[ci.size]):(ci.model>=0?txt(row[ci.model]):''),qty,unit:'pcs',unitPrice:0,zone:code.startsWith('AHA')?'expat':'factory',location,user:ci.user>=0?txt(row[ci.user]):'',dept:ci.dept>=0?txt(row[ci.dept]):'',purchaseDate:date,remark:color===remark?'':remark,status:ci.status>=0?statusOf(row[ci.status]):'active',category:categoryOf(name,code.startsWith('AHA')),_sheet:sn,_kind:'asset',sourceRow:r+1,_authoritativeMaster:true});
         }
         if(importData.length>before)sheets.push(sn);
       });
-      if(!importData.length){toast(lang==='zh'?'未找到可匯入資料':'No importable rows found','err');return;}renderImportPreview();toast((lang==='zh'?'解析完成：':'Parsed: ')+sheets.join(', ')+' → '+importData.length,'ok');
+      if(!importData.length){toast(lang==='zh'?'未找到正式 AOA/AHA 三位數編碼':'No formal AOA/AHA three-digit codes found','err');return;}const uniq=new Map();importData.forEach(r=>uniq.set(r.existingCode,r));importData=Array.from(uniq.values());renderImportPreview();toast((lang==='zh'?'解析完成：':'Parsed: ')+sheets.join(', ')+' → '+importData.length,'ok');
     }catch(err){console.error(err);toast((lang==='zh'?'解析失敗：':'Parse error: ')+err.message,'err');}};reader.readAsArrayBuffer(file);
   };
 
   window.doImport = doImport = async function(){
     if(!importData.length||!canEdit())return;if(!confirm((lang==='zh'?'匯入／更新 ':'Import/update ')+importData.length+'?'))return;
+    const governed=cleanupMalformed(assets.concat(tombstones()),'invalid_asset_code'),revived=new Set(importData.map(r=>normalizeCode(r.existingCode)).filter(Boolean));assets=governed.active;setTombstones(governed.dead.filter(d=>!revived.has(normalizeCode(d.code||d.id))));queueCleanupSync(governed.removed);
     let created=0,updated=0;const now=_localTS();
     importData.forEach(r=>{let old=assets.find(a=>a.code===r.existingCode);if(!old&&r._kind==='movement')old=assets.find(a=>txt(a.name).toLowerCase()===txt(r.name).toLowerCase()&&(!r.location||txt(a.location)===txt(r.location)));
       if(old){const before=assetSnapshot(old),next=Object.assign({},old);['name','brand','model','color','size','location','user','purchaseDate','remark','status','category'].forEach(k=>{if(r[k]!==''&&r[k]!=null)next[k]=r[k];});next.qty=r._kind==='movement'?r.balance:(+r.qty||next.qty||1);next.updatedAt=now;next.lastEditedBy=currentUser.name;next.history=[...(old.history||[]),{type:r._kind==='movement'?'inventory':'import_update',date:now,actor:currentUser.name,before,after:assetSnapshot(next),source:r._sheet,desc:(r._kind==='movement'?'Stock in '+r.stockIn+' / issued '+r.issued+' / balance '+r.balance:'Excel update')+' · '+r._sheet}];assets=assets.map(a=>a.code===old.code?next:a);updated++;
@@ -2159,10 +2190,11 @@ rebuildSelects();setLang(lang);buildLoginList();
 
   window.mergeAssetSmartImport=function(current,rows){
     const now=_localTS(),actor=(currentUser&&currentUser.name)||'User';
-    let active=(current||[]).filter(r=>r&&!r._deleted).map(r=>Object.assign({},r));
-    let dead=(current||[]).filter(r=>r&&r._deleted).map(r=>Object.assign({},r));
+    const cleaned=cleanupMalformed(current||[],'invalid_asset_code');
+    let active=cleaned.active.map(r=>Object.assign({},r));
+    let dead=cleaned.dead.map(r=>Object.assign({},r));
     (rows||[]).forEach(r=>{
-      const code=r.code||r.existingCode||stableCode(r.codeType||'AST',r._sheet||'Import',r.sourceRow||0,r.name||'',r.location||'');
+      const code=normalizeCode(r.code||r.existingCode);if(!code)return;
       let idx=active.findIndex(a=>String(a.code||a.id)===String(code));
       if(idx<0&&r._kind==='movement')idx=active.findIndex(a=>txt(a.name).toLowerCase()===txt(r.name).toLowerCase()&&(!r.location||txt(a.location)===txt(r.location)));
       dead=dead.filter(d=>String(d.id||d.code)!==String(code));
@@ -2179,7 +2211,8 @@ rebuildSelects();setLang(lang);buildLoginList();
         active.unshift(a);
       }
     });
-    return active.concat(dead);
+    const finalClean=cleanupMalformed(active.concat(dead),'invalid_asset_code');
+    return finalClean.active.concat(finalClean.dead);
   };
 
   window.printLabelsA4 = async function(){
@@ -2205,13 +2238,15 @@ rebuildSelects();setLang(lang);buildLoginList();
   }
   function hydrateAsset(){
     loadLocal();
+    const governed=cleanupMalformed(assets.concat(tombstones()),'invalid_asset_code');
+    assets=governed.active;setTombstones(governed.dead);if(governed.removed)saveLocal();queueCleanupSync(governed.removed);
     rebuildSelects();
     setLang(lang||'zh');
     render();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureAssetUi);else ensureAssetUi();
   if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(hydrateAsset);else hydrateAsset();
-  window.ASSET_V29={tombstones,setTombstones,addTombstone};
+  window.ASSET_V29={tombstones,setTombstones,addTombstone,normalizeCode,isFormalCode,cleanupMalformed,queueCleanupSync};
 })();
 </script>
 <script>
@@ -2276,8 +2311,12 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
         let savedPhotos={};try{savedPhotos=JSON.parse(localStorage.getItem('vrt_photos')||'{}')||{};}catch(e){}
         const active=list.map(a=>Object.assign({},a,{id:a.id||a.code,photos:assetPhotoValue(savedPhotos[a.code])||assetPhotoValue(a.photos)}));let dead=[];try{dead=JSON.parse(localStorage.getItem('vrt_asset_tombstones')||'[]');}catch(e){}return active.concat(Array.isArray(dead)?dead:[]);
       }catch(e){ return []; } },
-    write(list){ try{ const active=[],dead=[];(list||[]).forEach(a=>(a&&a._deleted?dead:active).push(a));const nextPhotos=Object.assign({},photos);active.forEach(a=>{const p=assetPhotoValue(a.photos);if(p&&a.code)nextPhotos[a.code]=p;});photos=nextPhotos;assets=active.map(a=>Object.assign({},a,{id:a.id||a.code}));localStorage.setItem('vrt_a7',JSON.stringify(assets));localStorage.setItem('vrt_asset_tombstones',JSON.stringify(dead));localStorage.setItem('vrt_photos',JSON.stringify(nextPhotos));render(); }catch(e){ console.warn('asset cloud write failed',e); } },
+    write(list){ try{ const governed=window.ASSET_V29?ASSET_V29.cleanupMalformed(list||[],'invalid_asset_code'):{active:(list||[]).filter(a=>a&&!a._deleted),dead:(list||[]).filter(a=>a&&a._deleted),removed:0};const active=governed.active,dead=governed.dead,nextPhotos={};active.forEach(a=>{const p=assetPhotoValue(photos[a.code])||assetPhotoValue(a.photos);if(p&&a.code)nextPhotos[a.code]=p;});photos=nextPhotos;assets=active.map(a=>Object.assign({},a,{id:a.id||a.code}));localStorage.setItem('vrt_a7',JSON.stringify(assets));localStorage.setItem('vrt_asset_tombstones',JSON.stringify(dead));localStorage.setItem('vrt_photos',JSON.stringify(nextPhotos));if(governed.removed&&window.ASSET_V29)ASSET_V29.queueCleanupSync(governed.removed);render(); }catch(e){ console.warn('asset cloud write failed',e); } },
     });
+    try{
+      const removed=+(localStorage.getItem('vrt_asset_cleanup_pending_v1')||0);
+      if(removed&&GC.sync&&GC.sync.schedule)Promise.resolve(GC.sync.schedule('asset','invalid_asset_cleanup')).then(function(){localStorage.removeItem('vrt_asset_cleanup_pending_v1');}).catch(function(){});
+    }catch(e){}
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();

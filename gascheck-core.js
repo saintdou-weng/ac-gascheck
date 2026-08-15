@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v2.8-key-batch-cleaner-map
+   AC GASCheck — Shared Core  v2.9-water-asset-authority
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -91,7 +91,7 @@ const U = GC.util = {
    ═══════════════════════════════════════════════════════════ */
 const STORAGE = GC.storage = (() => {
   const DB_NAME = 'ac_gascheck_data_v1', STORE = 'kv';
-  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_asset_tombstones|vrt_asset_audit|vrt_th_z|vrt_th_r|vrt_keys|vrt_key_master|vrt_key_tombstones|vrt_waste_v3|vrt_ehs_cfg_v1|vrt_dorm_hub_v2|vrt_dorm_cfg_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_cfg_\d{4}_\d{2}|wdr_headcount_\d{4}_\d{2}|wdr_default_cfg|wdr_default_fac_price|wdr_default_sta_price|wdr_default_inspector|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
+  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_asset_tombstones|vrt_asset_audit|vrt_asset_authority_v1|vrt_th_z|vrt_th_r|vrt_keys|vrt_key_master|vrt_key_tombstones|vrt_waste_v3|vrt_ehs_cfg_v1|vrt_dorm_hub_v2|vrt_dorm_cfg_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_cfg_\d{4}_\d{2}|wdr_headcount_\d{4}_\d{2}|wdr_default_cfg|wdr_default_fac_price|wdr_default_sta_price|wdr_default_inspector|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
   const storageProto = typeof Storage !== 'undefined' ? Storage.prototype : null;
   const native = storageProto ? {
     get: storageProto.getItem,
@@ -268,6 +268,65 @@ GC.attendance = (() => {
     Object.keys(byDay).forEach(d => { daily[d] = byDay[d].size; });
     return { daily, personDays:Object.values(daily).reduce((a,b)=>a+(+b||0),0), days:Object.keys(daily).length };
   }
+  function periodOf(row) {
+    const raw = row && (row.periodKey || row.period || row.key || row.snapshotDate || row.label || row.date);
+    const m = String(raw || '').match(/(20\d{2})[-\/.](0?[1-9]|1[0-2])/);
+    return m ? m[1] + '-' + String(+m[2]).padStart(2,'0') : '';
+  }
+  function peopleCount(rows) {
+    if (!Array.isArray(rows) || rows.length < 20) return 0;
+    const ids = new Set();
+    rows.forEach(function (row, i) {
+      if (!row || typeof row !== 'object' || !isPresent(row)) return;
+      const id = String(value(row, ID_KEYS) || row.name || row.employeeName || row.nameLat || row.nameKh || '').trim();
+      if (id) ids.add(id); else ids.add('__row_' + i);
+    });
+    return ids.size;
+  }
+  /* HRA Pay / Employee HR stores monthly workforce snapshots rather than one
+     dated row per employee.  Treat those snapshots as headcount sources so a
+     month with 31 calendar rows can never be mistaken for 31 employees. */
+  function workforce(rows, start, end) {
+    const candidates = [];
+    function add(period, count, source) {
+      count = Math.round(+count || 0);
+      if (count >= 20 && count <= 20000) candidates.push({period:period || '', count, source});
+    }
+    function visit(v, inheritedPeriod, depth) {
+      if (depth > 8 || v == null) return;
+      if (Array.isArray(v)) { v.forEach(x => visit(x, inheritedPeriod, depth + 1)); return; }
+      if (typeof v !== 'object') return;
+      const period = periodOf(v) || inheritedPeriod || '';
+      add(period, v.headcount || (v.totals && v.totals.count), 'explicit');
+      const pools = ['rows','payrollRecords','mergedRecords','advanceRecords','employees','staff','roster'];
+      let usedPool = false;
+      pools.forEach(function (key) {
+        if (!Array.isArray(v[key])) return;
+        const n = peopleCount(v[key]);
+        if (n) { add(period, n, key); usedPool = true; }
+      });
+      Object.keys(v).forEach(function (key) {
+        if (pools.includes(key) && usedPool) return;
+        visit(v[key], period, depth + 1);
+      });
+    }
+    visit(rows, '', 0);
+    if (!candidates.length) return {headcount:0, period:'', source:'none'};
+    const target = String(end || start || '').slice(0,7);
+    const exact = candidates.filter(x => x.period === target);
+    const prior = candidates.filter(x => x.period && x.period <= target).sort((a,b) => b.period.localeCompare(a.period));
+    const pool = exact.length ? exact : (prior.length ? prior.filter(x => x.period === prior[0].period) : candidates);
+    const best = pool.sort((a,b) => b.count - a.count)[0];
+    return {headcount:best.count, period:best.period, source:best.source};
+  }
+  function repeatedDaily(headcount, start, end) {
+    const daily = {}, cursor = new Date(start + 'T00:00:00'), last = new Date(end + 'T00:00:00');
+    while (!isNaN(cursor) && cursor <= last) {
+      daily[U.ymd(cursor)] = headcount;
+      cursor.setDate(cursor.getDate() + 1);
+    }
+    return daily;
+  }
   function jsonValuesFromLocalStorage() {
     const out = [];
     try {
@@ -301,7 +360,7 @@ GC.attendance = (() => {
       });
       if (!db) continue;
       for (const storeName of Array.from(db.objectStoreNames || [])) {
-        if (!/(attendance|roster|staff|employee|record|data)/i.test(storeName)) continue;
+        if (!/(attendance|roster|staff|employee|record|data|period|snapshot|batch|payroll)/i.test(storeName)) continue;
         out.push(await readStore(db, storeName));
       }
       try { db.close(); } catch (e) {}
@@ -309,7 +368,7 @@ GC.attendance = (() => {
     return out;
   }
   function configuredUrl() {
-    const keys = ['ac_attendance_gas_url','attendance_gas_url','ac_hra_gas_url','hra_gas_url','ac_hra_pay_gas_url'];
+    const keys = ['ac_attendance_gas_url','attendance_gas_url','ac_hra_gas_url','hra_gas_url','ac_hra_pay_gas_url','hrpay_gas_url'];
     for (const k of keys) { try { const v=localStorage.getItem(k); if (/^https:\/\/script\.google\.com\/macros\/s\//.test(v || '')) return v; } catch(e) {} }
     return '';
   }
@@ -335,17 +394,32 @@ GC.attendance = (() => {
     start = start || U.ymd(); end = end || start;
     const local = jsonValuesFromLocalStorage().concat(await indexedValues());
     let summary = summarize(local, start, end);
-    if (summary.personDays) return Object.assign({source:'browser'}, summary);
+    let roster = workforce(local, start, end);
+    const localAverage = summary.days ? summary.personDays / summary.days : 0;
+    if (summary.personDays && (localAverage >= 20 || !roster.headcount)) {
+      return Object.assign({source:'browser',averageDaily:Math.round(localAverage),headcount:Math.round(localAverage)}, summary);
+    }
+    if (roster.headcount) {
+      const daily = repeatedDaily(roster.headcount, start, end);
+      return {source:'hra-workforce',sourcePeriod:roster.period,daily,headcount:roster.headcount,averageDaily:roster.headcount,personDays:Object.values(daily).reduce((a,b)=>a+b,0),days:Object.keys(daily).length};
+    }
     const remote = await remoteValues(start, end);
     if (remote[0] && remote[0].__daily) {
       const daily = remote[0].__daily, selected = {};
       Object.keys(daily).forEach(d => { if (d >= start && d <= end) selected[d] = +daily[d] || 0; });
-      return {source:'attendance-gas',daily:selected,personDays:Object.values(selected).reduce((a,b)=>a+b,0),days:Object.keys(selected).length};
+      const personDays=Object.values(selected).reduce((a,b)=>a+b,0),days=Object.keys(selected).length,averageDaily=days?Math.round(personDays/days):0;
+      return {source:'attendance-gas',daily:selected,headcount:averageDaily,averageDaily,personDays,days};
     }
     summary = summarize(remote, start, end);
-    return Object.assign({source:summary.personDays?'attendance-gas':'none'}, summary);
+    roster = workforce(remote, start, end);
+    if (!summary.personDays && roster.headcount) {
+      const daily = repeatedDaily(roster.headcount, start, end);
+      return {source:'attendance-gas-workforce',sourcePeriod:roster.period,daily,headcount:roster.headcount,averageDaily:roster.headcount,personDays:Object.values(daily).reduce((a,b)=>a+b,0),days:Object.keys(daily).length};
+    }
+    const averageDaily=summary.days?Math.round(summary.personDays/summary.days):0;
+    return Object.assign({source:summary.personDays?'attendance-gas':'none',headcount:averageDaily,averageDaily}, summary);
   }
-  return { headcount, summarize };
+  return { headcount, summarize, workforce };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -2761,7 +2835,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '2.8-key-batch-cleaner-map';
+GC.version = '2.9-water-asset-authority';
 global.GC = GC;
 global.GASCheckCore = GC;
 

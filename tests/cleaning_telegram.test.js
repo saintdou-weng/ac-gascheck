@@ -95,6 +95,9 @@ assert(html.includes('id="locs-wrap"'));
 assert(html.includes('state.getLocs()'));
 assert(html.includes('telegramScopeMultiple:true'));
 assert(html.includes('telegramSlotMultiple:true'));
-assert(html.includes('gascheck-core.js?v=28-smart-sync'));
+assert(html.includes('gascheck-core.js?v=32-water-asset-authority'));
+assert(html.includes('id="loc-cleaner-map"'));
+assert(html.includes('state.getLocCleaner(locId)'));
+assert(html.includes('missing-location-cleaner'));
 
 console.log('Cleaning Telegram multi-location/multi-slot tests passed.');

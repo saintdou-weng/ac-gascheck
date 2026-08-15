@@ -18,7 +18,7 @@ for (const [name, html] of [['water',water],['key',key],['asset',asset]]) {
   assert(scripts > 0, name + ' must contain executable scripts');
 }
 
-assert(core.includes("GC.version = '2.6-water-key-asset'"));
+assert(core.includes("GC.version = '2.9-water-asset-authority'"));
 assert(core.includes('GC.attendance = (() => {'));
 assert(core.includes('wdr_cfg_\\d{4}_\\d{2}'));
 assert(core.includes('vrt_key_tombstones'));
@@ -43,6 +43,10 @@ assert(key.includes("_deleted:true"));
 assert(key.includes("before:keySnapshot(old),after:keySnapshot(next)"));
 assert(key.includes('showKeyHistory'));
 assert(key.includes("photo:true"));
+assert(key.includes("const MASTER_KEY='vrt_key_master'"));
+assert(key.includes('keyBatchSaveAll'));
+assert(key.includes('keyMasterImport'));
+assert(key.includes('cloudRead(){ return window.KEY_V31'));
 
 assert(asset.includes('window.parseAssetSmartImport=function(file)'));
 assert(asset.includes('window.mergeAssetSmartImport=function(current,rows)'));
