@@ -70,6 +70,10 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 .sw{display:flex;flex-wrap:wrap;gap:5px;padding:8px}
 .sl{padding:5px 11px;border-radius:20px;font-size:10px;font-weight:600;border:1.5px solid var(--bdr);cursor:pointer;transition:.2s}
 .sl.done{background:var(--gl);border-color:var(--grn);color:var(--grn)}.sl.sel{background:var(--abg);border-color:var(--acc);color:var(--acc)}.sl.none{color:var(--dim)}
+.loc-cleaner-map{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:7px;padding:9px;background:var(--sur)}
+.loc-cleaner-row{display:grid;grid-template-columns:minmax(105px,1fr) minmax(125px,1.2fr);align-items:center;gap:7px;padding:7px 9px;border:1px solid var(--bdr2);border-radius:8px;background:#fff;font-size:10px;font-weight:700;color:var(--tx2)}
+.loc-cleaner-row .fi{border:1px solid var(--bdr);border-radius:6px;background:#fff;padding:6px 7px}
+.loc-cleaner-empty{padding:9px;color:var(--dim);font-size:10px}
 /* Buttons */
 .br{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;font-family:inherit;font-size:11px;font-weight:700;border:none;border-radius:8px;padding:9px 13px;cursor:pointer;transition:.15s;white-space:nowrap}
@@ -155,7 +159,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=28-smart-sync"></script>
+<script src="./gascheck-core.js?v=31-key-batch-cleaner-map"></script>
 </head>
 <body>
 <div class="topbar">
@@ -220,8 +224,9 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
       <div class="fg"><div class="fl"><span data-i="f-date">日期</span> <span style="color:var(--red)">*</span></div><div class="date-nav"><button type="button" onclick="shiftCleanDate('r-date',-1)">◀</button><input class="fi" type="date" id="r-date"><button type="button" onclick="shiftCleanDate('r-date',1)">▶</button></div></div>
       <div class="fg" style="grid-column:span 2"><div class="fl"><span data-i="f-loc">地點（可多選）</span> <span style="color:var(--red)">*</span><span id="sel-loc-count" style="float:right">0 已選</span></div><div class="sw" id="locs-wrap"></div></div>
       <div class="fg"><div class="fl"><span data-i="f-shift">班次</span></div><select class="fi" id="r-shift"><option value="Day">Day 日班</option><option value="Night">Night 夜班</option></select></div>
-      <div class="fg"><div class="fl"><span data-i="f-cleaner">清潔員</span> <span style="color:var(--red)">*</span></div><select class="fi" id="r-cleaner"><option value="">— 選擇 —</option></select></div>
+      <div class="fg"><div class="fl"><span data-i="f-default-cleaner">預設清潔員（套用全部）</span></div><select class="fi" id="r-cleaner" onchange="state.applyDefaultCleaner(this.value)"><option value="">— 選擇 —</option></select></div>
       <div class="fg"><div class="fl"><span data-i="f-checker">檢查員</span></div><select class="fi" id="r-checker"><option value="">— 選擇 —</option></select></div>
+      <div class="fg" style="grid-column:1/-1"><div class="fl"><span data-i="f-cleaner-by-location">各地點清潔員</span> <span style="color:var(--red)">*</span></div><div id="loc-cleaner-map" class="loc-cleaner-map"></div></div>
       <div class="fg" style="grid-column:1/-1"><div class="fl" data-i="f-photo">📷 照片 Photos</div><div id="r-photos"></div></div>
       <input type="hidden" id="r-photo-n" value="0">
     </div>
@@ -437,7 +442,7 @@ var i18n = (() => {
       'data-mgmt':'數據管理','export-all':'匯出全部 JSON','restore':'還原備份','clear-all':'清除全部',
       'ci-smell':'氣味','ci-light':'燈光','ci-floor':'地板','ci-door':'門','ci-corner':'角落','ci-ceiling':'天花',
       'pass':'✓ 通過','fail':'✗ 不通過','select':'— 選擇 —','records':'筆','items':'個','selected':'已選','confirm-delete':'確定刪除？','confirm-area-delete':'確定刪除地點？','saved':'已儲存','deleted':'已刪除','uploading':'☁ 上傳中…','uploaded':'☁ 已上傳','downloading':'⬇ 下載中…','downloaded':'⬇ 已下載並更新','no-data':'無資料','edit':'編輯','new-area':'新區域','all-pass':'全部通過','anomaly':'異常','normal':'正常','shift-day':'Day 日班','shift-night':'Night 夜班','note-ph':'請填寫異常情況或補充說明...','search-ph':'姓名/地點...','name-ph':'姓名 Name','cleaner-ph':'Cleaner name','location-example':'例：車縫區廁所 A','desc-example':'例：車縫區西南角','cancel':'取消','save':'儲存','yes':'確認','no':'取消',
-      'status-all':'全部','status-pass':'✅ 通過','status-fail':'⚠️ 有異常','missing-location':'請輸入地點名稱','location-added':'地點已新增','select-slot-warning':'請至少選擇一個清潔時段',
+      'status-all':'全部','status-pass':'✅ 通過','status-fail':'⚠️ 有異常','missing-location':'請輸入地點名稱','location-added':'地點已新增','select-slot-warning':'請至少選擇一個清潔時段','f-default-cleaner':'預設清潔員（套用全部）','f-cleaner-by-location':'各地點清潔員','select-location-first':'請先選擇一個或多個地點','missing-location-cleaner':'請指定此地點的清潔員',
     },
     en:{
       'tb-title':'Cleaning Management','t-dash':'Dashboard','t-rec':'New Record','t-hist':'History',
@@ -467,7 +472,7 @@ var i18n = (() => {
       'data-mgmt':'Data Management','export-all':'Export All JSON','restore':'Restore Backup','clear-all':'Clear All',
       'ci-smell':'Smell','ci-light':'Light','ci-floor':'Floor','ci-door':'Door','ci-corner':'Corner','ci-ceiling':'Ceiling',
       'pass':'✓ Pass','fail':'✗ Fail','select':'— Select —','records':'records','items':'items','selected':'selected','confirm-delete':'Delete this record?','confirm-area-delete':'Delete this location?','saved':'Saved','deleted':'Deleted','uploading':'☁ Uploading…','uploaded':'☁ Uploaded','downloading':'⬇ Downloading…','downloaded':'⬇ Downloaded and updated','no-data':'No data','edit':'Edit','new-area':'New area','all-pass':'All passed','anomaly':'Anomaly','normal':'Normal','shift-day':'Day shift','shift-night':'Night shift','note-ph':'Enter anomaly or additional notes...','search-ph':'Name/location...','name-ph':'Name','cleaner-ph':'Cleaner name','location-example':'e.g. Sewing toilet A','desc-example':'e.g. southwest corner','cancel':'Cancel','save':'Save','yes':'Confirm','no':'Cancel',
-      'status-all':'All','status-pass':'✅ Pass','status-fail':'⚠️ Anomaly','missing-location':'Enter a location name','location-added':'Location added','select-slot-warning':'Select at least one cleaning time slot',
+      'status-all':'All','status-pass':'✅ Pass','status-fail':'⚠️ Anomaly','missing-location':'Enter a location name','location-added':'Location added','select-slot-warning':'Select at least one cleaning time slot','f-default-cleaner':'Default cleaner (apply to all)','f-cleaner-by-location':'Cleaner by location','select-location-first':'Select one or more locations first','missing-location-cleaner':'Select a cleaner for this location',
     },
     km:{
       'tb-title':'ប្រព័ន្ធគ្រប់គ្រងការសំអាត','t-dash':'ផ្ទាំង','t-rec':'បន្ថែម','t-hist':'ប្រវត្តិ',
@@ -499,7 +504,7 @@ var i18n = (() => {
       'data-mgmt':'ការគ្រប់គ្រងទិន្នន័យ','export-all':'នាំចេញ JSON ទាំងអស់','restore':'ស្តារបម្រុងទុក','clear-all':'លុបទាំងអស់',
       'ci-smell':'ក្លិន','ci-light':'អំពូល','ci-floor':'ជាន់','ci-door':'ទ្វារ','ci-corner':'ជ្រុង','ci-ceiling':'ពិដាន',
       'pass':'✓ ជាប់','fail':'✗ ធ្លាក់','select':'— ជ្រើស —','records':'កំណត់ត្រា','items':'ធាតុ','selected':'បានជ្រើស','confirm-delete':'លុបកំណត់ត្រានេះ?','confirm-area-delete':'លុបទីតាំងនេះ?','saved':'បានរក្សាទុក','deleted':'បានលុប','uploading':'☁ កំពុងផ្ទុកឡើង…','uploaded':'☁ បានផ្ទុកឡើង','downloading':'⬇ កំពុងទាញយក…','downloaded':'⬇ បានទាញយក និងធ្វើបច្ចុប្បន្នភាព','no-data':'គ្មានទិន្នន័យ','edit':'កែ','new-area':'តំបន់ថ្មី','all-pass':'ជាប់ទាំងអស់','anomaly':'មិនប្រក្រតី','normal':'ធម្មតា','shift-day':'វេនថ្ងៃ','shift-night':'វេនយប់','note-ph':'បញ្ចូលភាពមិនប្រក្រតី ឬកំណត់សម្គាល់បន្ថែម...','search-ph':'ឈ្មោះ/ទីតាំង...','name-ph':'ឈ្មោះ','cleaner-ph':'ឈ្មោះអ្នកសម្អាត','location-example':'ឧ. បង្គន់តំបន់ដេរ','desc-example':'ឧ. ជ្រុងនិរតី','cancel':'បោះបង់','save':'រក្សាទុក','yes':'បញ្ជាក់','no':'បោះបង់',
-      'status-all':'ទាំងអស់','status-pass':'✅ ជាប់','status-fail':'⚠️ មិនប្រក្រតី','missing-location':'សូមបញ្ចូលឈ្មោះទីតាំង','location-added':'បានបន្ថែមទីតាំង','select-slot-warning':'សូមជ្រើសរើសពេលវេលាសម្អាតយ៉ាងហោចណាស់មួយ',
+      'status-all':'ទាំងអស់','status-pass':'✅ ជាប់','status-fail':'⚠️ មិនប្រក្រតី','missing-location':'សូមបញ្ចូលឈ្មោះទីតាំង','location-added':'បានបន្ថែមទីតាំង','select-slot-warning':'សូមជ្រើសរើសពេលវេលាសម្អាតយ៉ាងហោចណាស់មួយ','f-default-cleaner':'អ្នកសម្អាតលំនាំដើម (អនុវត្តទាំងអស់)','f-cleaner-by-location':'អ្នកសម្អាតតាមទីតាំង','select-location-first':'សូមជ្រើសរើសទីតាំងមួយ ឬច្រើនជាមុន','missing-location-cleaner':'សូមជ្រើសអ្នកសម្អាតសម្រាប់ទីតាំងនេះ',
     }
   };
   let _l = (() => {
@@ -675,7 +680,7 @@ const SIXS_CATS = [
 
 var state = (() => {
   let _db = {records:[],sixsRecords:[],locations:[],bins:[],cleaners:[],checkers:[],slots:[...DEF_SLOTS],cfg:{}};
-  let _selLocs = [], _selSlots = [], _chkState = {}, _sixsState = {};
+  let _selLocs = [], _selSlots = [], _chkState = {}, _sixsState = {}, _locCleaners = {};
 
   const load = () => {
     try {
@@ -708,10 +713,18 @@ var state = (() => {
   const getLocs = () => _selLocs.slice();
   const toggleLoc = (id) => {
     const i=_selLocs.indexOf(id);
-    if(i>=0) _selLocs.splice(i,1); else _selLocs.push(id);
+    if(i>=0){ _selLocs.splice(i,1); delete _locCleaners[id]; }
+    else {
+      _selLocs.push(id);
+      const loc=_db.locations.find(x=>x.id===id), fallback=gv('r-cleaner')||(loc&&personName(loc.resp))||'';
+      if(!_locCleaners[id]) _locCleaners[id]=fallback;
+    }
     renderRecordLocations();
   };
-  const resetLocs = () => { _selLocs=[]; renderRecordLocations(); };
+  const resetLocs = () => { _selLocs=[]; _locCleaners={}; renderRecordLocations(); };
+  const getLocCleaner = id => _locCleaners[id] || '';
+  const setLocCleaner = (id,value) => { _locCleaners[id]=String(value||''); renderLocationCleanerAssignments(); };
+  const applyDefaultCleaner = value => { _selLocs.forEach(id=>{_locCleaners[id]=String(value||'');}); renderLocationCleanerAssignments(); };
   const getSlots = () => _selSlots;
   const toggleSlot = (s) => {
     const i=_selSlots.indexOf(s);
@@ -743,7 +756,7 @@ var state = (() => {
     renderSlots();
     renderCheckGrid();
   };
-  return { load, save, db, resetChk, getChk, setChk, getLocs, toggleLoc, resetLocs, getSlots, toggleSlot, resetSlots, resetSixs, getSixs, setSixs, populate };
+  return { load, save, db, resetChk, getChk, setChk, getLocs, toggleLoc, resetLocs, getLocCleaner, setLocCleaner, applyDefaultCleaner, getSlots, toggleSlot, resetSlots, resetSixs, getSixs, setSixs, populate };
 })();
 
 /* ═══ API MODULE ═══ */
@@ -891,8 +904,10 @@ function shiftCleanDate(id,delta){
 }
 var rec = (() => {
   const makeRecords = () => {
-    const date=gv('r-date'),locIds=state.getLocs(),cleaner=gv('r-cleaner'),slots=[...state.getSlots()];
-    if(!date||!locIds.length||!cleaner){ui.toast('⚠️ '+i18n.t('rec-hint'));return [];}
+    const date=gv('r-date'),locIds=state.getLocs(),slots=[...state.getSlots()];
+    if(!date||!locIds.length){ui.toast('⚠️ '+i18n.t('rec-hint'));return [];}
+    const missingLoc=locIds.find(id=>!state.getLocCleaner(id));
+    if(missingLoc){ui.toast('⚠️ '+i18n.t('missing-location-cleaner')+': '+locName(missingLoc));return [];}
     if(!slots.length){ui.toast('⚠️ '+i18n.t('select-slot-warning'));return [];}
     const now=_localTS(), batchId='clean_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6);
     const photos=(window._phCtl?window._phCtl.get():[]);
@@ -901,7 +916,7 @@ var rec = (() => {
       return {
         id:batchId+'_'+index, batchId:batchId,
         timestamp:now, updatedAt:now, date:date, locId:locId, shift:gv('r-shift'),
-        cleaner:cleaner, checker:gv('r-checker'), slots:slots.slice(),
+        cleaner:state.getLocCleaner(locId), checker:gv('r-checker'), slots:slots.slice(),
         checks:JSON.parse(JSON.stringify(checks)), note:gv('r-note'),
         photos:photos.slice(), photoCount:photos.length, synced:false
       };
@@ -911,7 +926,8 @@ var rec = (() => {
     const records=makeRecords(); if(!records.length)return;
     Array.prototype.push.apply(state.db().records,records);
     state.save();
-    try { const cloudRes=await api.post({action:'push',tool:'cleaning',records:records}); if(cloudRes&&cloudRes.ok!==false){records.forEach(function(r){r.synced=true;});state.save();} } catch(e){}
+    /* 本機立即完成，雲端在背景只同步變更月份，避免儲存按鈕卡住。 */
+    if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule) GC.sync.schedule('cleaning','record_save');
     ui.toast('✅ '+records.length+' '+i18n.t('records')+' '+i18n.t('saved'));
     clear();
   };
@@ -920,7 +936,11 @@ var rec = (() => {
     const packet=buildCleaningSelectedRecordsTelegram(records,'bi');
     try {
       await api.tg(packet.text,packet.photos,[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_cleaning_v2.html'}]]);
+      Array.prototype.push.apply(state.db().records,records);
+      state.save();
+      if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule) GC.sync.schedule('cleaning','telegram_record');
       ui.toast('📤 Telegram 已發送');
+      clear();
     } catch(e) { ui.toast('❌ Telegram：'+e.message); }
   };
   const clear = () => {
@@ -974,7 +994,7 @@ var hist = (() => {
     const db=state.db();
     ui.toast(i18n.t('uploading'));
     try {
-      const res = await api.post({action:'push',tool:'cleaning',records:db.records});
+      const res = typeof GC!=='undefined'&&GC.sync ? await GC.sync.upload('cleaning',{silent:false}) : await api.post({action:'push',tool:'cleaning',records:db.records});
       if(res&&res.ok!==false){
         db.records.forEach(r=>r.synced=true);
         state.save(); query(); ui.toast(`${i18n.t('uploaded')} (${db.records.length}${i18n.t('records')})`);
@@ -984,7 +1004,8 @@ var hist = (() => {
   const downloadCloud = async () => {
     ui.toast(i18n.t('downloading'));
     try {
-      const res = await api.get({action:'pull',tool:'cleaning'});
+      const smart = typeof GC!=='undefined'&&GC.sync ? await GC.sync.download('cleaning',{silent:false}) : null;
+      const res = smart ? {ok:smart.ok,records:state.db().records} : await api.get({action:'pull',tool:'cleaning'});
       if(res&&res.ok!==false&&Array.isArray(res.records)){
         const db=state.db();
         /* 安全合併：ID 聯集 + updatedAt 比對，本地資料永不消失 */
@@ -1446,6 +1467,21 @@ function renderRecordLocations(){
     return `<div class="sl ${selected.includes(loc.id)?'sel':'none'}" onclick="state.toggleLoc('${esc(loc.id)}')">${icon} ${esc(loc.name)}</div>`;
   }).join('')||`<span style="padding:8px;color:var(--dim)">${i18n.t('no-data')}</span>`;
   const cnt=document.getElementById('sel-loc-count');if(cnt)cnt.textContent=selected.length+' '+i18n.t('selected');
+  renderLocationCleanerAssignments();
+}
+
+function renderLocationCleanerAssignments(){
+  const wrap=document.getElementById('loc-cleaner-map');if(!wrap)return;
+  const selected=state.getLocs(), db=state.db();
+  if(!selected.length){wrap.innerHTML=`<div class="loc-cleaner-empty">${esc(i18n.t('select-location-first'))}</div>`;return;}
+  const names=[];
+  (db.cleaners||[]).forEach(x=>{const n=personName(x);if(n&&!names.includes(n))names.push(n);});
+  selected.forEach(id=>{const loc=db.locations.find(x=>x.id===id),n=loc&&personName(loc.resp);if(n&&!names.includes(n))names.push(n);});
+  wrap.innerHTML=selected.map(function(id){
+    const loc=db.locations.find(x=>x.id===id), current=state.getLocCleaner(id);
+    const opts=['<option value="">'+esc(i18n.t('select'))+'</option>'].concat(names.map(n=>`<option value="${esc(n)}"${n===current?' selected':''}>${esc(n)}</option>`)).join('');
+    return `<div class="loc-cleaner-row"><span>📍 ${esc(loc?loc.name:id)}</span><select class="fi" onchange="state.setLocCleaner('${esc(id)}',this.value)">${opts}</select></div>`;
+  }).join('');
 }
 
 function renderSlots(){
@@ -1746,6 +1782,7 @@ function buildCleaningTelegram(opt){
       telegramSlotFilter:cleaningTelegramSlotFilter,
       telegramLanguage:true,
       telegramBuilder:buildCleaningTelegram,
+      onSync:function(){const d=state.db();(d.records||[]).forEach(function(r){r.synced=true;});state.save();},
       importSchema:{"date": ["日期", "date"], "locId": ["地點", "location", "loc", "ទីតាំង"], "cleaner": ["清潔人員", "cleaner", "អ្នកសម្អាត"], "checker": ["檢查人", "checker", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "ចំណាំ"]},
     read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_clean_hub_v2')||'{}'); return Array.isArray(d.records)?d.records:[]; }catch(e){ return []; } },
     write(list){ try{ const d=JSON.parse(localStorage.getItem('vrt_clean_hub_v2')||'{}'); d.records=list; localStorage.setItem('vrt_clean_hub_v2',JSON.stringify(d)); }catch(e){} },

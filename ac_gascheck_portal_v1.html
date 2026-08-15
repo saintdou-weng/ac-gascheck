@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>AC GASCHECK Portal</title>
-<script src="./gascheck-core.js?v=28-smart-sync"></script>
+<script src="./gascheck-core.js?v=31-key-batch-cleaner-map"></script>
 <style>
 :root{--acc:#F97316;--nv:#0F1E3D;--nv2:#1A3458;--gold:#FCD34D;--w:#fff;--mt:rgba(255,255,255,.62);--r:12px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -292,7 +292,15 @@ function portalRecords(m){
     var raw=localStorage.getItem(m.lsKey); if(!raw)return [];
     var d=JSON.parse(raw);
     if(m.id==='ehs') return ['gate','internal','monthly'].reduce(function(a,k){return a.concat((Array.isArray(d[k])?d[k]:[]).map(function(r){return Object.assign({module:k},r);}));},[]);
-    if(Array.isArray(d))return d;
+    if(Array.isArray(d)){
+      if(m.id==='asset'){
+        var ph={};try{ph=JSON.parse(localStorage.getItem('vrt_photos')||'{}')||{};}catch(ignore){}
+        d=d.map(function(r){return Object.assign({},r,{id:r.id||r.code,photos:r.photos||ph[r.code]||[]});});
+        try{d=d.concat(JSON.parse(localStorage.getItem('vrt_asset_tombstones')||'[]')||[]);}catch(ignore){}
+      }
+      if(m.id==='keymovement')try{d=d.concat(JSON.parse(localStorage.getItem('vrt_key_tombstones')||'[]')||[]);}catch(ignore){}
+      return d;
+    }
     return d&&Array.isArray(d.records)?d.records:[];
   }catch(e){return []}
 }
@@ -333,6 +341,17 @@ function portalWrite(m,list){
   }
   if(m.id==='ehs'){
     var d={gate:[],internal:[],monthly:[]};(list||[]).forEach(function(r){var k=['gate','internal','monthly'].indexOf(r.module)>=0?r.module:'gate';var c=Object.assign({},r);delete c.module;d[k].push(c);});localStorage.setItem(m.lsKey,JSON.stringify(d));return;
+  }
+  if(m.id==='asset'||m.id==='keymovement'){
+    var active=[],dead=[];(list||[]).forEach(function(r){(r&&r._deleted?dead:active).push(r);});
+    localStorage.setItem(m.lsKey,JSON.stringify(active));
+    localStorage.setItem(m.id==='asset'?'vrt_asset_tombstones':'vrt_key_tombstones',JSON.stringify(dead));
+    if(m.id==='asset'){
+      var photos={};try{photos=JSON.parse(localStorage.getItem('vrt_photos')||'{}')||{};}catch(ignore){}
+      active.forEach(function(r){if(r&&r.code&&r.photos)photos[r.code]=r.photos;});
+      localStorage.setItem('vrt_photos',JSON.stringify(photos));
+    }
+    return;
   }
   var raw=localStorage.getItem(m.lsKey),d=raw?JSON.parse(raw):null;
   if(m.id==='dormitory'||m.id==='cleaning'){d=d&&typeof d==='object'&&!Array.isArray(d)?d:{};d.records=list;localStorage.setItem(m.lsKey,JSON.stringify(d));return;}
@@ -418,64 +437,70 @@ function fetchStatus() {
 }
 
 // ── Push All ─────────────────────────────────────────────────
-function pushAll() {
+function portalSyncOpt(m){
+  var dates={asset:'purchaseDate',dormitory:'date',cleaning:'date',keymovement:'issue_date',ehs:'date',waterdrum:'date',temperature:'d'};
+  return {idKey:'id',tsKey:'updatedAt',dateField:dates[m.id]||'date',photoField:'photos',
+    toCloud:m.id==='temperature'?function(r){return portalCloudRecord(m,r);}:undefined,
+    fromCloud:m.id==='temperature'?function(r){return portalLocalRecord(m,r);}:undefined};
+}
+
+async function pushAll() {
   if(!GAS_URL){ toast(t('no_gas')); return; }
   var btn=document.getElementById('btnPush');
   btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span>';
-  var ok=0, fail=0, i=0;
-  function next(){
-    if(i>=MODS.length){
-      var meta={lastPush:new Date().toLocaleString('sv-SE')};
-      var cur=JSON.parse(localStorage.getItem(META_KEY)||'{}');
-      localStorage.setItem(META_KEY,JSON.stringify(Object.assign(cur,meta)));
-      updateCloudLabel(true); updateStats(meta);
-      toast('✅ '+t('push_ok')+' ('+ok+'/'+MODS.length+')');
-      btn.disabled=false; btn.textContent='☁ Push All';
-      return;
+  var ok=0, fail=0;
+  try{
+    if(window.GC&&GC.storage)await GC.storage.ready;
+    if(window.GC&&GC.cloud)GC.cloud.setUrl(GAS_URL);
+    for(var i=0;i<MODS.length;i++){
+      var m=MODS[i];
+      try{
+        var recs=portalRecords(m),r=window.GC&&GC.cloud
+          ?await GC.cloud.upload(m.id,recs,portalSyncOpt(m))
+          :await gasPost({action:'push',tool:m.id,records:recs,recordCount:recs.length,updatedAt:new Date().toLocaleString('sv-SE')});
+        if(r&&r.res&&r.res.ok===false)throw new Error(r.res.error||'upload failed');
+        if(r&&Array.isArray(r.list))portalWrite(m,r.list);
+        ok++;log('✓ smart push:'+m.id+' · changed '+(Number(r&&r.uploaded)||0),'ok');
+      }catch(e){fail++;log('✗ smart push:'+m.id+':'+e.message,'err');}
     }
-    var m=MODS[i++];
-    try{
-      var recs=portalRecords(m).map(function(r){return portalCloudRecord(m,r);});
-      if(!recs.length){next();return;}
-      gasPost({action:'push',tool:m.id,records:recs,recordCount:recs.length,updatedAt:new Date().toLocaleString('sv-SE')})
-        .then(function(r){
-          if(r.ok!==false){ok++;log('✓ push:'+m.id+' '+recs.length+'筆','ok');}
-          else{fail++;log('✗ push:'+m.id+':'+(r.error||''),'err');}
-          next();
-        })
-        .catch(function(e){fail++;log('✗ push:'+m.id+':'+e.message,'err');next();});
-    }catch(e){fail++;log('✗ push:'+m.id+':'+e.message,'err');next();}
+    var meta={lastPush:new Date().toLocaleString('sv-SE')};
+    var cur=JSON.parse(localStorage.getItem(META_KEY)||'{}');
+    localStorage.setItem(META_KEY,JSON.stringify(Object.assign(cur,meta)));
+    updateCloudLabel(fail===0); updateStats(meta);
+    toast('✅ '+t('push_ok')+' ('+ok+'/'+MODS.length+')');
+  }finally{
+    btn.disabled=false; btn.textContent='☁ Push All';
   }
-  next();
 }
 
 // ── Pull All ─────────────────────────────────────────────────
-function pullAll() {
+async function pullAll() {
   if(!GAS_URL){ toast(t('no_gas')); return; }
   var btn=document.getElementById('btnPull');
   btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span>';
-  var ok=0, fail=0, i=0;
-  function next(){
-    if(i>=MODS.length){
-      updateStats({});
-      toast('✅ '+t('pull_ok')+' ('+ok+')');
-      btn.disabled=false; btn.textContent='⬇ Pull All';
-      return;
-    }
-    var m=MODS[i++];
-    fetch(GAS_URL+'?action=pull&tool='+m.id+'&_t='+Date.now(),{redirect:'follow'})
-      .then(function(r){return r.json();})
-      .then(function(d){
-        if(d.ok!==false&&Array.isArray(d.records)&&d.records.length){
-          var merged=portalMerge(portalRecords(m),d.records,m);
-          portalWrite(m,merged);
-          ok++;log('✓ pull:'+m.id+' '+d.records.length+'筆，合併後 '+merged.length+'筆','ok');
+  var ok=0, fail=0;
+  try{
+    if(window.GC&&GC.storage)await GC.storage.ready;
+    if(window.GC&&GC.cloud)GC.cloud.setUrl(GAS_URL);
+    for(var i=0;i<MODS.length;i++){
+      var m=MODS[i];
+      try{
+        if(window.GC&&GC.cloud){
+          var smart=await GC.cloud.download(m.id,portalRecords(m),portalSyncOpt(m));
+          portalWrite(m,smart.list||portalRecords(m));
+          ok++;log('✓ smart pull:'+m.id+' · changed '+(Number(smart.downloaded)||0),'ok');
+        }else{
+          var d=await fetch(GAS_URL+'?action=pull&tool='+m.id+'&_t='+Date.now(),{redirect:'follow'}).then(function(r){return r.json();});
+          if(d.ok!==false&&Array.isArray(d.records)){var merged=portalMerge(portalRecords(m),d.records,m);portalWrite(m,merged);ok++;}
         }
-        next();
-      })
-      .catch(function(e){fail++;log('✗ pull:'+m.id+':'+e.message,'err');next();});
+      }catch(e){fail++;log('✗ smart pull:'+m.id+':'+e.message,'err');}
+    }
+    var meta={lastPull:new Date().toLocaleString('sv-SE')};
+    var cur=JSON.parse(localStorage.getItem(META_KEY)||'{}');localStorage.setItem(META_KEY,JSON.stringify(Object.assign(cur,meta)));
+    updateCloudLabel(fail===0);updateStats(meta);toast('✅ '+t('pull_ok')+' ('+ok+')');
+  }finally{
+    btn.disabled=false; btn.textContent='⬇ Pull All';
   }
-  next();
 }
 
 // ═══════════════════════════════════════════════════════════════

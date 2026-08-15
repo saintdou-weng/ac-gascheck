@@ -204,7 +204,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=28-smart-sync"></script>
+<script src="./gascheck-core.js?v=31-key-batch-cleaner-map"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -2001,6 +2001,11 @@ async function testGAS(){
 // 全量上傳（手動，不觸發 TG 通知）
 async function syncUp(){
   const url=getGAS().url;if(!url){toast('請設定 GAS URL','err');return;}
+  if(typeof GC!=='undefined'&&GC.sync){
+    const out=await GC.sync.upload('temperature',{silent:false});
+    if(out&&out.ok){window._tempPendingUpload=false;updateTempUploadButton();}
+    return out;
+  }
   const recs=getR();
   document.getElementById('sdot').className='syncdt sd-idle';
   document.getElementById('sstatus').textContent='上傳中...';
@@ -2022,6 +2027,7 @@ async function syncUp(){
 // 從雲端拉取記錄（合併到本機，雲端為主）
 async function syncDown(){
   const url=getGAS().url;if(!url){toast('請設定 GAS URL','err');return;}
+  if(typeof GC!=='undefined'&&GC.sync){return GC.sync.download('temperature',{silent:false});}
   document.getElementById('sdot').className='syncdt sd-idle';
   document.getElementById('sstatus').textContent='拉取中...';
   try{
@@ -2050,6 +2056,7 @@ async function syncDown(){
 // 自動同步（儲存時靜默觸發，不阻塞 UI）
 async function gasAutoSync(newRecs){
   const url=getGAS().url;if(!url)return;
+  if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){GC.sync.schedule('temperature','record_save');return;}
   try{
     // no-cors: GAS CORS 限制，用 fire-and-forget 模式
     await fetch(url,{method:'POST',mode:'no-cors',
@@ -2065,6 +2072,7 @@ async function gasAutoSync(newRecs){
 // 批量匯入到雲端（Excel 歷史資料匯入時使用）
 async function gasBulkSync(newRecs){
   const url=getGAS().url;if(!url)return;
+  if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){GC.sync.schedule('temperature','smart_import');return;}
   try{
     await fetch(url,{method:'POST',mode:'no-cors',
       body:JSON.stringify({type:'tempImport',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'merge'})});
@@ -2094,6 +2102,7 @@ async function gasDelete(id){
 
 async function syncZoneConfig(mode){
   const url=getGAS().url;if(!url)return;
+  if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){GC.sync.schedule('temperature','zone_config');return;}
   try{await fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify({action:'push',tool:'temperature',records:[],zones:getZ(),zonesMode:mode||'merge'})});}
   catch(ex){console.warn('syncZoneConfig failed:',ex.message);}
 }

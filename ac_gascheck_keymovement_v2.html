@@ -203,7 +203,7 @@ table tr:last-child td { border-bottom: none; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
   <!-- AC_GASCHECK Shared System -->
-              <script src="./gascheck-core.js?v=28-smart-sync"></script>
+              <script src="./gascheck-core.js?v=31-key-batch-cleaner-map"></script>
 </head>
 <body>
 
@@ -1604,9 +1604,8 @@ window.updateRecord = updateRecord;
     records=active;window.records=records;localStorage.setItem('vrt_keys',JSON.stringify(active));saveTombstones(dead);return active;
   }
   async function syncDeletes(){
+    if(window.GC&&GC.sync&&GC.sync.schedule){GC.sync.schedule('keymovement','delete');return;}
     try{localStorage.setItem('ac_gc_auto_sync_v1_keymovement',JSON.stringify({ts:_localTS(),reason:'delete'}));}catch(e){}
-    if(!window.GC||!GC.cloud)return;
-    setTimeout(async function(){try{const all=records.concat(tombstones());const r=await GC.cloud.upload('keymovement',all,{idKey:'id',tsKey:'updatedAt',dateField:'issue_date',photoField:'photos'});if(r&&r.res&&r.res.ok!==false){splitCloud(r.list||all);localStorage.removeItem('ac_gc_auto_sync_v1_keymovement');}}catch(e){}},30);
   }
   function purgeDemo(){
     const demo=(records||[]).filter(r=>/^demo_/i.test(String(r.id||'')));
@@ -1641,6 +1640,177 @@ window.updateRecord = updateRecord;
   }
   const oldRender=renderList;window.renderList=renderList=function(){oldRender();ensureHistoryModal();document.querySelectorAll('.row-chk').forEach(ch=>{const td=ch.closest('tr')&&ch.closest('tr').lastElementChild;if(td&&!td.querySelector('.key-history-btn')){const b=document.createElement('button');b.className='btn btn-outline btn-sm key-history-btn';b.textContent='🕘';b.onclick=()=>showKeyHistory(ch.value);const g=td.querySelector('.btn-group')||td;g.insertBefore(b,g.firstChild);}});};
   window.KEY_V29={tombstones,splitCloud,purgeDemo};
+})();
+</script>
+
+<script>
+/* ═══ Key v31 — 鑰匙名單、列表批次登記、有效設定與主檔雲端同步 ═══ */
+(function(){
+  const MASTER_KEY='vrt_key_master', PREF_KEY='vrt_key_prefs';
+  let batchRows=[], masterPhotoCtl=null, editingMasterId='';
+  const ke=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const tx=(zh,en,km)=>lang==='en'?en:(lang==='km'?(km||en):zh);
+  const uid=p=>window.GC&&GC.util?GC.util.uid(p):p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  const now=()=>typeof _localTS==='function'?_localTS():new Date().toLocaleString();
+  const today=()=>typeof _localYMD==='function'?_localYMD():new Date().toLocaleDateString('sv-SE');
+  const keyTypes=['一般鑰匙','卡片鑰匙','摩托車鑰匙','汽車鑰匙','捲簾門鑰匙','掛鎖鑰匙','密碼鎖','設備鑰匙','宿舍門鑰匙','辦公室門鑰匙'];
+
+  function rawMaster(){
+    try{const list=JSON.parse(localStorage.getItem(MASTER_KEY)||'[]');return Array.isArray(list)?list:[];}catch(e){return[];}
+  }
+  function saveMaster(list,reason){
+    localStorage.setItem(MASTER_KEY,JSON.stringify(list||[]));
+    renderMasterList();renderBatchRows();
+    if(reason&&window.GC&&GC.sync)GC.sync.schedule('keymovement',reason);
+  }
+  function masters(){return rawMaster().filter(x=>x&&!x._deleted);}
+  function prefs(){try{return JSON.parse(localStorage.getItem(PREF_KEY)||'{}')||{};}catch(e){return{};}}
+  function savePrefs(){
+    const data={inspector:(document.getElementById('km-pref-inspector')||{}).value||'',keyType:(document.getElementById('km-pref-type')||{}).value||'一般鑰匙',condition:(document.getElementById('km-pref-condition')||{}).value||'良好'};
+    localStorage.setItem(PREF_KEY,JSON.stringify(data));showToast(tx('設定已儲存','Settings saved','បានរក្សាទុកការកំណត់'),'success');
+  }
+  function movementMaster(r){return masters().find(m=>String(m.id)===String(r.masterId))||masters().find(m=>String(m.key_no).toLowerCase()===String(r.key_no||'').toLowerCase());}
+  function migrateMaster(){
+    if(rawMaster().length)return;
+    const map=new Map();
+    (records||[]).filter(r=>!r._deleted&&!/^demo_/i.test(String(r.id||''))&&r.key_no).forEach(r=>{
+      const k=String(r.key_no).trim().toLowerCase();if(map.has(k))return;
+      map.set(k,{id:uid('km'),key_no:r.key_no,key_name:r.key_name||r.remarks||r.key_no,dept:r.dept||'',location:r.location||'',key_type:r.key_type||'一般鑰匙',status:'active',remarks:'',photos:Array.isArray(r.photos)?r.photos:[],createdAt:r.createdAt||now(),updatedAt:r.updatedAt||now()});
+    });
+    if(map.size)localStorage.setItem(MASTER_KEY,JSON.stringify(Array.from(map.values())));
+  }
+  function currentMovement(master){
+    return (records||[]).filter(r=>!r._deleted&&(String(r.masterId)===String(master.id)||String(r.key_no||'').toLowerCase()===String(master.key_no||'').toLowerCase())).sort((a,b)=>String(b.updatedAt||b.createdAt||'').localeCompare(String(a.updatedAt||a.createdAt||'')))[0]||null;
+  }
+  function masterState(master){
+    if(master.status==='inactive')return {key:'inactive',label:tx('停用','Inactive','ផ្អាក')};
+    const r=currentMovement(master);
+    if(r&&!r.return_date&&r.return_condition!=='遺失')return {key:'issued',label:tx('已借出','Issued','បានចេញ')};
+    if(r&&r.return_condition==='遺失')return {key:'lost',label:tx('遺失','Lost','បាត់')};
+    return {key:'available',label:tx('可用','Available','អាចប្រើបាន')};
+  }
+  function masterOptions(selected){
+    return '<option value="">'+ke(tx('— 選擇鑰匙 —','— Select key —','— ជ្រើសសោ —'))+'</option>'+masters().map(m=>{
+      const s=masterState(m), label=m.key_no+' · '+(m.key_name||m.location||m.dept||'')+(s.key==='issued'?' · '+s.label:'');
+      const chosen=String(m.id)===String(selected), blocked=!chosen&&(s.key==='issued'||s.key==='inactive'||s.key==='lost');
+      return '<option value="'+ke(m.id)+'"'+(chosen?' selected':'')+(blocked?' disabled':'')+'>'+ke(label)+'</option>';
+    }).join('');
+  }
+  function newBatchRow(source){
+    source=source||{};let m=movementMaster(source);
+    if(source.key_no&&!m){
+      m={id:uid('km'),key_no:source.key_no,key_name:source.key_name||source.key_no,dept:source.dept||'',location:source.location||'',key_type:source.key_type||'一般鑰匙',status:'active',remarks:'',photos:Array.isArray(source.photos)?source.photos:[],createdAt:now(),updatedAt:now()};
+      const list=rawMaster();list.push(m);localStorage.setItem(MASTER_KEY,JSON.stringify(list));
+    }
+    return {rowId:uid('row'),sourceId:source.id||'',masterId:m?m.id:'',recipient_id:source.recipient_id||'',recipient_name:source.recipient_name||'',key_condition:source.key_condition||prefs().condition||'良好',remarks:source.remarks||''};
+  }
+  function mountBatch(){
+    const section=document.getElementById('section-record');if(!section)return;
+    section.innerHTML='<div class="card"><div class="card-header"><span class="card-title">📋 '+tx('鑰匙批次登記','Batch Key Movement','កត់ត្រាសោជាបញ្ជី')+'</span><div class="btn-group"><button class="btn btn-outline btn-sm" onclick="showSection(\'settings\')">🔑 '+tx('鑰匙名單','Key List','បញ្ជីសោ')+'</button><button class="btn btn-outline btn-sm" onclick="keyBatchAddRow()">＋ '+tx('新增一列','Add Row','បន្ថែមជួរ')+'</button></div></div><div class="card-body"><div class="key-batch-defaults"><div class="form-group"><label>'+tx('發出日期','Issue date','ថ្ងៃចេញ')+'</label><div class="km-date-nav"><button onclick="keyShiftBatchDate(-1)">◀</button><input type="date" id="km-batch-date"><button onclick="keyShiftBatchDate(1)">▶</button></div></div><div class="form-group"><label>'+tx('發出時間','Issue time','ម៉ោងចេញ')+'</label><input type="time" id="km-batch-time"></div><div class="form-group"><label>'+tx('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')+'</label><input id="km-batch-inspector" placeholder="Inspector"></div></div><div class="table-wrap"><table class="key-batch-table"><thead><tr><th>#</th><th>'+tx('鑰匙名單','Key','សោ')+' *</th><th>'+tx('部門／地點','Department / Location','ផ្នែក / ទីតាំង')+'</th><th>'+tx('領用人 ID','Recipient ID','ID អ្នកទទួល')+'</th><th>'+tx('領用人','Recipient','អ្នកទទួល')+' *</th><th>'+tx('狀態','Condition','ស្ថានភាព')+'</th><th>'+tx('備註','Remarks','ចំណាំ')+'</th><th></th></tr></thead><tbody id="km-batch-body"></tbody></table></div><div class="btn-group" style="margin-top:14px"><button class="btn btn-primary" onclick="keyBatchSaveAll()">💾 '+tx('批次儲存','Save All','រក្សាទុកទាំងអស់')+'</button><button class="btn btn-outline" onclick="keyBatchClear()">🗑️ '+tx('清除','Clear','លុប')+'</button></div></div></div>';
+    const p=prefs(),d=document.getElementById('km-batch-date'),tm=document.getElementById('km-batch-time'),ins=document.getElementById('km-batch-inspector');
+    if(d)d.value=today();if(tm)tm.value=new Date().toTimeString().slice(0,5);if(ins)ins.value=p.inspector||'';
+    if(!batchRows.length)batchRows=[newBatchRow()];renderBatchRows();
+  }
+  function renderBatchRows(){
+    const body=document.getElementById('km-batch-body');if(!body)return;
+    if(!batchRows.length)batchRows=[newBatchRow()];
+    body.innerHTML=batchRows.map((r,i)=>{
+      const m=masters().find(x=>String(x.id)===String(r.masterId));
+      return '<tr><td>'+(i+1)+'</td><td><select onchange="keyBatchSet(\''+ke(r.rowId)+'\',\'masterId\',this.value)">'+masterOptions(r.masterId)+'</select></td><td><div class="km-master-meta">'+ke(m?((m.dept||'—')+' · '+(m.location||'—')):'—')+'</div></td><td><input value="'+ke(r.recipient_id)+'" onchange="keyBatchSet(\''+ke(r.rowId)+'\',\'recipient_id\',this.value)"></td><td><input value="'+ke(r.recipient_name)+'" onchange="keyBatchSet(\''+ke(r.rowId)+'\',\'recipient_name\',this.value)"></td><td><select onchange="keyBatchSet(\''+ke(r.rowId)+'\',\'key_condition\',this.value)"><option value="良好"'+(r.key_condition==='良好'?' selected':'')+'>✅ '+tx('良好','Good','ល្អ')+'</option><option value="輕微損耗"'+(r.key_condition==='輕微損耗'?' selected':'')+'>⚡ '+tx('輕微損耗','Minor wear','ខូចបន្តិច')+'</option><option value="損壞"'+(r.key_condition==='損壞'?' selected':'')+'>❌ '+tx('損壞','Damaged','ខូច')+'</option></select></td><td><input value="'+ke(r.remarks)+'" onchange="keyBatchSet(\''+ke(r.rowId)+'\',\'remarks\',this.value)"></td><td><button class="km-icon-btn" onclick="keyBatchRemove(\''+ke(r.rowId)+'\')">✕</button></td></tr>';
+    }).join('');
+  }
+  function batchSet(id,key,value){const r=batchRows.find(x=>x.rowId===id);if(!r)return;r[key]=value;renderBatchRows();}
+  function batchSave(){
+    const date=(document.getElementById('km-batch-date')||{}).value||'',time=(document.getElementById('km-batch-time')||{}).value||'',inspector=((document.getElementById('km-batch-inspector')||{}).value||'').trim();
+    const valid=batchRows.filter(r=>r.masterId||r.recipient_name||r.recipient_id);
+    if(!date||!valid.length){showToast(tx('請選日期並至少填一列','Choose a date and enter at least one row','សូមជ្រើសថ្ងៃ និងបញ្ចូលយ៉ាងហោចណាស់មួយជួរ'),'error');return;}
+    const incomplete=valid.find(r=>!r.masterId||!r.recipient_name);if(incomplete){showToast(tx('每列都要選鑰匙及填領用人','Each row needs a key and recipient','គ្រប់ជួរត្រូវមានសោ និងអ្នកទទួល'),'error');return;}
+    let changed=0;
+    valid.forEach(r=>{
+      const m=masters().find(x=>String(x.id)===String(r.masterId));if(!m)return;
+      const old=r.sourceId?(records||[]).find(x=>String(x.id)===String(r.sourceId)):null, ts=now();
+      const next=Object.assign({},old||{},{id:old?old.id:uid('key'),masterId:m.id,issue_date:date,issue_time:time,key_no:m.key_no,key_name:m.key_name||'',dept:m.dept||'',location:m.location||'',checker:inspector,recipient_id:r.recipient_id,recipient_name:r.recipient_name,key_type:m.key_type||prefs().keyType||'一般鑰匙',key_condition:r.key_condition||prefs().condition||'良好',remarks:r.remarks||'',photos:Array.isArray(m.photos)?m.photos.slice():[],createdAt:old&&old.createdAt||ts,updatedAt:ts,recordedBy:old&&old.recordedBy||inspector});
+      const snap=x=>({key_no:x.key_no||'',dept:x.dept||'',holder:x.recipient_name||'',holder_id:x.recipient_id||'',issue_date:x.issue_date||'',issue_time:x.issue_time||'',return_date:x.return_date||'',return_time:x.return_time||'',condition:x.return_condition||x.key_condition||'',remarks:x.remarks||''});
+      next.history=[...(old&&old.history||[]),{type:old?'updated':'created',date:ts,actor:inspector||'—',before:old?snap(old):undefined,after:snap(next)}];
+      if(old){const idx=records.findIndex(x=>String(x.id)===String(old.id));records[idx]=next;}else records.unshift(next);changed++;
+    });
+    saveData();window.records=records;batchRows=[newBatchRow()];renderBatchRows();renderAll();renderAnomalyBadge();
+    if(window.GC&&GC.sync)GC.sync.schedule('keymovement','batch_save');
+    showToast('✅ '+changed+' '+tx('筆鑰匙記錄已儲存','key record(s) saved','កំណត់ត្រាសោបានរក្សាទុក'),'success');showSection('list');
+  }
+  function shiftBatchDate(delta){const el=document.getElementById('km-batch-date');if(!el)return;const d=new Date((el.value||today())+'T00:00:00');d.setDate(d.getDate()+delta);el.value=_localYMD(d);}
+
+  function mountSettings(){
+    const section=document.getElementById('section-settings');if(!section)return;
+    section.innerHTML='<div class="card"><div class="card-header"><span class="card-title">🔑 '+tx('鑰匙名單與設定','Key Master & Settings','បញ្ជីសោ និងការកំណត់')+'</span><div class="btn-group"><button class="btn btn-primary btn-sm" onclick="keyMasterOpen()">＋ '+tx('新增鑰匙','Add Key','បន្ថែមសោ')+'</button><label class="btn btn-outline btn-sm" style="cursor:pointer">📥 '+tx('匯入 Excel','Import Excel','នាំចូល Excel')+'<input type="file" accept=".xlsx,.xls,.csv" onchange="keyMasterImport(this.files[0]);this.value=\'\'" hidden></label><button class="btn btn-outline btn-sm" onclick="keyMasterExport()">📤 '+tx('匯出名單','Export List','នាំចេញបញ្ជី')+'</button></div></div><div class="card-body"><div class="km-settings-grid"><div class="form-group"><label>'+tx('預設檢查人','Default inspector','អ្នកត្រួតពិនិត្យលំនាំដើម')+'</label><input id="km-pref-inspector"></div><div class="form-group"><label>'+tx('預設鑰匙類型','Default key type','ប្រភេទសោលំនាំដើម')+'</label><select id="km-pref-type">'+keyTypes.map(x=>'<option value="'+ke(x)+'">'+ke(x)+'</option>').join('')+'</select></div><div class="form-group"><label>'+tx('預設狀態','Default condition','ស្ថានភាពលំនាំដើម')+'</label><select id="km-pref-condition"><option value="良好">'+tx('良好','Good','ល្អ')+'</option><option value="輕微損耗">'+tx('輕微損耗','Minor wear','ខូចបន្តិច')+'</option></select></div><button class="btn btn-primary" onclick="keyPrefsSave()">💾 '+tx('儲存設定','Save Settings','រក្សាទុកការកំណត់')+'</button></div><div class="divider"></div><div class="filter-bar"><input id="km-master-search" placeholder="🔍 '+tx('搜尋編號／名稱／地點','Search no./name/location','ស្វែងរកលេខ/ឈ្មោះ/ទីតាំង')+'" oninput="keyMasterRender()"><select id="km-master-dept" onchange="keyMasterRender()"><option value="">'+tx('全部部門','All departments','គ្រប់ផ្នែក')+'</option>'+DEPTS.map(x=>'<option value="'+ke(x)+'">'+ke(x)+'</option>').join('')+'</select><select id="km-master-status" onchange="keyMasterRender()"><option value="">'+tx('全部狀態','All status','គ្រប់ស្ថានភាព')+'</option><option value="available">'+tx('可用','Available','អាចប្រើបាន')+'</option><option value="issued">'+tx('已借出','Issued','បានចេញ')+'</option><option value="inactive">'+tx('停用','Inactive','ផ្អាក')+'</option></select><span id="km-master-count" style="margin-left:auto"></span></div><div class="table-wrap"><table class="key-master-table"><thead><tr><th>'+tx('鑰匙編號','Key No.','លេខសោ')+'</th><th>'+tx('名稱','Name','ឈ្មោះ')+'</th><th>'+tx('部門','Department','ផ្នែក')+'</th><th>'+tx('地點','Location','ទីតាំង')+'</th><th>'+tx('類型','Type','ប្រភេទ')+'</th><th>'+tx('目前狀態','Current State','ស្ថានភាព')+'</th><th>'+tx('目前領用人','Current Holder','អ្នកកាន់បច្ចុប្បន្ន')+'</th><th>'+tx('照片','Photo','រូបថត')+'</th><th>'+tx('操作','Action','សកម្មភាព')+'</th></tr></thead><tbody id="km-master-body"></tbody></table></div><div class="km-data-tools"><div><b>'+tx('資料管理','Data Management','ការគ្រប់គ្រងទិន្នន័យ')+'</b><div id="record-count-info"></div></div><button class="btn btn-outline" onclick="exportAllData()">⬇️ '+tx('匯出全部備份','Export Full Backup','នាំចេញទិន្នន័យបម្រុង')+'</button><button class="btn btn-danger" onclick="clearAllData()">🗑️ '+tx('清除異動記錄','Clear Movements','លុបកំណត់ត្រាចលនា')+'</button></div></div></div>';
+    const p=prefs();document.getElementById('km-pref-inspector').value=p.inspector||'';document.getElementById('km-pref-type').value=p.keyType||'一般鑰匙';document.getElementById('km-pref-condition').value=p.condition||'良好';
+    ensureMasterModal();renderMasterList();
+  }
+  function renderMasterList(){
+    const body=document.getElementById('km-master-body');if(!body)return;
+    const q=((document.getElementById('km-master-search')||{}).value||'').toLowerCase(), dept=(document.getElementById('km-master-dept')||{}).value||'',status=(document.getElementById('km-master-status')||{}).value||'';
+    const list=masters().filter(m=>{const s=masterState(m).key;return(!q||JSON.stringify(m).toLowerCase().includes(q))&&(!dept||m.dept===dept)&&(!status||s===status);}).sort((a,b)=>String(a.key_no||'').localeCompare(String(b.key_no||''),undefined,{numeric:true}));
+    const count=document.getElementById('km-master-count');if(count)count.textContent=list.length+' '+tx('把鑰匙','keys','សោ');
+    const info=document.getElementById('record-count-info');if(info)info.textContent=tx('鑰匙名單','Key master','បញ្ជីសោ')+': '+masters().length+' · '+tx('異動記錄','Movement records','កំណត់ត្រាចលនា')+': '+(records||[]).length;
+    if(!list.length){body.innerHTML='<tr><td colspan="9" class="empty">'+tx('尚無鑰匙名單，可按新增或匯入 Excel','No keys yet. Add one or import Excel.','មិនទាន់មានបញ្ជីសោ។ បន្ថែម ឬនាំចូល Excel។')+'</td></tr>';return;}
+    body.innerHTML=list.map(m=>{const s=masterState(m),cur=currentMovement(m),photo=(Array.isArray(m.photos)&&m.photos[0])?'<img class="km-thumb" src="'+ke(m.photos[0])+'">':'—';return '<tr><td><b>'+ke(m.key_no||'—')+'</b></td><td>'+ke(m.key_name||'—')+'</td><td>'+ke(m.dept||'—')+'</td><td>'+ke(m.location||'—')+'</td><td>'+ke(m.key_type||'—')+'</td><td><span class="km-state '+s.key+'">'+ke(s.label)+'</span></td><td>'+ke(cur&&!cur.return_date?(cur.recipient_name||'—'):'—')+'</td><td>'+photo+'</td><td><div class="btn-group"><button class="btn btn-outline btn-sm" onclick="keyMasterOpen(\''+ke(m.id)+'\')">✏️</button><button class="btn btn-danger btn-sm" onclick="keyMasterDelete(\''+ke(m.id)+'\')">🗑️</button></div></td></tr>';}).join('');
+  }
+  function ensureMasterModal(){
+    if(document.getElementById('km-master-modal'))return;
+    const modal=document.createElement('div');modal.id='km-master-modal';modal.className='modal-overlay';modal.innerHTML='<div class="modal"><div class="modal-header"><h3 id="km-master-title">🔑</h3><button class="modal-close" onclick="closeModal(\'km-master-modal\')">×</button></div><div class="modal-body"><div class="form-grid"><div class="form-group"><label>'+tx('鑰匙編號','Key No.','លេខសោ')+' *</label><input id="km-m-no"></div><div class="form-group"><label>'+tx('鑰匙名稱','Key Name','ឈ្មោះសោ')+' *</label><input id="km-m-name"></div><div class="form-group"><label>'+tx('部門','Department','ផ្នែក')+'</label><select id="km-m-dept"><option value="">—</option>'+DEPTS.map(x=>'<option value="'+ke(x)+'">'+ke(x)+'</option>').join('')+'</select></div><div class="form-group"><label>'+tx('地點','Location','ទីតាំង')+'</label><input id="km-m-location"></div><div class="form-group"><label>'+tx('類型','Type','ប្រភេទ')+'</label><select id="km-m-type">'+keyTypes.map(x=>'<option value="'+ke(x)+'">'+ke(x)+'</option>').join('')+'</select></div><div class="form-group"><label>'+tx('啟用狀態','Active Status','ស្ថានភាពប្រើប្រាស់')+'</label><select id="km-m-status"><option value="active">'+tx('啟用','Active','សកម្ម')+'</option><option value="inactive">'+tx('停用','Inactive','ផ្អាក')+'</option></select></div><div class="form-group full"><label>'+tx('備註','Remarks','ចំណាំ')+'</label><textarea id="km-m-remarks"></textarea></div><div class="form-group full"><label>📷 '+tx('照片','Photos','រូបថត')+'</label><div id="km-master-photos"></div></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal(\'km-master-modal\')">'+tx('取消','Cancel','បោះបង់')+'</button><button class="btn btn-primary" onclick="keyMasterSave()">💾 '+tx('儲存','Save','រក្សាទុក')+'</button></div></div>';document.body.appendChild(modal);
+  }
+  function openMaster(id){
+    ensureMasterModal();editingMasterId=id||'';const m=masters().find(x=>String(x.id)===String(id))||{};
+    document.getElementById('km-master-title').textContent='🔑 '+(id?tx('編輯鑰匙','Edit Key','កែសោ'):tx('新增鑰匙','Add Key','បន្ថែមសោ'));
+    [['km-m-no',m.key_no],['km-m-name',m.key_name],['km-m-dept',m.dept],['km-m-location',m.location],['km-m-type',m.key_type||prefs().keyType||'一般鑰匙'],['km-m-status',m.status||'active'],['km-m-remarks',m.remarks]].forEach(x=>{const el=document.getElementById(x[0]);if(el)el.value=x[1]||'';});
+    const mount=()=>{if(!window.GC||!GC.photo){setTimeout(mount,100);return;}const el=document.getElementById('km-master-photos');if(masterPhotoCtl)masterPhotoCtl.set(Array.isArray(m.photos)?m.photos:[]);else masterPhotoCtl=GC.photo.mount(el,{photos:Array.isArray(m.photos)?m.photos:[],max:2});};mount();document.getElementById('km-master-modal').classList.add('open');
+  }
+  function saveMasterItem(){
+    const no=document.getElementById('km-m-no').value.trim(),name=document.getElementById('km-m-name').value.trim();if(!no||!name){showToast(tx('請填鑰匙編號及名稱','Enter key no. and name','សូមបញ្ចូលលេខ និងឈ្មោះសោ'),'error');return;}
+    const list=rawMaster(),dup=list.find(x=>!x._deleted&&String(x.key_no||'').toLowerCase()===no.toLowerCase()&&String(x.id)!==String(editingMasterId));if(dup){showToast(tx('鑰匙編號重複','Duplicate key number','លេខសោស្ទួន'),'error');return;}
+    let item=list.find(x=>String(x.id)===String(editingMasterId));const ts=now();if(!item){item={id:uid('km'),createdAt:ts};list.push(item);}Object.assign(item,{key_no:no,key_name:name,dept:document.getElementById('km-m-dept').value,location:document.getElementById('km-m-location').value.trim(),key_type:document.getElementById('km-m-type').value,status:document.getElementById('km-m-status').value,remarks:document.getElementById('km-m-remarks').value.trim(),photos:masterPhotoCtl?masterPhotoCtl.get():[],updatedAt:ts,_deleted:false});
+    saveMaster(list,'key_master_save');closeModal('km-master-modal');showToast(tx('鑰匙名單已儲存','Key saved','បានរក្សាទុកសោ'),'success');
+  }
+  function deleteMaster(id){
+    const m=masters().find(x=>String(x.id)===String(id));if(!m||!confirm(tx('刪除鑰匙名單？歷史異動記錄會保留。','Delete this key? Movement history will remain.','លុបសោនេះ? ប្រវត្តិចលនានឹងរក្សាទុក។')))return;
+    m._deleted=true;m.deletedAt=now();m.updatedAt=m.deletedAt;saveMaster(rawMaster(),'key_master_delete');showToast(tx('已刪除名單，歷史仍保留','Key removed; history retained','បានលុបសោ; ប្រវត្តិនៅរក្សា'),'success');
+  }
+  function importMaster(file){
+    if(!file)return;if(!window.XLSX){showToast('XLSX not ready','error');return;}const rd=new FileReader();rd.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:false,raw:true}),rows=[];wb.SheetNames.forEach(n=>Array.prototype.push.apply(rows,XLSX.utils.sheet_to_json(wb.Sheets[n],{defval:'',raw:true})));
+      const norm=s=>String(s||'').trim().toLowerCase().replace(/[\s_\-()（）/／.]+/g,'');const pick=(r,names)=>{const map={};Object.keys(r||{}).forEach(k=>map[norm(k)]=r[k]);for(const n of names){if(map[norm(n)]!==undefined&&String(map[norm(n)]).trim()!=='')return String(map[norm(n)]).trim();}return'';};
+      const list=rawMaster(),active=list.filter(x=>!x._deleted),map=new Map(active.map(x=>[String(x.key_no||'').toLowerCase(),x]));let added=0,updated=0;
+      rows.forEach(r=>{const no=pick(r,['鑰匙編號','鑰匙號碼','key no','key number','key code','code','លេខសោ']);if(!no)return;let m=map.get(no.toLowerCase());if(!m){m={id:uid('km'),createdAt:now()};list.push(m);map.set(no.toLowerCase(),m);added++;}else updated++;Object.assign(m,{key_no:no,key_name:pick(r,['鑰匙名稱','名稱','key name','name'])||m.key_name||no,dept:pick(r,['部門','department','dept'])||m.dept||'',location:pick(r,['地點','位置','location','place'])||m.location||'',key_type:pick(r,['類型','key type','type'])||m.key_type||prefs().keyType||'一般鑰匙',status:/停用|inactive/i.test(pick(r,['狀態','status']))?'inactive':'active',remarks:pick(r,['備註','備注','remarks','note'])||m.remarks||'',photos:m.photos||[],updatedAt:now(),_deleted:false});});
+      saveMaster(list,'key_master_import');showToast('✅ '+tx('匯入完成','Import complete','នាំចូលរួច')+': +'+added+' / ↻'+updated,'success');
+    }catch(err){showToast(tx('匯入失敗','Import failed','នាំចូលបរាជ័យ')+': '+err.message,'error');}};rd.readAsArrayBuffer(file);
+  }
+  function exportMaster(){
+    const rows=masters().map(m=>({'Key No':m.key_no,'Key Name':m.key_name,'Department':m.dept,'Location':m.location,'Key Type':m.key_type,'Status':m.status||'active','Remarks':m.remarks||''}));if(!rows.length){showToast(tx('沒有鑰匙名單','No key master data','គ្មានបញ្ជីសោ'),'warn');return;}if(window.XLSX){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Key Master');XLSX.writeFile(wb,'VRT_Key_Master_'+today()+'.xlsx');}
+  }
+  function cloudRead(){
+    const moves=(records||[]).concat(window.KEY_V29&&KEY_V29.tombstones?KEY_V29.tombstones():[]);
+    return moves.concat(rawMaster().map(m=>Object.assign({},m,{id:'master:'+m.id,masterId:m.id,_syncKind:'key_master',issue_date:String(m.updatedAt||today()).slice(0,10)})));
+  }
+  function cloudWrite(list){
+    const masterRows=[],moves=[];(list||[]).forEach(r=>{if((r&&r._syncKind==='key_master')||/^master:/.test(String(r&&r.id||''))){const m=Object.assign({},r);m.id=String(m.masterId||m.id||'').replace(/^master:/,'');delete m.masterId;delete m._syncKind;delete m.issue_date;masterRows.push(m);}else moves.push(r);});
+    const receivedMaster=(list||[]).some(r=>r&&(r._syncKind==='key_master'||/^master:/.test(String(r.id||''))));
+    if(receivedMaster)saveMaster(masterRows);
+    if(window.KEY_V29&&KEY_V29.splitCloud)KEY_V29.splitCloud(moves);else{records=moves.filter(x=>!x._deleted);window.records=records;saveData();}
+    renderAll();renderMasterList();renderBatchRows();
+  }
+  function addStyles(){if(document.getElementById('key-v31-css'))return;const s=document.createElement('style');s.id='key-v31-css';s.textContent='.key-batch-defaults,.km-settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end;margin-bottom:14px}.km-date-nav{display:flex;gap:5px}.km-date-nav input{flex:1}.km-date-nav button,.km-icon-btn{border:1px solid var(--border);background:#fff;border-radius:7px;cursor:pointer}.key-batch-table,.key-master-table{width:100%;min-width:980px;border-collapse:collapse;font-size:12px}.key-batch-table th,.key-master-table th{background:var(--bg3);padding:9px;text-align:left;border-bottom:2px solid var(--border)}.key-batch-table td,.key-master-table td{padding:7px;border-bottom:1px solid var(--border)}.key-batch-table input,.key-batch-table select{width:100%;min-width:105px;border:1px solid var(--border);border-radius:7px;padding:7px;background:#fff}.km-master-meta{min-width:125px;color:var(--text2)}.km-state{display:inline-block;padding:3px 8px;border-radius:999px;font-weight:700}.km-state.available{background:#e9f8ef;color:#16733d}.km-state.issued{background:#fff1d8;color:#9a5b00}.km-state.inactive{background:#eef0f4;color:#657080}.km-state.lost{background:#ffe7e7;color:#b62424}.km-thumb{width:42px;height:42px;object-fit:cover;border-radius:6px}.km-data-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding:12px;border:1px solid var(--border);border-radius:10px}.km-data-tools>div{margin-right:auto}.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:13px 18px;border-top:1px solid var(--border)}@media(max-width:700px){.key-batch-defaults,.km-settings-grid{grid-template-columns:1fr 1fr}.key-batch-table,.key-master-table{font-size:11px}}';document.head.appendChild(s);}
+  function mount(){migrateMaster();addStyles();mountBatch();const modal=document.getElementById('km-master-modal');if(modal){modal.remove();masterPhotoCtl=null;}mountSettings();const nav=document.querySelector('#nav-settings [data-i18n]');if(nav)nav.textContent=tx('鑰匙名單','Key List','បញ្ជីសោ');}
+
+  window.keyBatchAddRow=()=>{batchRows.push(newBatchRow());renderBatchRows();};
+  window.keyBatchRemove=id=>{batchRows=batchRows.filter(x=>x.rowId!==id);renderBatchRows();};
+  window.keyBatchSet=batchSet;window.keyBatchSaveAll=batchSave;window.keyShiftBatchDate=shiftBatchDate;
+  window.keyBatchClear=()=>{batchRows=[newBatchRow()];mountBatch();};
+  window.keyMasterRender=renderMasterList;window.keyMasterOpen=openMaster;window.keyMasterSave=saveMasterItem;window.keyMasterDelete=deleteMaster;window.keyMasterImport=importMaster;window.keyMasterExport=exportMaster;window.keyPrefsSave=savePrefs;
+  const oldEdit=window.editRecord||editRecord;window.editRecord=editRecord=function(id){const r=(records||[]).find(x=>String(x.id)===String(id));if(!r)return;batchRows=[newBatchRow(r)];mountBatch();showSection('record');};
+  const oldSet=window.setLang||setLang;window.setLang=setLang=function(l){oldSet(l);mount();renderMasterList();renderBatchRows();};
+  window.renderSettings=renderSettings=function(){renderMasterList();};
+  window.KEY_V31={readMaster:rawMaster,activeMaster:masters,cloudRead:cloudRead,cloudWrite:cloudWrite,mount:mount};
+  const start=()=>{const run=()=>mount();if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();};
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
 </script>
 
@@ -1689,6 +1859,8 @@ function buildKeyTelegram(opt){
         let dead=[];try{dead=JSON.parse(localStorage.getItem('vrt_key_tombstones')||'[]');}catch(e){}return active.concat(Array.isArray(dead)?dead:[]);
       }catch(e){ return []; } },
     write(list){ try{ const active=[],dead=[];(list||[]).forEach(r=>(r&&r._deleted?dead:active).push(r));records=active;window.records=records;localStorage.setItem('vrt_keys',JSON.stringify(active));localStorage.setItem('vrt_key_tombstones',JSON.stringify(dead));renderAll(); }catch(e){ console.warn('key cloud write failed',e); } },
+    cloudRead(){ return window.KEY_V31 ? window.KEY_V31.cloudRead() : []; },
+    cloudWrite(list){ if(window.KEY_V31) window.KEY_V31.cloudWrite(list); },
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();

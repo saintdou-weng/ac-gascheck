@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v2.6-water-key-asset
+   AC GASCheck — Shared Core  v2.8-key-batch-cleaner-map
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -91,7 +91,7 @@ const U = GC.util = {
    ═══════════════════════════════════════════════════════════ */
 const STORAGE = GC.storage = (() => {
   const DB_NAME = 'ac_gascheck_data_v1', STORE = 'kv';
-  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_asset_tombstones|vrt_asset_audit|vrt_th_z|vrt_th_r|vrt_keys|vrt_key_tombstones|vrt_waste_v3|vrt_ehs_cfg_v1|vrt_dorm_hub_v2|vrt_dorm_cfg_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_cfg_\d{4}_\d{2}|wdr_headcount_\d{4}_\d{2}|wdr_default_cfg|wdr_default_fac_price|wdr_default_sta_price|wdr_default_inspector|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
+  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_asset_tombstones|vrt_asset_audit|vrt_th_z|vrt_th_r|vrt_keys|vrt_key_master|vrt_key_tombstones|vrt_waste_v3|vrt_ehs_cfg_v1|vrt_dorm_hub_v2|vrt_dorm_cfg_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_cfg_\d{4}_\d{2}|wdr_headcount_\d{4}_\d{2}|wdr_default_cfg|wdr_default_fac_price|wdr_default_sta_price|wdr_default_inspector|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
   const storageProto = typeof Storage !== 'undefined' ? Storage.prototype : null;
   const native = storageProto ? {
     get: storageProto.getItem,
@@ -798,11 +798,19 @@ const SMART = GC.smartSync = (() => {
   }
   async function preparePhotos(records, tool, opt) {
     const field = opt.photoField || 'photos';
+    /* Cleaning 等批次記錄可能共用同一張照片。一次同步內以 dataURL 為鍵共用
+       上傳 Promise，避免同一張照片因多地點／多時段而重複寫入 Drive。 */
+    const uploaded = new Map();
+    function one(photo, recId, idx) {
+      if (typeof photo !== 'string' || photo.indexOf('data:image/') !== 0) return Promise.resolve(photo);
+      if (!uploaded.has(photo)) uploaded.set(photo, CLOUD.uploadPhoto(photo, tool, recId, idx));
+      return uploaded.get(photo);
+    }
     return Promise.all((records || []).map(async function (row) {
       const photos = U.asArray(row && row[field]);
       if (!photos.some(p => typeof p === 'string' && p.indexOf('data:image/') === 0)) return row;
-      const copy = Object.assign({}, row);
-      copy[field] = await CLOUD.uploadPhotos(photos, tool, row && row[opt.idKey || 'id']);
+      const copy = Object.assign({}, row), recId = row && row[opt.idKey || 'id'];
+      copy[field] = await Promise.all(photos.map(function (photo, idx) { return one(photo, recId, idx); }));
       return copy;
     }));
   }
@@ -1557,11 +1565,21 @@ GC.mountCloudButtons = function (mountEl, opt) {
     if (typeof opt.onState === 'function') opt.onState(kind, text);
   }
   const pendingKey = 'ac_gc_auto_sync_v1_' + String(opt.tool || 'tool');
-  let running = null, retryTimer = 0;
-  function markPending(reason) {
-    try { localStorage.setItem(pendingKey, JSON.stringify({ts:U.now(), reason:reason || 'auto'})); } catch (e) {}
+  let running = null, retryTimer = 0, queued = false, retryCount = 0;
+  function readPending() {
+    try { return JSON.parse(localStorage.getItem(pendingKey) || 'null'); } catch (e) { return null; }
   }
-  function clearPending() { try { localStorage.removeItem(pendingKey); } catch (e) {} }
+  function markPending(reason) {
+    const marker = { ts:U.now(), reason:reason || 'auto', token:Date.now().toString(36) + Math.random().toString(36).slice(2, 8) };
+    try { localStorage.setItem(pendingKey, JSON.stringify(marker)); } catch (e) {}
+    return marker;
+  }
+  function clearPending(token) {
+    try {
+      const current = readPending();
+      if (!token || !current || current.token === token) localStorage.removeItem(pendingKey);
+    } catch (e) {}
+  }
   function hasPending() { try { return !!localStorage.getItem(pendingKey); } catch (e) { return false; } }
 
   async function runUpload(runOpt) {
@@ -1569,6 +1587,8 @@ GC.mountCloudButtons = function (mountEl, opt) {
     if (running) return running;
     busy(true);
     state('busy', runOpt.auto ? I18.t('gc.autoSyncing') : I18.t('gc.sync'));
+    const startMarker = readPending();
+    queued = false;
     running = (async function () {
       try {
         const local = opt.getList ? opt.getList() : [];
@@ -1576,10 +1596,31 @@ GC.mountCloudButtons = function (mountEl, opt) {
           idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
           extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote
         });
-        const res = result && result.res, list = result && result.list || local;
+        const res = result && result.res, uploadedList = result && result.list || local;
         if (res && res.ok === false) throw new Error(res.error || I18.t('gc.upFail'));
+        /* 上傳期間使用者可能又新增／修改／刪除。不可用開始時的快照寫回，
+           否則第一輪完成會吃掉後來的操作。只把照片 Drive 連結等轉換套回
+           未變動列；新變更保留給 queued_change 下一輪。 */
+        const latest = opt.getList ? (opt.getList() || []) : uploadedList;
+        const keyOf = row => SMART.semanticKey(row, {idKey:opt.idKey,dateField:opt.dateField,tsKey:opt.tsKey});
+        const startMap = new Map((local || []).map(row => [keyOf(row), row]));
+        const latestMap = new Map((latest || []).map(row => [keyOf(row), row]));
+        const finalMap = new Map(), order = [];
+        (uploadedList || []).forEach(function (row) {
+          const key = keyOf(row);
+          if (startMap.has(key) && !latestMap.has(key)) return; // 同步途中已刪除
+          order.push(key); finalMap.set(key, row);
+        });
+        (latest || []).forEach(function (row) {
+          const key = keyOf(row), before = startMap.get(key);
+          if (!finalMap.has(key)) { order.push(key); finalMap.set(key, row); return; }
+          if (!before || SMART.stable(row) !== SMART.stable(before)) finalMap.set(key, row);
+        });
+        const seen = new Set();
+        const list = order.filter(function (key) { if (seen.has(key)) return false; seen.add(key); return true; }).map(key => finalMap.get(key));
         if (opt.setList) opt.setList(list);
-        clearPending();
+        clearPending(startMarker && startMarker.token);
+        retryCount = 0;
         const uploaded = Number(result && result.uploaded) || 0;
         const label = result && result.skipped ? I18.t('gc.cloudCurrent') : I18.t('gc.uploaded') + ' · ' + uploaded + ' ' + I18.t('gc.changedRows');
         state('ok', label);
@@ -1588,12 +1629,25 @@ GC.mountCloudButtons = function (mountEl, opt) {
         return Object.assign({ok:true}, result || {});
       } catch (e) {
         markPending(runOpt.reason || 'retry');
+        retryCount += 1;
         const msg = runOpt.auto ? I18.t('gc.cloudPending') : I18.t('gc.upFail') + ': ' + e.message;
         state(runOpt.auto ? 'warning' : 'error', msg);
         if (!runOpt.silent) GC.toast('❌ ' + msg, 'error');
+        if (runOpt.auto && global.navigator && global.navigator.onLine !== false) {
+          clearTimeout(retryTimer);
+          retryTimer = setTimeout(function () {
+            if (hasPending()) runUpload({silent:true,auto:true,reason:'retry'});
+          }, Math.min(60000, 5000 * Math.pow(2, Math.min(retryCount - 1, 3))));
+        }
         return {ok:false,error:e};
       } finally {
+        const rerun = queued;
         busy(false); running = null;
+        if (rerun) {
+          queued = false;
+          clearTimeout(retryTimer);
+          retryTimer = setTimeout(function () { runUpload({silent:true,auto:true,reason:'queued_change'}); }, 30);
+        }
       }
     })();
     return running;
@@ -1635,15 +1689,30 @@ GC.mountCloudButtons = function (mountEl, opt) {
   function scheduleAuto(reason) {
     markPending(reason || 'telegram');
     state('busy', I18.t('gc.autoSyncing'));
+    if (running) { queued = true; return running; }
     clearTimeout(retryTimer);
-    retryTimer = setTimeout(function () { runUpload({silent:true,auto:true,reason:reason || 'telegram'}); }, 20);
+    retryTimer = setTimeout(function () { runUpload({silent:true,auto:true,reason:reason || 'telegram'}); }, 80);
+    return null;
   }
   up.onclick = function () { runUpload({silent:false,auto:false,reason:'manual'}); };
   down.onclick = function () { runDownload({silent:false}); };
   global.addEventListener('online', function () { if (hasPending()) scheduleAuto('online'); });
   if (hasPending()) setTimeout(function () { scheduleAuto('resume'); }, 350);
-  return { upload:runUpload, download:runDownload, scheduleAuto:scheduleAuto, hasPending:hasPending };
+  return { upload:runUpload, download:runDownload, scheduleAuto:scheduleAuto, hasPending:hasPending, tool:opt.tool };
 };
+
+/* 模組內舊按鈕／儲存流程只排入背景同步，不再各自整包等待上傳。
+   共用工具列仍保留可等待結果的手動 upload/download。 */
+GC.sync = (() => {
+  const controls = new Map();
+  return {
+    register(tool, control) { if (tool && control) controls.set(String(tool), control); return control; },
+    schedule(tool, reason) { const c = controls.get(String(tool || '')); return c ? c.scheduleAuto(reason || 'record_change') : null; },
+    upload(tool, opt) { const c = controls.get(String(tool || '')); return c ? c.upload(opt || {}) : Promise.resolve({ok:false,unmounted:true}); },
+    download(tool, opt) { const c = controls.get(String(tool || '')); return c ? c.download(opt || {}) : Promise.resolve({ok:false,unmounted:true}); },
+    hasPending(tool) { const c = controls.get(String(tool || '')); return !!(c && c.hasPending()); }
+  };
+})();
 
 /* ═══════════════════════════════════════════════════════════
    10.5 TELEGRAM — 直接摘要／審查／Approval
@@ -1815,7 +1884,8 @@ GC.attach = function (cfg) {
   const hide = function (el) { if (el && !el.closest('.gc-head-tools')) el.classList.add('gc-legacy-hidden'); };
   const hideBlock = function (el) {
     if (!el) return;
-    const block = el.closest('.card, .sec, .section, .panel, .pnl, .tab-content') || el.parentElement;
+    /* 只隱藏舊連線設定的小區塊；不可因一個 Token 欄位把整張 Settings 卡片藏掉。 */
+    const block = el.closest('.tg-config, .gas-config, .cloud-config, .connection-config, .form-group') || el.parentElement;
     hide(block || el);
   };
   if (C.hideLegacyTools !== false) {
@@ -1832,6 +1902,11 @@ GC.attach = function (cfg) {
     ['#cfg-gas', '#cfg-token', '#cfg-chat', '#tg-tok', '#tg-chat', '#tg-token', '#tg-period', '#gas-url', '#i-ie']
       .forEach(function (sel) { document.querySelectorAll(sel).forEach(hideBlock); });
     document.querySelectorAll('[onclick*="openImport"], [onclick*="uploadCloud"], [onclick*="downloadCloud"], [onclick*="cloud.push"], [onclick*="cloud.pull"], [onclick*="syncUp"], [onclick*="syncDown"], [onclick*="saveToGAS"], [onclick*="loadFromGAS"]')
+      .forEach(hide);
+    /* 舊的整批摘要／分析摘要入口與共用 Telegram 視窗功能重複，收起它們。
+       Cleaning、Dormitory 等 rec.sendTelegramRecord()/insp.sendTg() 單筆或照片
+       發送不在此列，仍保留在業務記錄旁。 */
+    document.querySelectorAll('[onclick="sendTG()"], [onclick="sendToTelegram()"], [onclick="sendAnalyticsTelegram()"], [onclick="previewTelegramMessage()"]')
       .forEach(hide);
   }
 
@@ -1876,8 +1951,8 @@ GC.attach = function (cfg) {
   const cloudOpt = {
     tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, extra: cloudExtra,
     toCloud: C.toCloud, fromCloud: C.fromCloud,
-    getList: function () { return C.read() || []; },
-    setList: function (list) { C.write(list); },
+    getList: function () { return (C.cloudRead || C.read)() || []; },
+    setList: function (list) { (C.cloudWrite || C.write)(list); },
     onState: setCloudState,
     onRemote: function (d) { if (C.onRemote) C.onRemote(d || {}); },
     onDone: function () {
@@ -1887,7 +1962,7 @@ GC.attach = function (cfg) {
       if (state) state.classList.add('ok');
     }
   };
-  const cloudControl = GC.mountCloudButtons(tools.querySelector('.gc-head-cloud'), cloudOpt);
+  const cloudControl = GC.sync.register(C.tool, GC.mountCloudButtons(tools.querySelector('.gc-head-cloud'), cloudOpt));
 
   function exportLocalData() {
     const list = C.read() || [];
@@ -2211,6 +2286,11 @@ GC.attach = function (cfg) {
         packet.text, packet.photos, packet.buttons,
         groupSelect.value || DEFAULT_CHAT_ID, C.tool, reportActivityMeta()
       );
+      /* 先記錄實際發送人／審查／核可狀態，再排入自動上傳；否則雲端可能
+         只收到 Telegram 發送前的舊資料。 */
+      if (typeof C.onTelegramSent === 'function') {
+        await C.onTelegramSent({ period:period, mode:mode, ref:periodRef, scope:scope, slot:slot, lang:lang, packet:packet });
+      }
       sendState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
       if (cloudControl && (mode === 'summary' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
@@ -2480,7 +2560,7 @@ GC.attachLegacy = function (cfg) {
     onDone: () => { refresh(); if (C.onSync) C.onSync(); }
   };
   // 雲端按鈕固定放在頁面頂部快捷列，避免跑到頁面底部或被浮動圖示遮住。
-  const cloudControl = GC.mountCloudButtons('#gcTopCloud', cloudOpt);
+  const cloudControl = GC.sync.register(C.tool, GC.mountCloudButtons('#gcTopCloud', cloudOpt));
 
   const sendTelegram = bar.querySelector('[data-gc-send]');
   const telegramState = bar.querySelector('#gcTelegramState');
@@ -2681,7 +2761,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '2.6-water-key-asset';
+GC.version = '2.8-key-batch-cleaner-map';
 global.GC = GC;
 global.GASCheckCore = GC;
 

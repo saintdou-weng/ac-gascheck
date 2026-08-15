@@ -142,7 +142,7 @@ select.bi{cursor:pointer}
 .rp-ok{border:0;background:#1A3E78;color:#fff;padding:8px 20px;border-radius:7px;
   font:600 13px/1 inherit;cursor:pointer}
 </style>
-<script src="./gascheck-core.js?v=28-smart-sync"></script>
+<script src="./gascheck-core.js?v=31-key-batch-cleaner-map"></script>
 </head>
 <body>
 <div class="topbar">
@@ -1136,8 +1136,11 @@ async function submitModA(){
   const editIds=new Set(valid.map(function(r){return String(r._editId||'');}).filter(Boolean));
   ld.internal=(ld.internal||[]).filter(function(r){return !editIds.has(String(r.id));}).concat(newRecs);
   saveLocal(ld);
-  try{
-    const res=typeof GC!=='undefined'&&GC.cloud?await GC.cloud.post({action:'push',tool:'ehs',records:newRecs}):await gasPost({action:'push',tool:'ehs',records:newRecs});
+  if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){
+    GC.sync.schedule('ehs','recycle_save');
+    showToast(ehsText('✅ 已儲存 '+valid.length+' 筆；雲端背景同步','✅ Saved '+valid.length+' records; cloud sync runs in background','✅ បានរក្សាទុក '+valid.length+' កំណត់ត្រា; កំពុងសមកាលកម្មពពក'));
+  }else try{
+    const res=await gasPost({action:'push',tool:'ehs',records:newRecs});
     if(!res||res.ok===false)throw new Error(res&&res.error||'cloud push failed');
     showToast('✅ 已提交 '+valid.length+' 筆至雲端');
   }catch(e){showToast('⚠️ 本機已儲存 ('+valid.length+' 筆)，雲端離線');}
@@ -1217,8 +1220,11 @@ async function submitModB(){
   const editIds=new Set(valid.map(function(r){return String(r._editId||'');}).filter(Boolean));
   ld.gate=(ld.gate||[]).filter(function(r){return !editIds.has(String(r.id));}).concat(newRecs);
   saveLocal(ld);
-  try{
-    const res=typeof GC!=='undefined'&&GC.cloud?await GC.cloud.post({action:'push',tool:'ehs',records:newRecs}):await gasPost({action:'push',tool:'ehs',records:newRecs});
+  if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){
+    GC.sync.schedule('ehs','waste_save');
+    showToast(ehsText('✅ 已儲存 '+valid.length+' 筆；雲端背景同步','✅ Saved '+valid.length+' records; cloud sync runs in background','✅ បានរក្សាទុក '+valid.length+' កំណត់ត្រា; កំពុងសមកាលកម្មពពក'));
+  }else try{
+    const res=await gasPost({action:'push',tool:'ehs',records:newRecs});
     if(!res||res.ok===false)throw new Error(res&&res.error||'cloud push failed');
     showToast('✅ 已提交 '+valid.length+' 筆至雲端');
   }catch(e){showToast('⚠️ 本機已儲存 ('+valid.length+' 筆)，雲端離線');}
@@ -1749,9 +1755,10 @@ async function submitBatchImport(){
     }
   });
   saveLocal(ld);
-  try{
-    // Core GAS 統一使用 push/save；舊版 batchImport 沒有對應 doPost case，
-    // 會造成「本機有資料但雲端失敗」。Recycle/Waste 混合匯入也直接以 EHS 合併上傳。
+  if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){
+    GC.sync.schedule('ehs','smart_import');
+    showToast(ehsText('✅ 已匯入 '+pushed.length+' 筆；雲端背景同步','✅ Imported '+pushed.length+' records; cloud sync runs in background','✅ បាននាំចូល '+pushed.length+' កំណត់ត្រា; កំពុងសមកាលកម្មពពក'));
+  }else try{
     const res=await fetchGAS({action:'push',tool:'ehs',records:pushed});
     showToast(res&&res.ok?'✅ 已匯入 '+pushed.length+' 筆至雲端':'⚠️ 本機已儲存，雲端失敗');
   }catch(e){showToast('⚠️ 離線模式，本機已儲存 '+pushed.length+' 筆');}
@@ -1901,6 +1908,7 @@ var cloud = (() => {
   const push = async (type) => {
     var url = cfg.get().gasUrl;
     if(!url) { showToast('請先設定 GAS URL'); return; }
+    if(typeof GC!=='undefined'&&GC.sync){ await GC.sync.upload('ehs',{silent:false}); return; }
     showToast('☁ 上傳中…');
     var db = loadLocal();
     var data = type === 'gate' ? db.gate : type === 'monthly' ? db.monthly : db.internal;
@@ -1915,6 +1923,7 @@ var cloud = (() => {
   const pull = async (type) => {
     var url = cfg.get().gasUrl;
     if(!url) { showToast('請先設定 GAS URL'); return; }
+    if(typeof GC!=='undefined'&&GC.sync){ await GC.sync.download('ehs',{silent:false}); refreshEhsAll(); return; }
     showToast('⬇ 下載中…');
     try {
       var r = await gasGet({action:'pull', tool:'ehs'});

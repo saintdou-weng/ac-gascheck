@@ -200,7 +200,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=28-smart-sync"></script>
+<script src="./gascheck-core.js?v=31-key-batch-cleaner-map"></script>
 </head>
 <body>
 
@@ -1020,6 +1020,7 @@ var cloud = (() => {
   const push = async () => {
     const url=cfg.get().gasUrl;
     if(!url){toast('請先設定 GAS URL');return;}
+    if(typeof GC!=='undefined'&&GC.sync){return GC.sync.upload('dormitory',{silent:false});}
     toast('☁ 上傳中…');
     const db=state.db();
     try {
@@ -1031,6 +1032,7 @@ var cloud = (() => {
   const pull = async () => {
     const url=cfg.get().gasUrl;
     if(!url){toast('請先設定 GAS URL');return;}
+    if(typeof GC!=='undefined'&&GC.sync){return GC.sync.download('dormitory',{silent:false});}
     toast('⬇ 下載中…');
     try {
       const r=await gasGet({action:'pull',tool:'dormitory'});

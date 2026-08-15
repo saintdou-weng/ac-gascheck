@@ -287,7 +287,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
 }
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=28-smart-sync"></script>
+<script src="./gascheck-core.js?v=31-key-batch-cleaner-map"></script>
 </head>
 <body>
 
@@ -768,13 +768,19 @@ async function loadFromGAS(){
 async function saveToGAS(){
   let d=null;
   const list=assetCloudRecords();
+  saveLocal();
   try {
+    /* 一般新增／修改先在本機完成，交由共用工具列背景增量同步；不再讓
+       每一次操作都停在畫面等待整包上傳。手動上傳仍可由頂部 ☁↑ 執行。 */
+    if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){
+      GC.sync.schedule('asset','record_change');
+      return {ok:true,queued:true};
+    }
     if(typeof GC!=='undefined'&&GC.cloud){
       const sent=await GC.cloud.upload('asset',list,{idKey:'id',tsKey:'updatedAt',dateField:'purchaseDate',photoField:'photos'});
       d=sent&&sent.res?sent.res:{ok:true};
     }else d=await standardGAS({action:'push',tool:'asset',records:list});
   } catch(e) { console.warn('smart asset push failed',e); }
-  saveLocal();
   return d;
 }
 
@@ -958,7 +964,31 @@ function doLogin(){
   currentUser=u;
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.remove('hidden');
-  updateUHdr();loadFromGAS();
+  updateUHdr();loadAssetCachedThenRefresh();
+}
+
+/* 登入後先立即顯示 IndexedDB 快取，不讓使用者等待網路。
+   共用同步控制器掛載後再於背景比對 manifest／月份桶；若核心尚未完成掛載，
+   只短暫重試控制器，不會退回舊式完整下載。 */
+function loadAssetCachedThenRefresh(){
+  loadLocal();
+  render();
+  setSdot('ok');
+  let attempts=0;
+  const refresh=function(){
+    if(!currentUser)return;
+    if(!(window.GC&&GC.sync&&GC.sync.download)){
+      if(attempts++<12)setTimeout(refresh,150);
+      return;
+    }
+    /* 有未送出的本機異動時，續傳流程本身會先安全合併雲端；不要再平行
+       啟動一次下載，避免多做一趟 manifest 請求。 */
+    if(GC.sync.hasPending&&GC.sync.hasPending('asset'))return;
+    GC.sync.download('asset',{silent:true}).then(function(out){
+      if(out&&out.unmounted&&attempts++<12)setTimeout(refresh,150);
+    }).catch(function(e){console.warn('asset background refresh failed',e);});
+  };
+  setTimeout(refresh,120);
 }
 function doLogout(){
   currentUser=null;
@@ -2166,7 +2196,7 @@ rebuildSelects();setLang(lang);buildLoginList();
   window.buildAssetTelegram=function(opt){
     opt=opt||{};const mode=opt.mode||'summary',langOpt=opt.lang||'bi';if(mode==='review'&&(!currentUser||currentUser.name!=='Phea'||currentUser.role!=='verifier'))throw new Error('Phea review only');if(mode==='approval'&&(!currentUser||currentUser.name!=='Paul'||currentUser.role!=='approver'))throw new Error('Paul approval only');const all=(opt.cfg.read()||[]).filter(r=>!r._deleted),rows=GC.telegram.filter(all,opt.cfg,opt.period,opt.ref,opt.scope,opt.slot),qty=rows.reduce((a,r)=>a+(+r.qty||1),0),value=rows.reduce((a,r)=>a+(+r.qty||1)*(+r.unitPrice||0),0),recorders=[...new Set(rows.map(r=>r.recordedBy).filter(Boolean))],sender=currentUser?currentUser.name:'—',p={day:['日','Day','ថ្ងៃ'],week:['週','Week','សប្ដាហ៍'],month:['月','Month','ខែ'],year:['年','Year','ឆ្នាំ'],all:['全部','All','ទាំងអស់']}[opt.period]||['期間','Period','រយៈពេល'],m={summary:['摘要','Summary','សង្ខេប'],review:['審查','Review','ពិនិត្យ'],approval:['核可','Approval','អនុម័ត']}[mode],tr=(a)=>GC.telegram.text(a[0],a[1],a[2],langOpt),ph=[];rows.forEach(r=>(GC.util.asArray(r.photos)||[]).forEach(x=>{if(x&&!ph.includes(x)&&ph.length<5)ph.push(x);}));const lines=['📦 <b>'+tr(['VRT 資產管理','VRT Asset Management','VRT គ្រប់គ្រងទ្រព្យ'])+'</b>','📅 '+tr(p)+' · 🧾 '+tr(m),'━━━━━━━━━━━━━━━━','📊 '+tr(['資產','Assets','ទ្រព្យ'])+': <b>'+rows.length+'</b> · '+tr(['數量','Qty','បរិមាណ'])+': '+qty,'💰 '+tr(['總值','Total value','តម្លៃសរុប'])+': <b>$'+value.toLocaleString(undefined,{maximumFractionDigits:2})+'</b>','📷 '+ph.length,'🧑‍💻 '+tr(['記錄人','Recorded by','កត់ត្រាដោយ'])+': '+(recorders.join(', ')||'—'),'✈️ '+tr(['發送人','Sent by','ផ្ញើដោយ'])+': <b>'+sender+'</b>'];if(mode==='review')lines.push('🔍 Phea Review');if(mode==='approval')lines.push('✅ Paul Approval');lines.push('━━━━━━━━━━━━━━━━','⏰ '+_localTS());return{text:lines.join('\n'),photos:ph};
   };
-  window.assetTelegramSent=async function(meta){const actor=currentUser?currentUser.name:'—',all=assets.filter(r=>!r._deleted),rows=GC.telegram.filter(all,{dateField:'purchaseDate',scopeField:'zone'},meta.period,meta.ref,meta.scope,meta.slot),now=_localTS();const ids=new Set(rows.map(r=>r.code));assets=assets.map(a=>{if(!ids.has(a.code))return a;const h={type:'telegram_'+meta.mode,date:now,actor,desc:(meta.mode==='review'?'Phea review':meta.mode==='approval'?'Paul approval':'Telegram summary')+' sent by '+actor};return Object.assign({},a,{lastSentBy:actor,lastSentAt:now,lastTelegramMode:meta.mode,reviewedBy:meta.mode==='review'?'Phea':a.reviewedBy,approvedBy:meta.mode==='approval'?'Paul':a.approvedBy,history:[...(a.history||[]),h],updatedAt:now});});saveLocal();await saveToGAS();};
+  window.assetTelegramSent=async function(meta){const actor=currentUser?currentUser.name:'—',all=assets.filter(r=>!r._deleted),rows=GC.telegram.filter(all,{dateField:'purchaseDate',scopeField:'zone'},meta.period,meta.ref,meta.scope,meta.slot),now=_localTS();const ids=new Set(rows.map(r=>r.code));assets=assets.map(a=>{if(!ids.has(a.code))return a;const h={type:'telegram_'+meta.mode,date:now,actor,desc:(meta.mode==='review'?'Phea review':meta.mode==='approval'?'Paul approval':'Telegram summary')+' sent by '+actor};return Object.assign({},a,{lastSentBy:actor,lastSentAt:now,lastTelegramMode:meta.mode,reviewedBy:meta.mode==='review'?'Phea':a.reviewedBy,approvedBy:meta.mode==='approval'?'Paul':a.approvedBy,history:[...(a.history||[]),h],updatedAt:now});});saveLocal();};
 
   function ensureAssetUi(){
     const foot=document.querySelector('#m-print .mfoot');if(foot&&!document.getElementById('btn-a4-print')){const b=document.createElement('button');b.id='btn-a4-print';b.className='btn-pri';b.innerHTML='🖨️ A4 Print';b.onclick=printLabelsA4;foot.insertBefore(b,foot.firstChild);}
