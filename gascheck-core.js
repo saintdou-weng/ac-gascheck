@@ -268,6 +268,34 @@ GC.attendance = (() => {
     Object.keys(byDay).forEach(d => { daily[d] = byDay[d].size; });
     return { daily, personDays:Object.values(daily).reduce((a,b)=>a+(+b||0),0), days:Object.keys(daily).length };
   }
+  /* AC HRA Attendance stores one snapshot array in
+     AC_HRA_Attendance/snapshot/database.  Every date contains department rows
+     plus one `isGrand` row; counting rows or dates therefore produces values
+     such as 1 or 31 instead of the actual 400+ attendance. */
+  function attendanceSnapshot(rows, start, end) {
+    const daily = {};
+    function visit(v, depth) {
+      if (depth > 10 || v == null) return;
+      if (Array.isArray(v)) { v.forEach(x => visit(x, depth + 1)); return; }
+      if (typeof v !== 'object') return;
+      const d = dateOf(v);
+      const label = [v.dept,v.department,v.sect,v.section,v.line,v.label,v.name].join(' ');
+      const explicit = +(v.headcount || v.attendanceCount || v.totalAttendance || 0);
+      const isGrand = v.isGrand === true || /(?:總人數|grand\s*total|total\s*headcount|សរុប)/i.test(label);
+      if (d && d >= start && d <= end && (isGrand || explicit >= 20)) {
+        const attendance = +(v.att || v.actualAttendance || v.present || 0);
+        const workforce = (+v.m || 0) + (+v.f || 0);
+        const count = Math.round(attendance >= 20 ? attendance : (explicit >= 20 ? explicit : workforce));
+        if (count >= 20 && count <= 20000) daily[d] = Math.max(daily[d] || 0, count);
+      }
+      Object.keys(v).forEach(k => visit(v[k], depth + 1));
+    }
+    visit(rows, 0);
+    const personDays = Object.values(daily).reduce((a,b) => a + (+b || 0), 0);
+    const days = Object.keys(daily).length;
+    const averageDaily = days ? Math.round(personDays / days) : 0;
+    return {daily,personDays,days,averageDaily,headcount:averageDaily,available:averageDaily >= 20};
+  }
   function periodOf(row) {
     const raw = row && (row.periodKey || row.period || row.key || row.snapshotDate || row.label || row.date);
     const m = String(raw || '').match(/(20\d{2})[-\/.](0?[1-9]|1[0-2])/);
@@ -348,12 +376,41 @@ GC.attendance = (() => {
       } catch (e) { resolve([]); }
     });
   }
+  function readStoreKey(db, storeName, key) {
+    return new Promise(resolve => {
+      try {
+        const tx = db.transaction(storeName, 'readonly');
+        const req = tx.objectStore(storeName).get(key);
+        req.onsuccess = () => resolve(req.result == null ? null : req.result);
+        req.onerror = () => resolve(null);
+      } catch (e) { resolve(null); }
+    });
+  }
+  async function knownAttendanceSnapshot() {
+    if (!global.indexedDB) return [];
+    const db = await new Promise(resolve => {
+      try {
+        const req = global.indexedDB.open('AC_HRA_Attendance');
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => resolve(null);
+        req.onblocked = () => resolve(null);
+      } catch (e) { resolve(null); }
+    });
+    if (!db) return [];
+    let value = null;
+    if (Array.from(db.objectStoreNames || []).includes('snapshot')) value = await readStoreKey(db, 'snapshot', 'database');
+    if ((!Array.isArray(value) || !value.length) && Array.from(db.objectStoreNames || []).includes('records')) value = await readStore(db, 'records');
+    try { db.close(); } catch (e) {}
+    return Array.isArray(value) ? value : [];
+  }
   async function indexedValues() {
-    if (!global.indexedDB || typeof global.indexedDB.databases !== 'function') return [];
+    if (!global.indexedDB) return [];
+    const known = await knownAttendanceSnapshot();
+    if (typeof global.indexedDB.databases !== 'function') return known.length ? [known] : [];
     let infos = [];
     try { infos = await global.indexedDB.databases(); } catch (e) { return []; }
     const names = (infos || []).map(x => x && x.name).filter(n => n && n !== 'ac_gascheck_data_v1' && /(attendance|hra|staff|employee|pay)/i.test(n));
-    const out = [];
+    const out = known.length ? [known] : [];
     for (const name of names) {
       const db = await new Promise(resolve => {
         try { const req = global.indexedDB.open(name); req.onsuccess=()=>resolve(req.result); req.onerror=()=>resolve(null); } catch(e) { resolve(null); }
@@ -361,6 +418,7 @@ GC.attendance = (() => {
       if (!db) continue;
       for (const storeName of Array.from(db.objectStoreNames || [])) {
         if (!/(attendance|roster|staff|employee|record|data|period|snapshot|batch|payroll)/i.test(storeName)) continue;
+        if (name === 'AC_HRA_Attendance' && storeName === 'snapshot' && known.length) continue;
         out.push(await readStore(db, storeName));
       }
       try { db.close(); } catch (e) {}
@@ -393,33 +451,23 @@ GC.attendance = (() => {
   async function headcount(start, end) {
     start = start || U.ymd(); end = end || start;
     const local = jsonValuesFromLocalStorage().concat(await indexedValues());
-    let summary = summarize(local, start, end);
-    let roster = workforce(local, start, end);
-    const localAverage = summary.days ? summary.personDays / summary.days : 0;
-    if (summary.personDays && (localAverage >= 20 || !roster.headcount)) {
-      return Object.assign({source:'browser',averageDaily:Math.round(localAverage),headcount:Math.round(localAverage)}, summary);
-    }
-    if (roster.headcount) {
-      const daily = repeatedDaily(roster.headcount, start, end);
-      return {source:'hra-workforce',sourcePeriod:roster.period,daily,headcount:roster.headcount,averageDaily:roster.headcount,personDays:Object.values(daily).reduce((a,b)=>a+b,0),days:Object.keys(daily).length};
-    }
+    const exactLocal = attendanceSnapshot(local, start, end);
+    if (exactLocal.available) return Object.assign({source:'hra-attendance'}, exactLocal);
     const remote = await remoteValues(start, end);
     if (remote[0] && remote[0].__daily) {
       const daily = remote[0].__daily, selected = {};
       Object.keys(daily).forEach(d => { if (d >= start && d <= end) selected[d] = +daily[d] || 0; });
       const personDays=Object.values(selected).reduce((a,b)=>a+b,0),days=Object.keys(selected).length,averageDaily=days?Math.round(personDays/days):0;
-      return {source:'attendance-gas',daily:selected,headcount:averageDaily,averageDaily,personDays,days};
+      return {source:'attendance-gas',daily:selected,headcount:averageDaily,averageDaily,personDays,days,available:averageDaily >= 20};
     }
-    summary = summarize(remote, start, end);
-    roster = workforce(remote, start, end);
-    if (!summary.personDays && roster.headcount) {
-      const daily = repeatedDaily(roster.headcount, start, end);
-      return {source:'attendance-gas-workforce',sourcePeriod:roster.period,daily,headcount:roster.headcount,averageDaily:roster.headcount,personDays:Object.values(daily).reduce((a,b)=>a+b,0),days:Object.keys(daily).length};
-    }
-    const averageDaily=summary.days?Math.round(summary.personDays/summary.days):0;
-    return Object.assign({source:summary.personDays?'attendance-gas':'none',headcount:averageDaily,averageDaily}, summary);
+    const exactRemote = attendanceSnapshot(remote, start, end);
+    if (exactRemote.available) return Object.assign({source:'attendance-gas-snapshot'}, exactRemote);
+    /* Do not substitute payroll/workforce snapshots or count calendar rows.
+       Water consumption must use the Attendance module's dated grand rows;
+       if that source is unavailable the UI hides attendance and L/person. */
+    return {source:'none',daily:{},headcount:0,averageDaily:0,personDays:0,days:0,available:false};
   }
-  return { headcount, summarize, workforce };
+  return { headcount, summarize, workforce, attendanceSnapshot };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -1010,6 +1058,27 @@ const SMART = GC.smartSync = (() => {
 const PHOTO = GC.photo = {
   MAX_W: 1024,
   QUALITY: 0.72,
+  _cells: new Map(),
+
+  value(photo) {
+    if (photo && typeof photo === 'object') return String(photo.url || photo.src || photo.dataUrl || photo.link || '');
+    return typeof photo === 'string' ? photo : '';
+  },
+
+  /** Google Drive view links often cannot be hot-linked reliably on mobile.
+      Render through Drive's thumbnail endpoint while retaining the original
+      stored URL for cloud sync and Telegram. */
+  src(photo) {
+    const raw = PHOTO.value(photo).trim();
+    if (!raw) return '';
+    let m = raw.match(/[?&]id=([A-Za-z0-9_-]+)/);
+    if (!m) m = raw.match(/\/file\/d\/([A-Za-z0-9_-]+)/);
+    return m ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(m[1]) + '&sz=w1600' : raw;
+  },
+
+  list(photos) {
+    return U.asArray(photos).map(PHOTO.value).filter(Boolean);
+  },
 
   /** File → 壓縮後 base64 dataURL */
   compress(file, maxW, quality) {
@@ -1045,7 +1114,7 @@ const PHOTO = GC.photo = {
     const el = typeof mountEl === 'string' ? document.querySelector(mountEl) : mountEl;
     if (!el) return null;
     opt = opt || {};
-    let photos = U.asArray(opt.photos).slice();
+    let photos = PHOTO.list(opt.photos).slice();
     const max = opt.max || 4;
     const id = U.uid('ph');
 
@@ -1055,7 +1124,7 @@ const PHOTO = GC.photo = {
            <div class="gc-photo-list">
              ${photos.map((p, i) => `
                <div class="gc-photo-item">
-                 <img src="${p}" alt="photo ${i + 1}" data-idx="${i}" class="gc-photo-thumb">
+                 <img src="${U.escapeHtml(PHOTO.src(p))}" alt="photo ${i + 1}" data-idx="${i}" class="gc-photo-thumb">
                  <button type="button" class="gc-photo-del" data-del="${i}" title="${U.escapeHtml(I18.t('gc.removePhoto'))}">✕</button>
                </div>`).join('')}
              ${photos.length < max ? `
@@ -1093,7 +1162,7 @@ const PHOTO = GC.photo = {
     global.addEventListener('gc:langchange', rerenderOnLanguage);
     return {
       get: () => photos.slice(),
-      set: arr => { photos = (arr || []).slice(); render(); },
+      set: arr => { photos = PHOTO.list(arr).slice(); render(); },
       clear: () => { photos = []; render(); },
       destroy: () => { global.removeEventListener('gc:langchange', rerenderOnLanguage); }
     };
@@ -1101,6 +1170,8 @@ const PHOTO = GC.photo = {
 
   /** 全螢幕看圖 */
   lightbox(photos, idx) {
+    photos = PHOTO.list(photos);
+    if (!photos.length) return;
     idx = idx || 0;
     const bg = document.createElement('div');
     bg.className = 'gc-lightbox';
@@ -1108,7 +1179,7 @@ const PHOTO = GC.photo = {
       bg.innerHTML =
         `<button class="gc-lb-close" type="button">✕</button>
          ${photos.length > 1 ? '<button class="gc-lb-prev" type="button">‹</button>' : ''}
-         <img src="${photos[idx]}" alt="photo">
+         <img src="${U.escapeHtml(PHOTO.src(photos[idx]))}" alt="photo">
          ${photos.length > 1 ? '<button class="gc-lb-next" type="button">›</button>' : ''}
          <div class="gc-lb-count">${idx + 1} / ${photos.length}</div>`;
       bg.querySelector('.gc-lb-close').onclick = () => bg.remove();
@@ -1123,16 +1194,20 @@ const PHOTO = GC.photo = {
 
   /** 表格用小縮圖 */
   cell(photos) {
-    photos = U.asArray(photos);
+    photos = PHOTO.list(photos);
     if (!photos || !photos.length) return `<span class="gc-dim">—</span>`;
-    return `<span class="gc-photo-cell" data-photos='${U.escapeHtml(JSON.stringify(photos))}'>📷 ${photos.length}</span>`;
+    const key = U.uid('phc');
+    PHOTO._cells.set(key, photos.slice());
+    if (PHOTO._cells.size > 1200) Array.from(PHOTO._cells.keys()).slice(0, 300).forEach(k => PHOTO._cells.delete(k));
+    return `<button type="button" class="gc-photo-cell" data-photo-key="${key}">📷 ${photos.length}</button>`;
   }
 };
 // 表格縮圖點擊（事件委派，window scope 安全）
 document.addEventListener('click', e => {
   const c = e.target.closest && e.target.closest('.gc-photo-cell');
   if (!c) return;
-  try { PHOTO.lightbox(JSON.parse(c.dataset.photos), 0); } catch (err) {}
+  const photos = PHOTO._cells.get(c.dataset.photoKey) || [];
+  if (photos.length) PHOTO.lightbox(photos, 0);
 });
 
 /* ═══════════════════════════════════════════════════════════
@@ -2835,7 +2910,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '2.9-water-asset-authority';
+GC.version = '3.0-ehs-asset-water-key';
 global.GC = GC;
 global.GASCheckCore = GC;
 

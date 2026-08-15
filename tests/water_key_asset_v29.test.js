@@ -18,7 +18,7 @@ for (const [name, html] of [['water',water],['key',key],['asset',asset]]) {
   assert(scripts > 0, name + ' must contain executable scripts');
 }
 
-assert(core.includes("GC.version = '2.9-water-asset-authority'"));
+assert(core.includes("GC.version = '3.0-ehs-asset-water-key'"));
 assert(core.includes('GC.attendance = (() => {'));
 assert(core.includes('wdr_cfg_\\d{4}_\\d{2}'));
 assert(core.includes('vrt_key_tombstones'));

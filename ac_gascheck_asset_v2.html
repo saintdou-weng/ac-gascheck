@@ -287,7 +287,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
 }
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=32-water-asset-authority"></script>
+<script src="./gascheck-core.js?v=33-ehs-asset-water-key"></script>
 </head>
 <body>
 
@@ -1051,6 +1051,7 @@ function render(){
   const list=getFiltered();
   const el=document.getElementById('cnt');if(el)el.textContent=list.length;
   updateZone();updateBanners();renderStats();renderTable(list);renderCards(list);
+  if(typeof window.renderAssetInlineAnalysis==='function')window.renderAssetInlineAnalysis();
 }
 
 function renderStats(){
@@ -1090,6 +1091,7 @@ function renderTable(list){
       <button class="bx" style="background:#f3e8ff;border-color:#c4b5fd;color:#6d28d9" onclick="openPrintSingle('${a.code}')">🏷️</button>
       ${canEdit()?`<button class="bx bx-e" onclick="openEdit('${a.code}')">${lang==='zh'?'編輯':'Edit'}</button>`:''}
       ${canEdit()&&a.status!=='disposed'?`<button class="bx bx-t" onclick="openReq('transfer','${a.code}')">${lang==='zh'?'↔️轉移':'Transfer'}</button><button class="bx bx-d" onclick="openReq('disposal','${a.code}')">${lang==='zh'?'報廢':'Dispose'}</button>`:''}
+      ${canEdit()?`<button class="bx bx-d" onclick="deleteAssetRow('${a.code}')">🗑 ${lang==='zh'?'刪除':'Delete'}</button>`:''}
     </div></td>
   </tr>`).join('');
 }
@@ -1114,6 +1116,7 @@ function renderCards(list){
       <button class="bx" style="background:#f3e8ff;border-color:#c4b5fd;color:#6d28d9" onclick="openPrintSingle('${a.code}')">🏷️</button>
       ${canEdit()?`<button class="bx bx-e" onclick="openEdit('${a.code}')">${lang==='zh'?'編輯':'Edit'}</button>`:''}
       ${canEdit()&&a.status!=='disposed'?`<button class="bx bx-t" onclick="openReq('transfer','${a.code}')">${lang==='zh'?'↔️':'↔️'}</button><button class="bx bx-d" onclick="openReq('disposal','${a.code}')">${lang==='zh'?'報廢':'Dispose'}</button>`:''}
+      ${canEdit()?`<button class="bx bx-d" onclick="deleteAssetRow('${a.code}')">🗑 ${lang==='zh'?'刪除':'Delete'}</button>`:''}
     </div>
   </div>`).join('');
 }
@@ -1216,14 +1219,7 @@ async function saveAsset(){
   toast(isNew?`${lang==='zh'?'新增完成':'Added'}: ${data.code} ✓`:`${lang==='zh'?'已更新':'Updated'} ✓`,'ok');
 }
 async function doDelete(){
-  if(!canApprove()){toast(lang==='zh'?'只有 Approver 可刪除':'Approver only','err');return}
-  if(!confirm(lang==='zh'?`確定刪除 ${editCode}？不可復原`:`Delete ${editCode}?`))return;
-  const delCode=editCode;
-  const removed=assets.find(a=>a.code===delCode);assets=assets.filter(a=>a.code!==delCode);delete photos[delCode];
-  if(removed&&window.ASSET_V29)ASSET_V29.addTombstone(removed,'user_delete');
-  closeM('m-form');render();
-  await saveToGAS();
-  toast(`${lang==='zh'?'已刪除':'Deleted'}: ${delCode}`);
+  if(!editCode)return;closeM('m-form');return deleteAssetRow(editCode);
 }
 
 // ════════════════════════════════
@@ -2095,6 +2091,11 @@ rebuildSelects();setLang(lang);buildLoginList();
   function addTombstone(asset,reason){const map=new Map(tombstones().map(x=>[String(x.id||x.code),x])),now=_localTS(),id=asset.id||asset.code;map.set(String(id),{id,code:asset.code,purchaseDate:asset.purchaseDate||today(),_deleted:true,deleteReason:reason||'delete',deletedAt:now,updatedAt:now});setTombstones(Array.from(map.values()));}
   function normalizeCode(v){let s=txt(v).toUpperCase().replace(/\s+/g,'');const m=s.match(/^(AOA|AHA)[-_]?(\d{1,3})$/);if(!m||+m[2]<1)return'';return m[1]+String(+m[2]).padStart(3,'0');}
   function isFormalCode(v){return /^(AOA|AHA)\d{3}$/.test(normalizeCode(v));}
+  function hasRealName(asset){
+    const name=txt(asset&&asset.name),code=normalizeCode(asset&&(asset.code||asset.id));
+    if(!name||headerLike(name))return false;
+    return !(code&&normalizeCode(name)===code)||!/^\s*(?:AOA|AHA)[-_]?\d{1,3}\s*$/i.test(name);
+  }
   function assetScore(a){return ['name','brand','model','color','size','location','user','purchaseDate','remark','status'].reduce((n,k)=>n+(txt(a&&a[k])?1:0),0)+(Array.isArray(a&&a.history)?Math.min(5,a.history.length):0)+(assetPhotoValue(a&&a.photos)?4:0);}
   function tombstoneOf(asset,reason,index){const now=_localTS(),id=asset&&((asset.id&&String(asset.id)!==String(asset.code))?asset.id:asset.code)||('invalid-asset-'+index);return{id,code:asset&&asset.code||'',purchaseDate:asset&&asset.purchaseDate||today(),_deleted:true,deleteReason:reason||'invalid_asset_code',deletedAt:now,updatedAt:now};}
   function cleanupMalformed(list,reason){
@@ -2103,6 +2104,7 @@ rebuildSelects();setLang(lang);buildLoginList();
       if(!a)return;if(a._deleted){dead.push(a);return;}
       const code=normalizeCode(a.code||a.id);
       if(!code){dead.push(tombstoneOf(a,reason||'invalid_asset_code',index));removed++;return;}
+      if(!hasRealName(Object.assign({},a,{code}))){dead.push(tombstoneOf(a,'missing_asset_name',index));removed++;return;}
       if(a.id&&String(a.id)!==code){dead.push(tombstoneOf(a,'asset_id_normalized',index));removed++;}
       const next=Object.assign({},a,{id:code,code});
       if(!byCode.has(code)){byCode.set(code,next);return;}
@@ -2141,7 +2143,7 @@ rebuildSelects();setLang(lang);buildLoginList();
         /* Asset master imports must contain a real code column.  Aggregate
            inventory/movement sheets are references, not thousands of assets. */
         if(ci.code<0)return;const prefix=/admin|factory/i.test(sn)?'AOA':'AHA',isDorm=prefix==='AHA';let lastDate='';let before=importData.length;
-        for(let r=hi+1;r<aoa.length;r++){const row=aoa[r]||[],code=normalizeCode(row[ci.code]);if(!code)continue;const rawName=ci.name>=0?txt(row[ci.name]):'',name=rawName&&!headerLike(rawName)?rawName:code;let date=ci.date>=0?excelDate(row[ci.date]):'';if(date)lastDate=date;else date=lastDate;const location=ci.location>=0?txt(row[ci.location]):'',qty=ci.qty>=0?(parseFloat(txt(row[ci.qty]).replace(/[^0-9.-]/g,''))||1):1;
+        for(let r=hi+1;r<aoa.length;r++){const row=aoa[r]||[],code=normalizeCode(row[ci.code]);if(!code)continue;const rawName=ci.name>=0?txt(row[ci.name]):'',name=rawName&&!headerLike(rawName)?rawName:'';if(!name||normalizeCode(name)===code)continue;let date=ci.date>=0?excelDate(row[ci.date]):'';if(date)lastDate=date;else date=lastDate;const location=ci.location>=0?txt(row[ci.location]):'',qty=ci.qty>=0?(parseFloat(txt(row[ci.qty]).replace(/[^0-9.-]/g,''))||1):1;
           const remark=ci.remark>=0?txt(row[ci.remark]):'',color=ci.color>=0?txt(row[ci.color]):(/^(black|white|grey|gray|red|blue|green|pink|brown|silver|ivory|.*色)/i.test(remark)?remark:'');
           importData.push({existingCode:code,name,codeType:code.slice(0,3),brand:ci.brand>=0?txt(row[ci.brand]):'',model:ci.model>=0?txt(row[ci.model]):'',color,size:ci.size>=0?txt(row[ci.size]):(ci.model>=0?txt(row[ci.model]):''),qty,unit:'pcs',unitPrice:0,zone:code.startsWith('AHA')?'expat':'factory',location,user:ci.user>=0?txt(row[ci.user]):'',dept:ci.dept>=0?txt(row[ci.dept]):'',purchaseDate:date,remark:color===remark?'':remark,status:ci.status>=0?statusOf(row[ci.status]):'active',category:categoryOf(name,code.startsWith('AHA')),_sheet:sn,_kind:'asset',sourceRow:r+1,_authoritativeMaster:true});
         }
@@ -2194,7 +2196,7 @@ rebuildSelects();setLang(lang);buildLoginList();
     let active=cleaned.active.map(r=>Object.assign({},r));
     let dead=cleaned.dead.map(r=>Object.assign({},r));
     (rows||[]).forEach(r=>{
-      const code=normalizeCode(r.code||r.existingCode);if(!code)return;
+      const code=normalizeCode(r.code||r.existingCode);if(!code||!hasRealName(Object.assign({},r,{code})))return;
       let idx=active.findIndex(a=>String(a.code||a.id)===String(code));
       if(idx<0&&r._kind==='movement')idx=active.findIndex(a=>txt(a.name).toLowerCase()===txt(r.name).toLowerCase()&&(!r.location||txt(a.location)===txt(r.location)));
       dead=dead.filter(d=>String(d.id||d.code)!==String(code));
@@ -2222,8 +2224,12 @@ rebuildSelects();setLang(lang);buildLoginList();
   let assetAnalysisPeriod='month';
   function historyEvents(){const out=[];assets.forEach(a=>(a.history||[]).forEach(h=>out.push(Object.assign({code:a.code,name:a.name,zone:a.zone},h,{date:String(h.date||'').slice(0,10)}))));return out;}
   function inPeriod(d,p,ref){if(!d)return false;const x=new Date(d+'T00:00:00'),r=new Date(ref+'T00:00:00');if(p==='day')return d===ref;if(p==='month')return d.slice(0,7)===ref.slice(0,7);if(p==='year')return d.slice(0,4)===ref.slice(0,4);const s=new Date(r);s.setDate(r.getDate()-((r.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+6);return x>=s&&x<=e;}
-  window.setAssetAnalysisPeriod=function(p){assetAnalysisPeriod=p;document.querySelectorAll('[data-asset-period]').forEach(b=>b.classList.toggle('on',b.dataset.assetPeriod===p));renderAssetAnalysis();};
-  window.renderAssetAnalysis=function(){const ref=(document.getElementById('asset-analysis-ref')||{}).value||today(),events=historyEvents().filter(h=>inPeriod(h.date,assetAnalysisPeriod,ref)),types={};events.forEach(h=>types[h.type]=(types[h.type]||0)+1);const qty=assets.reduce((a,x)=>a+(+x.qty||0),0),value=assets.reduce((a,x)=>a+(+x.qty||0)*(+x.unitPrice||0),0),actors=[...new Set(events.map(h=>h.actor||'').filter(Boolean))];document.getElementById('asset-analysis-body').innerHTML='<div class="stats"><div class="sc"><div><div class="sc-l">Events</div><div class="sc-v">'+events.length+'</div></div></div><div class="sc"><div><div class="sc-l">Current Qty</div><div class="sc-v">'+qty+'</div></div></div><div class="sc"><div><div class="sc-l">Current Value</div><div class="sc-v">$'+value.toLocaleString()+'</div></div></div><div class="sc"><div><div class="sc-l">Actors</div><div class="sc-v">'+actors.length+'</div></div></div></div><div style="overflow:auto;margin-top:14px"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Code</th><th>Asset</th><th>Actor</th><th>Detail</th></tr></thead><tbody>'+events.sort((a,b)=>b.date.localeCompare(a.date)).map(h=>'<tr><td>'+esc(h.date)+'</td><td>'+esc(h.type)+'</td><td>'+esc(h.code)+'</td><td>'+esc(h.name)+'</td><td>'+esc(h.actor||'—')+'</td><td>'+esc(h.desc||'')+'</td></tr>').join('')+'</tbody></table></div>';};
+  function analysisRef(){return(document.getElementById('asset-inline-ref')||{}).value||(document.getElementById('asset-analysis-ref')||{}).value||today();}
+  function analysisMetrics(){const ref=analysisRef(),events=historyEvents().filter(h=>inPeriod(h.date,assetAnalysisPeriod,ref)),codes=new Set(events.map(h=>h.code).filter(Boolean)),added=events.filter(h=>h.type==='created').length,removed=tombstones().filter(h=>inPeriod(String(h.deletedAt||h.updatedAt||'').slice(0,10),assetAnalysisPeriod,ref)).length,photosCount=assets.filter(a=>assetPhotoValue(photos[a.code])||assetPhotoValue(a.photos)).length;return{ref,events,codes,added,removed,photosCount};}
+  window.setAssetAnalysisPeriod=function(p){assetAnalysisPeriod=p;document.querySelectorAll('[data-asset-period]').forEach(b=>b.classList.toggle('on',b.dataset.assetPeriod===p));renderAssetInlineAnalysis();renderAssetAnalysis();};
+  window.shiftAssetAnalysisRef=function(delta){const el=document.getElementById('asset-inline-ref');if(!el)return;const d=new Date((el.value||today())+'T00:00:00');if(assetAnalysisPeriod==='year')d.setFullYear(d.getFullYear()+delta);else if(assetAnalysisPeriod==='month')d.setMonth(d.getMonth()+delta);else d.setDate(d.getDate()+delta*(assetAnalysisPeriod==='week'?7:1));el.value=_localYMD(d);const m=document.getElementById('asset-analysis-ref');if(m)m.value=el.value;renderAssetInlineAnalysis();renderAssetAnalysis();};
+  window.renderAssetInlineAnalysis=function(){const box=document.getElementById('asset-inline-metrics');if(!box)return;const x=analysisMetrics();box.innerHTML='<span>📦 <b>'+assets.length+'</b> '+(lang==='zh'?'有效資產':'valid assets')+'</span><span>🔄 <b>'+x.codes.size+'</b> '+(lang==='zh'?'有異動':'changed')+'</span><span>＋ <b>'+x.added+'</b></span><span>🗑 <b>'+x.removed+'</b></span><span>📷 <b>'+x.photosCount+'</b></span>';};
+  window.renderAssetAnalysis=function(){const body=document.getElementById('asset-analysis-body');if(!body)return;const x=analysisMetrics(),events=x.events,qty=assets.reduce((a,v)=>a+(+v.qty||0),0),value=assets.reduce((a,v)=>a+(+v.qty||0)*(+v.unitPrice||0),0),actors=[...new Set(events.map(h=>h.actor||'').filter(Boolean))];body.innerHTML='<div class="stats"><div class="sc"><div><div class="sc-l">Events</div><div class="sc-v">'+events.length+'</div></div></div><div class="sc"><div><div class="sc-l">Current Qty</div><div class="sc-v">'+qty+'</div></div></div><div class="sc"><div><div class="sc-l">Current Value</div><div class="sc-v">$'+value.toLocaleString()+'</div></div></div><div class="sc"><div><div class="sc-l">Actors</div><div class="sc-v">'+actors.length+'</div></div></div></div><div style="overflow:auto;margin-top:14px"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Code</th><th>Asset</th><th>Actor</th><th>Detail</th></tr></thead><tbody>'+events.sort((a,b)=>b.date.localeCompare(a.date)).map(h=>'<tr><td>'+esc(h.date)+'</td><td>'+esc(h.type)+'</td><td>'+esc(h.code)+'</td><td>'+esc(h.name)+'</td><td>'+esc(h.actor||'—')+'</td><td>'+esc(h.desc||'')+'</td></tr>').join('')+'</tbody></table></div>';};
   window.openAssetAnalysis=function(){document.getElementById('asset-analysis-ref').value=today();renderAssetAnalysis();openM('m-asset-analysis');};
 
   window.buildAssetTelegram=function(opt){
@@ -2232,6 +2238,7 @@ rebuildSelects();setLang(lang);buildLoginList();
   window.assetTelegramSent=async function(meta){const actor=currentUser?currentUser.name:'—',all=assets.filter(r=>!r._deleted),rows=GC.telegram.filter(all,{dateField:'purchaseDate',scopeField:'zone'},meta.period,meta.ref,meta.scope,meta.slot),now=_localTS();const ids=new Set(rows.map(r=>r.code));assets=assets.map(a=>{if(!ids.has(a.code))return a;const h={type:'telegram_'+meta.mode,date:now,actor,desc:(meta.mode==='review'?'Phea review':meta.mode==='approval'?'Paul approval':'Telegram summary')+' sent by '+actor};return Object.assign({},a,{lastSentBy:actor,lastSentAt:now,lastTelegramMode:meta.mode,reviewedBy:meta.mode==='review'?'Phea':a.reviewedBy,approvedBy:meta.mode==='approval'?'Paul':a.approvedBy,history:[...(a.history||[]),h],updatedAt:now});});saveLocal();};
 
   function ensureAssetUi(){
+    const stats=document.getElementById('stats-bar');if(stats&&!document.getElementById('asset-period-panel')){const p=document.createElement('div');p.id='asset-period-panel';p.innerHTML='<div class="asset-period-buttons"><button data-asset-period="day" onclick="setAssetAnalysisPeriod(\'day\')">Day</button><button data-asset-period="week" onclick="setAssetAnalysisPeriod(\'week\')">Week</button><button class="on" data-asset-period="month" onclick="setAssetAnalysisPeriod(\'month\')">Month</button><button data-asset-period="year" onclick="setAssetAnalysisPeriod(\'year\')">Year</button></div><button onclick="shiftAssetAnalysisRef(-1)">◀</button><input type="date" id="asset-inline-ref" value="'+today()+'" onchange="renderAssetInlineAnalysis();renderAssetAnalysis()"><button onclick="shiftAssetAnalysisRef(1)">▶</button><div id="asset-inline-metrics"></div><button class="btn-sm" onclick="openAssetAnalysis()">📊 '+(lang==='zh'?'詳細分析':'Analysis')+'</button>';stats.parentNode.insertBefore(p,stats);const s=document.createElement('style');s.id='asset-v33-style';s.textContent='#asset-period-panel{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid var(--bdr);border-radius:12px;padding:10px 12px;margin-bottom:12px;box-shadow:var(--sh)}#asset-period-panel button,#asset-period-panel input{border:1px solid var(--bdr);background:#fff;border-radius:8px;padding:7px 10px;font:inherit}#asset-period-panel button{cursor:pointer}.asset-period-buttons{display:flex}.asset-period-buttons button{border-radius:0}.asset-period-buttons button:first-child{border-radius:8px 0 0 8px}.asset-period-buttons button:last-child{border-radius:0 8px 8px 0}.asset-period-buttons button.on{background:var(--p);color:#fff}#asset-inline-metrics{display:flex;gap:12px;flex-wrap:wrap;color:var(--tx2);font-size:12px;flex:1}#asset-inline-metrics b{color:var(--p)}@media(max-width:700px){#asset-inline-metrics{order:3;width:100%;flex-basis:100%}}';document.head.appendChild(s);}
     const foot=document.querySelector('#m-print .mfoot');if(foot&&!document.getElementById('btn-a4-print')){const b=document.createElement('button');b.id='btn-a4-print';b.className='btn-pri';b.innerHTML='🖨️ A4 Print';b.onclick=printLabelsA4;foot.insertBefore(b,foot.firstChild);}
     const toolbar=document.querySelector('.toolbar');if(toolbar&&!document.getElementById('btn-asset-analysis')){const b=document.createElement('button');b.id='btn-asset-analysis';b.className='btn-sm';b.innerHTML='📊 '+(lang==='zh'?'分析':'Analysis');b.onclick=openAssetAnalysis;toolbar.appendChild(b);}
     if(!document.getElementById('m-asset-analysis')){const m=document.createElement('div');m.className='ovl hidden';m.id='m-asset-analysis';m.innerHTML='<div class="mdl"><div class="mhead"><div class="mtitle">📊 Asset History Analysis</div><button class="mcls" onclick="closeM(\'m-asset-analysis\')">✕</button></div><div class="mbody"><div class="lbl-opts"><button class="lbl-opt" data-asset-period="day" onclick="setAssetAnalysisPeriod(\'day\')">Day</button><button class="lbl-opt" data-asset-period="week" onclick="setAssetAnalysisPeriod(\'week\')">Week</button><button class="lbl-opt on" data-asset-period="month" onclick="setAssetAnalysisPeriod(\'month\')">Month</button><button class="lbl-opt" data-asset-period="year" onclick="setAssetAnalysisPeriod(\'year\')">Year</button><input type="date" id="asset-analysis-ref" onchange="renderAssetAnalysis()"></div><div id="asset-analysis-body"></div></div></div>';document.body.appendChild(m);}
@@ -2244,9 +2251,15 @@ rebuildSelects();setLang(lang);buildLoginList();
     setLang(lang||'zh');
     render();
   }
+  window.deleteAssetRow=async function(code){
+    if(!canEdit()){toast(lang==='zh'?'沒有刪除權限':'No delete permission','err');return;}
+    const item=assets.find(a=>a.code===code);if(!item||!confirm((lang==='zh'?'確定刪除 ':'Delete ')+code+'?'))return;
+    assets=assets.filter(a=>a.code!==code);delete photos[code];addTombstone(item,'user_delete');saveLocal();render();toast('✅ '+(lang==='zh'?'已刪除，背景同步中':'Deleted; syncing in background')+': '+code,'ok');
+    if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('asset','user_delete');
+  };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureAssetUi);else ensureAssetUi();
   if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(hydrateAsset);else hydrateAsset();
-  window.ASSET_V29={tombstones,setTombstones,addTombstone,normalizeCode,isFormalCode,cleanupMalformed,queueCleanupSync};
+  window.ASSET_V29={tombstones,setTombstones,addTombstone,normalizeCode,isFormalCode,hasRealName,cleanupMalformed,queueCleanupSync};
 })();
 </script>
 <script>

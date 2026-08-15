@@ -19,7 +19,9 @@ for (const [name, html] of [['water', water], ['asset', asset]]) {
 }
 
 assert(core.includes('function workforce(rows, start, end)'));
-assert(core.includes("source:'hra-workforce'"));
+assert(core.includes('function attendanceSnapshot(rows, start, end)'));
+assert(core.includes("source:'hra-attendance'"));
+assert(core.includes("source:'none'"));
 assert(core.includes('averageDaily'));
 assert(water.includes('function attendanceStats(rows)'));
 assert(water.includes("waterTelegramText('平均每日出勤','Avg daily attendance'"));
@@ -46,18 +48,22 @@ const governed = assetWindow.ASSET_V29.cleanupMalformed([
   {id:'bad-2',code:'AHA123456',name:'generated'},
   {id:'old-a',code:'AHA001',name:'Fridge',brand:'Panasonic'},
   {id:'old-b',code:'AHA001',name:'Fridge'},
-  {code:'AOA1',name:'Asset code machine'}
+  {code:'AOA1',name:'Asset code machine'},
+  {id:'code-only',code:'AOA002',name:'AOA002'},
+  {id:'blank-name',code:'AHA002',name:''}
 ],'test_cleanup');
 assert.deepStrictEqual(Array.from(governed.active, a=>a.code).sort(),['AHA001','AOA001']);
 assert(governed.dead.some(x=>x.id==='bad-1'&&x._deleted));
 assert(governed.dead.some(x=>x.id==='bad-2'&&x._deleted));
 assert(governed.dead.some(x=>x.id==='old-b'&&x._deleted));
+assert(governed.dead.some(x=>x.id==='code-only'&&x.deleteReason==='missing_asset_name'));
+assert(governed.dead.some(x=>x.id==='blank-name'&&x.deleteReason==='missing_asset_name'));
 
 const values = Object.create(null);
-values['hrpay:result:employee_hr'] = JSON.stringify({
-  module: 'employee_hr',
-  snapshots: [{period: '2026-07', headcount: 437, rows: []}]
-});
+values['vrt_att_v5'] = JSON.stringify([
+  {date:'2026-07-01',dept:'總人數',isGrand:true,m:242,f:213,att:437},
+  {date:'2026-07-02',dept:'Grand Total',isGrand:true,m:241,f:214,att:439}
+]);
 const storage = {
   get length(){ return Object.keys(values).length; },
   key(i){ return Object.keys(values)[i] || null; },
@@ -78,11 +84,12 @@ vm.runInContext(core, context, {filename:'gascheck-core.js'});
 
 (async function(){
   const result = await window.GC.attendance.headcount('2026-07-01','2026-07-31');
-  assert.strictEqual(result.source, 'hra-workforce');
-  assert.strictEqual(result.headcount, 437);
-  assert.strictEqual(result.averageDaily, 437);
-  assert.strictEqual(result.days, 31);
-  assert.strictEqual(result.personDays, 437 * 31);
-  assert.strictEqual(result.daily['2026-07-15'], 437);
+  assert.strictEqual(result.source, 'hra-attendance');
+  assert.strictEqual(result.headcount, 438);
+  assert.strictEqual(result.averageDaily, 438);
+  assert.strictEqual(result.days, 2);
+  assert.strictEqual(result.personDays, 876);
+  assert.strictEqual(result.daily['2026-07-01'], 437);
+  assert.strictEqual(result.daily['2026-07-02'], 439);
   console.log('Water attendance and Asset authority v32 tests: PASS');
 })().catch(err => { console.error(err); process.exitCode = 1; });
