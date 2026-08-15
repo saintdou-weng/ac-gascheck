@@ -1133,7 +1133,7 @@ const PHOTO = GC.photo = {
                  <span class="gc-photo-add-tx">${U.escapeHtml(I18.t('gc.addPhoto'))}</span>
                </label>` : ''}
            </div>
-           <input type="file" id="${id}" accept="image/*" capture="environment" multiple hidden>
+           <input type="file" id="${id}" accept="image/*" multiple hidden>
          </div>`;
 
       const input = el.querySelector('#' + id);
@@ -2910,7 +2910,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.0-ehs-asset-water-key';
+GC.version = '3.1-period-photo-contrast';
 global.GC = GC;
 global.GASCheckCore = GC;
 

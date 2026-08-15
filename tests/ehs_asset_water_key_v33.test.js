@@ -48,14 +48,16 @@ assert(water.includes("setAttendanceVisibility(false)"));
 assert(gas.includes("'headcount','headcountSource'"));
 
 // Key page follows the Fire-style list: searchable master, filters, periods,
-// direct photo input/controller, thumbnail viewer and delete action.
+// direct native photo picker, thumbnail viewer and delete action.
 assert(key.includes("tx('鑰匙清單','Key List'"));
 assert(key.includes('id="km-master-search"'));
 assert(key.includes('id="km-master-type"'));
 assert(key.includes('class="key-master-table"'));
 for (const p of ['day','week','month','year']) assert(key.includes(`data-km-period="${p}"`));
-assert(key.includes("GC.photo.mount(el,{photos:Array.isArray(m.photos)?m.photos:[],max:2})"));
+assert(key.includes('class="km-photo-picker"'));
+assert(key.includes('accept="image/*" multiple onchange="keyMasterPickPhotos(this)"'));
+assert(key.includes('masterDraftPhotos.push(await GC.photo.compress(file))'));
 assert(key.includes('window.keyMasterViewPhotos=viewMasterPhotos'));
 assert(key.includes('window.keyMasterDelete=deleteMaster'));
 
-console.log('EHS photo / Asset / Water Attendance / Key list v33 tests: PASS');
+console.log('EHS photo / Asset / Water Attendance / Key list v34 tests: PASS');
