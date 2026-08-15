@@ -720,10 +720,11 @@ function assetPhotoValue(v){
 }
 function assetCloudRecords(){
   const now=_localTS();
-  return assets.map(a=>{
+  const active=assets.map(a=>{
     if(!a.id)a.id=a.code;if(!a.updatedAt)a.updatedAt=now;
     return Object.assign({},a,{photos:assetPhotoValue(photos[a.code])||assetPhotoValue(a.photos)});
   });
+  return active.concat(window.ASSET_V29?ASSET_V29.tombstones():[]);
 }
 
 async function loadFromGAS(){
@@ -732,11 +733,17 @@ async function loadFromGAS(){
   setSdot('spin');
   toast(lang==='zh'?'讀取資料中…':'Loading…','info');
   let d=null;
-  try { d=await gasCall({action:'pull',tool:'asset'}); } catch(e) {}
+  const local=assetCloudRecords();
+  try {
+    if(typeof GC!=='undefined'&&GC.cloud){
+      const got=await GC.cloud.download('asset',local,{idKey:'id',tsKey:'updatedAt',dateField:'purchaseDate',photoField:'photos'});
+      d={ok:true,records:got.list||local,stat:got.stat,smart:true};
+    }else d=await gasCall({action:'pull',tool:'asset'});
+  } catch(e) {}
   if(d&&d.ok&&Array.isArray(d.records)){
-    const local=assetCloudRecords();
-    assets=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(local,d.records,'id','updatedAt').list:local.concat(d.records);
-    assets=assets.map(a=>Object.assign({id:a.id||a.code,updatedAt:a.updatedAt||_localTS()},a));
+    const merged=d.smart?d.records:((typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(local,d.records,'id','updatedAt').list:local.concat(d.records));
+    if(window.ASSET_V29)ASSET_V29.setTombstones(merged.filter(a=>a&&a._deleted));
+    assets=merged.filter(a=>!a||!a._deleted).map(a=>Object.assign({id:a.id||a.code,updatedAt:a.updatedAt||_localTS()},a));
     assets.forEach(a=>{const p=assetPhotoValue(a.photos);if(p&&a.code)photos[a.code]=p;});
     try { cnts=JSON.parse(localStorage.getItem('vrt_c7')||'{}'); } catch(e) { cnts={}; }
     try { pending=JSON.parse(localStorage.getItem('vrt_p7')||'[]'); } catch(e) { pending=[]; }
@@ -760,9 +767,15 @@ async function loadFromGAS(){
 
 async function saveToGAS(){
   let d=null;
-  try { d=await standardGAS({action:'push',tool:'asset',records:assetCloudRecords()}); } catch(e) { console.warn('standard asset push failed',e); }
-  if(!d||!d.ok) saveLocal(); // fallback to localStorage
-  else saveLocal(); // also save locally as cache
+  const list=assetCloudRecords();
+  try {
+    if(typeof GC!=='undefined'&&GC.cloud){
+      const sent=await GC.cloud.upload('asset',list,{idKey:'id',tsKey:'updatedAt',dateField:'purchaseDate',photoField:'photos'});
+      d=sent&&sent.res?sent.res:{ok:true};
+    }else d=await standardGAS({action:'push',tool:'asset',records:list});
+  } catch(e) { console.warn('smart asset push failed',e); }
+  saveLocal();
+  return d;
 }
 
 async function deleteAssetFromGAS(id){
@@ -1150,18 +1163,19 @@ function openEdit(code){
   document.getElementById('f-pi').value='';document.getElementById('dup-w').style.display='none';
   showPup(formPhoto);upCP();openM('m-form');
 }
+function assetSnapshot(a){return{zone:a.zone||'',name:a.name||'',category:a.category||'',status:a.status||'',brand:a.brand||'',model:a.model||'',color:a.color||'',size:a.size||'',qty:+a.qty||0,unit:a.unit||'',unitPrice:+a.unitPrice||0,location:a.location||'',user:a.user||'',purchaseDate:a.purchaseDate||'',remark:a.remark||''};}
 async function saveAsset(){
   const nm=document.getElementById('f-nm').value.trim();if(!nm){toast(lang==='zh'?'請填寫品名':'Name required','err');return}
   const qty=parseInt(document.getElementById('f-qt').value)||1,up=parseFloat(document.getElementById('f-up').value)||0;
   const data={zone:document.getElementById('f-zn').value,name:nm,category:document.getElementById('f-c2').value,status:document.getElementById('f-st2').value,brand:document.getElementById('f-br').value.trim(),model:document.getElementById('f-md').value.trim(),color:document.getElementById('f-cl').value.trim(),size:document.getElementById('f-sz').value.trim(),qty,unit:document.getElementById('f-un').value.trim()||'pcs',unitPrice:up,location:document.getElementById('f-lc').value.trim(),user:document.getElementById('f-us').value.trim(),purchaseDate:document.getElementById('f-dt').value,remark:document.getElementById('f-rm').value.trim()};
   const isNew=!editCode;
   if(editCode){
-    const old=assets.find(x=>x.code===editCode);data.code=editCode;
-    data.history=[...(old.history||[]),{type:'edit',date:today(),desc:`${lang==='zh'?'編輯 by':'Edited by'} ${currentUser.name}`}];
+    const old=assets.find(x=>x.code===editCode);data.code=editCode;data.id=old.id||editCode;data.createdAt=old.createdAt||old.purchaseDate||_localTS();data.recordedBy=old.recordedBy||currentUser.name;data.lastEditedBy=currentUser.name;data.updatedAt=_localTS();
+    data.history=[...(old.history||[]),{type:'edit',date:_localTS(),actor:currentUser.name,before:assetSnapshot(old),after:assetSnapshot(data),desc:`${lang==='zh'?'編輯 by':'Edited by'} ${currentUser.name}`}];
     assets=assets.map(a=>a.code===editCode?data:a);if(formPhoto!==undefined)photos[editCode]=formPhoto;
   }else{
     const t=document.getElementById('f-ct').value,nc=genCode(t);
-    data.code=nc;data.history=[{type:'created',date:today(),desc:`${lang==='zh'?'建檔 by':'Created by'} ${currentUser.name}`}];
+    data.code=nc;data.id=nc;data.createdAt=_localTS();data.updatedAt=data.createdAt;data.recordedBy=currentUser.name;data.lastEditedBy=currentUser.name;data.history=[{type:'created',date:data.createdAt,actor:currentUser.name,after:assetSnapshot(data),desc:`${lang==='zh'?'建檔 by':'Created by'} ${currentUser.name}`}];
     assets=[data,...assets];if(formPhoto)photos[data.code]=formPhoto;
   }
   closeM('m-form');render();
@@ -1173,10 +1187,10 @@ async function doDelete(){
   if(!canApprove()){toast(lang==='zh'?'只有 Approver 可刪除':'Approver only','err');return}
   if(!confirm(lang==='zh'?`確定刪除 ${editCode}？不可復原`:`Delete ${editCode}?`))return;
   const delCode=editCode;
-  assets=assets.filter(a=>a.code!==delCode);delete photos[delCode];
+  const removed=assets.find(a=>a.code===delCode);assets=assets.filter(a=>a.code!==delCode);delete photos[delCode];
+  if(removed&&window.ASSET_V29)ASSET_V29.addTombstone(removed,'user_delete');
   closeM('m-form');render();
   await saveToGAS();
-  await deleteAssetFromGAS(delCode);
   toast(`${lang==='zh'?'已刪除':'Deleted'}: ${delCode}`);
 }
 
@@ -2008,6 +2022,7 @@ async function clearAllData(){
     :`⚠️ Delete all ${assets.length} assets?\n\nThis cannot be undone!\nExport backup first.\n\nType "CLEAR" to confirm:`;
   const confirm=prompt(msg);
   if(confirm!=='CLEAR'){toast(zh?'已取消':'Cancelled','info');return}
+  if(window.ASSET_V29)assets.forEach(a=>ASSET_V29.addTombstone(a,'clear_all'));
   assets=[];cnts={AOA:1,AHA:1};pending=[];photos={};
   render();
   await saveToGAS();
@@ -2035,6 +2050,139 @@ function loadLocal(){
 // ════════════════════════════════
 const _lang=localStorage.getItem('vrt_lang')||'zh';lang=_lang;
 rebuildSelects();setLang(lang);buildLoginList();
+</script>
+<script>
+/* ═══ Asset v29 — 實際 Excel 智慧匯入、A4 標籤、歷史分析與角色發送 ═══ */
+(function(){
+  const TOMBSTONE_KEY='vrt_asset_tombstones';
+  const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const txt=v=>String(v==null?'':v).trim();
+  function tombstones(){try{const a=JSON.parse(localStorage.getItem(TOMBSTONE_KEY)||'[]');return Array.isArray(a)?a:[];}catch(e){return[];}}
+  function setTombstones(list){localStorage.setItem(TOMBSTONE_KEY,JSON.stringify(list||[]));}
+  function addTombstone(asset,reason){const map=new Map(tombstones().map(x=>[String(x.id||x.code),x])),now=_localTS(),id=asset.id||asset.code;map.set(String(id),{id,code:asset.code,purchaseDate:asset.purchaseDate||today(),_deleted:true,deleteReason:reason||'delete',deletedAt:now,updatedAt:now});setTombstones(Array.from(map.values()));}
+  function hash(s){let h=2166136261>>>0;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return h>>>0;}
+  function stableCode(prefix,sheet,row,name,loc){return prefix+String(100000+(hash(sheet+'|'+row+'|'+name+'|'+loc)%899999)).padStart(6,'0');}
+  function normalizeCode(v,prefix,sheet,row,name,loc){let s=txt(v).toUpperCase().replace(/\s+/g,'');const m=s.match(/^(AOA|AHA)[-_]?(\d+)$/);if(m)return m[1]+String(+m[2]).padStart(3,'0');return stableCode(prefix,sheet,row,name,loc);}
+  function excelDate(v){
+    if(v instanceof Date&&!isNaN(v))return _localYMD(v);
+    if(typeof v==='number'&&v>20000&&window.XLSX&&XLSX.SSF){const d=XLSX.SSF.parse_date_code(v);if(d)return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');}
+    const s=txt(v);let m=s.match(/(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(m)return m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');m=s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2,4})/);if(m){let y=+m[3];if(y<100)y+=2000;return y+'-'+String(+m[1]).padStart(2,'0')+'-'+String(+m[2]).padStart(2,'0');}return s;
+  }
+  function col(headers,patterns){for(const p of patterns){const i=headers.findIndex(h=>p.test(h));if(i>=0)return i;}return-1;}
+  function statusOf(v){const s=txt(v).toLowerCase();if(/repair|維修|ជួសជុល/.test(s))return'repair';if(/dispose|報廢|បោះបង់/.test(s))return'disposed';if(/standby|備用|បម្រុង/.test(s))return'standby';if(/lent|外借|ខ្ចី/.test(s))return'lent';return'active';}
+  function categoryOf(name,isDorm){const n=txt(name).toLowerCase();if(/chair|椅|table|桌|desk|bed|床|cabinet|櫃|rack|shelf|mattress/.test(n))return isDorm?CATS[3]:CATS[0];if(/fridge|冰箱|tv|電視|washer|洗衣|dryer|烘衣|stove|爐|generator|motor|pump|microwave/.test(n))return isDorm?CATS[4]:CATS[2];if(/vehicle|車/.test(n))return CATS[5];return CATS[6];}
+  function headerLike(name){return /^(item|name|description|asset code|category|\(.*\)|資產名稱|物品名稱|摘要\s*\/\s*事由)$/i.test(txt(name));}
+
+  window.parseImportFile = parseImportFile = function(file){
+    const reader=new FileReader();reader.onload=function(e){try{
+      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:true,raw:true});importData=[];const sheets=[];
+      wb.SheetNames.forEach(sn=>{const ws=wb.Sheets[sn],aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});if(!aoa||aoa.length<3)return;
+        let hi=-1;for(let r=0;r<Math.min(12,aoa.length);r++){const j=(aoa[r]||[]).map(txt).join('|');if((/資產編號|asset code/i.test(j)&&/資產名稱|物品名稱|\bitem\b/i.test(j))||(/物品名稱|item name/i.test(j)&&/數量|qty/i.test(j))||(/摘要\s*\/\s*事由|description/i.test(j)&&/入庫數量|stock in/i.test(j))){hi=r;break;}}if(hi<0)return;
+        const h1=(aoa[hi]||[]).map(txt),h2=(aoa[hi+1]||[]).map(txt),max=Math.max(h1.length,h2.length),headers=Array.from({length:max},(_,i)=>(h1[i]+' '+h2[i]).trim().toLowerCase());
+        const ci={code:col(headers,[/資產編號/,/asset code/]),name:col(headers,[/資產名稱/,/物品名稱/,/item name/,/^item\b/,/摘要.*事由/,/description/]),brand:col(headers,[/品牌/,/brand/]),model:col(headers,[/規格.*型號/,/model/]),date:col(headers,[/取得日期/,/acq.*date/,/^date/,/日期/]),dept:col(headers,[/保管部門/,/dept/]),user:col(headers,[/保管人/,/custodian/,/signature/,/經辦人/]),location:col(headers,[/存放位置/,/放置位置/,/location/]),status:col(headers,[/^狀態/,/status/,/condition check/]),remark:col(headers,[/備註/,/note/]),color:col(headers,[/顏色/,/color/]),size:col(headers,[/尺寸/,/dimension/]),qty:col(headers,[/數量/,/qty/]),stockIn:col(headers,[/入庫數量/,/stock in/]),issued:col(headers,[/發出數量/,/issued/]),balance:col(headers,[/結存數量/,/balance/])};
+        if(ci.name<0)return;const movement=ci.stockIn>=0||ci.issued>=0||ci.balance>=0,general=!movement&&ci.code<0&&ci.qty>=0,prefix=/admin|factory/i.test(sn)?'AOA':'AHA',isDorm=prefix==='AHA';let lastDate='';let before=importData.length;
+        for(let r=hi+1;r<aoa.length;r++){const row=aoa[r]||[],name=txt(row[ci.name]);if(!name||headerLike(name))continue;let date=ci.date>=0?excelDate(row[ci.date]):'';if(date)lastDate=date;else date=lastDate;const location=ci.location>=0?txt(row[ci.location]):'';let code=normalizeCode(ci.code>=0?row[ci.code]:'',prefix,sn,r+1,name,location);let qty=1;if(movement)qty=parseFloat(txt(row[ci.balance]).replace(/[^0-9.-]/g,''))||0;else if(ci.qty>=0)qty=parseFloat(txt(row[ci.qty]).replace(/[^0-9.-]/g,''))||1;
+          const remark=ci.remark>=0?txt(row[ci.remark]):'',color=ci.color>=0?txt(row[ci.color]):(!movement&&/^(black|white|grey|gray|red|blue|green|pink|brown|silver|ivory|.*色)/i.test(remark)?remark:'');
+          importData.push({existingCode:code,name,codeType:prefix,brand:ci.brand>=0?txt(row[ci.brand]):'',model:ci.model>=0?txt(row[ci.model]):'',color,size:ci.size>=0?txt(row[ci.size]):(ci.model>=0?txt(row[ci.model]):''),qty,unit:movement?'pcs':'pcs',unitPrice:0,zone:isDorm?'expat':'factory',location,user:ci.user>=0?txt(row[ci.user]):'',dept:ci.dept>=0?txt(row[ci.dept]):'',purchaseDate:date,remark:color===remark?'':remark,status:ci.status>=0?statusOf(row[ci.status]):'active',category:categoryOf(name,isDorm),_sheet:sn,_kind:movement?'movement':general?'inventory':'asset',stockIn:ci.stockIn>=0?+row[ci.stockIn]||0:0,issued:ci.issued>=0?+row[ci.issued]||0:0,balance:ci.balance>=0?parseFloat(txt(row[ci.balance]).replace(/[^0-9.-]/g,''))||0:qty,sourceRow:r+1});
+        }
+        if(importData.length>before)sheets.push(sn);
+      });
+      if(!importData.length){toast(lang==='zh'?'未找到可匯入資料':'No importable rows found','err');return;}renderImportPreview();toast((lang==='zh'?'解析完成：':'Parsed: ')+sheets.join(', ')+' → '+importData.length,'ok');
+    }catch(err){console.error(err);toast((lang==='zh'?'解析失敗：':'Parse error: ')+err.message,'err');}};reader.readAsArrayBuffer(file);
+  };
+
+  window.doImport = doImport = async function(){
+    if(!importData.length||!canEdit())return;if(!confirm((lang==='zh'?'匯入／更新 ':'Import/update ')+importData.length+'?'))return;
+    let created=0,updated=0;const now=_localTS();
+    importData.forEach(r=>{let old=assets.find(a=>a.code===r.existingCode);if(!old&&r._kind==='movement')old=assets.find(a=>txt(a.name).toLowerCase()===txt(r.name).toLowerCase()&&(!r.location||txt(a.location)===txt(r.location)));
+      if(old){const before=assetSnapshot(old),next=Object.assign({},old);['name','brand','model','color','size','location','user','purchaseDate','remark','status','category'].forEach(k=>{if(r[k]!==''&&r[k]!=null)next[k]=r[k];});next.qty=r._kind==='movement'?r.balance:(+r.qty||next.qty||1);next.updatedAt=now;next.lastEditedBy=currentUser.name;next.history=[...(old.history||[]),{type:r._kind==='movement'?'inventory':'import_update',date:now,actor:currentUser.name,before,after:assetSnapshot(next),source:r._sheet,desc:(r._kind==='movement'?'Stock in '+r.stockIn+' / issued '+r.issued+' / balance '+r.balance:'Excel update')+' · '+r._sheet}];assets=assets.map(a=>a.code===old.code?next:a);updated++;
+      }else{const a={id:r.existingCode,code:r.existingCode,zone:r.zone,name:r.name,category:r.category,status:r.status||'active',brand:r.brand,model:r.model,color:r.color,size:r.size,qty:+r.qty||1,unit:r.unit||'pcs',unitPrice:+r.unitPrice||0,location:r.location,user:r.user,purchaseDate:r.purchaseDate||today(),remark:r.remark||'',recordedBy:currentUser.name,lastEditedBy:currentUser.name,createdAt:now,updatedAt:now};a.history=[{type:r._kind==='movement'?'inventory':'created',date:now,actor:currentUser.name,after:assetSnapshot(a),source:r._sheet,desc:'Excel import · '+r._sheet}];assets.unshift(a);created++;const p=a.code.slice(0,3),n=parseInt(a.code.slice(3))+1;if(Number.isFinite(n)&&n>cnts[p])cnts[p]=n;}
+    });
+    saveLocal();render();closeM('m-import');toast(lang==='zh'?'正在儲存…':'Saving…','info');await saveToGAS();toast('✅ '+(lang==='zh'?'新增':'Created')+' '+created+' · '+(lang==='zh'?'更新':'Updated')+' '+updated,'ok');const importedCodes=importData.map(r=>r.existingCode);importData=[];if(importedCodes.length&&confirm(lang==='zh'?'要選取這批資產列印標籤嗎？':'Select imported assets for labels?')){batchSelected=new Set(importedCodes.filter(c=>assets.some(a=>a.code===c)));openBatchPrint();batchSelected=new Set(importedCodes.filter(c=>assets.some(a=>a.code===c)));renderBatchList();renderLabelPreview();}
+  };
+
+  /* 頂部「智慧匯入」與資產頁原生解析共用同一套規則，避免兩個入口結果不同。 */
+  window.parseAssetSmartImport=function(file){
+    return new Promise((resolve,reject)=>{
+      const oldPreview=window.renderImportPreview,oldToast=window.toast;
+      let finished=false,timer=null;
+      function restore(){
+        if(timer)clearTimeout(timer);
+        window.renderImportPreview=renderImportPreview=oldPreview;
+        window.toast=toast=oldToast;
+      }
+      window.renderImportPreview=renderImportPreview=function(){
+        if(finished)return;finished=true;
+        const objects=(importData||[]).map(r=>Object.assign({},r,{id:r.existingCode,code:r.existingCode}));
+        const sheets=[...new Set(objects.map(r=>r._sheet).filter(Boolean))];
+        restore();
+        resolve({objects,headers:[],rows:[],sheetName:sheets.join(', '),summary:{warnings:objects.length?[]:['No importable asset rows']}});
+      };
+      window.toast=toast=function(msg,type){
+        if(type==='err'&&!finished){finished=true;restore();reject(new Error(String(msg||'Asset import failed')));return;}
+        return oldToast.apply(this,arguments);
+      };
+      timer=setTimeout(()=>{if(!finished){finished=true;restore();reject(new Error('Asset workbook parsing timed out'));}},30000);
+      try{parseImportFile(file);}catch(err){finished=true;restore();reject(err);}
+    });
+  };
+
+  window.mergeAssetSmartImport=function(current,rows){
+    const now=_localTS(),actor=(currentUser&&currentUser.name)||'User';
+    let active=(current||[]).filter(r=>r&&!r._deleted).map(r=>Object.assign({},r));
+    let dead=(current||[]).filter(r=>r&&r._deleted).map(r=>Object.assign({},r));
+    (rows||[]).forEach(r=>{
+      const code=r.code||r.existingCode||stableCode(r.codeType||'AST',r._sheet||'Import',r.sourceRow||0,r.name||'',r.location||'');
+      let idx=active.findIndex(a=>String(a.code||a.id)===String(code));
+      if(idx<0&&r._kind==='movement')idx=active.findIndex(a=>txt(a.name).toLowerCase()===txt(r.name).toLowerCase()&&(!r.location||txt(a.location)===txt(r.location)));
+      dead=dead.filter(d=>String(d.id||d.code)!==String(code));
+      if(idx>=0){
+        const old=active[idx],before=assetSnapshot(old),next=Object.assign({},old);
+        ['name','brand','model','color','size','location','user','purchaseDate','remark','status','category','zone','unit'].forEach(k=>{if(r[k]!==''&&r[k]!=null)next[k]=r[k];});
+        next.qty=r._kind==='movement'?(+r.balance||0):(+r.qty||next.qty||1);
+        next.id=next.id||next.code||code;next.code=next.code||code;next.updatedAt=now;next.lastEditedBy=actor;
+        next.history=[...(old.history||[]),{type:r._kind==='movement'?'inventory':'import_update',date:now,actor,before,after:assetSnapshot(next),source:r._sheet||'',desc:(r._kind==='movement'?'Stock in '+(+r.stockIn||0)+' / issued '+(+r.issued||0)+' / balance '+(+r.balance||0):'Excel update')+' · '+(r._sheet||'Import')}];
+        active[idx]=next;
+      }else{
+        const a={id:code,code,zone:r.zone||'factory',name:r.name||code,category:r.category||CATS[6],status:r.status||'active',brand:r.brand||'',model:r.model||'',color:r.color||'',size:r.size||'',qty:r._kind==='movement'?(+r.balance||0):(+r.qty||1),unit:r.unit||'pcs',unitPrice:+r.unitPrice||0,location:r.location||'',user:r.user||'',purchaseDate:r.purchaseDate||today(),remark:r.remark||'',recordedBy:actor,lastEditedBy:actor,createdAt:now,updatedAt:now};
+        a.history=[{type:r._kind==='movement'?'inventory':'created',date:now,actor,after:assetSnapshot(a),source:r._sheet||'',desc:'Excel import · '+(r._sheet||'Import')}];
+        active.unshift(a);
+      }
+    });
+    return active.concat(dead);
+  };
+
+  window.printLabelsA4 = async function(){
+    const codes=[...batchSelected];if(!codes.length){toast(lang==='zh'?'請先選擇資產':'Select assets first','err');return;}const win=window.open('','_blank');if(!win){toast('Popup blocked','err');return;}win.document.write('<!doctype html><html><head><meta charset="utf-8"><title>VRT A4 Labels</title><style>@page{size:A4;margin:8mm}body{margin:0;font-family:Arial}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:3mm}.label{height:24mm;border:1px dashed #777;padding:2mm;box-sizing:border-box;display:flex;align-items:center;justify-content:center;break-inside:avoid}.label img{max-width:100%;max-height:100%;object-fit:contain}.code{font-weight:700;font-size:10pt;text-align:center;margin-top:1mm}@media print{button{display:none}}</style></head><body><button onclick="print()">Print</button><div class="grid" id="grid"></div></body></html>');win.document.close();const grid=win.document.getElementById('grid');for(const code of codes){const c=await labelToCanvas(code,lblType),box=win.document.createElement('div');box.className='label';box.innerHTML='<img src="'+c.toDataURL('image/png')+'" alt="'+esc(code)+'">';grid.appendChild(box);}setTimeout(()=>win.print(),350);
+  };
+
+  let assetAnalysisPeriod='month';
+  function historyEvents(){const out=[];assets.forEach(a=>(a.history||[]).forEach(h=>out.push(Object.assign({code:a.code,name:a.name,zone:a.zone},h,{date:String(h.date||'').slice(0,10)}))));return out;}
+  function inPeriod(d,p,ref){if(!d)return false;const x=new Date(d+'T00:00:00'),r=new Date(ref+'T00:00:00');if(p==='day')return d===ref;if(p==='month')return d.slice(0,7)===ref.slice(0,7);if(p==='year')return d.slice(0,4)===ref.slice(0,4);const s=new Date(r);s.setDate(r.getDate()-((r.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+6);return x>=s&&x<=e;}
+  window.setAssetAnalysisPeriod=function(p){assetAnalysisPeriod=p;document.querySelectorAll('[data-asset-period]').forEach(b=>b.classList.toggle('on',b.dataset.assetPeriod===p));renderAssetAnalysis();};
+  window.renderAssetAnalysis=function(){const ref=(document.getElementById('asset-analysis-ref')||{}).value||today(),events=historyEvents().filter(h=>inPeriod(h.date,assetAnalysisPeriod,ref)),types={};events.forEach(h=>types[h.type]=(types[h.type]||0)+1);const qty=assets.reduce((a,x)=>a+(+x.qty||0),0),value=assets.reduce((a,x)=>a+(+x.qty||0)*(+x.unitPrice||0),0),actors=[...new Set(events.map(h=>h.actor||'').filter(Boolean))];document.getElementById('asset-analysis-body').innerHTML='<div class="stats"><div class="sc"><div><div class="sc-l">Events</div><div class="sc-v">'+events.length+'</div></div></div><div class="sc"><div><div class="sc-l">Current Qty</div><div class="sc-v">'+qty+'</div></div></div><div class="sc"><div><div class="sc-l">Current Value</div><div class="sc-v">$'+value.toLocaleString()+'</div></div></div><div class="sc"><div><div class="sc-l">Actors</div><div class="sc-v">'+actors.length+'</div></div></div></div><div style="overflow:auto;margin-top:14px"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Code</th><th>Asset</th><th>Actor</th><th>Detail</th></tr></thead><tbody>'+events.sort((a,b)=>b.date.localeCompare(a.date)).map(h=>'<tr><td>'+esc(h.date)+'</td><td>'+esc(h.type)+'</td><td>'+esc(h.code)+'</td><td>'+esc(h.name)+'</td><td>'+esc(h.actor||'—')+'</td><td>'+esc(h.desc||'')+'</td></tr>').join('')+'</tbody></table></div>';};
+  window.openAssetAnalysis=function(){document.getElementById('asset-analysis-ref').value=today();renderAssetAnalysis();openM('m-asset-analysis');};
+
+  window.buildAssetTelegram=function(opt){
+    opt=opt||{};const mode=opt.mode||'summary',langOpt=opt.lang||'bi';if(mode==='review'&&(!currentUser||currentUser.name!=='Phea'||currentUser.role!=='verifier'))throw new Error('Phea review only');if(mode==='approval'&&(!currentUser||currentUser.name!=='Paul'||currentUser.role!=='approver'))throw new Error('Paul approval only');const all=(opt.cfg.read()||[]).filter(r=>!r._deleted),rows=GC.telegram.filter(all,opt.cfg,opt.period,opt.ref,opt.scope,opt.slot),qty=rows.reduce((a,r)=>a+(+r.qty||1),0),value=rows.reduce((a,r)=>a+(+r.qty||1)*(+r.unitPrice||0),0),recorders=[...new Set(rows.map(r=>r.recordedBy).filter(Boolean))],sender=currentUser?currentUser.name:'—',p={day:['日','Day','ថ្ងៃ'],week:['週','Week','សប្ដាហ៍'],month:['月','Month','ខែ'],year:['年','Year','ឆ្នាំ'],all:['全部','All','ទាំងអស់']}[opt.period]||['期間','Period','រយៈពេល'],m={summary:['摘要','Summary','សង្ខេប'],review:['審查','Review','ពិនិត្យ'],approval:['核可','Approval','អនុម័ត']}[mode],tr=(a)=>GC.telegram.text(a[0],a[1],a[2],langOpt),ph=[];rows.forEach(r=>(GC.util.asArray(r.photos)||[]).forEach(x=>{if(x&&!ph.includes(x)&&ph.length<5)ph.push(x);}));const lines=['📦 <b>'+tr(['VRT 資產管理','VRT Asset Management','VRT គ្រប់គ្រងទ្រព្យ'])+'</b>','📅 '+tr(p)+' · 🧾 '+tr(m),'━━━━━━━━━━━━━━━━','📊 '+tr(['資產','Assets','ទ្រព្យ'])+': <b>'+rows.length+'</b> · '+tr(['數量','Qty','បរិមាណ'])+': '+qty,'💰 '+tr(['總值','Total value','តម្លៃសរុប'])+': <b>$'+value.toLocaleString(undefined,{maximumFractionDigits:2})+'</b>','📷 '+ph.length,'🧑‍💻 '+tr(['記錄人','Recorded by','កត់ត្រាដោយ'])+': '+(recorders.join(', ')||'—'),'✈️ '+tr(['發送人','Sent by','ផ្ញើដោយ'])+': <b>'+sender+'</b>'];if(mode==='review')lines.push('🔍 Phea Review');if(mode==='approval')lines.push('✅ Paul Approval');lines.push('━━━━━━━━━━━━━━━━','⏰ '+_localTS());return{text:lines.join('\n'),photos:ph};
+  };
+  window.assetTelegramSent=async function(meta){const actor=currentUser?currentUser.name:'—',all=assets.filter(r=>!r._deleted),rows=GC.telegram.filter(all,{dateField:'purchaseDate',scopeField:'zone'},meta.period,meta.ref,meta.scope,meta.slot),now=_localTS();const ids=new Set(rows.map(r=>r.code));assets=assets.map(a=>{if(!ids.has(a.code))return a;const h={type:'telegram_'+meta.mode,date:now,actor,desc:(meta.mode==='review'?'Phea review':meta.mode==='approval'?'Paul approval':'Telegram summary')+' sent by '+actor};return Object.assign({},a,{lastSentBy:actor,lastSentAt:now,lastTelegramMode:meta.mode,reviewedBy:meta.mode==='review'?'Phea':a.reviewedBy,approvedBy:meta.mode==='approval'?'Paul':a.approvedBy,history:[...(a.history||[]),h],updatedAt:now});});saveLocal();await saveToGAS();};
+
+  function ensureAssetUi(){
+    const foot=document.querySelector('#m-print .mfoot');if(foot&&!document.getElementById('btn-a4-print')){const b=document.createElement('button');b.id='btn-a4-print';b.className='btn-pri';b.innerHTML='🖨️ A4 Print';b.onclick=printLabelsA4;foot.insertBefore(b,foot.firstChild);}
+    const toolbar=document.querySelector('.toolbar');if(toolbar&&!document.getElementById('btn-asset-analysis')){const b=document.createElement('button');b.id='btn-asset-analysis';b.className='btn-sm';b.innerHTML='📊 '+(lang==='zh'?'分析':'Analysis');b.onclick=openAssetAnalysis;toolbar.appendChild(b);}
+    if(!document.getElementById('m-asset-analysis')){const m=document.createElement('div');m.className='ovl hidden';m.id='m-asset-analysis';m.innerHTML='<div class="mdl"><div class="mhead"><div class="mtitle">📊 Asset History Analysis</div><button class="mcls" onclick="closeM(\'m-asset-analysis\')">✕</button></div><div class="mbody"><div class="lbl-opts"><button class="lbl-opt" data-asset-period="day" onclick="setAssetAnalysisPeriod(\'day\')">Day</button><button class="lbl-opt" data-asset-period="week" onclick="setAssetAnalysisPeriod(\'week\')">Week</button><button class="lbl-opt on" data-asset-period="month" onclick="setAssetAnalysisPeriod(\'month\')">Month</button><button class="lbl-opt" data-asset-period="year" onclick="setAssetAnalysisPeriod(\'year\')">Year</button><input type="date" id="asset-analysis-ref" onchange="renderAssetAnalysis()"></div><div id="asset-analysis-body"></div></div></div>';document.body.appendChild(m);}
+  }
+  function hydrateAsset(){
+    loadLocal();
+    rebuildSelects();
+    setLang(lang||'zh');
+    render();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureAssetUi);else ensureAssetUi();
+  if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(hydrateAsset);else hydrateAsset();
+  window.ASSET_V29={tombstones,setTombstones,addTombstone};
+})();
 </script>
 <script>
 var AC_TG_TOKEN_DEFAULT = '';
@@ -2076,25 +2224,29 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       tool:'asset',
       title:'Asset 資產',
       gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
-      dateField:'purchase_date',
+      dateField:'purchaseDate',
       idField:'id',
       groupField:'category',
       groupLabel:'Category',
+      scopeField:'zone',
+      telegramScopes:[{value:'all',zh:'全部',en:'All',km:'ទាំងអស់'},{value:'factory',zh:'工廠',en:'Factory',km:'រោងចក្រ'},{value:'expat',zh:'外籍宿舍',en:'Expat Dorm',km:'ផ្ទះស្នាក់នៅជនបរទេស'},{value:'local',zh:'當地宿舍',en:'Local Dorm',km:'ផ្ទះស្នាក់នៅក្នុងស្រុក'}],
       weather:false,
       photo:true,
+      telegramLanguage:true,
+      telegramBuilder:buildAssetTelegram,
+      onTelegramSent:assetTelegramSent,
       toCloud:r=>Object.assign({},r,{id:r.id||r.code,updatedAt:r.updatedAt||_localTS()}),
       fromCloud:r=>Object.assign({},r,{id:r.id||r.code}),
       importSchema:{"code": ["編號", "code", "資產編號", "លេខកូដ"], "name": ["名稱", "name", "品名", "ឈ្មោះ"], "category": ["類別", "category", "ប្រភេទ"], "zone": ["區域", "zone", "តំបន់"], "status": ["狀態", "status", "ស្ថានភាព"], "quantity": ["數量", "qty", "quantity", "បរិមាណ"], "unit": ["單位", "unit", "ឯកតា"], "location": ["位置", "location", "ទីតាំង"]},
+      importParser:parseAssetSmartImport,
+      mergeImport:mergeAssetSmartImport,
+      onImport:function(){saveToGAS();},
     read(){ try{ const raw=localStorage.getItem('vrt_a7'); if(!raw) return [];
         const d=JSON.parse(raw); const list=Array.isArray(d)?d:(['records','list','items','data','rows'].map(k=>Array.isArray(d[k])?d[k]:null).find(Boolean)||[]);
         let savedPhotos={};try{savedPhotos=JSON.parse(localStorage.getItem('vrt_photos')||'{}')||{};}catch(e){}
-        return list.map(a=>Object.assign({},a,{photos:assetPhotoValue(savedPhotos[a.code])||assetPhotoValue(a.photos)}));
+        const active=list.map(a=>Object.assign({},a,{id:a.id||a.code,photos:assetPhotoValue(savedPhotos[a.code])||assetPhotoValue(a.photos)}));let dead=[];try{dead=JSON.parse(localStorage.getItem('vrt_asset_tombstones')||'[]');}catch(e){}return active.concat(Array.isArray(dead)?dead:[]);
       }catch(e){ return []; } },
-    write(list){ try{ const raw=localStorage.getItem('vrt_a7'); let d=raw?JSON.parse(raw):null;
-        const nextPhotos=Object.assign({},photos);(list||[]).forEach(a=>{const p=assetPhotoValue(a.photos);if(p&&a.code)nextPhotos[a.code]=p;});photos=nextPhotos;
-        if(Array.isArray(d)||d===null){ localStorage.setItem('vrt_a7',JSON.stringify(list));localStorage.setItem('vrt_photos',JSON.stringify(nextPhotos)); return; }
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])){ d[k]=list; localStorage.setItem('vrt_a7',JSON.stringify(d));localStorage.setItem('vrt_photos',JSON.stringify(nextPhotos)); return; }
-        d.records=list; localStorage.setItem('vrt_a7',JSON.stringify(d));localStorage.setItem('vrt_photos',JSON.stringify(nextPhotos)); }catch(e){ localStorage.setItem('vrt_a7',JSON.stringify(list)); } },
+    write(list){ try{ const active=[],dead=[];(list||[]).forEach(a=>(a&&a._deleted?dead:active).push(a));const nextPhotos=Object.assign({},photos);active.forEach(a=>{const p=assetPhotoValue(a.photos);if(p&&a.code)nextPhotos[a.code]=p;});photos=nextPhotos;assets=active.map(a=>Object.assign({},a,{id:a.id||a.code}));localStorage.setItem('vrt_a7',JSON.stringify(assets));localStorage.setItem('vrt_asset_tombstones',JSON.stringify(dead));localStorage.setItem('vrt_photos',JSON.stringify(nextPhotos));render(); }catch(e){ console.warn('asset cloud write failed',e); } },
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();

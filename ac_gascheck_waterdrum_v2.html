@@ -840,7 +840,7 @@ const LANGS = {
     tab_entry:'Data Entry', tab_analysis:'Analysis', tab_history:'History',
     tab_import:'Import Excel', tab_alerts:'Alerts', tab_telegram:'Telegram',
     add_record:'Add Record', export:'Export', save:'Save', cancel:'Cancel',
-    day:'Day', week:'Week', year:'Year', month:'Month', date:'Date', time:'Time', qty:'Qty', checker:'Inspector',
+    day:'Day', week:'Week', year:'Year', month:'Month', date:'Date', time:'Time', qty:'Qty', checker:'Inspector', morning:'Morning', afternoon:'Afternoon',
     price:'Price (Riels)', ttl:'TTL (Riels)', action:'Action',
     factory:'Factory', staff_house:'Staff House',
     today:'Today', clear_month:'Clear Month', monthly_record:'Monthly Record',
@@ -881,7 +881,7 @@ const LANGS = {
     tab_entry:'數據輸入', tab_analysis:'分析', tab_history:'歷史記錄',
     tab_import:'匯入Excel', tab_alerts:'異常提醒', tab_telegram:'Telegram',
     add_record:'新增記錄', export:'匯出', save:'儲存', cancel:'取消',
-    day:'日', week:'週', year:'年', month:'月', date:'日期', time:'時間', qty:'數量', checker:'檢查人',
+    day:'日', week:'週', year:'年', month:'月', date:'日期', time:'時間', qty:'數量', checker:'檢查人', morning:'早上', afternoon:'下午',
     price:'單價(瑞爾)', ttl:'合計(瑞爾)', action:'操作',
     factory:'工廠', staff_house:'員工宿舍',
     today:'今天', clear_month:'清除本月', monthly_record:'月度記錄',
@@ -922,7 +922,7 @@ const LANGS = {
     tab_entry:'បញ្ចូលទិន្នន័យ', tab_analysis:'វិភាគ', tab_history:'ប្រវត្តិ',
     tab_import:'នាំចូល Excel', tab_alerts:'ការជូនដំណឹង', tab_telegram:'Telegram',
     add_record:'បន្ថែមកំណត់ត្រា', export:'នាំចេញ', save:'រក្សាទុក', cancel:'បោះបង់',
-    day:'ថ្ងៃ', week:'សប្តាហ៍', year:'ឆ្នាំ', month:'ខែ', date:'កាលបរិច្ឆេទ', time:'ម៉ោង', qty:'បរិមាណ', checker:'អ្នកត្រួតពិនិត្យ',
+    day:'ថ្ងៃ', week:'សប្តាហ៍', year:'ឆ្នាំ', month:'ខែ', date:'កាលបរិច្ឆេទ', time:'ម៉ោង', qty:'បរិមាណ', checker:'អ្នកត្រួតពិនិត្យ', morning:'ពេលព្រឹក', afternoon:'ពេលរសៀល',
     price:'តម្លៃ(រៀល)', ttl:'សរុប(រៀល)', action:'សកម្មភាព',
     factory:'រោងចក្រ', staff_house:'ផ្ទះបុគ្គលិក',
     today:'ថ្ងៃនេះ', clear_month:'លុបខែ', monthly_record:'កំណត់ត្រាប្រចាំខែ',
@@ -2249,13 +2249,207 @@ function buildWaterTelegram(opt){
 </script>
 
 <script>
+/* ═══ Water Drum v29 — 雙時段、月份設定快照、考勤人均與每日照片 ═══ */
+(function(){
+  const V = window.WDR_V29 = {};
+  const esc = v => String(v == null ? '' : v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  const cfgKey = (y,m) => 'wdr_cfg_'+y+'_'+String(m).padStart(2,'0');
+  const headKey = (y,m) => 'wdr_headcount_'+y+'_'+String(m).padStart(2,'0');
+  const parse = (key,fallback) => { try { const v=JSON.parse(localStorage.getItem(key)||'null'); return v && typeof v==='object' ? v : fallback; } catch(e) { return fallback; } };
+  const first = (rows,key) => { const r=(rows||[]).find(x => +x[key] > 0); return r ? +r[key] : 0; };
+  function futureCfg(){
+    const old = parse('wdr_default_cfg',{});
+    return {
+      facPrice:+old.facPrice || +(localStorage.getItem('wdr_default_fac_price')||2000),
+      staPrice:+old.staPrice || +(localStorage.getItem('wdr_default_sta_price')||2000),
+      inspector:String(old.inspector || localStorage.getItem('wdr_default_inspector') || ''),
+      exchangeRate:+old.exchangeRate || +(localStorage.getItem('wdr_exchange_rate')||4100),
+      drumLiters:20,
+      effectiveFrom:old.effectiveFrom || ''
+    };
+  }
+  function monthCfg(y,m){
+    const key=cfgKey(y,m), saved=parse(key,null);
+    if(saved) return Object.assign({drumLiters:20},saved);
+    const rows=typeof loadMonthDataRaw==='function' ? (loadMonthDataRaw(y,m)||[]) : [];
+    const base=futureCfg();
+    if(rows.some(r=>r.fQty||r.sQty||r.fPrice||r.sPrice)){
+      base.facPrice=first(rows,'fPrice')||base.facPrice;
+      base.staPrice=first(rows,'sPrice')||base.staPrice;
+      base.inspector=String((rows.find(r=>r.checkBy)||{}).checkBy||base.inspector||'');
+    }
+    localStorage.setItem(key,JSON.stringify(base));
+    return base;
+  }
+  function setMonthCfg(y,m,cfg){ localStorage.setItem(cfgKey(y,m),JSON.stringify(Object.assign({drumLiters:20},cfg))); }
+  function migrateMonthConfigs(){
+    const base=futureCfg();
+    getAllKeys().filter(k=>/^wdr_\d{4}_\d{2}$/.test(k)).forEach(k=>{
+      const m=k.match(/^wdr_(\d{4})_(\d{2})$/),key=cfgKey(+m[1],+m[2]);
+      if(localStorage.getItem(key))return;
+      let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(e){}
+      const cfg=Object.assign({},base,{facPrice:first(rows,'fPrice')||base.facPrice,staPrice:first(rows,'sPrice')||base.staPrice,inspector:String(((rows||[]).find(r=>r.checkBy)||{}).checkBy||base.inspector||''),exchangeRate:+base.exchangeRate||4100,drumLiters:20,effectiveFrom:m[1]+'-'+m[2]});
+      setMonthCfg(+m[1],+m[2],cfg);
+    });
+  }
+  function rate(){ return +monthCfg(currentYear,currentMonth).exchangeRate || 4100; }
+  function usd(khr,r){ return '$'+((+khr||0)/(+r||4100)).toFixed(2); }
+  function slotValue(v){
+    const s=String(v||'').toLowerCase();
+    if(s==='morning'||s==='afternoon')return s;
+    const h=typeof waterHour==='function'?waterHour(s):NaN;
+    return isNaN(h)?'':(h<12?'morning':'afternoon');
+  }
+  function slotLabel(v){ const s=slotValue(v); return s==='morning'?waterTelegramText('早上','Morning','ពេលព្រឹក',currentLang==='en'?'en':currentLang==='km'?'km':'zh'):s==='afternoon'?waterTelegramText('下午','Afternoon','ពេលរសៀល',currentLang==='en'?'en':currentLang==='km'?'km':'zh'):'—'; }
+  V.monthCfg=monthCfg;V.slotValue=slotValue;V.rate=rate;
+
+  window.getDefaultFacPrice = getDefaultFacPrice = function(){ return +monthCfg(currentYear,currentMonth).facPrice || 2000; };
+  window.getDefaultStaPrice = getDefaultStaPrice = function(){ return +monthCfg(currentYear,currentMonth).staPrice || 2000; };
+  window.emptyRow = emptyRow = function(day){
+    const c=monthCfg(currentYear,currentMonth);
+    return {day:+day,fTime:'',fQty:'',fPrice:c.facPrice,fTtl:0,sTime:'',sQty:'',sPrice:c.staPrice,sTtl:0,checkBy:c.inspector||'',headcount:'',photos:[],supplier:'',invoice:'',note:'',anomaly:[],updatedAt:''};
+  };
+  window.saveMonthData = saveMonthData = function(year,month,rows){
+    const now=_localTS();
+    const clean=(rows||[]).map(r=>Object.assign({},r,{updatedAt:r.updatedAt||now,photos:Array.isArray(r.photos)?r.photos.slice(0,2):[]}));
+    localStorage.setItem(storageKey(year,month),JSON.stringify(clean));
+    localStorage.setItem('wdr_last_saved',now);
+  };
+  window.loadMonthData = loadMonthData = function(){
+    currentYear=parseInt(document.getElementById('sel-year').value);
+    currentMonth=parseInt(document.getElementById('sel-month').value);
+    const saved=loadMonthDataRaw(currentYear,currentMonth)||[], days=getDaysInMonth(currentYear,currentMonth);
+    monthCfg(currentYear,currentMonth);
+    currentRows=[];
+    for(let d=1;d<=days;d++){
+      const found=saved.find(r=>+r.day===d);
+      const row=found?Object.assign({},emptyRow(d),found):emptyRow(d);
+      row.fTime=slotValue(row.fTime);row.sTime=slotValue(row.sTime);row.photos=Array.isArray(row.photos)?row.photos.slice(0,2):[];
+      currentRows.push(row);
+    }
+    updatePeriodLabel();renderTable();renderSummaryCards();updateLastSaved();
+  };
+
+  function timeSelect(idx,field,value){
+    const val=slotValue(value);
+    return '<select class="wdr-slot" onchange="updateRow('+idx+',\''+field+'\',this.value)"><option value="">—</option><option value="morning" '+(val==='morning'?'selected':'')+'>'+esc(T('morning')==='morning'?'Morning / 早上':T('morning'))+'</option><option value="afternoon" '+(val==='afternoon'?'selected':'')+'>'+esc(T('afternoon')==='afternoon'?'Afternoon / 下午':T('afternoon'))+'</option></select>';
+  }
+  function photoCell(row,idx){
+    const n=(row.photos||[]).length;
+    return '<button class="btn btn-ghost btn-sm" onclick="document.getElementById(\'wdr-photo-'+idx+'\').click()">📷 '+n+'/2</button><input id="wdr-photo-'+idx+'" type="file" accept="image/*" capture="environment" multiple hidden onchange="addWaterPhotos('+idx+',this)">';
+  }
+  function visibleRows(){
+    if(mainPeriod==='day'){
+      const d=new Date((document.getElementById('wdr-ref-date')||{}).value||_localYMD());
+      return currentRows.map((r,i)=>({r,i})).filter(x=>x.r.day===d.getDate());
+    }
+    if(mainPeriod==='week'){
+      const d=new Date(((document.getElementById('wdr-ref-date')||{}).value||_localYMD())+'T00:00:00');
+      const dow=(d.getDay()+6)%7,start=new Date(d);start.setDate(d.getDate()-dow);const end=new Date(start);end.setDate(start.getDate()+6);
+      return currentRows.map((r,i)=>({r,i})).filter(x=>{const xDate=new Date(currentYear,currentMonth-1,x.r.day);return xDate>=start&&xDate<=end;});
+    }
+    return currentRows.map((r,i)=>({r,i}));
+  }
+  window.renderTable = renderTable = function(){
+    const tbody=document.getElementById('table-body');if(!tbody)return;
+    const rrate=rate(), view=visibleRows();let html='';
+    view.forEach(({r:row,i:idx})=>{
+      row.fTtl=calcTtl(row.fQty,row.fPrice);row.sTtl=calcTtl(row.sQty,row.sPrice);
+      const fmt=n=>n?(+n).toLocaleString():'—';
+      html+='<tr id="row-'+row.day+'"><td class="date-cell">'+row.day+'</td>'+
+        '<td>'+timeSelect(idx,'fTime',row.fTime)+'</td><td><input type="number" min="0" value="'+esc(row.fQty||'')+'" onchange="updateRow('+idx+',\'fQty\',this.value)"></td>'+
+        '<td><input class="fPrice-inp" type="number" min="0" value="'+esc(row.fPrice||'')+'" onchange="updateRow('+idx+',\'fPrice\',this.value)"></td><td><b id="fttl-'+idx+'">'+fmt(row.fTtl)+'</b></td>'+
+        '<td>'+timeSelect(idx,'sTime',row.sTime)+'</td><td><input type="number" min="0" value="'+esc(row.sQty||'')+'" onchange="updateRow('+idx+',\'sQty\',this.value)"></td>'+
+        '<td><input class="sPrice-inp" type="number" min="0" value="'+esc(row.sPrice||'')+'" onchange="updateRow('+idx+',\'sPrice\',this.value)"></td><td><b id="sttl-'+idx+'">'+fmt(row.sTtl)+'</b></td>'+
+        '<td><input type="text" value="'+esc(row.checkBy||'')+'" placeholder="'+esc(T('checker'))+'" onchange="updateRow('+idx+',\'checkBy\',this.value)"></td>'+
+        '<td><input type="number" min="0" value="'+esc(row.headcount||'')+'" placeholder="0" onchange="updateRow('+idx+',\'headcount\',this.value)" style="width:72px"></td>'+
+        '<td>'+photoCell(row,idx)+'</td><td><button class="btn btn-ghost btn-sm" onclick="clearRow('+idx+')">✕</button></td></tr>';
+    });
+    const rows=view.map(x=>x.r),fq=rows.reduce((a,r)=>a+(+r.fQty||0),0),sq=rows.reduce((a,r)=>a+(+r.sQty||0),0),ft=rows.reduce((a,r)=>a+(+r.fTtl||0),0),st=rows.reduce((a,r)=>a+(+r.sTtl||0),0),hc=rows.reduce((a,r)=>a+(+r.headcount||0),0),pc=rows.reduce((a,r)=>a+(r.photos||[]).length,0);
+    html+='<tr class="total-row"><td>'+esc(T('total_row'))+'</td><td></td><td>'+fq+'</td><td></td><td>'+ft.toLocaleString()+' ៛<small>'+usd(ft,rrate)+'</small></td><td></td><td>'+sq+'</td><td></td><td>'+st.toLocaleString()+' ៛<small>'+usd(st,rrate)+'</small></td><td></td><td>'+hc+'</td><td>📷 '+pc+'</td><td><b>'+usd(ft+st,rrate)+'</b></td></tr>';
+    tbody.innerHTML=html;
+  };
+  window.updateRow = updateRow = function(idx,field,value){
+    const row=currentRows[idx];if(!row)return;row[field]=value;row.updatedAt=_localTS();
+    if(field==='fQty'&&!row.fPrice)row.fPrice=getDefaultFacPrice();if(field==='sQty'&&!row.sPrice)row.sPrice=getDefaultStaPrice();
+    row.fTtl=calcTtl(row.fQty,row.fPrice);row.sTtl=calcTtl(row.sQty,row.sPrice);renderSummaryCards();autoSave();
+  };
+  function compressPhoto(file){return new Promise((resolve,reject)=>{const fr=new FileReader();fr.onerror=reject;fr.onload=e=>{const im=new Image();im.onerror=reject;im.onload=()=>{const c=document.createElement('canvas');let w=im.width,h=im.height,M=1280;if(w>M||h>M){if(w>h){h=Math.round(h*M/w);w=M}else{w=Math.round(w*M/h);h=M}}c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);resolve(c.toDataURL('image/jpeg',.76));};im.src=e.target.result;};fr.readAsDataURL(file);});}
+  window.addWaterPhotos = async function(idx,input){
+    const row=currentRows[idx];if(!row)return;const files=Array.from(input.files||[]).slice(0,Math.max(0,2-(row.photos||[]).length));
+    for(const f of files){try{(row.photos||(row.photos=[])).push(await compressPhoto(f));}catch(e){}}
+    row.photos=row.photos.slice(0,2);row.updatedAt=_localTS();saveData(true);renderTable();renderSummaryCards();input.value='';
+  };
+
+  window.renderSummaryCards = renderSummaryCards = function(){
+    const rows=visibleRows().map(x=>x.r),fq=rows.reduce((a,r)=>a+(+r.fQty||0),0),sq=rows.reduce((a,r)=>a+(+r.sQty||0),0),ft=rows.reduce((a,r)=>a+calcTtl(r.fQty,r.fPrice),0),st=rows.reduce((a,r)=>a+calcTtl(r.sQty,r.sPrice),0),drums=fq+sq,liters=drums*20,persons=rows.reduce((a,r)=>a+(+r.headcount||0),0),per=persons?liters/persons:0,rr=rate();
+    const el=document.getElementById('summary-cards');if(!el)return;
+    el.innerHTML='<div class="summary-card blue"><div class="card-label">🏭 '+esc(T('factory'))+'</div><div class="card-value">'+fq+'</div><div class="card-sub">'+ft.toLocaleString()+' ៛ · '+usd(ft,rr)+'</div></div>'+
+      '<div class="summary-card teal"><div class="card-label">🏠 '+esc(T('staff_house'))+'</div><div class="card-value">'+sq+'</div><div class="card-sub">'+st.toLocaleString()+' ៛ · '+usd(st,rr)+'</div></div>'+
+      '<div class="summary-card amber"><div class="card-label">💰 '+esc(T('grand_total'))+'</div><div class="card-value">'+(ft+st).toLocaleString()+' ៛</div><div class="card-sub">'+usd(ft+st,rr)+'</div></div>'+
+      '<div class="summary-card green"><div class="card-label">💧 '+waterTelegramText('用水量','Water','ទឹក',currentLang)+'</div><div class="card-value">'+liters.toLocaleString()+' L</div><div class="card-sub">'+drums+' × 20L</div></div>'+
+      '<div class="summary-card red"><div class="card-label">👥 '+waterTelegramText('人均用水','Per person','ទឹកក្នុងមនុស្សម្នាក់',currentLang)+'</div><div class="card-value">'+per.toFixed(1)+' L</div><div class="card-sub">'+persons+' person-days</div></div>';
+  };
+
+  window.applyWaterDefaultsToMonth = function(){
+    const old=monthCfg(currentYear,currentMonth),cfg={facPrice:+document.getElementById('cp-fac-price').value||old.facPrice,staPrice:+document.getElementById('cp-sta-price').value||old.staPrice,inspector:String((document.getElementById('cp-inspector')||{}).value||''),exchangeRate:+document.getElementById('cp-rate').value||old.exchangeRate,drumLiters:20,effectiveFrom:currentYear+'-'+String(currentMonth).padStart(2,'0')};
+    setMonthCfg(currentYear,currentMonth,cfg);localStorage.setItem('wdr_default_cfg',JSON.stringify(cfg));localStorage.setItem('wdr_default_fac_price',String(cfg.facPrice));localStorage.setItem('wdr_default_sta_price',String(cfg.staPrice));localStorage.setItem('wdr_default_inspector',cfg.inspector);localStorage.setItem('wdr_exchange_rate',String(cfg.exchangeRate));
+    currentRows.forEach(r=>{r.fPrice=cfg.facPrice;r.sPrice=cfg.staPrice;r.checkBy=cfg.inspector||r.checkBy;r.updatedAt=_localTS();});
+    if(typeof WDR_CURRENCY!=='undefined')WDR_CURRENCY.setRate(cfg.exchangeRate);saveData(true);renderTable();renderSummaryCards();showToast('✅ '+waterTelegramText('本月已全部套用；舊月份不會改動','Applied to this month; prior months are unchanged','បានអនុវត្តសម្រាប់ខែនេះ',currentLang),'success');
+  };
+  window.applyAndCloseCurrency = applyAndCloseCurrency = function(){applyWaterDefaultsToMonth();document.getElementById('currency-panel').classList.remove('open');};
+  window.toggleCurrencyPanel = toggleCurrencyPanel = function(){
+    const p=document.getElementById('currency-panel');if(!p)return;p.classList.toggle('open');if(!p.classList.contains('open'))return;
+    const c=monthCfg(currentYear,currentMonth);document.getElementById('cp-fac-price').value=c.facPrice;document.getElementById('cp-sta-price').value=c.staPrice;document.getElementById('cp-rate').value=c.exchangeRate;if(document.getElementById('cp-inspector'))document.getElementById('cp-inspector').value=c.inspector||'';
+  };
+  window.saveDefaultPrices = saveDefaultPrices = function(){ /* 明確按套用才寫入，避免輸入中改到舊月份 */ };
+
+  window.syncAttendanceHeadcount = async function(){
+    if(!GC.attendance){showToast('Attendance bridge unavailable','error');return;}
+    const start=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-01',end=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(getDaysInMonth(currentYear,currentMonth)).padStart(2,'0');showToast('⏳ '+waterTelegramText('同步考勤人數…','Syncing attendance…','កំពុងធ្វើសមកាលកម្ម…',currentLang),'info');
+    const r=await GC.attendance.headcount(start,end);Object.keys(r.daily||{}).forEach(d=>{const day=+d.slice(8,10),row=currentRows.find(x=>+x.day===day);if(row)row.headcount=+r.daily[d]||0;});localStorage.setItem(headKey(currentYear,currentMonth),JSON.stringify(r.daily||{}));saveData(true);renderTable();renderSummaryCards();showToast(r.personDays?'✅ '+r.personDays+' person-days':waterTelegramText('找不到同網域考勤資料，可手動填人數','Attendance data not found; enter headcount manually','រកមិនឃើញទិន្នន័យវត្តមាន',currentLang),r.personDays?'success':'warning');
+  };
+
+  function allWaterRows(){
+    const out=[];getAllKeys().forEach(k=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/);if(!m)return;let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(e){}const cfg=monthCfg(+m[1],+m[2]);(rows||[]).forEach(r=>out.push(Object.assign({},r,{date:m[1]+'-'+m[2]+'-'+String(r.day).padStart(2,'0'),exchangeRate:cfg.exchangeRate||4100})));});return out;
+  }
+  window.setAnalysisPeriod = setAnalysisPeriod = function(p){analysisPeriod=p;document.querySelectorAll('#panel-analysis .period-btn').forEach(b=>b.classList.toggle('active',b.dataset.wdrPeriod===p));renderAnalysis();};
+  window.renderAnalysis = renderAnalysis = function(){
+    const y=+(document.getElementById('an-year')||{}).value||currentYear,m=+(document.getElementById('an-month')||{}).value||currentMonth,ref=(document.getElementById('wdr-analysis-ref')||{}).value||_localYMD();let rows=allWaterRows();
+    if(analysisPeriod==='day')rows=rows.filter(r=>r.date===ref);else if(analysisPeriod==='week'){const d=new Date(ref+'T00:00:00'),s=new Date(d);s.setDate(d.getDate()-((d.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+6);rows=rows.filter(r=>{const x=new Date(r.date+'T00:00:00');return x>=s&&x<=e;});}else if(analysisPeriod==='month')rows=rows.filter(r=>r.date.startsWith(y+'-'+String(m).padStart(2,'0')));else rows=rows.filter(r=>r.date.startsWith(y+'-'));
+    const drums=rows.reduce((a,r)=>a+(+r.fQty||0)+(+r.sQty||0),0),liters=drums*20,persons=rows.reduce((a,r)=>a+(+r.headcount||0),0),khr=rows.reduce((a,r)=>a+calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice),0),rr=rows.length?(+rows[rows.length-1].exchangeRate||4100):rate(),by={};rows.forEach(r=>{const key=analysisPeriod==='year'?r.date.slice(0,7):r.date;(by[key]||(by[key]={drums:0,liters:0,persons:0,khr:0}));by[key].drums+=(+r.fQty||0)+(+r.sQty||0);by[key].liters=by[key].drums*20;by[key].persons+=(+r.headcount||0);by[key].khr+=calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice);});
+    document.getElementById('analysis-content').innerHTML='<div class="summary-grid"><div class="summary-card blue"><div class="card-label">Drums</div><div class="card-value">'+drums+'</div></div><div class="summary-card teal"><div class="card-label">Liters</div><div class="card-value">'+liters.toLocaleString()+' L</div></div><div class="summary-card green"><div class="card-label">Person-days</div><div class="card-value">'+persons+'</div></div><div class="summary-card amber"><div class="card-label">L / person</div><div class="card-value">'+(persons?liters/persons:0).toFixed(1)+'</div></div><div class="summary-card red"><div class="card-label">Total</div><div class="card-value">'+khr.toLocaleString()+' ៛</div><div class="card-sub">'+usd(khr,rr)+'</div></div></div><div class="chart-card" style="margin-top:16px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Period</th><th>Drums</th><th>Liters</th><th>Person-days</th><th>L/person</th><th>Total KHR / USD</th></tr></thead><tbody>'+Object.keys(by).sort().map(k=>'<tr><td>'+k+'</td><td>'+by[k].drums+'</td><td>'+by[k].liters.toLocaleString()+' L</td><td>'+by[k].persons+'</td><td>'+(by[k].persons?by[k].liters/by[k].persons:0).toFixed(1)+'</td><td>'+by[k].khr.toLocaleString()+' ៛ / '+usd(by[k].khr,rr)+'</td></tr>').join('')+'</tbody></table></div>';
+  };
+
+  window.waterTelegramSlotMatch = waterTelegramSlotMatch = function(time,slot){return !slot||slot==='all'||slotValue(time)===slot;};
+  window.buildWaterTelegram = buildWaterTelegram = function(opt){
+    opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode=opt.mode||'summary',slot=opt.slot||'all',lang=opt.lang||'bi';const all=typeof cfg.read==='function'?(cfg.read()||[]):[];const rows=GC.telegram.filter(all,cfg,period,opt.ref,'all',slot);
+    let fq=0,sq=0,ft=0,st=0,persons=0;const inspectors=new Set(),photos=[];rows.forEach(r=>{if(waterTelegramSlotMatch(r.fTime,slot)){fq+=+r.fQty||0;ft+=+r.fTtl||calcTtl(r.fQty,r.fPrice);}if(waterTelegramSlotMatch(r.sTime,slot)){sq+=+r.sQty||0;st+=+r.sTtl||calcTtl(r.sQty,r.sPrice);}persons+=+r.headcount||0;if(r.checkBy)inspectors.add(r.checkBy);(r.photos||[]).forEach(p=>{if(p&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
+    const rr=rows.length?(+rows[rows.length-1].exchangeRate||4100):rate(),drums=fq+sq,liters=drums*20,pLabel={day:waterTelegramText('日','Day','ថ្ងៃ',lang),week:waterTelegramText('週','Week','សប្ដាហ៍',lang),month:waterTelegramText('月','Month','ខែ',lang),year:waterTelegramText('年','Year','ឆ្នាំ',lang),all:waterTelegramText('全部','All','ទាំងអស់',lang)}[period]||period,mLabel={summary:waterTelegramText('摘要','Summary','សង្ខេប',lang),review:waterTelegramText('審查','Review','ពិនិត្យ',lang),approval:waterTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode,sLabel={all:waterTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:waterTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:waterTelegramText('下午','Afternoon','ពេលរសៀល',lang)}[slot]||slot;
+    const lines=['💧 <b>'+waterTelegramText('VRT 飲用水','VRT Drinking Water','VRT ទឹកផឹក',lang)+'</b>','📅 '+pLabel+' · ⏱️ '+sLabel+' · 🧾 '+mLabel,'━━━━━━━━━━━━━━━━','🏭 '+waterTelegramText('工廠','Factory','រោងចក្រ',lang)+': <b>'+fq+'</b> · '+ft.toLocaleString()+' KHR','🏠 '+waterTelegramText('宿舍','Staff House','ផ្ទះបុគ្គលិក',lang)+': <b>'+sq+'</b> · '+st.toLocaleString()+' KHR','💰 '+waterTelegramText('總額','Grand total','សរុប',lang)+': <b>'+(ft+st).toLocaleString()+' KHR / '+usd(ft+st,rr)+'</b>','💧 '+liters.toLocaleString()+' L ('+drums+' × 20L)','👥 '+waterTelegramText('人均','Per person','ក្នុងមនុស្សម្នាក់',lang)+': '+(persons?liters/persons:0).toFixed(1)+' L · '+persons+' person-days','👤 '+waterTelegramText('檢查員','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(Array.from(inspectors).join(', ')||'—'),'📷 '+photos.length,'━━━━━━━━━━━━━━━━','⏰ '+_localTS()];
+    return {text:lines.join('\n'),photos};
+  };
+
+  function ensureUI(){
+    const panel=document.getElementById('currency-panel');if(panel&&!document.getElementById('cp-inspector')){const row=document.createElement('div');row.className='cpanel-row';row.innerHTML='<label class="cpanel-label">👤 Inspector / 檢查員</label><input class="cpanel-input" id="cp-inspector" type="text" placeholder="Inspector"><div style="font-size:10px;color:#64748b;margin-top:5px">Apply once to this month; future months use the newest setting. Saved prior months remain unchanged.</div>';panel.insertBefore(row,document.getElementById('cp-rate').closest('.cpanel-row'));}
+    const controls=document.querySelector('#panel-entry .controls-bar');if(controls&&!document.getElementById('wdr-ref-date')){const inp=document.createElement('input');inp.type='date';inp.id='wdr-ref-date';inp.value=_localYMD();inp.className='form-input';inp.style.cssText='width:145px;padding:7px';inp.onchange=()=>{renderTable();renderSummaryCards();};controls.appendChild(inp);const b=document.createElement('button');b.className='btn btn-secondary';b.innerHTML='👥 Attendance';b.onclick=syncAttendanceHeadcount;controls.appendChild(b);}
+    const top=document.querySelector('#main-table thead tr:first-child'),cols=document.querySelector('#main-table colgroup');if(top&&!document.getElementById('wdr-th-headcount')){const act=top.lastElementChild;const h1=document.createElement('th');h1.rowSpan=2;h1.id='wdr-th-headcount';h1.textContent='👥 Attendance';top.insertBefore(h1,act);const h2=document.createElement('th');h2.rowSpan=2;h2.textContent='📷';top.insertBefore(h2,act);if(cols){cols.insertAdjacentHTML('beforeend','<col style="width:85px"><col style="width:90px">');}}
+    const toggle=document.querySelector('#panel-analysis .period-toggle');if(toggle){toggle.innerHTML='<button class="period-btn" data-wdr-period="day" onclick="setAnalysisPeriod(\'day\')">Day</button><button class="period-btn" data-wdr-period="week" onclick="setAnalysisPeriod(\'week\')">Week</button><button class="period-btn active" data-wdr-period="month" onclick="setAnalysisPeriod(\'month\')">Month</button><button class="period-btn" data-wdr-period="year" onclick="setAnalysisPeriod(\'year\')">Year</button>';if(!document.getElementById('wdr-analysis-ref')){const d=document.createElement('input');d.id='wdr-analysis-ref';d.type='date';d.value=_localYMD();d.className='form-input';d.style.width='145px';d.onchange=renderAnalysis;toggle.parentElement.parentElement.appendChild(d);}}
+    const style=document.createElement('style');style.textContent='.wdr-slot{min-width:92px;padding:6px;border:1px solid #cbd5e1;border-radius:6px;background:white}.total-row small{display:block;font-size:10px;color:#2563eb;margin-top:2px}#main-table td{vertical-align:middle}';document.head.appendChild(style);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureUI);else ensureUI();
+  if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(migrateMonthConfigs);else migrateMonthConfigs();
+})();
+</script>
+
+<script>
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
 (function(){
   function boot(){
     if(typeof GC==='undefined'||!GC.attach){ setTimeout(boot,150); return; }
     GC.attach({
       tool:'waterdrum',
-      title:'Water 水錶',
+      title:'Water 水桶',
       gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'date',
       idField:'id',
@@ -2264,7 +2458,7 @@ function buildWaterTelegram(opt){
       weather:false,
       photo:true,
       periodRef:true,
-      telegramSlots:[{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'},{value:'morning',zh:'早上',en:'Morning',km:'ពេលព្រឹក'},{value:'afternoon',zh:'下午',en:'Afternoon',km:'ពេលរសៀល'},{value:'night',zh:'晚上',en:'Night',km:'ពេលយប់'}],
+      telegramSlots:[{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'},{value:'morning',zh:'早上',en:'Morning',km:'ពេលព្រឹក'},{value:'afternoon',zh:'下午',en:'Afternoon',km:'ពេលរសៀល'}],
       telegramSlotFilter:function(r,slot){return !slot||slot==='all'||waterTelegramSlotMatch(r.fTime,slot)||waterTelegramSlotMatch(r.sTime,slot);},
       telegramLanguage:true,
       telegramBuilder:buildWaterTelegram,
@@ -2272,7 +2466,7 @@ function buildWaterTelegram(opt){
       importParser:parseWaterSmartImport,
       importSchema:{"year": ["年", "year", "ឆ្នាំ"], "month": ["月", "month", "ខែ"], "zone": ["區域", "zone", "តំបន់"], "name": ["名稱", "name", "ឈ្មោះ"], "reading_start": ["期初", "start", "readingstart", "ដើមគ្រា"], "reading_end": ["期末", "end", "readingend", "ចុងគ្រា"], "checkBy": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "notes": ["備註", "note", "ចំណាំ"]},
     read(){ try{
-        return getAllKeys().reduce((out,k)=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/);if(!m)return out;let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(ignore){return out;}if(!Array.isArray(rows))return out;return out.concat(rows.map(row=>Object.assign({},row,{id:'wdr_'+m[1]+'_'+m[2]+'_'+row.day,date:m[1]+'-'+m[2]+'-'+String(row.day).padStart(2,'0'),year:+m[1],month:+m[2],updatedAt:localStorage.getItem('wdr_last_saved')||''})));},[]);
+        return getAllKeys().reduce((out,k)=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/);if(!m)return out;let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(ignore){return out;}if(!Array.isArray(rows))return out;const mc=window.WDR_V29?WDR_V29.monthCfg(+m[1],+m[2]):{exchangeRate:4100};return out.concat(rows.map(row=>Object.assign({},row,{id:'wdr_'+m[1]+'_'+m[2]+'_'+row.day,date:m[1]+'-'+m[2]+'-'+String(row.day).padStart(2,'0'),year:+m[1],month:+m[2],exchangeRate:+mc.exchangeRate||4100,updatedAt:row.updatedAt||localStorage.getItem('wdr_last_saved')||''})));},[]);
       }catch(e){ return []; } },
     write(list){ try{
         const buckets={};(list||[]).forEach(r=>{const d=String(r.date||'');const y=String(r.year||d.slice(0,4)),m=String(r.month||d.slice(5,7)).padStart(2,'0');if(!/^\d{4}$/.test(y)||!/^(0[1-9]|1[0-2])$/.test(m))return;const row=Object.assign({},r.row||r);delete row.id;delete row.date;delete row.year;delete row.month;delete row.updatedAt;delete row.zone;buckets[y+'_'+m]=buckets[y+'_'+m]||[];const ix=buckets[y+'_'+m].findIndex(x=>String(x.day)===String(row.day));if(ix>=0)buckets[y+'_'+m][ix]=row;else buckets[y+'_'+m].push(row);});Object.keys(buckets).forEach(k=>{buckets[k].sort((a,b)=>(+a.day||0)- (+b.day||0));const p=k.split('_');saveMonthData(+p[0],+p[1],buckets[k]);});

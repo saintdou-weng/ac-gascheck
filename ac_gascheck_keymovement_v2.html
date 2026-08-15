@@ -1587,6 +1587,65 @@ window.updateRecord = updateRecord;
 
 
 <script>
+/* ═══ Key v29 — 移除示範資料、雲端永久刪除墓碑、前後異動歷史 ═══ */
+(function(){
+  const TOMBSTONE_KEY='vrt_key_tombstones';
+  const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  function tombstones(){try{const a=JSON.parse(localStorage.getItem(TOMBSTONE_KEY)||'[]');return Array.isArray(a)?a:[];}catch(e){return[];}}
+  function saveTombstones(list){localStorage.setItem(TOMBSTONE_KEY,JSON.stringify(list||[]));}
+  function keySnapshot(r){return{key_no:r.key_no||'',dept:r.dept||'',holder:r.recipient_name||'',holder_id:r.recipient_id||'',issue_date:r.issue_date||'',issue_time:r.issue_time||'',return_date:r.return_date||'',return_time:r.return_time||'',condition:r.return_condition||r.key_condition||'',remarks:r.remarks||''};}
+  function addTombstones(items,reason){
+    const map=new Map(tombstones().map(x=>[String(x.id),x]));
+    (items||[]).forEach(r=>{const now=_localTS();map.set(String(r.id),{id:r.id,issue_date:r.issue_date||_localYMD(),key_no:r.key_no||'',_deleted:true,deleteReason:reason||'manual',deletedAt:now,updatedAt:now});});
+    saveTombstones(Array.from(map.values()));
+  }
+  function splitCloud(list){
+    const active=[],dead=[];(list||[]).forEach(r=>(r&&r._deleted?dead:active).push(r));
+    records=active;window.records=records;localStorage.setItem('vrt_keys',JSON.stringify(active));saveTombstones(dead);return active;
+  }
+  async function syncDeletes(){
+    try{localStorage.setItem('ac_gc_auto_sync_v1_keymovement',JSON.stringify({ts:_localTS(),reason:'delete'}));}catch(e){}
+    if(!window.GC||!GC.cloud)return;
+    setTimeout(async function(){try{const all=records.concat(tombstones());const r=await GC.cloud.upload('keymovement',all,{idKey:'id',tsKey:'updatedAt',dateField:'issue_date',photoField:'photos'});if(r&&r.res&&r.res.ok!==false){splitCloud(r.list||all);localStorage.removeItem('ac_gc_auto_sync_v1_keymovement');}}catch(e){}},30);
+  }
+  function purgeDemo(){
+    const demo=(records||[]).filter(r=>/^demo_/i.test(String(r.id||'')));
+    if(demo.length){records=records.filter(r=>!/^demo_/i.test(String(r.id||'')));window.records=records;localStorage.setItem('vrt_keys',JSON.stringify(records));addTombstones(demo,'remove_demo');syncDeletes();}
+  }
+  window.loadDemoData = loadDemoData = function(){purgeDemo();};
+
+  window.saveRecord = saveRecord = function(){
+    const r=collectForm();if(!r)return;const now=_localTS();r.id=(window.GC&&GC.util?GC.util.uid('key'):Date.now().toString());r.createdAt=now;r.updatedAt=now;r.recordedBy=r.checker||r.checked_by||'';r.history=[{type:'created',date:now,actor:r.recordedBy||'—',after:keySnapshot(r)}];records.unshift(r);saveData();clearForm();showToast(t('save_record')+' ✓','success');renderAnomalyBadge();showSection('list');
+  };
+  window.updateRecord = updateRecord = function(){
+    if(!editId)return;const next=collectForm();if(!next)return;const idx=records.findIndex(x=>String(x.id)===String(editId));if(idx<0)return;const old=records[idx],now=_localTS(),actor=next.checker||next.checked_by||old.recordedBy||'—';next.id=old.id;next.createdAt=old.createdAt||now;next.recordedBy=old.recordedBy||actor;next.updatedAt=now;next.history=[...(old.history||[]),{type:'updated',date:now,actor,before:keySnapshot(old),after:keySnapshot(next)}];records[idx]=next;saveData();clearForm();showToast(t('update_record')+' ✓','success');renderAnomalyBadge();showSection('list');
+  };
+  window.setReturnNow = setReturnNow = function(id){
+    const r=records.find(x=>String(x.id)===String(id));if(!r)return;const before=keySnapshot(r),now=new Date();r.return_date=_localYMD(now);r.return_time=now.toTimeString().slice(0,5);r.return_condition='良好';r.updatedAt=_localTS();r.history=[...(r.history||[]),{type:'returned',date:r.updatedAt,actor:r.receiver_name||r.checker||'—',before,after:keySnapshot(r)}];saveData();renderList();renderAnomalyBadge();showToast(lang==='zh'?'已記錄歸還 ✓':'Returned ✓','success');
+  };
+  function deleteIds(ids){
+    const set=new Set((ids||[]).map(String)),removed=records.filter(r=>set.has(String(r.id)));if(!removed.length)return;
+    addTombstones(removed,'user_delete');records=records.filter(r=>!set.has(String(r.id)));window.records=records;saveData();renderAll();if(typeof renderAnalytics==='function')renderAnalytics();if(typeof renderAnomalies==='function')renderAnomalies();renderAnomalyBadge();syncDeletes();
+  }
+  window.deleteSelected = deleteSelected = function(){const ids=Array.from(document.querySelectorAll('.row-chk:checked')).map(c=>c.value);if(!ids.length){showToast(lang==='zh'?'請選擇要刪除的記錄':'Select records','warn');return;}if(!confirm((lang==='zh'?'確認刪除 ':'Delete ')+ids.length+'?'))return;deleteIds(ids);showToast(lang==='zh'?'已永久刪除並同步雲端':'Deleted and cloud delete queued','success');};
+  window.promptDelete = promptDelete = function(id){if(!confirm(lang==='zh'?'確認刪除此記錄？':'Delete this record?'))return;deleteIds([id]);showToast(lang==='zh'?'已永久刪除並同步雲端':'Deleted and cloud delete queued','success');};
+  window.clearAllData = clearAllData = function(){if(!confirm(lang==='zh'?'⚠️ 確認清除所有鑰匙資料？':'Clear all key records?'))return;addTombstones(records,'clear_all');records=[];window.records=records;saveData();renderAll();renderAnomalyBadge();syncDeletes();showToast(lang==='zh'?'已清除並同步雲端':'Cleared and cloud delete queued','warn');};
+
+  function historyHtml(r){
+    const list=r.history||[];if(!list.length)return '<div class="empty">'+(lang==='zh'?'尚無異動歷史':'No change history')+'</div>';
+    return list.slice().reverse().map(h=>{const b=h.before||{},a=h.after||{};const keys=['holder','dept','issue_date','issue_time','return_date','return_time','condition','remarks'];const changes=keys.filter(k=>String(b[k]||'')!==String(a[k]||'')).map(k=>'<div><b>'+esc(k)+'</b>: '+esc(b[k]||'—')+' → '+esc(a[k]||'—')+'</div>').join('');return '<div class="key-h-item"><div><b>'+esc(h.type||'update')+'</b> · '+esc(h.date||'')+' · 👤 '+esc(h.actor||'—')+'</div>'+changes+'</div>';}).join('');
+  }
+  window.showKeyHistory=function(id){const r=records.find(x=>String(x.id)===String(id));if(!r)return;document.getElementById('key-history-title').textContent=(r.key_no||'Key')+' · '+(r.recipient_name||'');document.getElementById('key-history-body').innerHTML=historyHtml(r);document.getElementById('key-history-modal').classList.add('open');};
+  function ensureHistoryModal(){
+    if(!document.getElementById('key-history-modal')){const m=document.createElement('div');m.id='key-history-modal';m.className='modal-overlay';m.innerHTML='<div class="modal"><div class="modal-header"><h3>🕘 <span id="key-history-title"></span></h3><button class="modal-close" onclick="document.getElementById(\'key-history-modal\').classList.remove(\'open\')">×</button></div><div class="modal-body" id="key-history-body"></div></div>';document.body.appendChild(m);const s=document.createElement('style');s.textContent='.key-h-item{padding:12px;border:1px solid #d8e0ea;border-radius:9px;margin:8px 0;background:#fff}.key-h-item>div+div{font-size:12px;color:#5a6478;margin-top:4px}';document.head.appendChild(s);}
+  }
+  const oldRender=renderList;window.renderList=renderList=function(){oldRender();ensureHistoryModal();document.querySelectorAll('.row-chk').forEach(ch=>{const td=ch.closest('tr')&&ch.closest('tr').lastElementChild;if(td&&!td.querySelector('.key-history-btn')){const b=document.createElement('button');b.className='btn btn-outline btn-sm key-history-btn';b.textContent='🕘';b.onclick=()=>showKeyHistory(ch.value);const g=td.querySelector('.btn-group')||td;g.insertBefore(b,g.firstChild);}});};
+  window.KEY_V29={tombstones,splitCloud,purgeDemo};
+})();
+</script>
+
+
+<script>
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
 function keyTelegramText(zh,en,km,lang){
   if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
@@ -1625,14 +1684,11 @@ function buildKeyTelegram(opt){
       telegramLanguage:true,
       telegramBuilder:buildKeyTelegram,
       importSchema:{"key_no": ["鑰匙編號", "鑰匙號碼", "keyno", "key code", "code", "លេខសោ"], "dept": ["部門", "department", "dept", "នាយកដ្ឋាន"], "recipient_name": ["領用人", "收受人", "recipient", "holder", "អ្នកកាន់"], "issue_date": ["發出日期", "日期", "issue date", "date", "ថ្ងៃ"], "issue_time": ["發出時間", "issue time", "time", "ម៉ោងចេញ"], "checker": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remarks": ["備註", "備注", "remarks", "notes", "ចំណាំ"]},
-    read(){ try{ const raw=localStorage.getItem('vrt_keys'); if(!raw) return [];
-        const d=JSON.parse(raw); if(Array.isArray(d)) return d;
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])) return d[k];
-        return []; }catch(e){ return []; } },
-    write(list){ try{ const raw=localStorage.getItem('vrt_keys'); let d=raw?JSON.parse(raw):null;
-        if(Array.isArray(d)||d===null){ localStorage.setItem('vrt_keys',JSON.stringify(list)); return; }
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])){ d[k]=list; localStorage.setItem('vrt_keys',JSON.stringify(d)); return; }
-        d.records=list; localStorage.setItem('vrt_keys',JSON.stringify(d)); }catch(e){ localStorage.setItem('vrt_keys',JSON.stringify(list)); } },
+    read(){ try{ const raw=localStorage.getItem('vrt_keys');let active=[];
+        if(raw){const d=JSON.parse(raw);active=Array.isArray(d)?d:(['records','list','items','data','rows'].map(k=>Array.isArray(d[k])?d[k]:null).find(Boolean)||[]);}
+        let dead=[];try{dead=JSON.parse(localStorage.getItem('vrt_key_tombstones')||'[]');}catch(e){}return active.concat(Array.isArray(dead)?dead:[]);
+      }catch(e){ return []; } },
+    write(list){ try{ const active=[],dead=[];(list||[]).forEach(r=>(r&&r._deleted?dead:active).push(r));records=active;window.records=records;localStorage.setItem('vrt_keys',JSON.stringify(active));localStorage.setItem('vrt_key_tombstones',JSON.stringify(dead));renderAll(); }catch(e){ console.warn('key cloud write failed',e); } },
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();

@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v2.5-smart-incremental
+   AC GASCheck — Shared Core  v2.6-water-key-asset
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -91,7 +91,7 @@ const U = GC.util = {
    ═══════════════════════════════════════════════════════════ */
 const STORAGE = GC.storage = (() => {
   const DB_NAME = 'ac_gascheck_data_v1', STORE = 'kv';
-  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_th_z|vrt_th_r|vrt_keys|vrt_waste_v3|vrt_ehs_cfg_v1|vrt_dorm_hub_v2|vrt_dorm_cfg_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_default_fac_price|wdr_default_sta_price|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
+  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_asset_tombstones|vrt_asset_audit|vrt_th_z|vrt_th_r|vrt_keys|vrt_key_tombstones|vrt_waste_v3|vrt_ehs_cfg_v1|vrt_dorm_hub_v2|vrt_dorm_cfg_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_cfg_\d{4}_\d{2}|wdr_headcount_\d{4}_\d{2}|wdr_default_cfg|wdr_default_fac_price|wdr_default_sta_price|wdr_default_inspector|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
   const storageProto = typeof Storage !== 'undefined' ? Storage.prototype : null;
   const native = storageProto ? {
     get: storageProto.getItem,
@@ -217,6 +217,135 @@ const STORAGE = GC.storage = (() => {
     };
   }
   return { ready, isDataKey, getSync, setSync, removeSync, keys };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   0.6 ATTENDANCE BRIDGE — 同網域考勤資料／既有 Attendance GAS
+   水桶模組只在使用者按「同步考勤」時掃描，不會拖慢平常開頁。
+   優先讀同網域 IndexedDB / localStorage；如 Attendance 已保存 GAS URL，
+   再嘗試 attendanceHeadcount 與 pull/attendance 兩種既有端點。
+   ═══════════════════════════════════════════════════════════ */
+GC.attendance = (() => {
+  const DATE_KEYS = ['date','workDate','attendanceDate','recordDate','day','d'];
+  const ID_KEYS = ['employeeId','empId','employee_id','staffId','staff_id','id','code'];
+  const PRESENT_KEYS = ['present','isPresent','attendance','status','workStatus','shift'];
+  function value(row, keys) {
+    for (let i = 0; i < keys.length; i++) if (row && row[keys[i]] != null && row[keys[i]] !== '') return row[keys[i]];
+    return '';
+  }
+  function dateOf(row) {
+    const raw = value(row, DATE_KEYS);
+    if (raw instanceof Date && !isNaN(raw)) return U.ymd(raw);
+    const s = String(raw || '').trim();
+    let m = s.match(/(20\d{2})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+    if (m) return m[1] + '-' + String(+m[2]).padStart(2,'0') + '-' + String(+m[3]).padStart(2,'0');
+    m = s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](20\d{2})/);
+    if (m) return m[3] + '-' + String(+m[2]).padStart(2,'0') + '-' + String(+m[1]).padStart(2,'0');
+    return '';
+  }
+  function isPresent(row) {
+    const v = String(value(row, PRESENT_KEYS) || '').trim().toLowerCase();
+    if (!v) return true;
+    return !/(absent|leave|off|resign|terminated|a\b|休|假|缺勤|離職|អវត្តមាន|ឈប់)/i.test(v);
+  }
+  function flatten(value, out) {
+    out = out || [];
+    if (Array.isArray(value)) value.forEach(v => flatten(v, out));
+    else if (value && typeof value === 'object') {
+      if (dateOf(value)) out.push(value);
+      else Object.keys(value).forEach(k => flatten(value[k], out));
+    }
+    return out;
+  }
+  function summarize(rows, start, end) {
+    const byDay = {};
+    flatten(rows || []).forEach(function (row) {
+      const d = dateOf(row); if (!d || d < start || d > end || !isPresent(row)) return;
+      const id = String(value(row, ID_KEYS) || row.name || row.employeeName || JSON.stringify(row)).trim();
+      (byDay[d] || (byDay[d] = new Set())).add(id);
+    });
+    const daily = {};
+    Object.keys(byDay).forEach(d => { daily[d] = byDay[d].size; });
+    return { daily, personDays:Object.values(daily).reduce((a,b)=>a+(+b||0),0), days:Object.keys(daily).length };
+  }
+  function jsonValuesFromLocalStorage() {
+    const out = [];
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i) || '';
+        if (!/(attendance|att_|hra.*att|roster|employee)/i.test(key)) continue;
+        try { out.push(JSON.parse(localStorage.getItem(key) || 'null')); } catch (e) {}
+      }
+    } catch (e) {}
+    return out;
+  }
+  function readStore(db, storeName) {
+    return new Promise(resolve => {
+      try {
+        const tx = db.transaction(storeName, 'readonly');
+        const req = tx.objectStore(storeName).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => resolve([]);
+      } catch (e) { resolve([]); }
+    });
+  }
+  async function indexedValues() {
+    if (!global.indexedDB || typeof global.indexedDB.databases !== 'function') return [];
+    let infos = [];
+    try { infos = await global.indexedDB.databases(); } catch (e) { return []; }
+    const names = (infos || []).map(x => x && x.name).filter(n => n && n !== 'ac_gascheck_data_v1' && /(attendance|hra|staff|employee|pay)/i.test(n));
+    const out = [];
+    for (const name of names) {
+      const db = await new Promise(resolve => {
+        try { const req = global.indexedDB.open(name); req.onsuccess=()=>resolve(req.result); req.onerror=()=>resolve(null); } catch(e) { resolve(null); }
+      });
+      if (!db) continue;
+      for (const storeName of Array.from(db.objectStoreNames || [])) {
+        if (!/(attendance|roster|staff|employee|record|data)/i.test(storeName)) continue;
+        out.push(await readStore(db, storeName));
+      }
+      try { db.close(); } catch (e) {}
+    }
+    return out;
+  }
+  function configuredUrl() {
+    const keys = ['ac_attendance_gas_url','attendance_gas_url','ac_hra_gas_url','hra_gas_url','ac_hra_pay_gas_url'];
+    for (const k of keys) { try { const v=localStorage.getItem(k); if (/^https:\/\/script\.google\.com\/macros\/s\//.test(v || '')) return v; } catch(e) {} }
+    return '';
+  }
+  async function remoteValues(start, end) {
+    const url = configuredUrl(); if (!url) return [];
+    const attempts = [
+      {action:'attendanceHeadcount',start,end},
+      {action:'pull',tool:'attendance',start,end},
+      {action:'list',tool:'attendance',start,end}
+    ];
+    for (const params of attempts) {
+      try {
+        const res = await fetch(url + '?' + new URLSearchParams(Object.assign({_t:Date.now()}, params)));
+        const json = await res.json();
+        if (json && json.daily && typeof json.daily === 'object') return [{__daily:json.daily}];
+        const rows = json && (json.records || json.rows || json.data || json.list);
+        if (Array.isArray(rows)) return rows;
+      } catch (e) {}
+    }
+    return [];
+  }
+  async function headcount(start, end) {
+    start = start || U.ymd(); end = end || start;
+    const local = jsonValuesFromLocalStorage().concat(await indexedValues());
+    let summary = summarize(local, start, end);
+    if (summary.personDays) return Object.assign({source:'browser'}, summary);
+    const remote = await remoteValues(start, end);
+    if (remote[0] && remote[0].__daily) {
+      const daily = remote[0].__daily, selected = {};
+      Object.keys(daily).forEach(d => { if (d >= start && d <= end) selected[d] = +daily[d] || 0; });
+      return {source:'attendance-gas',daily:selected,personDays:Object.values(selected).reduce((a,b)=>a+b,0),days:Object.keys(selected).length};
+    }
+    summary = summarize(remote, start, end);
+    return Object.assign({source:summary.personDays?'attendance-gas':'none'}, summary);
+  }
+  return { headcount, summarize };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -2367,6 +2496,9 @@ GC.attachLegacy = function (cfg) {
       const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
       const buttons = packet.buttons || [[{text:'📊 Open Dashboard / 開啟平台',url:dashUrl}]];
       await GC.telegram.send(packet.text, packet.photos, buttons);
+      if (typeof C.onTelegramSent === 'function') {
+        await C.onTelegramSent({ period, mode, ref:periodRef, scope, slot, lang, packet });
+      }
       if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
       if (cloudControl && (mode === 'summary' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
@@ -2549,7 +2681,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '2.5-smart-incremental';
+GC.version = '2.6-water-key-asset';
 global.GC = GC;
 global.GASCheckCore = GC;
 
