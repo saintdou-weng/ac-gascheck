@@ -2910,7 +2910,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.1-period-photo-contrast';
+GC.version = '3.2-clean-key-water-temp';
 global.GC = GC;
 global.GASCheckCore = GC;
 

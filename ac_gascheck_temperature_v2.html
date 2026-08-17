@@ -204,7 +204,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=34-period-photo-contrast"></script>
+<script src="./gascheck-core.js?v=35-clean-key-water-temp"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -261,6 +261,7 @@ tbody tr:hover{background:var(--bg);}
     <input type="text" id="rec-checker" style="width:150px" placeholder="檢查人">
     <input type="text" id="rec-note" style="width:180px" placeholder="備註（可選）">
     <button class="btn bp ml" onclick="saveAllRec()" id="i-saveall">💾 全部儲存</button>
+    <button class="btn bg" onclick="sendTodayCombinedTemp()" id="i-send-combined">✈️ 早＋午合併摘要</button>
     <button class="btn bg sm" onclick="syncUp()" id="i-upload-after-save" disabled>⬆ 上傳</button>
     <button class="btn bg" onclick="clearRI()" id="i-clear">清除</button>
   </div>
@@ -563,7 +564,7 @@ zh:{
   cold:'過冷',cool:'涼爽',ok:'正常',warm:'偏熱',hot:'過熱',dry:'偏乾',humid:'偏濕',vhum:'過濕',
   date:'日期',zone:'區域',per:'時段',note:'備註',checker:'檢查人',act:'操作',wx:'🌤️ 天氣', wxcol:'天氣',
   allz:'全部區域',allp:'全部時段',allsev:'全部等級',crit:'嚴重',warn:'警告',
-  addrec:'＋ 新增記錄',saveall:'💾 全部儲存',clr:'清除',clrtoday:'清除今日',
+  addrec:'＋ 新增記錄',saveall:'💾 全部儲存',sendcombined:'✈️ 早＋午合併摘要',clr:'清除',clrtoday:'清除今日',
   cancel:'取消',save:'儲存',edit:'編輯',del:'刪除',prev:'👁 預覽',send:'📤 發送',
   testcon:'🔗 測試',syncup:'⬆ 上傳',pull:'⬇ 拉取',
   expxl:'📥 Excel',exl:'📊 Excel',ejson:'📄 JSON',
@@ -601,7 +602,7 @@ en:{
   cold:'Cold',cool:'Cool',ok:'Normal',warm:'Warm',hot:'Hot',dry:'Dry',humid:'Humid',vhum:'Very Humid',
   date:'Date',zone:'Zone',per:'Period',note:'Notes',checker:'Inspector',act:'Actions',wx:'🌤️ Weather', wxcol:'Weather',
   allz:'All Zones',allp:'All Periods',allsev:'All Severity',crit:'Critical',warn:'Warning',
-  addrec:'＋ Add Record',saveall:'💾 Save All',clr:'Clear',clrtoday:'Clear Today',
+  addrec:'＋ Add Record',saveall:'💾 Save All',sendcombined:'✈️ Send AM + PM summary',clr:'Clear',clrtoday:'Clear Today',
   cancel:'Cancel',save:'Save',edit:'Edit',del:'Delete',prev:'👁 Preview',send:'📤 Send',
   testcon:'🔗 Test',syncup:'⬆ Upload',pull:'⬇ Pull',
   expxl:'📥 Excel',exl:'📊 Excel',ejson:'📄 JSON',
@@ -639,7 +640,7 @@ km:{
   cold:'ត្រជាក់',cool:'ត្រជាក់ស្រួល',ok:'ធម្មតា',warm:'កក្តៅ',hot:'ក្តៅខ្លាំង',dry:'ស្ងួត',humid:'សើម',vhum:'សើមខ្លាំង',
   date:'កាលបរិច្ឆេទ',zone:'តំបន់',per:'វេលា',note:'កំណត់ចំណាំ',checker:'អ្នកត្រួតពិនិត្យ',act:'ប្រតិបត្តិការ',wx:'🌤️ អាកាសធាតុ', wxcol:'អាកាសធាតុ',
   allz:'គ្រប់តំបន់',allp:'គ្រប់វេលា',allsev:'គ្រប់កម្រិត',crit:'ធ្ងន់ធ្ងរ',warn:'ព្រមាន',
-  addrec:'＋ បន្ថែម',saveall:'💾 រក្សាទុក',clr:'លុបចោល',clrtoday:'លុបថ្ងៃនេះ',
+  addrec:'＋ បន្ថែម',saveall:'💾 រក្សាទុក',sendcombined:'✈️ ផ្ញើសង្ខេបព្រឹក + រសៀល',clr:'លុបចោល',clrtoday:'លុបថ្ងៃនេះ',
   cancel:'បោះបង់',save:'រក្សាទុក',edit:'កែ',del:'លុប',prev:'👁 មើល',send:'📤 ផ្ញើ',
   testcon:'🔗 សាកល្បង',syncup:'⬆ ផ្ទុក',pull:'⬇ ទាញ',
   expxl:'📥 Excel',exl:'📊 Excel',ejson:'📄 JSON',
@@ -729,6 +730,8 @@ function compactTempRecords(list){
 }
 function tempStorageRecord(r){
   const out={id:r.id||'',z:r.z||'',d:r.d||'',p:r.p||'',t:r.t!==undefined?r.t:'',h:r.h!==undefined?r.h:'',wx:r.wx||'',checker:String(r.checker||'').slice(0,200),note:String(r.note||'').slice(0,2000),ts:r.ts||'',updatedAt:r.updatedAt||''};
+  if(r.telegramSentAt)out.telegramSentAt=r.telegramSentAt;
+  if(r.summarySentAt)out.summarySentAt=r.summarySentAt;
   const weatherObservation=parseWeatherObservation(r.weatherObservation||r.liveWeather);
   if(weatherObservation)out.weatherObservation=weatherObservation;
   const photos=Array.isArray(r.photos)?r.photos.filter(p=>typeof p==='string'&&!/^data:image\//i.test(p)&&p.length<=4096):[];
@@ -819,7 +822,7 @@ function applyI18n(){
     // Dashboard
     'i-addrec':'addrec','i-date':'date','i-date2':'date','i-rec-weather':'wx',
     // Record
-    'i-saveall':'saveall','i-clear':'clr','i-today-recs':'today_recs','i-clrtoday':'clrtoday',
+    'i-saveall':'saveall','i-send-combined':'sendcombined','i-clear':'clr','i-today-recs':'today_recs','i-clrtoday':'clrtoday',
     'i-livewx-title':'livewx_title','i-livewx-empty':'livewx_empty','i-livewx-refresh':'livewx_refresh','i-livewx-locate':'livewx_locate','i-livewx-apply':'livewx_apply','i-livewx-note':'livewx_note',
     // History
     'i-filter':'filter','i-filter-lbl':'filter','i-allz':'allz','i-allp':'allp','i-am2':'am','i-pm2':'pm','i-expxl':'expxl',
@@ -1872,6 +1875,17 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
   const checkers=[...new Set(view.map(r=>String(r.checker||r.checked_by||r.checkBy||'').trim()).filter(Boolean))];
   const weatherObservations=view.map(r=>parseWeatherObservation(r.weatherObservation||r.liveWeather)).filter(Boolean).sort((a,b)=>String(b.observedAt||b.fetchedAt||'').localeCompare(String(a.observedAt||a.fetchedAt||'')));
   const liveObservation=weatherObservations[0]||null;
+  /* 單日「全部時段」採早／午合併短摘要：早上可先儲存，下午完成後一次發出，
+     不再逐區重複正常資料；只有異常才列出區域細節。 */
+  if(period==='day'&&(!slot||slot==='all')){
+    const zones=getZ(),date=String(ref||view[0]&&view[0].d||today()).slice(0,10),range=a=>a.length?(Math.min.apply(null,a)+'–'+Math.max.apply(null,a)):'--';
+    const shortSlot=(key,zh,en,km,icon)=>{const rows=view.filter(r=>r.p===key),tt=rows.filter(r=>r.t!==''&&r.t!=null&&!isNaN(r.t)).map(r=>+r.t),hh=rows.filter(r=>r.h!==''&&r.h!=null&&!isNaN(r.h)).map(r=>+r.h),aa=rows.filter(isAnom).length;return icon+' <b>'+tempTelegramText(zh,en,km,lang)+'</b>: '+(rows.length?(rows.length+' '+tempTelegramText('筆','records','កំណត់ត្រា',lang)+' · 🌡️ '+range(tt)+'°C · 💧 '+range(hh)+'% · ⚠️ '+aa):tempTelegramText('尚未記錄','Not recorded yet','មិនទាន់កត់ត្រា',lang));};
+    const compact=['🌡️ <b>'+tempTelegramText('VRT 溫濕度日摘要','VRT Daily Temperature & Humidity','VRT សង្ខេបសីតុណ្ហភាពប្រចាំថ្ងៃ',lang)+'</b>','📅 '+date+' · 🧾 '+modeName,'━━━━━━━━━━━━━━━━',shortSlot('morning','早上','Morning','ពេលព្រឹក','🌅'),shortSlot('afternoon','下午','Afternoon','ពេលរសៀល','🌇'),'📊 '+tempTelegramText('合計','Total','សរុប',lang)+': '+view.length+' · '+tempTelegramText('區域','Zones','តំបន់',lang)+': '+zoneCount+' · ⚠️ '+anomalies,'👤 '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(checkers.join(', ')||'—')];
+    const abnormal=view.filter(isAnom);
+    if(abnormal.length){compact.push('━━━━━━━━━━━━━━━━','⚠️ <b>'+tempTelegramText('異常明細','Anomalies','ភាពមិនប្រក្រតី',lang)+'</b>');abnormal.slice(0,8).forEach(r=>{const z=zones.find(x=>x.id===r.z),name=z?(lang==='en'?(z.en||z.zh):lang==='km'?(z.km||z.en||z.zh):(z.zh||z.en)):r.z;compact.push('• '+name+' · '+(r.p==='morning'?'AM':'PM')+' · '+(r.t!==''?r.t+'°C':'--')+' · '+(r.h!==''?r.h+'%':'--'));});}
+    compact.push('━━━━━━━━━━━━━━━━','⏰ '+new Date().toLocaleString());
+    return {text:compact.join('\n'),photos:photos};
+  }
   const lines=['🌡️ <b>'+tempTelegramText('VRT 溫濕度','VRT Temperature & Humidity','VRT សីតុណ្ហភាព និងសំណើម',lang)+'</b>','📅 '+periodName,'⏱️ '+tempTelegramText('時段','Slot','ពេលវេលា',lang)+': '+slotName,'🧾 '+tempTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeName,'━━━━━━━━━━━━━━━━','📊 <b>'+tempTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+tempTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b> | '+tempTelegramText('區域','Zones','តំបន់',lang)+': '+zoneCount,'• '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(checkers.join(', ')||'—'),'• '+tempTelegramText('平均溫度','Avg Temp','សីតុណ្ហភាពមធ្យម',lang)+': '+avg(temps)+'°C | '+tempTelegramText('平均濕度','Avg Hum','សំណើមមធ្យម',lang)+': '+avg(hums)+'%','• '+tempTelegramText('異常','Anomaly','មិនប្រក្រតី',lang)+': <b>'+anomalies+'</b>','━━━━━━━━━━━━━━━━'];
   if(liveObservation){
     lines.push('🌐 <b>'+tempTelegramText('即時室外天氣參考','Live outdoor weather reference','អាកាសធាតុខាងក្រៅបច្ចុប្បន្នសម្រាប់យោង',lang)+'</b>');
@@ -1898,6 +1912,19 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
   lines.push('━━━━━━━━━━━━━━━━','⚠️ '+tempTelegramText('異常','Anomaly','មិនប្រក្រតី',lang)+': '+anomalies+' | 📋 '+tempTelegramText('記錄','Records','កំណត់ត្រា',lang)+': '+view.length,'⏰ '+new Date().toLocaleString());
   const out=lines.join('\n');
   return {text:out.length>3900?out.slice(0,3860)+'\n… '+tempTelegramText('其餘記錄略','More records omitted','កំណត់ត្រាបន្ថែមត្រូវបានរំលង',lang):out,photos:photos};
+}
+async function sendTodayCombinedTemp(){
+  const date=(document.getElementById('rec-date')||{}).value||today();
+  saveAllRec();
+  const dayRows=getR().filter(r=>String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon'));
+  if(!dayRows.length){toast(tempTelegramText('當日尚無已儲存記錄','No saved records for this day','មិនមានកំណត់ត្រាដែលបានរក្សាទុកសម្រាប់ថ្ងៃនេះ','zh'),'err');return;}
+  const packet=buildTGPeriodMsg('day','summary',date,'all','bi');
+  try{
+    await GC.telegram.send(packet.text,packet.photos||[],[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html'}]],'-5113064563','temperature');
+    const sentAt=_localTS(),all=getR();all.forEach(r=>{if(String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon')){r.telegramSentAt=sentAt;r.summarySentAt=sentAt;r.updatedAt=sentAt;}});setR(all);
+    if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','combined_daily_summary');
+    window._tempPendingUpload=false;updateTempUploadButton();toast('✅ '+tempTelegramText('早上＋下午摘要已發送並排入雲端','AM + PM summary sent and queued for cloud','បានផ្ញើសង្ខេបព្រឹក + រសៀល','zh'),'ok');
+  }catch(ex){toast('Telegram: '+ex.message,'err');}
 }
 function prevTG(){
   const period=(document.getElementById('tg-period')||{}).value||'month';
@@ -2270,7 +2297,7 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       toCloud:enrichRec,
       fromCloud:normalizeRec,
       periodRef:true,
-      telegramSlots:[{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'},{value:'morning',zh:'早上 08:00–09:00',en:'Morning 08:00–09:00',km:'ពេលព្រឹក 08:00–09:00'},{value:'afternoon',zh:'下午 15:30–16:30',en:'Afternoon 15:30–16:30',km:'ពេលរសៀល 15:30–16:30'}],
+      telegramSlots:[{value:'all',zh:'早上＋下午（合併）',en:'Morning + Afternoon (combined)',km:'ព្រឹក + រសៀល (បញ្ចូលគ្នា)'},{value:'morning',zh:'只發早上 08:00–09:00',en:'Morning only 08:00–09:00',km:'តែពេលព្រឹក 08:00–09:00'},{value:'afternoon',zh:'只發下午 15:30–16:30',en:'Afternoon only 15:30–16:30',km:'តែពេលរសៀល 15:30–16:30'}],
       telegramSlotFilter:(r,slot)=>tempTelegramSlotMatch(r,slot),
       telegramLanguage:true,
       telegramBuilder:({period,mode,ref,slot,lang})=>buildTGPeriodMsg(period,mode,ref,slot,lang),
