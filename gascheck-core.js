@@ -1810,7 +1810,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
       const local = opt.getList ? opt.getList() : [];
       const r = await CLOUD.download(opt.tool, local, {
         idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
-        extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud
+        extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote
       });
       if (r.empty) {
         if (!runOpt.silent) GC.toast('⚠ ' + I18.t('gc.noCloud'), 'warning');
@@ -2910,7 +2910,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.2-clean-key-water-temp';
+GC.version = '3.3-telegram-multi-sync-dorm';
 global.GC = GC;
 global.GASCheckCore = GC;
 

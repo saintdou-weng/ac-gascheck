@@ -469,7 +469,7 @@ document.addEventListener('click', function(e) {
   font-size:18px; cursor:pointer; color:#94a3b8; }
 
 </style>
-<script src="./gascheck-core.js?v=35-clean-key-water-temp"></script>
+<script src="./gascheck-core.js?v=37-telegram-multi-sync-dorm"></script>
 </head>
 <body>
 <!-- Currency Settings Panel -->
@@ -1831,7 +1831,7 @@ function parseWaterSmartImport(file) {
           if (objects.length > before) usedSheets.push(sn);
         });
         if (!objects.length) throw new Error('No Water Drum month records found');
-        resolve({objects:objects, headers:[], map:{}, sheetName:usedSheets.join(', '), summary:usedSheets.length + ' month sheet(s)'});
+        resolve({objects:objects, headers:[], map:{}, sheetName:usedSheets.join(', '), summary:usedSheets.length + ' month sheet(s) · ' + objects.length + ' record(s)'});
       } catch(err) { reject(err); }
     };
     reader.readAsArrayBuffer(file);
@@ -2359,7 +2359,41 @@ function buildWaterTelegram(opt){
       const dow=(d.getDay()+6)%7,start=new Date(d);start.setDate(d.getDate()-dow);const end=new Date(start);end.setDate(start.getDate()+6);
       return currentRows.map((r,i)=>({r,i})).filter(x=>{const xDate=new Date(currentYear,currentMonth-1,x.r.day);return xDate>=start&&xDate<=end;});
     }
+    if(mainPeriod==='year')return allWaterRows().filter(r=>String(r.date||'').startsWith(String(currentYear)+'-')).map(r=>({r,i:-1}));
     return currentRows.map((r,i)=>({r,i}));
+  }
+  function waterEntryRef(){const el=document.getElementById('wdr-ref-date');return el&&el.value?el.value:_localYMD();}
+  function waterSetRef(value){const el=document.getElementById('wdr-ref-date');if(el)el.value=value;}
+  function waterPeriodLabel(){
+    const names=T('month_names')||[],ref=waterEntryRef();
+    if(mainPeriod==='day')return ref;
+    if(mainPeriod==='week'){const d=new Date(ref+'T00:00:00'),s=new Date(d);s.setDate(d.getDate()-((d.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+6);return _localYMD(s)+' ~ '+_localYMD(e);}
+    if(mainPeriod==='year')return String(currentYear);
+    return (names[currentMonth-1]||String(currentMonth).padStart(2,'0'))+' '+currentYear;
+  }
+  window.updatePeriodLabel = updatePeriodLabel = function(){const el=document.getElementById('period-label');if(el)el.textContent=waterPeriodLabel();updateWaterSettingsBadge();};
+  function syncWaterSelectorsFromRef(){const ref=waterEntryRef(),m=ref.match(/^(\d{4})-(\d{2})/);if(!m)return;const ys=document.getElementById('sel-year'),ms=document.getElementById('sel-month');if(ys)ys.value=+m[1];if(ms)ms.value=+m[2];}
+  window.setMainPeriod = setMainPeriod = function(p,btn){
+    mainPeriod=p;document.querySelectorAll('#panel-entry .period-toggle .period-btn').forEach(b=>b.classList.toggle('active',b===(btn||document.getElementById('pb-'+p))));
+    const monthSel=document.getElementById('sel-month'),monthGroup=monthSel&&monthSel.closest('.ctrl-group'),ref=document.getElementById('wdr-ref-date');if(monthGroup)monthGroup.style.display=p==='year'?'none':'';if(ref)ref.style.display=(p==='day'||p==='week')?'':'none';
+    if(p==='day'||p==='week'){const selected=String((document.getElementById('sel-year')||{}).value||currentYear)+'-'+String((document.getElementById('sel-month')||{}).value||currentMonth).padStart(2,'0');if(!waterEntryRef().startsWith(selected))waterSetRef(selected+'-01');syncWaterSelectorsFromRef();}
+    loadMonthData();updatePeriodLabel();
+  };
+  function shiftWaterPeriod(delta){
+    if(mainPeriod==='day'||mainPeriod==='week'){const d=new Date(waterEntryRef()+'T00:00:00');d.setDate(d.getDate()+delta*(mainPeriod==='week'?7:1));waterSetRef(_localYMD(d));syncWaterSelectorsFromRef();}
+    else if(mainPeriod==='year'){const ys=document.getElementById('sel-year');ys.value=(+ys.value||currentYear)+delta;}
+    else {let y=+(document.getElementById('sel-year').value||currentYear),m=+(document.getElementById('sel-month').value||currentMonth)+delta;if(m<1){m=12;y--;}if(m>12){m=1;y++;}document.getElementById('sel-year').value=y;document.getElementById('sel-month').value=m;}
+    loadMonthData();updatePeriodLabel();
+  }
+  window.prevMonth = prevMonth = function(){shiftWaterPeriod(-1);};
+  window.nextMonth = nextMonth = function(){shiftWaterPeriod(1);};
+  window.goToday = goToday = function(){const d=new Date();document.getElementById('sel-year').value=d.getFullYear();document.getElementById('sel-month').value=d.getMonth()+1;waterSetRef(_localYMD(d));loadMonthData();updatePeriodLabel();};
+  function aggregateWaterRows(rows){
+    const by={};(rows||[]).forEach(r=>{let key,label;if(mainPeriod==='year'){key=String(r.date||'').slice(0,7);label=(T('month_names')||[])[Math.max(0,(+key.slice(5,7)||1)-1)]+' '+key.slice(0,4);}else{const day=+r.day||+String(r.date||'').slice(8,10),w=Math.min(5,Math.floor((Math.max(1,day)-1)/7)+1),start=(w-1)*7+1,end=Math.min(getDaysInMonth(currentYear,currentMonth),w*7);key='W'+w;label=waterTelegramText('第 '+w+' 週','Week '+w,'សប្ដាហ៍ '+w,currentLang)+' ('+start+'–'+end+')';}const a=by[key]||(by[key]={label,fq:0,sq:0,ft:0,st:0,photos:0,inspectors:new Set(),attendance:[]});a.fq+=+r.fQty||0;a.sq+=+r.sQty||0;a.ft+=calcTtl(r.fQty,r.fPrice);a.st+=calcTtl(r.sQty,r.sPrice);a.photos+=(r.photos||[]).length;if(r.checkBy)a.inspectors.add(r.checkBy);if(+r.headcount>=20)a.attendance.push(+r.headcount);});return Object.keys(by).sort().map(k=>by[k]);
+  }
+  function renderWaterAggregateTable(rows){
+    const tbody=document.getElementById('table-body');if(!tbody)return;const rrate=rate(),groups=aggregateWaterRows(rows),fmt=n=>(+n||0).toLocaleString();let html=groups.map(g=>{const hc=g.attendance.length?Math.round(g.attendance.reduce((a,n)=>a+n,0)/g.attendance.length):0;return '<tr><td class="date-cell">'+esc(g.label)+'</td><td>—</td><td><b>'+fmt(g.fq)+'</b></td><td>—</td><td><b>'+fmt(g.ft)+' ៛</b><small>'+usd(g.ft,rrate)+'</small></td><td>—</td><td><b>'+fmt(g.sq)+'</b></td><td>—</td><td><b>'+fmt(g.st)+' ៛</b><small>'+usd(g.st,rrate)+'</small></td><td>'+esc(Array.from(g.inspectors).join(', ')||'—')+'</td><td class="wdr-att-col">'+(hc||'—')+'</td><td>📷 '+g.photos+'</td><td>—</td></tr>';}).join('');
+    const fq=groups.reduce((a,g)=>a+g.fq,0),sq=groups.reduce((a,g)=>a+g.sq,0),ft=groups.reduce((a,g)=>a+g.ft,0),st=groups.reduce((a,g)=>a+g.st,0),pc=groups.reduce((a,g)=>a+g.photos,0);html+='<tr class="total-row"><td>'+esc(T('total_row'))+'</td><td></td><td>'+fmt(fq)+'</td><td></td><td>'+fmt(ft)+' ៛<small>'+usd(ft,rrate)+'</small></td><td></td><td>'+fmt(sq)+'</td><td></td><td>'+fmt(st)+' ៛<small>'+usd(st,rrate)+'</small></td><td></td><td class="wdr-att-col">—</td><td>📷 '+pc+'</td><td><b>'+usd(ft+st,rrate)+'</b></td></tr>';tbody.innerHTML=html;
   }
   function attendanceStats(rows){
     const values=(rows||[]).filter(r=>/^hra-attendance$|^attendance-gas/.test(String(r.headcountSource||''))).map(r=>+r.headcount||0).filter(n=>n>=20);
@@ -2375,6 +2409,7 @@ function buildWaterTelegram(opt){
   window.renderTable = renderTable = function(){
     const tbody=document.getElementById('table-body');if(!tbody)return;
     const rrate=rate(), view=visibleRows();let html='';
+    if(mainPeriod==='month'||mainPeriod==='year'){renderWaterAggregateTable(view.map(x=>x.r));return;}
     view.forEach(({r:row,i:idx})=>{
       row.fTtl=calcTtl(row.fQty,row.fPrice);row.sTtl=calcTtl(row.sQty,row.sPrice);
       const fmt=n=>n?(+n).toLocaleString():'—';
@@ -2411,7 +2446,10 @@ function buildWaterTelegram(opt){
       '<div class="summary-card amber"><div class="card-label">💰 '+esc(T('grand_total'))+'</div><div class="card-value">'+(ft+st).toLocaleString()+' ៛</div><div class="card-sub">'+usd(ft+st,rr)+'</div></div>'+
       '<div class="summary-card green"><div class="card-label">💧 '+waterTelegramText('用水量','Water','ទឹក',currentLang)+'</div><div class="card-value">'+liters.toLocaleString()+' L</div><div class="card-sub">'+drums+' × 20L</div></div>'+
       (attendanceAvailable&&persons>=20?'<div class="summary-card red"><div class="card-label">👥 '+waterTelegramText('人均用水','Per person','ទឹកក្នុងមនុស្សម្នាក់',currentLang)+'</div><div class="card-value">'+per.toFixed(1)+' L</div><div class="card-sub">'+waterTelegramText('出勤人數','Attendance','វត្តមាន',currentLang)+': '+persons+'</div></div>':'');
+    updateWaterSettingsBadge();
   };
+
+  function updateWaterSettingsBadge(){const el=document.getElementById('wdr-current-settings');if(!el)return;const c=monthCfg(currentYear,currentMonth);el.textContent=waterTelegramText('本月設定','Current settings','ការកំណត់បច្ចុប្បន្ន',currentLang)+': '+(+c.facPrice||0).toLocaleString()+' / '+(+c.staPrice||0).toLocaleString()+' KHR · '+(c.morningTime||'08:00')+' / '+(c.afternoonTime||'15:30');}
 
   window.applyWaterDefaultsToMonth = function(){
     const old=monthCfg(currentYear,currentMonth),effective=String((document.getElementById('cp-effective-month')||{}).value||periodKey(currentYear,currentMonth));
@@ -2419,7 +2457,7 @@ function buildWaterTelegram(opt){
     saveSchedule(cfg);localStorage.setItem('wdr_default_cfg',JSON.stringify(cfg));localStorage.setItem('wdr_default_fac_price',String(cfg.facPrice));localStorage.setItem('wdr_default_sta_price',String(cfg.staPrice));localStorage.setItem('wdr_default_inspector',cfg.inspector);localStorage.setItem('wdr_exchange_rate',String(cfg.exchangeRate));
     const showing=periodKey(currentYear,currentMonth);
     if(showing>=effective){setMonthCfg(currentYear,currentMonth,cfg);currentRows.forEach(r=>{r.fPrice=cfg.facPrice;r.sPrice=cfg.staPrice;r.checkBy=cfg.inspector||r.checkBy;if(r.fTime==='morning'||r.fTime===old.morningTime)r.fTime=cfg.morningTime;if(r.fTime==='afternoon'||r.fTime===old.afternoonTime)r.fTime=cfg.afternoonTime;if(r.sTime==='morning'||r.sTime===old.morningTime)r.sTime=cfg.morningTime;if(r.sTime==='afternoon'||r.sTime===old.afternoonTime)r.sTime=cfg.afternoonTime;r.updatedAt=_localTS();});saveData(true);}
-    if(typeof WDR_CURRENCY!=='undefined')WDR_CURRENCY.setRate(cfg.exchangeRate);renderTable();renderSummaryCards();showToast('✅ '+waterTelegramText('已從 '+effective+' 起套用；之前月份不變','Applied from '+effective+'; earlier months are unchanged','បានអនុវត្តចាប់ពី '+effective,currentLang),'success');
+    if(typeof WDR_CURRENCY!=='undefined')WDR_CURRENCY.setRate(cfg.exchangeRate);renderTable();renderSummaryCards();updateWaterSettingsBadge();showToast('✅ '+waterTelegramText('已從 '+effective+' 起套用；之前月份不變','Applied from '+effective+'; earlier months are unchanged','បានអនុវត្តចាប់ពី '+effective,currentLang),'success');
   };
   window.applyAndCloseCurrency = applyAndCloseCurrency = function(){applyWaterDefaultsToMonth();document.getElementById('currency-panel').classList.remove('open');};
   window.toggleCurrencyPanel = toggleCurrencyPanel = function(){
@@ -2444,7 +2482,7 @@ function buildWaterTelegram(opt){
   window.renderAnalysis = renderAnalysis = function(){
     const y=+(document.getElementById('an-year')||{}).value||currentYear,m=+(document.getElementById('an-month')||{}).value||currentMonth,ref=(document.getElementById('wdr-analysis-ref')||{}).value||_localYMD();let rows=allWaterRows();
     if(analysisPeriod==='day')rows=rows.filter(r=>r.date===ref);else if(analysisPeriod==='week'){const d=new Date(ref+'T00:00:00'),s=new Date(d);s.setDate(d.getDate()-((d.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+6);rows=rows.filter(r=>{const x=new Date(r.date+'T00:00:00');return x>=s&&x<=e;});}else if(analysisPeriod==='month')rows=rows.filter(r=>r.date.startsWith(y+'-'+String(m).padStart(2,'0')));else rows=rows.filter(r=>r.date.startsWith(y+'-'));
-    const drums=rows.reduce((a,r)=>a+(+r.fQty||0)+(+r.sQty||0),0),liters=drums*20,att=attendanceStats(rows),persons=att.headcount,khr=rows.reduce((a,r)=>a+calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice),0),rr=rows.length?(+rows[rows.length-1].exchangeRate||4100):rate(),by={};rows.forEach(r=>{const key=analysisPeriod==='year'?r.date.slice(0,7):r.date;(by[key]||(by[key]={drums:0,liters:0,attendance:[],khr:0}));by[key].drums+=(+r.fQty||0)+(+r.sQty||0);by[key].liters=by[key].drums*20;if(+r.headcount>0)by[key].attendance.push(+r.headcount);by[key].khr+=calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice);});
+    const drums=rows.reduce((a,r)=>a+(+r.fQty||0)+(+r.sQty||0),0),liters=drums*20,att=attendanceStats(rows),persons=att.headcount,khr=rows.reduce((a,r)=>a+calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice),0),rr=rows.length?(+rows[rows.length-1].exchangeRate||4100):rate(),by={};rows.forEach(r=>{const key=analysisPeriod==='year'?r.date.slice(0,7):(analysisPeriod==='month'?r.date.slice(0,7)+' · W'+Math.min(5,Math.floor(((+r.date.slice(8,10)||1)-1)/7)+1):r.date);(by[key]||(by[key]={drums:0,liters:0,attendance:[],khr:0}));by[key].drums+=(+r.fQty||0)+(+r.sQty||0);by[key].liters=by[key].drums*20;if(+r.headcount>0)by[key].attendance.push(+r.headcount);by[key].khr+=calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice);});
     const attOk=att.available&&persons>=20,attCards=attOk?'<div class="summary-card green"><div class="card-label">'+waterTelegramText('平均每日出勤','Avg daily attendance','វត្តមានមធ្យមប្រចាំថ្ងៃ',currentLang)+'</div><div class="card-value">'+persons+'</div></div><div class="summary-card amber"><div class="card-label">L / person</div><div class="card-value">'+(liters/persons).toFixed(1)+'</div></div>':'';
     document.getElementById('analysis-content').innerHTML='<div class="summary-grid"><div class="summary-card blue"><div class="card-label">Drums</div><div class="card-value">'+drums+'</div></div><div class="summary-card teal"><div class="card-label">Liters</div><div class="card-value">'+liters.toLocaleString()+' L</div></div>'+attCards+'<div class="summary-card red"><div class="card-label">Total</div><div class="card-value">'+khr.toLocaleString()+' ៛</div><div class="card-sub">'+usd(khr,rr)+'</div></div></div><div class="chart-card" style="margin-top:16px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>Period</th><th>Drums</th><th>Liters</th>'+(attOk?'<th>Attendance</th><th>L/person</th>':'')+'<th>Total KHR / USD</th></tr></thead><tbody>'+Object.keys(by).sort().map(k=>{const hc=by[k].attendance.length?Math.round(by[k].attendance.reduce((a,n)=>a+n,0)/by[k].attendance.length):0;return '<tr><td>'+k+'</td><td>'+by[k].drums+'</td><td>'+by[k].liters.toLocaleString()+' L</td>'+(attOk?'<td>'+hc+'</td><td>'+(hc?by[k].liters/hc:0).toFixed(1)+'</td>':'')+'<td>'+by[k].khr.toLocaleString()+' ៛ / '+usd(by[k].khr,rr)+'</td></tr>';}).join('')+'</tbody></table></div>';
   };
@@ -2462,10 +2500,11 @@ function buildWaterTelegram(opt){
 
   function ensureUI(){
     const panel=document.getElementById('currency-panel');if(panel&&!document.getElementById('cp-effective-month')){panel.style.width='min(360px,calc(100vw - 24px))';const block=document.createElement('div');block.id='wdr-effective-settings';block.innerHTML='<div class="cpanel-row"><label class="cpanel-label">📅 '+waterTelegramText('生效月份','Effective month','ខែចាប់ផ្ដើម',currentLang)+'</label><input class="cpanel-input" id="cp-effective-month" type="month"><div class="wdr-setting-hint">'+waterTelegramText('按一次後，此月及之後的新月份使用新設定；之前月份不變。','Apply once: this and future months use the new setting; earlier months stay unchanged.','អនុវត្តចាប់ពីខែនេះ ហើយខែមុនមិនផ្លាស់ប្ដូរ។',currentLang)+'</div></div><div class="cpanel-row"><label class="cpanel-label">👤 '+waterTelegramText('預設檢查員','Default inspector','អ្នកត្រួតពិនិត្យលំនាំដើម',currentLang)+'</label><input class="cpanel-input" id="cp-inspector" type="text" placeholder="Inspector"></div><div class="wdr-time-defaults"><div class="cpanel-row"><label class="cpanel-label">🌅 '+waterTelegramText('早上時間','Morning time','ម៉ោងព្រឹក',currentLang)+'</label><input class="cpanel-input" id="cp-morning-time" type="time" value="08:00"></div><div class="cpanel-row"><label class="cpanel-label">🌇 '+waterTelegramText('下午時間','Afternoon time','ម៉ោងរសៀល',currentLang)+'</label><input class="cpanel-input" id="cp-afternoon-time" type="time" value="15:30"></div></div>';panel.insertBefore(block,document.getElementById('cp-rate').closest('.cpanel-row'));}
-    const controls=document.querySelector('#panel-entry .controls-bar');if(controls&&!document.getElementById('wdr-ref-date')){const inp=document.createElement('input');inp.type='date';inp.id='wdr-ref-date';inp.value=_localYMD();inp.className='form-input';inp.style.cssText='width:145px;padding:7px';inp.onchange=()=>{renderTable();renderSummaryCards();};controls.appendChild(inp);const b=document.createElement('button');b.id='wdr-attendance-btn';b.className='btn btn-secondary';b.innerHTML='👥 Attendance';b.onclick=syncAttendanceHeadcount;b.hidden=true;controls.appendChild(b);}
+    const controls=document.querySelector('#panel-entry .controls-bar');if(controls&&!document.getElementById('wdr-ref-date')){const inp=document.createElement('input');inp.type='date';inp.id='wdr-ref-date';inp.value=_localYMD();inp.className='form-input';inp.style.cssText='display:none;width:145px;padding:7px';inp.onchange=()=>{syncWaterSelectorsFromRef();loadMonthData();updatePeriodLabel();};controls.appendChild(inp);const settings=document.createElement('button');settings.id='wdr-month-settings-btn';settings.className='btn btn-ghost';settings.innerHTML='⚙️ '+waterTelegramText('本月單價／時間','Monthly price / time','តម្លៃ / ពេលវេលាប្រចាំខែ',currentLang);settings.onclick=toggleCurrencyPanel;controls.appendChild(settings);const badge=document.createElement('span');badge.id='wdr-current-settings';badge.className='wdr-current-settings';controls.appendChild(badge);const b=document.createElement('button');b.id='wdr-attendance-btn';b.className='btn btn-secondary';b.innerHTML='👥 Attendance';b.onclick=syncAttendanceHeadcount;b.hidden=true;controls.appendChild(b);}
     const top=document.querySelector('#main-table thead tr:first-child'),cols=document.querySelector('#main-table colgroup');if(top&&!document.getElementById('wdr-th-headcount')){const act=top.lastElementChild;const h1=document.createElement('th');h1.rowSpan=2;h1.id='wdr-th-headcount';h1.className='wdr-att-col';h1.textContent='👥 Attendance';top.insertBefore(h1,act);const h2=document.createElement('th');h2.rowSpan=2;h2.textContent='📷';top.insertBefore(h2,act);if(cols){cols.insertAdjacentHTML('beforeend','<col class="wdr-att-col" style="width:85px"><col style="width:90px">');}}
     const toggle=document.querySelector('#panel-analysis .period-toggle');if(toggle){toggle.innerHTML='<button class="period-btn" data-wdr-period="day" onclick="setAnalysisPeriod(\'day\')">Day</button><button class="period-btn" data-wdr-period="week" onclick="setAnalysisPeriod(\'week\')">Week</button><button class="period-btn active" data-wdr-period="month" onclick="setAnalysisPeriod(\'month\')">Month</button><button class="period-btn" data-wdr-period="year" onclick="setAnalysisPeriod(\'year\')">Year</button>';if(!document.getElementById('wdr-analysis-ref')){const d=document.createElement('input');d.id='wdr-analysis-ref';d.type='date';d.value=_localYMD();d.className='form-input';d.style.width='145px';d.onchange=renderAnalysis;toggle.parentElement.parentElement.appendChild(d);}}
-    const style=document.createElement('style');style.textContent='.wdr-slot{min-width:140px;padding:7px;border:1px solid #94a3b8;border-radius:6px;background:white;color:#172536;font-weight:650}.total-row small{display:block;font-size:10px;color:#2563eb;margin-top:2px}#main-table td{vertical-align:middle}.wdr-attendance-unavailable .wdr-att-col{display:none!important}.wdr-att-value{font-weight:700;color:#334155}.wdr-time-defaults{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wdr-setting-hint{font-size:11px;color:#40556b;background:#eef5fb;border-left:3px solid #2563eb;padding:7px;margin-top:6px;line-height:1.45}@media(max-width:520px){#currency-panel{top:10px!important;right:10px!important;max-height:calc(100dvh - 20px);overflow:auto}.wdr-time-defaults{grid-template-columns:1fr}}';document.head.appendChild(style);setAttendanceVisibility(false);
+    const importSub=document.querySelector('#panel-import .upload-sub');if(importSub)importSub.textContent=waterTelegramText('支援原始 Drinking Water 月表（.xls / .xlsx / .xlsb），自動辨識所有月份。','Supports the original Drinking Water workbook (.xls / .xlsx / .xlsb) and detects all month sheets.','គាំទ្រឯកសារ Drinking Water ដើម និងរកខែដោយស្វ័យប្រវត្តិ។',currentLang);
+    const style=document.createElement('style');style.textContent='.wdr-slot{min-width:140px;padding:7px;border:1px solid #94a3b8;border-radius:6px;background:white;color:#172536;font-weight:650}.total-row small,#main-table td small{display:block;font-size:10px;color:#2563eb;margin-top:2px}#main-table td{vertical-align:middle}.wdr-attendance-unavailable .wdr-att-col{display:none!important}.wdr-att-value{font-weight:700;color:#334155}.wdr-time-defaults{display:grid;grid-template-columns:1fr 1fr;gap:10px}.wdr-setting-hint{font-size:11px;color:#40556b;background:#eef5fb;border-left:3px solid #2563eb;padding:7px;margin-top:6px;line-height:1.45}.wdr-current-settings{font-size:11px;font-weight:700;color:#25445f;background:#edf6ff;border:1px solid #b9d7ee;border-radius:8px;padding:7px 9px}#wdr-month-settings-btn{border:2px solid #2f78b7;color:#164e7a;background:#f0f8ff}@media(max-width:520px){#currency-panel{top:10px!important;right:10px!important;max-height:calc(100dvh - 20px);overflow:auto}.wdr-time-defaults{grid-template-columns:1fr}.wdr-current-settings{width:100%}#wdr-month-settings-btn{width:100%;justify-content:center}}';document.head.appendChild(style);setAttendanceVisibility(false);updateWaterSettingsBadge();
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureUI);else ensureUI();
   function repairAttendanceOnLoad(){setTimeout(function(){currentRows.forEach(r=>{if(!/^hra-attendance$|^attendance-gas/.test(String(r.headcountSource||''))){r.headcount='';r.headcountSource='';}});setAttendanceVisibility(false);if(window.GC&&GC.attendance)syncAttendanceHeadcount(true);else{renderTable();renderSummaryCards();}},900);}

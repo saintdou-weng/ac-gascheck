@@ -17,9 +17,9 @@ for (const [name, html] of [['cleaning',cleaning],['key',key],['water',water],['
     assert.doesNotThrow(() => new Function(m[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline scripts`);
-  assert(html.includes('gascheck-core.js?v=35-clean-key-water-temp'));
+  assert(html.includes('gascheck-core.js?v=37-telegram-multi-sync-dorm'));
 }
-assert(core.includes("GC.version = '3.2-clean-key-water-temp'"));
+assert(core.includes("GC.version = '3.3-telegram-multi-sync-dorm'"));
 
 // Cleaning: shared defaults plus independent cleaner, slots and checks per location.
 for (const token of [
@@ -33,7 +33,7 @@ for (const token of [
 for (const token of [
   'class="km-native-photo-input"', '::file-selector-button',
   'class="km-camera-picker"', 'positionMasterPhotoSection()',
-  "['照片','圖片','photo','photos','image','photo url','image url']",
+  'bookFiles:true', 'keyEmbeddedPhotos(wb,best.name)',
   "'Photo / 照片'"
 ]) assert(key.includes(token), `key missing ${token}`);
 assert(!key.includes('.km-native-photo-input{display:none'));

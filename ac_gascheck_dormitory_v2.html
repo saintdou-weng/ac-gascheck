@@ -134,7 +134,7 @@ select.fi{cursor:pointer}
 .insp-tbl th{font-size:9px;font-weight:700;color:var(--acc2);padding:5px 3px;background:var(--alt)}
 .grp-hd{padding:5px !important;font-size:10px !important;font-weight:700 !important;color:#fff !important}
 .gh-ac{background:#4438A8 !important}.gh-rm{background:#1D5C8A !important}.gh-wc{background:#1A7A5A !important}
-.room-cell{background:var(--alt);font-weight:700;font-size:12px;color:var(--acc2);padding:0 8px !important;min-width:48px;position:sticky;left:0;z-index:2;border-right:2px solid var(--bdr) !important}
+.room-cell{background:var(--alt);font-weight:700;font-size:12px;color:var(--acc2);padding:4px 6px !important;min-width:104px !important;position:sticky;left:0;z-index:2;border-right:2px solid var(--bdr) !important}
 .sc{width:100%;min-height:30px;cursor:pointer;user-select:none;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px;transition:.12s}
 .sc-N{color:#27AE60;background:#E8F8EE}
 .sc-X{color:#C0392B;background:#FDEDED}
@@ -143,6 +143,16 @@ select.fi{cursor:pointer}
 .sc:active{transform:scale(.85)}
 .rm-input{border:none;width:100%;padding:5px 6px;font-size:10px;font-family:inherit;outline:none;background:transparent;color:var(--tx);min-width:70px}
 .rm-input:focus{background:#FFFDE7}
+.insp-quick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px;padding:10px;border:1px solid var(--bdr2);border-radius:10px;background:var(--alt)}
+.insp-quick .btn{min-height:36px}
+.insp-room-ok{display:block;width:100%;min-height:28px;margin:4px auto 2px;border:1px solid #2f8f62;border-radius:7px;background:#e8f8ee;color:#17643f;font-size:10px;font-weight:800;padding:4px 5px;cursor:pointer;white-space:nowrap}
+.insp-room-ok:active{background:#bdeecf;transform:scale(.97)}
+.insp-photo-count{font-size:11px;font-weight:700;color:var(--acc2)}
+.insp-photo-grid{display:flex;gap:7px;flex-wrap:wrap;width:100%}
+.insp-photo{position:relative;width:70px;height:70px;border:1px solid var(--bdr2);border-radius:9px;overflow:hidden;background:#fff}
+.insp-photo img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}
+.insp-photo button{position:absolute;top:3px;right:3px;width:22px;height:22px;border:0;border-radius:50%;background:#b42318;color:#fff;font-weight:800;cursor:pointer}
+.insp-file{position:absolute;width:1px;height:1px;opacity:.01;overflow:hidden}
 
 /* RECORDS TABLE */
 .tw{overflow-x:auto}
@@ -200,7 +210,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=35-clean-key-water-temp"></script>
+<script src="./gascheck-core.js?v=37-telegram-multi-sync-dorm"></script>
 </head>
 <body>
 
@@ -382,9 +392,18 @@ select.fi{cursor:pointer}
         <div class="loc-tab" data-loc="factory"     onclick="insp.setLoc('factory',this)">🏭 工廠</div>
         <div class="loc-tab" data-loc="office"      onclick="insp.setLoc('office',this)">🏢 辦公室</div>
       </div>
+      <div class="insp-quick">
+        <button class="btn bg2" type="button" onclick="insp.allOk()">✅ 本區全部勾選 / All rooms OK</button>
+        <button class="btn bo" type="button" onclick="insp.clearAll()">↺ 清除本區 / Clear</button>
+        <span style="font-size:11px;font-weight:700;color:var(--acc2)">或按每個房號下方的 ✓ 逐房完成</span>
+        <label class="btn bo" style="cursor:pointer">📷 選擇照片<input class="insp-file" type="file" accept="image/*" multiple onchange="insp.pickPhotos(this)"></label>
+        <label class="btn bo" style="cursor:pointer">📸 直接拍照<input class="insp-file" type="file" accept="image/*" capture="environment" onchange="insp.pickPhotos(this)"></label>
+        <span class="insp-photo-count" id="insp-photo-count">0 / 8</span>
+        <div class="insp-photo-grid" id="insp-photo-grid"></div>
+      </div>
       <div id="insp-abn" style="display:none;background:var(--rl);border:1px solid #E8A0A0;border-radius:8px;padding:8px 12px;font-size:11px;color:var(--red);margin-bottom:8px"></div>
       <div class="insp-wrap" id="insp-tbl-wrap"></div>
-      <div style="margin-top:6px;font-size:10px;color:var(--dim)">點擊循環：空白 → ✓N 正常 → ✗X 異常 → − N/A → 空白</div>
+      <div style="margin-top:6px;font-size:10px;color:var(--dim)">每房按「✓ Room OK」可一次全勾；點擊單格循環：空白 → ✓N 正常 → ✗X 異常 → − N/A → 空白</div>
     </div>
   </div>
   <div class="card"><div class="ch"><span class="ch-ic">📊</span><span class="ch-tl">巡查歷史</span></div>
@@ -995,8 +1014,8 @@ var tgPost = async (body) => {
   payload.reply_markup = {inline_keyboard:rows};
   try {
     if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.send)
-      return await GC.telegram.send(payload.text||'',[],rows,chatId,'dormitory');
-    return await gasPost({action:'telegram',tool:'dormitory',chatId:chatId,text:payload.text||'',buttons:rows});
+      return await GC.telegram.send(payload.text||'',Array.isArray(payload.photos)?payload.photos:[],rows,chatId,'dormitory');
+    return await gasPost({action:'telegram',tool:'dormitory',chatId:chatId,text:payload.text||'',photos:Array.isArray(payload.photos)?payload.photos:[],buttons:rows});
   } catch(e) { return {ok:false,error:e.message}; }
 };
 
@@ -1427,7 +1446,13 @@ var roster = (() => {
 // INSPECTION MODULE — fixed cell cycling, all locations
 // ═══════════════════════════════════════════════════════════════
 var insp = (() => {
-  let _data = {}; // { [room]: { [colKey]: val, remarks: '' } }
+  const PHOTO_LIMIT=8;
+  let _dataByLoc = {};   // { [location]: { [room]: values } }
+  let _photosByLoc = {}; // each facility keeps its own inspection photos
+
+  const currentLoc = () => state.getInspLoc();
+  const currentData = () => (_dataByLoc[currentLoc()] || (_dataByLoc[currentLoc()]={}));
+  const currentPhotos = () => (_photosByLoc[currentLoc()] || (_photosByLoc[currentLoc()]=[]));
 
   // Cycle: ''→'N'→'X'→'-'→''
   const CYCLE = {'':'N','N':'X','X':'-','-':''};
@@ -1446,6 +1471,7 @@ var insp = (() => {
     document.querySelectorAll('.loc-tab').forEach(t=>t.classList.remove('active'));
     if(el) el.classList.add('active');
     renderTable();
+    renderPhotos();
   };
 
   const renderTable = () => {
@@ -1462,15 +1488,16 @@ var insp = (() => {
         <th rowspan="2" style="min-width:80px;font-size:9px">備註</th></tr>
         <tr>${INSP_COLS.map(c=>`<th>${COL_LABELS[c.k]||c.k}</th>`).join('')}</tr>
       </thead><tbody>`;
+    const data=currentData();
     rooms.forEach(room=>{
-      if(!_data[room]) _data[room]={};
-      html+=`<tr><td class="room-cell">${esc(room)}</td>`;
+      if(!data[room]) data[room]={};
+      html+=`<tr><td class="room-cell" data-room="${esc(room)}">${esc(room)}<button class="insp-room-ok" type="button" onclick="insp.roomOk('${esc(room)}')">✓ Room OK</button></td>`;
       INSP_COLS.forEach(col=>{
-        const v=_data[room][col.k]||'';
+        const v=data[room][col.k]||'';
         const cls=SCLS[v]||'sc-empty';
         html+=`<td><div class="sc ${cls}" onclick="insp.tap('${esc(room)}','${col.k}')">${SYM[v]||''}</div></td>`;
       });
-      html+=`<td><input class="rm-input" value="${esc(_data[room].remarks||'')}" oninput="insp.setRemark('${esc(room)}',this.value)" placeholder="—"></td></tr>`;
+      html+=`<td><input class="rm-input" value="${esc(data[room].remarks||'')}" oninput="insp.setRemark('${esc(room)}',this.value)" placeholder="—"></td></tr>`;
     });
     html+=`</tbody></table>`;
     document.getElementById('insp-tbl-wrap').innerHTML=html;
@@ -1478,17 +1505,18 @@ var insp = (() => {
   };
 
   const tap = (room, col) => {
-    if(!_data[room]) _data[room]={};
-    const cur=_data[room][col]||'';
+    const data=currentData();
+    if(!data[room]) data[room]={};
+    const cur=data[room][col]||'';
     const next=CYCLE[cur]!==undefined?CYCLE[cur]:'N';
-    _data[room][col]=next;
+    data[room][col]=next;
     // Update cell without re-rendering entire table
     const cells=document.querySelectorAll(`.insp-tbl .sc`);
     cells.forEach(el=>{
       const parent=el.closest('tr');
       // Find room from row
       const roomCell=parent?.querySelector('.room-cell');
-      if(roomCell&&roomCell.textContent===room){
+      if(roomCell&&roomCell.dataset.room===room){
         // Find correct cell by column index
         const tds=parent.querySelectorAll('td');
         const colIdx=INSP_COLS.findIndex(c=>c.k===col);
@@ -1505,23 +1533,58 @@ var insp = (() => {
   };
 
   const setRemark = (room, val) => {
-    if(!_data[room]) _data[room]={};
-    _data[room].remarks=val;
+    const data=currentData();
+    if(!data[room]) data[room]={};
+    data[room].remarks=val;
+  };
+
+  const roomOk = room => {
+    const data=currentData();if(!data[room])data[room]={};
+    INSP_COLS.forEach(c=>data[room][c.k]='N');renderTable();
+  };
+
+  const allOk = () => {
+    const data=currentData();getRooms().forEach(room=>{if(!data[room])data[room]={};INSP_COLS.forEach(c=>data[room][c.k]='N');});
+    renderTable();toast('✅ 本區已全部設為正常');
+  };
+
+  const clearAll = () => {
+    const data=currentData(); getRooms().forEach(room=>{if(data[room])INSP_COLS.forEach(c=>{data[room][c.k]='';});});
+    renderTable(); toast('↺ 已清除本區勾選','inf');
   };
 
   const countAnomalies = () => {
     let n=0;
-    Object.values(_data).forEach(rd=>{ INSP_COLS.forEach(c=>{ if(rd[c.k]==='X') n++; }); });
+    Object.values(currentData()).forEach(rd=>{ INSP_COLS.forEach(c=>{ if(rd[c.k]==='X') n++; }); });
     return n;
   };
 
   const updateAbnAlert = () => {
     const abns=[];
-    Object.keys(_data).forEach(room=>{ INSP_COLS.forEach(c=>{ if(_data[room][c.k]==='X') abns.push(room+': '+(COL_LABELS[c.k]||c.k)); }); });
+    const data=currentData();Object.keys(data).forEach(room=>{ INSP_COLS.forEach(c=>{ if(data[room][c.k]==='X') abns.push(room+': '+(COL_LABELS[c.k]||c.k)); }); });
     const el=document.getElementById('insp-abn');
     if(abns.length){ el.style.display='block'; el.innerHTML='⚠️ 異常 '+abns.length+' 項: '+abns.slice(0,6).join(', ')+(abns.length>6?' …':''); }
     else el.style.display='none';
   };
+
+  const compressPhoto = file => new Promise((resolve,reject)=>{
+    const fr=new FileReader();fr.onerror=reject;fr.onload=e=>{const im=new Image();im.onerror=reject;im.onload=()=>{let w=im.width,h=im.height,M=1600;if(w>M||h>M){if(w>=h){h=Math.round(h*M/w);w=M;}else{w=Math.round(w*M/h);h=M;}}const c=document.createElement('canvas');c.width=w;c.height=h;c.getContext('2d').drawImage(im,0,0,w,h);resolve(c.toDataURL('image/jpeg',.78));};im.src=e.target.result;};fr.readAsDataURL(file);
+  });
+
+  const renderPhotos = () => {
+    const photos=currentPhotos(),grid=document.getElementById('insp-photo-grid'),count=document.getElementById('insp-photo-count');
+    if(count)count.textContent=photos.length+' / '+PHOTO_LIMIT;
+    if(grid)grid.innerHTML=photos.map((p,i)=>`<div class="insp-photo"><img src="${p}" onclick="insp.viewPhoto(${i})" alt="Inspection photo ${i+1}"><button type="button" onclick="insp.removePhoto(${i})">×</button></div>`).join('');
+  };
+
+  const pickPhotos = async input => {
+    const photos=currentPhotos(),files=Array.from(input&&input.files||[]),remaining=PHOTO_LIMIT-photos.length;
+    if(input)input.value='';if(!files.length)return;if(remaining<=0){toast('⚠️ 每個區域每次最多 8 張照片');return;}
+    for(const file of files.slice(0,remaining)){try{photos.push(await compressPhoto(file));}catch(e){toast('⚠️ 照片讀取失敗');}}
+    renderPhotos();if(files.length>remaining)toast('⚠️ 已保留前 8 張照片');
+  };
+  const removePhoto = i => {currentPhotos().splice(i,1);renderPhotos();};
+  const viewPhoto = i => {const photos=currentPhotos();if(window.GC&&GC.photo)GC.photo.lightbox(photos,i||0);else if(photos[i])window.open(photos[i],'_blank');};
 
   const save = () => {
     const inspector=gv('insp-inspector').trim();
@@ -1531,7 +1594,7 @@ var insp = (() => {
     const record={
       id:Date.now().toString(36),timestamp:_localTS(),
       date,quarter:q,location:state.getInspLoc(),inspector,
-      data:JSON.parse(JSON.stringify(_data)),anomalies:countAnomalies()
+      data:JSON.parse(JSON.stringify(currentData())),photos:currentPhotos().slice(0,PHOTO_LIMIT),anomalies:countAnomalies()
     };
     state.db().inspections.push(record);
     state.save();
@@ -1543,18 +1606,18 @@ var insp = (() => {
     const inspector=gv('insp-inspector').trim();
     const date=gv('insp-date');
     const abn=[];
-    Object.keys(_data).forEach(r=>{ INSP_COLS.forEach(c=>{ if(_data[r][c.k]==='X') abn.push(`${r}: ${COL_LABELS[c.k]}`); }); });
-    const msg=`🔍 <b>VRT 設施巡查</b>\n📍 ${state.getInspLoc()}\n📅 ${date}\n👤 ${inspector}\n⚠️ 異常: ${abn.length} 項\n${abn.slice(0,8).map(a=>'  • '+a).join('\n')}`;
-    await tgPost({text:msg});
+    const data=currentData();Object.keys(data).forEach(r=>{ INSP_COLS.forEach(c=>{ if(data[r][c.k]==='X') abn.push(`${r}: ${COL_LABELS[c.k]}`); }); });
+    const photos=currentPhotos();const msg=`🔍 <b>VRT 設施巡查</b>\n📍 ${state.getInspLoc()}\n📅 ${date}\n👤 ${inspector||'—'}\n✅ 房間: ${getRooms().length}\n⚠️ 異常: ${abn.length} 項\n📷 ${photos.length} 張\n${abn.slice(0,8).map(a=>'  • '+a).join('\n')}`;
+    await tgPost({text:msg,photos:photos.slice(0,PHOTO_LIMIT)});
     toast('📤 Telegram 已發送');
   };
 
   const exportXL = () => {
     const rows=[];
-    Object.keys(_data).forEach(room=>{
+    const data=currentData();Object.keys(data).forEach(room=>{
       const row={Room:room};
-      INSP_COLS.forEach(c=>{ row[COL_LABELS[c.k]||c.k]=_data[room][c.k]||''; });
-      row.Remarks=_data[room].remarks||'';
+      INSP_COLS.forEach(c=>{ row[COL_LABELS[c.k]||c.k]=data[room][c.k]||''; });
+      row.Remarks=data[room].remarks||'';
       rows.push(row);
     });
     if(!rows.length){toast('無資料');return;}
@@ -1576,10 +1639,11 @@ var insp = (() => {
     const el=document.getElementById('insp-hist');
     if(!recs.length){ el.innerHTML='<div class="es"><span class="esi">🔍</span>查詢後顯示</div>'; return; }
     el.innerHTML=`<div style="padding:6px 12px;font-size:10px;color:var(--dim)">共 ${recs.length} 筆</div>
-      <div class="tw"><table class="rt"><thead><tr><th>日期</th><th>地點</th><th>巡查員</th><th>季度</th><th>異常</th><th></th></tr></thead>
+      <div class="tw"><table class="rt"><thead><tr><th>日期</th><th>地點</th><th>巡查員</th><th>季度</th><th>異常</th><th>照片</th><th></th></tr></thead>
       <tbody>${recs.map(r=>`<tr>
         <td>${r.date||''}</td><td>${r.location||''}</td><td>${r.inspector||''}</td><td>${r.quarter||''}</td>
         <td>${r.anomalies>0?`<span class="badge b-pend">⚠️ ${r.anomalies}</span>`:'✅ 0'}</td>
+        <td>${(r.photos||[]).length?`<button class="btn bo" style="padding:3px 7px;font-size:10px" onclick="insp.viewRecordPhotos('${r.id}')">📷 ${(r.photos||[]).length}</button>`:'—'}</td>
         <td><button onclick="insp.delRecord('${r.id}')" style="background:none;border:none;color:var(--red);cursor:pointer">✕</button></td>
       </tr>`).join('')}</tbody></table></div>`;
   };
@@ -1590,7 +1654,9 @@ var insp = (() => {
     state.save(); queryHist(); toast('已刪除');
   };
 
-  return { setLoc, renderTable, tap, setRemark, save, sendTg, exportXL, queryHist, delRecord };
+  const viewRecordPhotos = id => {const r=state.db().inspections.find(x=>String(x.id)===String(id)),photos=r&&Array.isArray(r.photos)?r.photos:[];if(photos.length&&window.GC&&GC.photo)GC.photo.lightbox(photos,0);};
+
+  return { setLoc, renderTable, tap, setRemark, roomOk, allOk, clearAll, pickPhotos, removePhoto, viewPhoto, renderPhotos, save, sendTg, exportXL, queryHist, delRecord, viewRecordPhotos };
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -1786,7 +1852,7 @@ function goApply(t) {
       const draft=JSON.parse(localStorage.getItem('vrt_dorm_draft'));
       if(draft){state.setFType(draft.type||'in');['name','gender','id','dept','pos','phone','reason','applicant'].forEach(f=>sv('f-'+f,draft[f]||''));if(draft.room)sv('f-room',draft.room);if(draft.items)state.setItems(draft.items);}
     } catch(e){}
-    insp.renderTable();
+    insp.renderTable(); insp.renderPhotos();
     de.set('month',document.querySelector('#pane-dash .dnp[data-p="month"]'));
     inspDE.set('day',document.querySelector('#pane-insp .dnp[data-p="day"]'));
     recDE.set('month',document.querySelector('#pane-records .dnp[data-p="month"]'));

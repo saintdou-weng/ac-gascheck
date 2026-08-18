@@ -161,7 +161,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=35-clean-key-water-temp"></script>
+<script src="./gascheck-core.js?v=37-telegram-multi-sync-dorm"></script>
 </head>
 <body>
 <div class="topbar">
@@ -708,6 +708,11 @@ var state = (() => {
   const save = () => {
     try { localStorage.setItem(SK, JSON.stringify(_db)); } catch(e) {}
     updateDbInfo();
+    // Staff/location/slot changes are configuration data too.  Queue one
+    // background smart-sync so another phone can restore them without the
+    // user having to remember a separate upload step.
+    if(!window._cleaningCloudApplying && typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule)
+      GC.sync.schedule('cleaning','settings_or_record_save');
   };
   const db = () => _db;
   const resetChk = () => { _chkState={}; CHK_ITEMS.forEach(k=>_chkState[k]=null); };
@@ -1017,7 +1022,10 @@ var hist = (() => {
     ui.toast(i18n.t('downloading'));
     try {
       const smart = typeof GC!=='undefined'&&GC.sync ? await GC.sync.download('cleaning',{silent:false}) : null;
-      const res = smart ? {ok:smart.ok,records:state.db().records} : await api.get({action:'pull',tool:'cleaning'});
+      // GC.sync.download already returns the merged list.  The old code
+      // accidentally replaced it with the current phone's list, so a second
+      // phone appeared to download successfully but never received records.
+      const res = smart ? {ok:smart.ok,records:Array.isArray(smart.list)?smart.list:[],meta:smart.response||{}} : await api.get({action:'pull',tool:'cleaning'});
       if(res&&res.ok!==false&&Array.isArray(res.records)){
         const db=state.db();
         /* 安全合併：ID 聯集 + updatedAt 比對，本地資料永不消失 */
@@ -1031,6 +1039,35 @@ var hist = (() => {
   };
   return {query, exportXL, uploadCloud, downloadCloud};
 })();
+
+/* Cloud metadata includes the small shared setup needed to use records on a
+   second phone.  Keep it separate from the business rows so IndexedDB/local
+   storage remains fast, while the GAS smart-sync manifest carries the staff,
+   locations and time-slot configuration. */
+function applyCleaningCloudMeta(payload){
+  const root=payload&&payload.data&&typeof payload.data==='object'?payload.data:(payload||{});
+  const meta=root&&root.meta&&typeof root.meta==='object'?Object.assign({},root,root.meta):root;
+  const db=state.db();
+  const names=function(local,remote){
+    const out=[],seen=new Set();
+    (Array.isArray(local)?local:[]).concat(Array.isArray(remote)?remote:[]).forEach(function(v){
+      const n=personName(v); if(n&&!seen.has(n)){seen.add(n);out.push(n);}
+    });
+    return out;
+  };
+  if(Array.isArray(meta.cleaners))db.cleaners=names(db.cleaners,meta.cleaners);
+  if(Array.isArray(meta.checkers))db.checkers=names(db.checkers,meta.checkers);
+  if(Array.isArray(meta.slots))db.slots=Array.from(new Set((db.slots||DEF_SLOTS).concat(meta.slots.map(String)))).sort();
+  if(Array.isArray(meta.locations)){
+    const byId=new Map((db.locations||[]).map(function(x){return [String(x.id),x];}));
+    meta.locations.forEach(function(x){if(x&&x.id){const k=String(x.id);byId.set(k,Object.assign({},byId.get(k)||{},x));}});
+    db.locations=Array.from(byId.values());
+  }
+  if(meta.cfg&&typeof meta.cfg==='object')db.cfg=Object.assign({},db.cfg||{},meta.cfg);
+  window._cleaningCloudApplying=true;
+  try{ state.save(); }finally{ window._cleaningCloudApplying=false; }
+  state.populate(); renderStaff(); renderSlotTags(); renderRecordLocations(); updateDbInfo();
+}
 
 /* ═══ DUSTBIN MAP MODULE — Full CRUD ═══ */
 var binMap = (() => {
@@ -1798,6 +1835,11 @@ function buildCleaningTelegram(opt){
       telegramSlotFilter:cleaningTelegramSlotFilter,
       telegramLanguage:true,
       telegramBuilder:buildCleaningTelegram,
+      extra:function(){
+        const d=state.db();
+        return {cleaners:(d.cleaners||[]).map(personName).filter(Boolean),checkers:(d.checkers||[]).map(personName).filter(Boolean),locations:d.locations||[],slots:d.slots||DEF_SLOTS,cfg:d.cfg||{}};
+      },
+      onRemote:applyCleaningCloudMeta,
       onSync:function(){const d=state.db();(d.records||[]).forEach(function(r){r.synced=true;});state.save();},
       importSchema:{"date": ["日期", "date"], "locId": ["地點", "location", "loc", "ទីតាំង"], "cleaner": ["清潔人員", "cleaner", "អ្នកសម្អាត"], "checker": ["檢查人", "checker", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "ចំណាំ"]},
     read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_clean_hub_v2')||'{}'); return Array.isArray(d.records)?d.records:[]; }catch(e){ return []; } },

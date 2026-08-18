@@ -136,6 +136,10 @@ tbody tr:hover{background:var(--bg);}
 .rzcard{background:var(--card);border-radius:var(--r);border:1.5px solid var(--border);padding:13px;transition:.2s;}
 .rzcard:hover{border-color:var(--pri);}
 .rzlbl{display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+.temp-zone-select-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:#f5f8ff;color:#40516b;font-size:12px}
+.temp-zone-select-tools span{color:#687994;font-size:11px}
+.temp-zone-pick{margin-left:auto;display:inline-flex;align-items:center;gap:3px;color:#24539a;font-size:10px;font-weight:800;white-space:nowrap;cursor:pointer}
+.temp-zone-pick input{accent-color:#2563eb}
 .riw{position:relative;}
 .riw span{position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:11px;color:var(--text3);pointer-events:none;}
 .riw input{padding-right:32px;}
@@ -204,7 +208,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=35-clean-key-water-temp"></script>
+<script src="./gascheck-core.js?v=37-telegram-multi-sync-dorm"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -264,6 +268,12 @@ tbody tr:hover{background:var(--bg);}
     <button class="btn bg" onclick="sendTodayCombinedTemp()" id="i-send-combined">✈️ 早＋午合併摘要</button>
     <button class="btn bg sm" onclick="syncUp()" id="i-upload-after-save" disabled>⬆ 上傳</button>
     <button class="btn bg" onclick="clearRI()" id="i-clear">清除</button>
+  </div>
+  <div class="temp-zone-select-tools">
+    <strong>區域 / Zones</strong>
+    <button type="button" class="btn bo sm" onclick="selectTempZones(true)">✅ 全選 / All</button>
+    <button type="button" class="btn bo sm" onclick="selectTempZones(false)">☐ 清除選取 / Clear</button>
+    <span>勾選後填寫，儲存或發送只處理已選區域 / selected zones only</span>
   </div>
   <div class="livewx" id="live-wx-card">
     <div class="livewx-head">
@@ -676,6 +686,7 @@ km:{
 // STATE & STORAGE
 // ══════════════════════════════════════════
 let LANG='zh', DP='morning', RP='morning', HV='month', AV='month', HP=1;
+let _tempSelectedZones = new Set();
 const PER_PAGE=30;
 let editZID=null, cfCB=null;
 const GAS_DEFAULT_URL='https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
@@ -1017,6 +1028,7 @@ function renderRec(){
   const rd=document.getElementById('rec-date');
   if(!rd.value)rd.value=today();
   const zones=getZ().filter(z=>z.on);
+  _tempSelectedZones = new Set(zones.map(z=>z.id));
   document.getElementById('rec-plbl').textContent=`📅 ${rd.value} · ${RP==='morning'?T('am'):T('pm')}`;
 
   const wxExisting=getR().find(r=>r.d===rd.value&&r.p===RP&&r.wx);
@@ -1028,6 +1040,7 @@ function renderRec(){
         <div style="width:12px;height:12px;border-radius:50%;background:${z.col};flex-shrink:0"></div>
         <span style="font-weight:700">${znm(z)}</span>
         <span class="sm-t muted">${z.en}</span>
+        <label class="temp-zone-pick"><input type="checkbox" id="ri-p-${z.id}" checked onchange="toggleTempZone('${z.id}',this.checked)"> <span>選取 / Send</span></label>
       </div>
       <div class="g2">
         <div class="fg"><label>🌡️ ${T('clbl_tmp')}</label>
@@ -1052,6 +1065,16 @@ function renderRec(){
   renderLiveWeather();
 }
 
+function toggleTempZone(id,checked){
+  if(checked)_tempSelectedZones.add(String(id));else _tempSelectedZones.delete(String(id));
+}
+function selectTempZones(yes){
+  const zones=getZ().filter(z=>z.on);
+  _tempSelectedZones=new Set(yes?zones.map(z=>z.id):[]);
+  zones.forEach(z=>{const el=document.getElementById('ri-p-'+z.id);if(el)el.checked=!!yes;});
+  toast(yes?'✅ 已選全部區域 / All zones selected':'已清除選取 / Selection cleared','inf');
+}
+
 function prvSt(zid){
   const t=document.getElementById('ri-t-'+zid)?.value;
   const h=document.getElementById('ri-h-'+zid)?.value;
@@ -1072,6 +1095,7 @@ function saveAllRec(){
   const zones=getZ().filter(z=>z.on);
   let recs=getR();const newRecs=[];
   zones.forEach(z=>{
+    if(!_tempSelectedZones.has(String(z.id)))return;
     const t=document.getElementById('ri-t-'+z.id)?.value;
     const h=document.getElementById('ri-h-'+z.id)?.value;
     if((t===''||t===undefined)&&(h===''||h===undefined))return;
@@ -1920,7 +1944,7 @@ async function sendTodayCombinedTemp(){
   if(!dayRows.length){toast(tempTelegramText('當日尚無已儲存記錄','No saved records for this day','មិនមានកំណត់ត្រាដែលបានរក្សាទុកសម្រាប់ថ្ងៃនេះ','zh'),'err');return;}
   const packet=buildTGPeriodMsg('day','summary',date,'all','bi');
   try{
-    await GC.telegram.send(packet.text,packet.photos||[],[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html'}]],'-5113064563','temperature');
+    await sendTemperatureTelegramPacket(packet,'-5113064563');
     const sentAt=_localTS(),all=getR();all.forEach(r=>{if(String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon')){r.telegramSentAt=sentAt;r.summarySentAt=sentAt;r.updatedAt=sentAt;}});setR(all);
     if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','combined_daily_summary');
     window._tempPendingUpload=false;updateTempUploadButton();toast('✅ '+tempTelegramText('早上＋下午摘要已發送並排入雲端','AM + PM summary sent and queued for cloud','បានផ្ញើសង្ខេបព្រឹក + រសៀល','zh'),'ok');
@@ -1942,9 +1966,20 @@ async function sendTG(){
   const msg=typeof packet==='string'?packet:(packet.text||'');
   if(!msg||!msg.trim()){toast('訊息內容為空，請確認日期有記錄','err');return;}
   try{
-    const d=await GC.telegram.send(msg,(packet&&packet.photos)||[],[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html'}]],cfg.chat||'-5113064563','temperature');
+    const d=await sendTemperatureTelegramPacket(packet,cfg.chat||'-5113064563',{period,mode,ref});
     d.ok?toast('Telegram 發送成功 ✅','ok'):toast('Telegram 錯誤: '+(d.description||''),'err');
   }catch(ex){toast('網路錯誤: '+ex.message,'err');}
+}
+
+async function sendTemperatureTelegramPacket(packet,chatId,meta){
+  const buttons=[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html'}]];
+  if(typeof GC!=='undefined'&&GC.telegram&&typeof GC.telegram.send==='function')
+    return GC.telegram.send(packet.text||'',packet.photos||[],buttons,chatId||'-5113064563','temperature',meta||{});
+  const url=(getGAS().url||GAS_DEFAULT_URL).trim();
+  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({action:'telegram',tool:'temperature',chatId:chatId||'-5113064563',text:packet.text||'',photos:packet.photos||[],buttons},meta||{}))});
+  const data=await response.json();
+  if(!data||data.ok===false)throw new Error((data&&data.error)||'Telegram request failed');
+  return data;
 }
 
 // ══════════════════════════════════════════
