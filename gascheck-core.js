@@ -1978,7 +1978,18 @@ GC.telegram = {
     if (!text) throw new Error('No Telegram text');
     const dashboardUrl = DASHBOARD_BASE_URL + (DASHBOARD_PATHS[tool] || 'ac_gascheck_portal_v1.html');
     const portalUrl = DASHBOARD_BASE_URL + 'ac_gascheck_portal_v1.html';
-    const finalButtons = Array.isArray(buttons) ? buttons.map(row => Array.isArray(row) ? row.slice() : row).filter(Boolean) : [];
+    const finalButtons = Array.isArray(buttons) ? buttons.map(row => {
+      if (!Array.isArray(row)) return row;
+      return row.map(btn => {
+        if (!btn || typeof btn !== 'object') return btn;
+        const next = Object.assign({}, btn);
+        // Normalize native Telegram callback_data to the GAS bridge's
+        // portable `data` field while retaining the native field too.
+        if (next.callback_data && !next.data) next.data = next.callback_data;
+        if (next.data && !next.callback_data) next.callback_data = next.data;
+        return next;
+      });
+    }).filter(Boolean) : [];
     const hasDashboard = finalButtons.some(row => Array.isArray(row) && row.some(btn => btn && btn.url === dashboardUrl));
     if (!hasDashboard) finalButtons.push([{ text: '📊 Open Dashboard / 開啟平台', url: dashboardUrl }]);
     const hasPortal = finalButtons.some(row => Array.isArray(row) && row.some(btn => btn && btn.url === portalUrl));
@@ -2935,7 +2946,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.4-photo-camera-full-summary-dorm-tg';
+GC.version = '3.5-dorm-resend-callback';
 global.GC = GC;
 global.GASCheckCore = GC;
 

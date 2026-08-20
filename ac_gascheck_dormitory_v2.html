@@ -210,7 +210,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=38-photo-camera-full-summary-dorm-tg"></script>
+<script src="./gascheck-core.js?v=39-dorm-resend-callback"></script>
 </head>
 <body>
 
@@ -471,9 +471,10 @@ select.fi{cursor:pointer}
     <button class="btn bg2" style="padding:6px 12px;font-size:11px" onclick="records.exportXL()">📤 Excel</button>
     <button class="btn bb" style="padding:6px 12px;font-size:11px" onclick="cloud.pullRecords()">⬇ GAS 同步</button>
   </div>
+  <div id="record-detail" style="display:none"></div>
   <div class="card"><div class="ch"><span class="ch-ic">🗂️</span><span class="ch-tl">記錄查詢</span><span class="ch-nt" id="rec-count">0 筆</span></div>
     <div class="tw"><table class="rt"><thead><tr>
-      <th>提交時間</th><th>類型</th><th>姓名</th><th>工號</th><th>部門</th><th>房號</th><th>日期</th><th>原因</th><th>狀態</th><th>核可人</th><th></th>
+      <th>提交時間</th><th>類型</th><th>姓名</th><th>工號</th><th>部門</th><th>房號</th><th>日期</th><th>原因</th><th>狀態</th><th>核可人</th><th>操作 / Actions</th>
     </tr></thead><tbody id="records-body"><tr><td colspan="11" class="es"><span class="esi">🗂️</span>選擇條件後查詢</td></tr></tbody></table></div>
   </div>
 </div></div>
@@ -1010,14 +1011,58 @@ var tgPost = async (body) => {
   let suppliedMarkup = payload.reply_markup;
   if(typeof suppliedMarkup === 'string'){ try{suppliedMarkup=JSON.parse(suppliedMarkup);}catch(e){suppliedMarkup=null;} }
   const rows = suppliedMarkup && suppliedMarkup.inline_keyboard ? suppliedMarkup.inline_keyboard.slice() : [];
-  rows.push([{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_dormitory_v2.html'}]);
-  payload.reply_markup = {inline_keyboard:rows};
+  // Normalize Telegram callback buttons before sending through either the
+  // shared bridge or the legacy GAS fallback.
+  const normalizedRows = rows.map(row => Array.isArray(row) ? row.map(btn => {
+    if(!btn || typeof btn!=='object') return btn;
+    const next=Object.assign({},btn);
+    if(next.callback_data&&!next.data) next.data=next.callback_data;
+    if(next.data&&!next.callback_data) next.callback_data=next.data;
+    return next;
+  }) : row).filter(Boolean);
+  normalizedRows.push([{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_dormitory_v2.html'}]);
+  payload.reply_markup = {inline_keyboard:normalizedRows};
   try {
     if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.send)
-      return await GC.telegram.send(payload.text||'',Array.isArray(payload.photos)?payload.photos:[],rows,chatId,'dormitory');
-    return await gasPost({action:'telegram',tool:'dormitory',chatId:chatId,text:payload.text||'',photos:Array.isArray(payload.photos)?payload.photos:[],buttons:rows});
+      return await GC.telegram.send(payload.text||'',Array.isArray(payload.photos)?payload.photos:[],normalizedRows,chatId,'dormitory');
+    return await gasPost({action:'telegram',tool:'dormitory',chatId:chatId,text:payload.text||'',photos:Array.isArray(payload.photos)?payload.photos:[],buttons:normalizedRows});
   } catch(e) { return {ok:false,error:e.message}; }
 };
+
+function dormTelegramPayload(record, statusOverride, rejectReasonOverride) {
+  record=record||{};
+  const status=statusOverride||record.status||'待審核';
+  const typeIcon=record.type==='搬入'?'🏠':'🚪';
+  const items=Array.isArray(record.items)?record.items:[];
+  const checked=items.filter(it=>it&&it.checked).length;
+  const damaged=items.filter(it=>it&&(['Damaged','Lost'].includes(it.condition))).length;
+  const note=record.note||record.appNote||'';
+  const rejectReason=rejectReasonOverride!==undefined?rejectReasonOverride:(record.rejectReason||'');
+  const lines=[
+    typeIcon+' <b>VRT 宿舍申請 Dorm Application</b>',
+    '━━━━━━━━━━━━━━━━',
+    '📋 類型 / Type：'+esc(record.type||'—'),
+    '👤 姓名 / Name：'+esc(record.name||'—')+'（'+esc(record.idNo||'—')+'）',
+    '🏢 部門 / Department：'+esc(record.department||'—')+(record.position?' · '+esc(record.position):''),
+    '🛏 房號 / Room：'+esc(record.roomNo||'—'),
+    '📅 日期 / Date：'+esc(record.date||'—'),
+    '📝 原因 / Reason：'+esc(record.reason||'—'),
+    note?'📎 備注 / Note：'+esc(note):'',
+    items.length?'📦 物品 / Items：'+items.length+' · '+(record.type==='搬入'?'已領取':'已歸還')+' '+checked+' · ⚠️ '+damaged:'',
+    '👤 審核人 / Reviewer：'+esc(record.reviewer||'Phea'),
+    '✅ 核可人 / Approver：'+esc(record.approvedBy||'—'),
+    status==='已退件'?'❌ 狀態 / Status：已退件 / Rejected'+(rejectReason?' · '+esc(rejectReason):''):
+      status==='已核可'?'✅ 狀態 / Status：已核可 / Approved':'⏳ 狀態 / Status：待審核 / Pending',
+    record.timestamp?'🕐 提交 / Submitted：'+esc(record.timestamp):'',
+    '━━━━━━━━━━━━━━━━'
+  ].filter(Boolean);
+  const buttons=[];
+  if(status==='待審核') buttons.push([
+    {text:'✅ 核可 Approve',data:'dorm_ok_'+record.id,callback_data:'dorm_ok_'+record.id},
+    {text:'❌ 退件 Reject',data:'dorm_rej_'+record.id,callback_data:'dorm_rej_'+record.id}
+  ]);
+  return {text:lines.join('\n'),reply_markup:buttons.length?JSON.stringify({inline_keyboard:buttons}):undefined};
+}
 
 var gasGet = async (params) => {
   const url=cfg.get().gasUrl; if(!url) throw new Error('GAS URL 未設定');
@@ -1220,7 +1265,7 @@ var appForm = (() => {
       department:gv('f-dept'), position:gv('f-pos'), phone:gv('f-phone'),
       roomNo:gv('f-room'), date:gv('f-date'), applyDate:gv('f-applydate'),
       reason:gv('f-reason'), applicant:gv('f-applicant'),
-      reviewer:gv('f-reviewer'), approver:gv('f-approver'),
+      reviewer:gv('f-reviewer'), approver:gv('f-approver'), note:gv('f-app-note'),
       items:JSON.parse(JSON.stringify(validItems)),
     };
 
@@ -1253,32 +1298,7 @@ var appForm = (() => {
 
     // Direct Telegram fallback with approval keyboard
     if(!gasSent){
-      const typeIcon = record.type==='搬入'?'🏠':'🚪';
-      const appNote = gv('f-app-note');
-      const msgText = [
-        typeIcon+' <b>VRT 宿舍申請 Dorm Application</b>',
-        '━━━━━━━━━━━━━━━━',
-        '📋 類型：'+record.type,
-        '👤 姓名：'+record.name+'（'+record.idNo+'）',
-        '🏢 部門：'+record.department+(record.position?' · '+record.position:''),
-        '📞 電話：'+(record.phone||'—'),
-        '🛏 房號：'+record.roomNo,
-        '📅 日期：'+record.date,
-        '📝 原因：'+record.reason,
-        appNote?'📎 備注：'+appNote:'',
-        '👤 審核人：'+(record.reviewer||'Phea'),
-        '✅ 核可人：Paul Weng',
-        '🕐 時間：'+ts,
-        '━━━━━━━━━━━━━━━━',
-        '⏳ 狀態：待審核  #'+record.id,
-      ].filter(Boolean).join('\n');
-      const tgResult = await tgPost({
-        text: msgText,
-        reply_markup: JSON.stringify({ inline_keyboard:[[
-          {text:'✅ 核可 Approve', callback_data:'dorm_ok_'+record.id},
-          {text:'❌ 退件 Reject',  callback_data:'dorm_rej_'+record.id},
-        ]]})
-      });
+      const tgResult = await tgPost(dormTelegramPayload(record));
       if(tgResult&&tgResult.ok===false) throw new Error(tgResult.error||'Telegram request failed');
     }
 
@@ -1349,6 +1369,7 @@ function showApvCard(record) {
       <button class="btn bp" onclick="goApply('in')">📥 新搬入申請</button>
       <button class="btn br2" onclick="goApply('out')">📤 新搬出申請</button>
       <button class="btn bo" onclick="ui.tab('records')">🗂️ 查看記錄</button>
+      <button class="btn bo" onclick="records.resend('${esc(record.id)}')">📤 重發到 Telegram</button>
     </div>
   </div>`;
 }
@@ -1714,6 +1735,30 @@ var viol = (() => {
 // RECORDS MODULE
 // ═══════════════════════════════════════════════════════════════
 var records = (() => {
+  const showDetail = (id) => {
+    const r=state.db().records.find(x=>String(x.id)===String(id));
+    const el=document.getElementById('record-detail');
+    if(!r||!el)return;
+    const items=Array.isArray(r.items)?r.items:[];
+    const itemText=items.length?items.map(function(it,i){
+      return (i+1)+'. '+esc(it.name||'—')+' · '+(it.checked?'✅':'⬜')+' · '+esc(it.condition||'Good')+(it.note?' · '+esc(it.note):'');
+    }).join('<br>'):'—';
+    el.style.display='block';
+    el.innerHTML='<div class="card" style="border:2px solid var(--acc);background:var(--card)">'+
+      '<div class="ch"><span class="ch-ic">🔎</span><span class="ch-tl">申請詳情 / Application details</span><button class="btn bo" style="margin-left:auto;padding:4px 9px" onclick="records.closeDetail()">✕ 關閉</button></div>'+
+      '<div class="cb" style="font-size:12px;line-height:1.8"><b>'+esc(r.type||'—')+' · '+esc(r.status||'待審核')+'</b><br>'+
+      '👤 '+esc(r.name||'—')+' · '+esc(r.idNo||'—')+' · 🛏 '+esc(r.roomNo||'—')+'<br>'+
+      '🏢 '+esc(r.department||'—')+' · 📅 '+esc(r.date||'—')+' · 📝 '+esc(r.reason||'—')+'<br>'+
+      '👤 審核人 / Reviewer: '+esc(r.reviewer||'—')+' · ✅ 核可人 / Approver: '+esc(r.approvedBy||'—')+'<br>'+
+      '📦 物品 / Items:<br>'+itemText+
+      (r.lastTelegramSentAt?'<br>📤 最近發送 / Last sent: '+esc(r.lastTelegramSentAt):'')+
+      '</div></div>';
+    el.scrollIntoView({behavior:'smooth',block:'nearest'});
+  };
+  const closeDetail = () => {
+    const el=document.getElementById('record-detail');
+    if(el){el.style.display='none';el.innerHTML='';}
+  };
   const query = () => {
     const type=gv('fl-type'), status=gv('fl-status'), room=gv('fl-room').toLowerCase(), search=gv('fl-search').toLowerCase();
     const {from,to}=recDE.getRange();
@@ -1738,28 +1783,51 @@ var records = (() => {
         <td>${r.date||''}</td><td style="max-width:100px">${esc(r.reason||'')}</td>
         <td><span class="badge ${sb}">${r.status||'待審核'}</span></td>
         <td>${esc(r.approvedBy||'')}</td>
-        <td>
-          <button onclick="records.approve('${r.id}')" style="background:none;border:none;color:var(--grn);cursor:pointer;font-size:12px" title="核可">✅</button>
-          <button onclick="records.reject('${r.id}')" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:12px" title="退件">❌</button>
-          <button onclick="records.del('${r.id}')" style="background:none;border:none;color:var(--dim);cursor:pointer;font-size:12px" title="刪除">✕</button>
+        <td style="white-space:nowrap">
+          <button class="btn bo" onclick="records.detail('${r.id}')" style="padding:3px 6px;font-size:10px" title="查看完整資料">🔎 詳情</button>
+          ${r.status==='待審核'?`<button class="btn" onclick="records.approve('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--grn)" title="核可">✅ 核可</button>`:''}
+          ${r.status==='待審核'?`<button class="btn" onclick="records.reject('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--red)" title="退件">❌ 退件</button>`:''}
+          <button class="btn" onclick="records.resend('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--acc)" title="重新發送到 Telegram">📤 重發</button>
+          <button class="btn" onclick="records.del('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--red)" title="刪除">🗑 刪除</button>
         </td>
       </tr>`;
     }).join('');
   };
-  const approve = (id) => {
+  const approve = async (id) => {
     const db=state.db(); const r=db.records.find(r=>r.id===id);
     if(!r)return; if(!confirm(`確定核可 ${r.name} 的申請？`))return;
     r.status='已核可'; r.approvedBy=gv('cfg-apvid')||'GA Mgr'; r.approvedAt=_localTS();
-    state.save(); query(); dash.render(); toast('✅ 已核可');
-    tgPost({text:`✅ <b>宿舍申請已核可</b>\n👤 ${r.name} (${r.idNo})\n🛏 房號：${r.roomNo}\n📅 ${r.date}`});
+    state.save(); query(); dash.render(); toast('✅ 已核可，正在發送群組通知…');
+    try {
+      const sent=await tgPost(dormTelegramPayload(r,'已核可'));
+      if(sent&&sent.ok===false) throw new Error(sent.error||'Telegram failed');
+      toast('✅ 核可通知已發送');
+    } catch(e) { toast('⚠️ 已核可，但 Telegram 發送失敗：'+e.message,7000); }
   };
-  const reject = (id) => {
+  const reject = async (id) => {
     const db=state.db(); const r=db.records.find(r=>r.id===id);
     if(!r)return;
     const reason=prompt('退件原因（選填）'); if(reason===null)return;
     r.status='已退件'; r.rejectReason=reason; r.approvedAt=_localTS();
-    state.save(); query(); dash.render(); toast('❌ 已退件');
-    tgPost({text:`❌ <b>宿舍申請已退件</b>\n👤 ${r.name} (${r.idNo})\n📝 原因：${reason||'—'}`});
+    state.save(); query(); dash.render(); toast('❌ 已退件，正在發送群組通知…');
+    try {
+      const sent=await tgPost(dormTelegramPayload(r,'已退件',reason||''));
+      if(sent&&sent.ok===false) throw new Error(sent.error||'Telegram failed');
+      toast('✅ 退件通知已發送');
+    } catch(e) { toast('⚠️ 已退件，但 Telegram 發送失敗：'+e.message,7000); }
+  };
+  const resend = async (id) => {
+    const r=state.db().records.find(x=>String(x.id)===String(id));
+    if(!r){toast('⚠️ 找不到這筆申請');return;}
+    if(!confirm('重新發送 '+(r.name||'此申請')+' 到 Telegram 群組？'))return;
+    toast('📤 正在重發 Telegram…');
+    try {
+      const sent=await tgPost(dormTelegramPayload(r));
+      if(!sent||sent.ok===false) throw new Error((sent&&sent.error)||'Telegram request failed');
+      r.lastTelegramSentAt=_localTS(); r.updatedAt=r.lastTelegramSentAt;
+      state.save(); query(); showDetail(id);
+      toast('✅ Dorm 申請已重發到群組');
+    } catch(e) { toast('❌ Dorm 重發失敗：'+e.message,7000); }
   };
   const del = (id) => {
     if(!confirm('確定刪除此記錄？'))return;
@@ -1772,7 +1840,7 @@ var records = (() => {
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Records');
     XLSX.writeFile(wb,`VRT_Dorm_Records_${today_str()}.xlsx`); toast('✅ 已下載');
   };
-  return { query, approve, reject, del, exportXL };
+  return { query, approve, reject, resend, detail:showDetail, closeDetail, del, exportXL };
 })();
 
 // ═══════════════════════════════════════════════════════════════
