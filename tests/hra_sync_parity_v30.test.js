@@ -28,10 +28,10 @@ for (const name of [
     assert.doesNotThrow(() => new Function(match[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline JavaScript`);
-  assert(html.includes('gascheck-core.js?v=37-telegram-multi-sync-dorm'), `${name} must bust the old shared-core cache`);
+  assert(html.includes('gascheck-core.js?v=38-photo-camera-full-summary-dorm-tg'), `${name} must bust the old shared-core cache`);
 }
 
-assert(core.includes("GC.version = '3.3-telegram-multi-sync-dorm'"));
+assert(core.includes("GC.version = '3.4-photo-camera-full-summary-dorm-tg'"));
 assert(core.includes('(C.cloudRead || C.read)()'));
 assert(core.includes('(C.cloudWrite || C.write)(list)'));
 assert(core.includes('GC.sync = (() => {'));

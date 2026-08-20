@@ -210,7 +210,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=37-telegram-multi-sync-dorm"></script>
+<script src="./gascheck-core.js?v=38-photo-camera-full-summary-dorm-tg"></script>
 </head>
 <body>
 
@@ -1233,18 +1233,21 @@ var appForm = (() => {
     let gasSent = false;
     if(c.gasUrl){
       try {
-        await gasGet({
+        const dormResult = await gasGet({
           action:'dormSubmit',
-          data: encodeURIComponent(JSON.stringify({
+          data: JSON.stringify({
             timestamp:ts, type:record.type, name:record.name, idNo:record.idNo,
             gender:record.gender==='Male'?'M':'F',
             department:record.department, position:record.position, phone:record.phone,
             roomNo:record.roomNo, date:record.date, applyDate:record.applyDate,
             reason:record.reason, items:JSON.stringify(record.items),
             applicant:record.applicant, reviewer:record.reviewer, tgUid:'',
-          }))
+          })
         });
-        gasSent=true;
+        /* Older GAS deployments do not implement dormSubmit and return a
+           normal status response. Only an explicit ok=true means Telegram
+           was actually sent; otherwise the direct Telegram path below runs. */
+        gasSent=!!(dormResult&&dormResult.ok===true);
       } catch(e){ console.warn('GAS submit failed:',e); }
     }
 
@@ -1269,13 +1272,14 @@ var appForm = (() => {
         '━━━━━━━━━━━━━━━━',
         '⏳ 狀態：待審核  #'+record.id,
       ].filter(Boolean).join('\n');
-      await tgPost({
+      const tgResult = await tgPost({
         text: msgText,
         reply_markup: JSON.stringify({ inline_keyboard:[[
           {text:'✅ 核可 Approve', callback_data:'dorm_ok_'+record.id},
           {text:'❌ 退件 Reject',  callback_data:'dorm_rej_'+record.id},
         ]]})
       });
+      if(tgResult&&tgResult.ok===false) throw new Error(tgResult.error||'Telegram request failed');
     }
 
     btn.disabled=false; btn.innerHTML='✅ 已提交';

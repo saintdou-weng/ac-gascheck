@@ -17,9 +17,9 @@ for (const [name, html] of [['cleaning',cleaning],['key',key],['water',water],['
     assert.doesNotThrow(() => new Function(m[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline scripts`);
-  assert(html.includes('gascheck-core.js?v=37-telegram-multi-sync-dorm'));
+  assert(html.includes('gascheck-core.js?v=38-photo-camera-full-summary-dorm-tg'));
 }
-assert(core.includes("GC.version = '3.3-telegram-multi-sync-dorm'"));
+assert(core.includes("GC.version = '3.4-photo-camera-full-summary-dorm-tg'"));
 
 // Cleaning: shared defaults plus independent cleaner, slots and checks per location.
 for (const token of [
@@ -54,7 +54,7 @@ assert(!water.includes('row.fTime=slotValue(row.fTime);row.sTime=slotValue(row.s
 for (const token of [
   'id="i-send-combined"', 'async function sendTodayCombinedTemp()',
   "buildTGPeriodMsg('day','summary',date,'all','bi')",
-  "period==='day'&&(!slot||slot==='all')",
+  'same full-detail renderer',
   "Morning + Afternoon (combined)",
   "GC.sync.schedule('temperature','combined_daily_summary')"
 ]) assert(temp.includes(token), `temperature missing ${token}`);

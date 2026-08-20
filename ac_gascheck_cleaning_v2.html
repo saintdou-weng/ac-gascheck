@@ -161,7 +161,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=37-telegram-multi-sync-dorm"></script>
+<script src="./gascheck-core.js?v=38-photo-camera-full-summary-dorm-tg"></script>
 </head>
 <body>
 <div class="topbar">
@@ -1789,7 +1789,8 @@ function buildCleaningTelegram(opt){
   const modeLabel={summary:cleaningTelegramText('摘要','Summary','សង្ខេប',lang),review:cleaningTelegramText('審查','Review','ពិនិត្យ',lang),approval:cleaningTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
   const selectedSlots=(Array.isArray(slot)?slot:[slot]).filter(Boolean);
   const selectedScopes=(Array.isArray(scope)?scope:[scope]).filter(Boolean);
-  const slotLabel=selectedSlots.includes('all')?cleaningTelegramText('全部時段','All slots','គ្រប់ពេល',lang):selectedSlots.join(', ');
+  const actualSlots=Array.from(new Set(view.reduce(function(out,r){return out.concat(cleaningTelegramSlots(r));},[]))).filter(Boolean);
+  const slotLabel=selectedSlots.includes('all')?(actualSlots.length?actualSlots.join(', '):cleaningTelegramText('沒有已選時段','No selected slots','គ្មានពេលដែលបានជ្រើស',lang)):selectedSlots.join(', ');
   const scopeLabel=selectedScopes.includes('all')?cleaningTelegramText('全部地點','All locations','គ្រប់ទីតាំង',lang):selectedScopes.map(function(id){return typeof locName==='function'?locName(id):id;}).join(', ');
   const failed=view.filter(r=>Object.values(r.checks||{}).some(v=>v===false));
   const passed=view.length-failed.length;

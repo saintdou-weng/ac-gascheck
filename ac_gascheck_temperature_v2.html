@@ -208,7 +208,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=37-telegram-multi-sync-dorm"></script>
+<script src="./gascheck-core.js?v=38-photo-camera-full-summary-dorm-tg"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -1899,17 +1899,9 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
   const checkers=[...new Set(view.map(r=>String(r.checker||r.checked_by||r.checkBy||'').trim()).filter(Boolean))];
   const weatherObservations=view.map(r=>parseWeatherObservation(r.weatherObservation||r.liveWeather)).filter(Boolean).sort((a,b)=>String(b.observedAt||b.fetchedAt||'').localeCompare(String(a.observedAt||a.fetchedAt||'')));
   const liveObservation=weatherObservations[0]||null;
-  /* 單日「全部時段」採早／午合併短摘要：早上可先儲存，下午完成後一次發出，
-     不再逐區重複正常資料；只有異常才列出區域細節。 */
-  if(period==='day'&&(!slot||slot==='all')){
-    const zones=getZ(),date=String(ref||view[0]&&view[0].d||today()).slice(0,10),range=a=>a.length?(Math.min.apply(null,a)+'–'+Math.max.apply(null,a)):'--';
-    const shortSlot=(key,zh,en,km,icon)=>{const rows=view.filter(r=>r.p===key),tt=rows.filter(r=>r.t!==''&&r.t!=null&&!isNaN(r.t)).map(r=>+r.t),hh=rows.filter(r=>r.h!==''&&r.h!=null&&!isNaN(r.h)).map(r=>+r.h),aa=rows.filter(isAnom).length;return icon+' <b>'+tempTelegramText(zh,en,km,lang)+'</b>: '+(rows.length?(rows.length+' '+tempTelegramText('筆','records','កំណត់ត្រា',lang)+' · 🌡️ '+range(tt)+'°C · 💧 '+range(hh)+'% · ⚠️ '+aa):tempTelegramText('尚未記錄','Not recorded yet','មិនទាន់កត់ត្រា',lang));};
-    const compact=['🌡️ <b>'+tempTelegramText('VRT 溫濕度日摘要','VRT Daily Temperature & Humidity','VRT សង្ខេបសីតុណ្ហភាពប្រចាំថ្ងៃ',lang)+'</b>','📅 '+date+' · 🧾 '+modeName,'━━━━━━━━━━━━━━━━',shortSlot('morning','早上','Morning','ពេលព្រឹក','🌅'),shortSlot('afternoon','下午','Afternoon','ពេលរសៀល','🌇'),'📊 '+tempTelegramText('合計','Total','សរុប',lang)+': '+view.length+' · '+tempTelegramText('區域','Zones','តំបន់',lang)+': '+zoneCount+' · ⚠️ '+anomalies,'👤 '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(checkers.join(', ')||'—')];
-    const abnormal=view.filter(isAnom);
-    if(abnormal.length){compact.push('━━━━━━━━━━━━━━━━','⚠️ <b>'+tempTelegramText('異常明細','Anomalies','ភាពមិនប្រក្រតី',lang)+'</b>');abnormal.slice(0,8).forEach(r=>{const z=zones.find(x=>x.id===r.z),name=z?(lang==='en'?(z.en||z.zh):lang==='km'?(z.km||z.en||z.zh):(z.zh||z.en)):r.z;compact.push('• '+name+' · '+(r.p==='morning'?'AM':'PM')+' · '+(r.t!==''?r.t+'°C':'--')+' · '+(r.h!==''?r.h+'%':'--'));});}
-    compact.push('━━━━━━━━━━━━━━━━','⏰ '+new Date().toLocaleString());
-    return {text:compact.join('\n'),photos:photos};
-  }
+  /* Daily all-slot sends intentionally use the same full-detail renderer as
+     week/month/year. This preserves every zone, time slot, reading, status,
+     weather and inspector after the morning + afternoon records are merged. */
   const lines=['🌡️ <b>'+tempTelegramText('VRT 溫濕度','VRT Temperature & Humidity','VRT សីតុណ្ហភាព និងសំណើម',lang)+'</b>','📅 '+periodName,'⏱️ '+tempTelegramText('時段','Slot','ពេលវេលា',lang)+': '+slotName,'🧾 '+tempTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeName,'━━━━━━━━━━━━━━━━','📊 <b>'+tempTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+tempTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b> | '+tempTelegramText('區域','Zones','តំបន់',lang)+': '+zoneCount,'• '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(checkers.join(', ')||'—'),'• '+tempTelegramText('平均溫度','Avg Temp','សីតុណ្ហភាពមធ្យម',lang)+': '+avg(temps)+'°C | '+tempTelegramText('平均濕度','Avg Hum','សំណើមមធ្យម',lang)+': '+avg(hums)+'%','• '+tempTelegramText('異常','Anomaly','មិនប្រក្រតី',lang)+': <b>'+anomalies+'</b>','━━━━━━━━━━━━━━━━'];
   if(liveObservation){
     lines.push('🌐 <b>'+tempTelegramText('即時室外天氣參考','Live outdoor weather reference','អាកាសធាតុខាងក្រៅបច្ចុប្បន្នសម្រាប់យោង',lang)+'</b>');

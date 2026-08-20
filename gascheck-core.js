@@ -1117,6 +1117,7 @@ const PHOTO = GC.photo = {
     let photos = PHOTO.list(opt.photos).slice();
     const max = opt.max || 4;
     const id = U.uid('ph');
+    const cameraId = U.uid('phcam');
 
     function render() {
       el.innerHTML =
@@ -1128,25 +1129,39 @@ const PHOTO = GC.photo = {
                  <button type="button" class="gc-photo-del" data-del="${i}" title="${U.escapeHtml(I18.t('gc.removePhoto'))}">✕</button>
                </div>`).join('')}
              ${photos.length < max ? `
-               <label class="gc-photo-add" for="${id}">
-                 <span class="gc-photo-add-ic">📷</span>
-                 <span class="gc-photo-add-tx">${U.escapeHtml(I18.t('gc.addPhoto'))}</span>
-               </label>` : ''}
+               <div class="gc-photo-actions">
+                 <label class="gc-photo-add" for="${id}">
+                   <span class="gc-photo-add-ic">📁</span>
+                   <span class="gc-photo-add-tx">${U.escapeHtml(I18.t('gc.chooseFile'))}</span>
+                 </label>
+                 <label class="gc-photo-camera" for="${cameraId}">
+                   <span class="gc-photo-add-ic">📷</span>
+                   <span class="gc-photo-add-tx">${U.escapeHtml(I18.t('gc.takePhoto'))}</span>
+                 </label>
+               </div>` : ''}
            </div>
            <input type="file" id="${id}" accept="image/*" multiple hidden>
+           <input type="file" id="${cameraId}" accept="image/*" capture="environment" hidden>
          </div>`;
 
-      const input = el.querySelector('#' + id);
-      if (input) input.onchange = async e => {
-        const files = Array.from(e.target.files || []);
+      const processInput = async input => {
+        if (!input) return;
+        const files = Array.from(input.files || []);
+        if (!files.length) return;
+        let changed = false;
         for (const f of files) {
           if (photos.length >= max) break;
-          try { photos.push(await PHOTO.compress(f)); }
+          try { photos.push(await PHOTO.compress(f)); changed = true; }
           catch (err) { console.warn('photo', err); }
         }
-        e.target.value = '';
-        render(); if (opt.onChange) opt.onChange(photos);
+        input.value = '';
+        render();
+        if (changed && opt.onChange) opt.onChange(photos);
       };
+      const input = el.querySelector('#' + id);
+      const camera = el.querySelector('#' + cameraId);
+      if (input) input.onchange = () => processInput(input);
+      if (camera) camera.onchange = () => processInput(camera);
       el.querySelectorAll('[data-del]').forEach(b => {
         b.onclick = () => {
           photos.splice(+b.dataset.del, 1);
@@ -1580,12 +1595,15 @@ const CSS = `
 .gc-pd-btn.on{background:#1A3E78;border-color:#1A3E78;color:#fff}
 
 .gc-photo-list{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.gc-photo-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 .gc-photo-item{position:relative;width:66px;height:66px;border-radius:8px;overflow:hidden;border:1px solid #D8DCE6}
 .gc-photo-thumb{width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block}
 .gc-photo-del{position:absolute;top:2px;right:2px;width:19px;height:19px;border:0;border-radius:50%;background:rgba(0,0,0,.62);color:#fff;font-size:11px;line-height:1;cursor:pointer;padding:0}
 .gc-photo-del:hover{background:#B91C1C}
 .gc-photo-add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:66px;height:66px;border:1.5px dashed #C4CAD8;border-radius:8px;cursor:pointer;color:#8892A8;transition:.15s;background:#FAFBFC}
 .gc-photo-add:hover{border-color:#1A3E78;color:#1A3E78;background:#F0F4FB}
+.gc-photo-camera{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;width:66px;height:66px;border:1.5px solid #A9C2E3;border-radius:8px;cursor:pointer;color:#1755C4;transition:.15s;background:#F3F8FF}
+.gc-photo-camera:hover{border-color:#1A3E78;color:#1A3E78;background:#E7F0FF}
 .gc-photo-add-ic{font-size:19px;line-height:1}
 .gc-photo-add-tx{font-size:9px;text-align:center;line-height:1.1}
 .gc-photo-cell{cursor:pointer;color:#1755C4;font-size:12px;font-weight:600;white-space:nowrap}
@@ -1958,10 +1976,17 @@ GC.telegram = {
   },
   async send(text, photos, buttons, chatId, tool, meta) {
     if (!text) throw new Error('No Telegram text');
+    const dashboardUrl = DASHBOARD_BASE_URL + (DASHBOARD_PATHS[tool] || 'ac_gascheck_portal_v1.html');
+    const portalUrl = DASHBOARD_BASE_URL + 'ac_gascheck_portal_v1.html';
+    const finalButtons = Array.isArray(buttons) ? buttons.map(row => Array.isArray(row) ? row.slice() : row).filter(Boolean) : [];
+    const hasDashboard = finalButtons.some(row => Array.isArray(row) && row.some(btn => btn && btn.url === dashboardUrl));
+    if (!hasDashboard) finalButtons.push([{ text: '📊 Open Dashboard / 開啟平台', url: dashboardUrl }]);
+    const hasPortal = finalButtons.some(row => Array.isArray(row) && row.some(btn => btn && btn.url === portalUrl));
+    if (!hasPortal) finalButtons.push([{ text: '🏠 Main Portal / 總平台', url: portalUrl }]);
     const res = await CLOUD.post(Object.assign({
       action: 'telegram', text: text,
       photos: Array.isArray(photos) ? photos.slice(0, 5) : [],
-      buttons: Array.isArray(buttons) ? buttons : [],
+      buttons: finalButtons,
       chatId: chatId || DEFAULT_CHAT_ID,
       tool: tool || ''
     }, meta || {}));
@@ -2724,7 +2749,7 @@ GC.attachLegacy = function (cfg) {
       const packet = typeof built === 'string' ? { text: built, photos: [] } : (built || { text: '', photos: [] });
       const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
       const buttons = packet.buttons || [[{text:'📊 Open Dashboard / 開啟平台',url:dashUrl}]];
-      await GC.telegram.send(packet.text, packet.photos, buttons);
+      await GC.telegram.send(packet.text, packet.photos, buttons, null, C.tool, reportActivityMeta());
       if (typeof C.onTelegramSent === 'function') {
         await C.onTelegramSent({ period, mode, ref:periodRef, scope, slot, lang, packet });
       }
@@ -2910,7 +2935,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.3-telegram-multi-sync-dorm';
+GC.version = '3.4-photo-camera-full-summary-dorm-tg';
 global.GC = GC;
 global.GASCheckCore = GC;
 

@@ -12,13 +12,13 @@ const dorm = read('ac_gascheck_dormitory_v2.html');
 
 assert(core.includes('extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote'),
   'download must forward remote metadata to the module');
-assert(core.includes("GC.version = '3.3-telegram-multi-sync-dorm'"));
+assert(core.includes("GC.version = '3.4-photo-camera-full-summary-dorm-tg'"));
 assert(gas.includes('function telegramSafeFallback_'), 'Telegram needs an HTML-safe retry');
 assert(gas.includes("if (!ok) return tgSendText_(chatId, '♻️ AC GASCHECK Platform\\n'"),
   '/gc must report a successful plain-text fallback');
 
 for (const html of [cleaning, temp, dorm]) {
-  assert(html.includes('gascheck-core.js?v=37-telegram-multi-sync-dorm'));
+  assert(html.includes('gascheck-core.js?v=38-photo-camera-full-summary-dorm-tg'));
 }
 
 assert(cleaning.includes('function applyCleaningCloudMeta'), 'Cleaning must restore shared staff/settings');

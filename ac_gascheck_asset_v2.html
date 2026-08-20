@@ -287,7 +287,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
 }
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=37-telegram-multi-sync-dorm"></script>
+<script src="./gascheck-core.js?v=38-photo-camera-full-summary-dorm-tg"></script>
 </head>
 <body>
 
@@ -448,7 +448,14 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
         <div style="font-size:26px">📷</div>
         <div style="font-size:12px;color:var(--tx3)">點擊上傳 Click to upload (JPG/PNG)</div>
       </div>
-      <input type="file" id="f-pi" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+      <div class="photo-actions" style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+        <label class="btn-sec" style="cursor:pointer">📁 選照片 Choose file / ជ្រើសរូប
+          <input type="file" id="f-pi" accept="image/*" style="display:none" onchange="handlePhoto(event)">
+        </label>
+        <label class="btn-sec" style="cursor:pointer">📷 拍照 Camera / ថតរូប
+          <input type="file" id="f-pc" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)">
+        </label>
+      </div>
       <div id="pup-rm" class="hidden" style="text-align:center;margin-top:5px">
         <button onclick="removePhoto()" style="background:#fef2f2;border:1px solid #fca5a5;color:#dc2626;border-radius:6px;padding:3px 10px;cursor:pointer;font-size:11px;font-family:inherit">✕ 移除照片</button>
       </div>
@@ -1144,7 +1151,7 @@ function showPup(data){
   if(data){el.innerHTML=`<img src="${data}">`;el.classList.add('has');document.getElementById('pup-rm').classList.remove('hidden')}
   else{el.innerHTML=`<div style="font-size:26px">📷</div><div style="font-size:12px;color:var(--tx3)">${lang==='zh'?'點擊上傳 Click to upload':'Click to upload'} (JPG/PNG)</div>`;el.classList.remove('has');document.getElementById('pup-rm').classList.add('hidden')}
 }
-function removePhoto(){formPhoto=null;showPup(null);document.getElementById('f-pi').value=''}
+function removePhoto(){formPhoto=null;showPup(null);['f-pi','f-pc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''})}
 function lightbox(src){document.getElementById('lb-img').src=src;openM('m-lb')}
 function calcTV(){const q=parseFloat(document.getElementById('f-qt').value)||0,u=parseFloat(document.getElementById('f-up').value)||0;document.getElementById('f-tv').value=q&&u?'$'+(q*u).toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2}):''}
 function upCP(){if(editCode){document.getElementById('cp-val').textContent=editCode;return}const t=document.getElementById('f-ct').value;document.getElementById('cp-val').textContent=t+String(cnts[t]).padStart(3,'0')}
@@ -1195,7 +1202,7 @@ function openEdit(code){
   document.getElementById('f-up').value=a.unitPrice||'';calcTV();
   document.getElementById('f-lc').value=a.location||'';document.getElementById('f-us').value=a.user||'';
   document.getElementById('f-dt').value=a.purchaseDate||'';document.getElementById('f-rm').value=a.remark||'';
-  document.getElementById('f-pi').value='';document.getElementById('dup-w').style.display='none';
+  document.getElementById('f-pi').value='';document.getElementById('f-pc').value='';document.getElementById('dup-w').style.display='none';
   showPup(formPhoto);upCP();openM('m-form');
 }
 function assetSnapshot(a){return{zone:a.zone||'',name:a.name||'',category:a.category||'',status:a.status||'',brand:a.brand||'',model:a.model||'',color:a.color||'',size:a.size||'',qty:+a.qty||0,unit:a.unit||'',unitPrice:+a.unitPrice||0,location:a.location||'',user:a.user||'',purchaseDate:a.purchaseDate||'',remark:a.remark||''};}
