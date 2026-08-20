@@ -28,10 +28,10 @@ for (const name of [
     assert.doesNotThrow(() => new Function(match[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline JavaScript`);
-  assert(html.includes('gascheck-core.js?v=40-dorm-approval-webhook'), `${name} must bust the old shared-core cache`);
+  assert(html.includes('gascheck-core.js?v=41-dorm-approval-permissions'), `${name} must bust the old shared-core cache`);
 }
 
-assert(core.includes("GC.version = '3.6-dorm-approval-webhook'"));
+assert(core.includes("GC.version = '3.7-dorm-approval-permissions'"));
 assert(core.includes('(C.cloudRead || C.read)()'));
 assert(core.includes('(C.cloudWrite || C.write)(list)'));
 assert(core.includes('GC.sync = (() => {'));

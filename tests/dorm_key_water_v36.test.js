@@ -16,9 +16,9 @@ for (const [name, html] of [['dorm', dorm], ['key', key], ['water', water]]) {
     assert.doesNotThrow(() => new Function(match[1]), `${name} inline script ${count} must parse`);
   }
   assert(count > 0);
-  assert(html.includes('gascheck-core.js?v=40-dorm-approval-webhook'));
+  assert(html.includes('gascheck-core.js?v=41-dorm-approval-permissions'));
 }
-assert(core.includes("GC.version = '3.6-dorm-approval-webhook'"));
+assert(core.includes("GC.version = '3.7-dorm-approval-permissions'"));
 
 // Dorm: one-tap all OK, one-tap room OK, and independent photo sets by facility.
 for (const token of [

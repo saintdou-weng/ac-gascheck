@@ -210,7 +210,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=40-dorm-approval-webhook"></script>
+<script src="./gascheck-core.js?v=41-dorm-approval-permissions"></script>
 </head>
 <body>
 
@@ -474,7 +474,7 @@ select.fi{cursor:pointer}
   <div id="record-detail" style="display:none"></div>
   <div class="card"><div class="ch"><span class="ch-ic">🗂️</span><span class="ch-tl">記錄查詢</span><span class="ch-nt" id="rec-count">0 筆</span></div>
     <div class="tw"><table class="rt"><thead><tr>
-      <th>提交時間</th><th>類型</th><th>姓名</th><th>工號</th><th>部門</th><th>房號</th><th>日期</th><th>原因</th><th>狀態</th><th>核可人</th><th>操作 / Actions</th>
+      <th>提交時間</th><th>類型</th><th>姓名</th><th>工號</th><th>部門</th><th>房號</th><th>日期</th><th>原因</th><th>狀態</th><th>核可狀態 / Approver</th><th>操作 / Actions</th>
     </tr></thead><tbody id="records-body"><tr><td colspan="11" class="es"><span class="esi">🗂️</span>選擇條件後查詢</td></tr></tbody></table></div>
   </div>
 </div></div>
@@ -488,7 +488,7 @@ select.fi{cursor:pointer}
         <div class="fg"><div class="fl">GAS Web App URL</div><input class="fi" id="cfg-gas" placeholder="https://script.google.com/macros/s/…/exec" style="font-size:10px;font-family:monospace"></div>
         <div class="fg"><div class="fl">Telegram Bot Token</div><input class="fi" id="cfg-token" placeholder="1234567890:AAH..." style="font-family:monospace;font-size:10px"></div>
         <div class="fg"><div class="fl">Telegram Chat ID</div><input class="fi" id="cfg-chat" placeholder="-100..." style="font-family:monospace"></div>
-        <div class="fg"><div class="fl">Approver TG ID (Paul)</div><input class="fi" id="cfg-apvid" placeholder="5026942575" style="font-family:monospace"></div>
+        <div class="fg"><div class="fl">核可人 / Approver（僅 Paul）</div><input class="fi" id="cfg-apvid" value="5026942575" readonly style="font-family:monospace;background:var(--alt)"></div>
       </div>
       <div class="br" style="margin-top:8px">
         <button class="btn bp" onclick="cfg.save()">💾 儲存設定</button>
@@ -883,11 +883,11 @@ var cfg = (() => {
     _cfg.gasUrl='https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
     _cfg.botToken='';
     _cfg.chatId='-5113064563';
-    if(!_cfg.approverTgId) _cfg.approverTgId='5026942575';
+    _cfg.approverTgId='5026942575';
     if(!_cfg.dormName)  _cfg.dormName='VRT Dormitory';
     if(!_cfg.rooms)     _cfg.rooms=['A-101','A-102','A-103','A-201','A-202','A-203','B-101','B-102','B-103'];
     if(!_cfg.reviewers) _cfg.reviewers=['Phea'];
-    if(!_cfg.approvers) _cfg.approvers=['GA Mgr','Paul Weng'];
+    _cfg.approvers=['Paul Weng'];
     if(!_cfg.inspectors)_cfg.inspectors=['Phea','Nin'];
     if(!_cfg.quarter)   _cfg.quarter='Q1';
     if(!_cfg.refresh)   _cfg.refresh=0;
@@ -902,7 +902,7 @@ var cfg = (() => {
     _cfg.gasUrl    = 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
     _cfg.botToken  = '';
     _cfg.chatId    = '-5113064563';
-    _cfg.approverTgId = gv('cfg-apvid');
+    _cfg.approverTgId = '5026942575';
     if(_cfg.gasUrl) localStorage.setItem('ac_gascheck_gas_url',_cfg.gasUrl);
     localStorage.setItem(CFG_KEY, JSON.stringify(_cfg));
     updateCloudBadge();
@@ -1050,6 +1050,7 @@ function dormTelegramPayload(record, statusOverride, rejectReasonOverride) {
     note?'📎 備注 / Note：'+esc(note):'',
     items.length?'📦 物品 / Items：'+items.length+' · '+(record.type==='搬入'?'已領取':'已歸還')+' '+checked+' · ⚠️ '+damaged:'',
     '👤 審核人 / Reviewer：'+esc(record.reviewer||'Phea'),
+    status==='待審核'?'🔐 核可對象 / Approval by：Paul Weng（Telegram only）':'',
     '✅ 核可人 / Approver：'+esc(record.approvedBy||'—'),
     status==='已退件'?'❌ 狀態 / Status：已退件 / Rejected'+(rejectReason?' · '+esc(rejectReason):''):
       status==='已核可'?'✅ 狀態 / Status：已核可 / Approved':'⏳ 狀態 / Status：待審核 / Pending',
@@ -1096,21 +1097,34 @@ var cloud = (() => {
   const pull = async () => {
     const url=cfg.get().gasUrl;
     if(!url){toast('請先設定 GAS URL');return;}
-    if(typeof GC!=='undefined'&&GC.sync){return GC.sync.download('dormitory',{silent:false});}
-    toast('⬇ 下載中…');
     try {
-      const r=await gasGet({action:'pull',tool:'dormitory'});
-      if(r.ok!==false&&Array.isArray(r.records)) {
-        const local=state.db().records||[];
-        const merged=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(local,r.records,'id','updatedAt').list:r.records;
-        state.db().records=merged; state.save();
-        toast(`✅ 下載完成 (${r.records.length}筆，合併後 ${merged.length}筆)`); dash.render();
-      } else { toast('❌ 下載失敗: '+(r.error||'')); }
-      updateCloudBadge(r.ok!==false);
+      if(typeof GC!=='undefined'&&GC.sync){
+        await GC.sync.download('dormitory',{silent:false});
+      } else {
+        toast('⬇ 下載中…');
+        const r=await gasGet({action:'pull',tool:'dormitory'});
+        if(r.ok!==false&&Array.isArray(r.records)) {
+          const local=state.db().records||[];
+          const merged=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(local,r.records,'id','updatedAt').list:r.records;
+          state.db().records=merged; state.save();
+          toast(`✅ 下載完成 (${r.records.length}筆，合併後 ${merged.length}筆)`); dash.render();
+        } else { toast('❌ 下載失敗: '+(r.error||'')); }
+        updateCloudBadge(r.ok!==false);
+      }
     } catch(e){ toast('❌ '+e.message); updateCloudBadge(false); }
   };
   const pullRoster = async () => { await pull(); roster.load(); };
-  const pullRecords = async () => { await pull(); records.query(); };
+  const pullRecords = async () => {
+    await pull();
+    const removed=dedupeDormRecords(false);
+    if(removed){
+      try {
+        const fixed=await gasPost({action:'push',tool:'dormitory',mode:'replace',records:state.db().records,recordCount:state.db().records.length,updatedAt:_localTS()});
+        if(fixed&&fixed.ok!==false)toast('🧹 已清理雲端重複申請 '+removed+' 筆');
+      } catch(e){toast('⚠️ 本機已清理重複，但雲端清理失敗：'+e.message,7000);}
+    }
+    records.query();
+  };
   return { push, pull, pullRoster, pullRecords };
 })();
 
@@ -1228,15 +1242,59 @@ var dash = (() => {
 // ═══════════════════════════════════════════════════════════════
 // FORM MODULE — application submit with real Telegram approval
 // ═══════════════════════════════════════════════════════════════
+function dormRecordKey(record){
+  record=record||{};
+  return [record.type,record.idNo,record.roomNo,record.date,record.reason]
+    .map(v=>String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,' ')).join('|');
+}
+function dormHasRequiredFields(record){
+  return ['name','idNo','roomNo','date','reason'].every(k=>String(record&&record[k]||'').trim()!=='');
+}
+function dormDuplicate(list, record, excludeId){
+  const key=dormRecordKey(record); if(!key||key==='||||')return null;
+  return (Array.isArray(list)?list:[]).find(r=>String(r&&r.id||'')!==String(excludeId||'')&&dormRecordKey(r)===key)||null;
+}
+function dedupeDormRecords(showToast){
+  const db=state.db(); const source=Array.isArray(db.records)?db.records:[]; const map=new Map(); let removed=0;
+  const rank=r=>r&&r.status==='已核可'?3:r&&r.status==='待審核'?2:r&&r.status==='已退件'?1:0;
+  source.forEach(r=>{
+    const key=dormRecordKey(r);
+    if(!key||key==='||||'){ map.set('id:'+String(r&&r.id||Math.random()),r); return; }
+    const old=map.get(key);
+    if(!old){ map.set(key,r); return; }
+    const newer=rank(r)>rank(old)||(rank(r)===rank(old)&&String(r.updatedAt||r.timestamp||'')>String(old.updatedAt||old.timestamp||''));
+    map.set(key,newer?r:old); removed++;
+  });
+  if(removed){ db.records=Array.from(map.values()); state.save(); if(showToast)toast('🧹 已合併重複申請 '+removed+' 筆'); }
+  return removed;
+}
+
+async function dormSubmitToGas(record, options){
+  options=options||{};
+  const payload={
+    id:record.id,timestamp:record.timestamp,type:record.type,status:record.status,
+    name:record.name,gender:record.gender,idNo:record.idNo,department:record.department,
+    position:record.position,phone:record.phone,roomNo:record.roomNo,date:record.date,
+    applyDate:record.applyDate,reason:record.reason,items:JSON.stringify(record.items||[]),
+    photos:JSON.stringify(record.photos||[]),applicant:record.applicant,reviewer:record.reviewer,
+    note:record.note||record.appNote||'',reopen:!!options.reopen,forceResend:!!options.forceResend,
+    withdraw:!!options.withdraw,rejectReason:options.rejectReason||record.rejectReason||''
+  };
+  return await gasGet({action:'dormSubmit',data:JSON.stringify(payload)});
+}
+
 var appForm = (() => {
+  let _editingId='';
   const setType = t => { state.setFType(t); };
   const reset = () => {
+    _editingId='';
     ['f-name','f-gender','f-id','f-dept','f-pos','f-phone','f-room','f-reason','f-applicant'].forEach(id=>sv(id,''));
     sv('f-date', today_str());
     sv('f-reviewer', cfg.get().reviewers?.[0]||'Phea');
     sv('f-approver', cfg.get().approvers?.[0]||'GA Mgr');
     state.setFType('in');
     state.setItems(JSON.parse(JSON.stringify(DEF_ITEMS)));
+    const sb=document.getElementById('btn-submit'); if(sb)sb.textContent=state.getFType()==='in'?'📥 提交搬入':'📤 提交搬出';
     localStorage.removeItem('vrt_dorm_draft');
     document.getElementById('apv-card-wrap').innerHTML='';
     document.getElementById('apply-form').style.display='block';
@@ -1254,10 +1312,11 @@ var appForm = (() => {
     const btn=document.getElementById('btn-submit');
     btn.disabled=true; btn.innerHTML='<span class="spin">⏳</span>提交中…';
 
-    const now = new Date();
     const ts  = _localTS().replace('T',' ').substring(0,19);
+    const db=state.db();
+    const old=_editingId?db.records.find(r=>String(r.id)===String(_editingId)):null;
     const record = {
-      id: Date.now().toString(36)+Math.random().toString(36).slice(2,5),
+      id: old ? old.id : Date.now().toString(36)+Math.random().toString(36).slice(2,5),
       timestamp: ts,
       type: state.getFType()==='in'?'搬入':'搬出',
       status: '待審核',
@@ -1268,47 +1327,46 @@ var appForm = (() => {
       reviewer:gv('f-reviewer'), approver:gv('f-approver'), note:gv('f-app-note'),
       items:JSON.parse(JSON.stringify(validItems)),
     };
-
-    // Save locally
-    state.db().records.push(record);
-    state.save();
-
-    // Send to GAS (GAS will send Telegram with approval keyboard)
-    const c = cfg.get();
-    let gasSent = false;
-    if(c.gasUrl){
-      try {
-        const dormResult = await gasGet({
-          action:'dormSubmit',
-          data: JSON.stringify({
-            id:record.id,
-            timestamp:ts, type:record.type, name:record.name, idNo:record.idNo,
-            gender:record.gender==='Male'?'M':'F',
-            department:record.department, position:record.position, phone:record.phone,
-            roomNo:record.roomNo, date:record.date, applyDate:record.applyDate,
-            reason:record.reason, items:JSON.stringify(record.items),
-            applicant:record.applicant, reviewer:record.reviewer, note:record.note, tgUid:'',
-          })
-        });
-        /* Older GAS deployments do not implement dormSubmit and return a
-           normal status response. Only an explicit ok=true means Telegram
-           was actually sent; otherwise the direct Telegram path below runs. */
-        gasSent=!!(dormResult&&dormResult.ok===true);
-      } catch(e){ console.warn('GAS submit failed:',e); }
-    }
-
-    // Direct Telegram fallback with approval keyboard
-    if(!gasSent){
-      const tgResult = await tgPost(dormTelegramPayload(record));
-      if(tgResult&&tgResult.ok===false) throw new Error(tgResult.error||'Telegram request failed');
+    if(old&&old.status==='已核可'){btn.disabled=false;toast('⛔ 已核可申請不可編輯');return;}
+    const dup=dormDuplicate(db.records,record,record.id);
+    if(dup){btn.disabled=false;toast('⚠️ 已有相同申請：'+(dup.name||'未命名')+' · '+(dup.roomNo||'—')+'，請按「編輯」或「重發」');return;}
+    record.status='待審核'; record.approvedBy=''; record.approvedAt=''; record.rejectReason=''; record.updatedAt=ts;
+    const c=cfg.get(); let gasSent=false;
+    try {
+      if(c.gasUrl){
+        const dormResult=await dormSubmitToGas(record,{reopen:!!old});
+        if(dormResult&&dormResult.duplicate) throw new Error('雲端已有相同申請，未重複發送');
+        if(!dormResult||dormResult.ok!==true) throw new Error((dormResult&&dormResult.error)||'GAS 未完成儲存及發送');
+        gasSent=true;
+      } else {
+        const tgResult=await tgPost(dormTelegramPayload(record));
+        if(tgResult&&tgResult.ok===false)throw new Error(tgResult.error||'Telegram request failed');
+      }
+      if(old){Object.assign(old,record);}
+      else db.records.push(record);
+      state.save();
+    } catch(e){
+      btn.disabled=false;toast('❌ 申請未送出：'+e.message,7000);return;
     }
 
     btn.disabled=false; btn.innerHTML='✅ 已提交';
     // Show approval card
     showApvCard(record);
     document.getElementById('apply-form').style.display='none';
-    toast('✅ 申請已提交\n'+record.name+' · '+record.roomNo);
+    _editingId='';
+    toast((old?'✅ 申請已更新並重新送審':'✅ 申請已提交')+'\n'+record.name+' · '+record.roomNo);
     dash.render();
+  };
+  const edit = id => {
+    const r=state.db().records.find(x=>String(x.id)===String(id));
+    if(!r){toast('⚠️ 找不到這筆申請');return;}
+    if(r.status==='已核可'){toast('⛔ 已核可申請不可編輯');return;}
+    _editingId=String(r.id); state.setFType(r.type==='搬出'?'out':'in');
+    [['f-name','name'],['f-gender','gender'],['f-id','idNo'],['f-dept','department'],['f-pos','position'],['f-phone','phone'],['f-room','roomNo'],['f-date','date'],['f-applydate','applyDate'],['f-reason','reason'],['f-applicant','applicant'],['f-reviewer','reviewer'],['f-app-note','note']].forEach(([id,key])=>sv(id,r[key]||''));
+    state.setItems(JSON.parse(JSON.stringify(Array.isArray(r.items)&&r.items.length?r.items:DEF_ITEMS)));
+    const btn=document.getElementById('btn-submit');if(btn){btn.textContent='💾 更新並重新送審';btn.className='btn bp';}
+    document.getElementById('apv-card-wrap').innerHTML='';document.getElementById('apply-form').style.display='block';ui.tab('apply');
+    toast('✏️ 已載入申請，可修改後重新送審');
   };
   const collectFormData = () => ({
     type:state.getFType(), name:gv('f-name'), gender:gv('f-gender'), idNo:gv('f-id'),
@@ -1324,7 +1382,7 @@ var appForm = (() => {
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'DormForm');
     XLSX.writeFile(wb,`VRT_Dorm_${gv('f-name')||'form'}_${gv('f-date')||'export'}.xlsx`);
   };
-  return { setType, reset, save, submit, exportXL };
+  return { setType, reset, save, submit, edit, exportXL };
 })();
 
 function showApvCard(record) {
@@ -1751,6 +1809,7 @@ var records = (() => {
       '👤 '+esc(r.name||'—')+' · '+esc(r.idNo||'—')+' · 🛏 '+esc(r.roomNo||'—')+'<br>'+
       '🏢 '+esc(r.department||'—')+' · 📅 '+esc(r.date||'—')+' · 📝 '+esc(r.reason||'—')+'<br>'+
       '👤 審核人 / Reviewer: '+esc(r.reviewer||'—')+' · ✅ 核可人 / Approver: '+esc(r.approvedBy||'—')+'<br>'+
+      '🔐 核可對象 / Approval by: '+(r.status==='待審核'?'Paul Weng（Telegram only）':'—')+'<br>'+
       '📦 物品 / Items:<br>'+itemText+
       (r.lastTelegramSentAt?'<br>📤 最近發送 / Last sent: '+esc(r.lastTelegramSentAt):'')+
       '</div></div>';
@@ -1761,6 +1820,7 @@ var records = (() => {
     if(el){el.style.display='none';el.innerHTML='';}
   };
   const query = () => {
+    dedupeDormRecords(false);
     const type=gv('fl-type'), status=gv('fl-status'), room=gv('fl-room').toLowerCase(), search=gv('fl-search').toLowerCase();
     const {from,to}=recDE.getRange();
     const recs=state.db().records.filter(r=>{
@@ -1779,61 +1839,61 @@ var records = (() => {
       const tb=r.type==='搬入'?'<span class="badge b-in">搬入</span>':'<span class="badge b-out">搬出</span>';
       const sb={'待審核':'b-pend','已核可':'b-ok','已退件':'b-rej'}[r.status]||'b-pend';
       return`<tr>
-        <td>${(r.timestamp||'').substring(0,16)}</td><td>${tb}</td><td>${esc(r.name||'')}</td>
-        <td>${esc(r.idNo||'')}</td><td>${esc(r.department||'')}</td><td><strong>${esc(r.roomNo||'')}</strong></td>
-        <td>${r.date||''}</td><td style="max-width:100px">${esc(r.reason||'')}</td>
-        <td><span class="badge ${sb}">${r.status||'待審核'}</span></td>
-        <td>${esc(r.approvedBy||'')}</td>
+        <td>${(r.timestamp||'').substring(0,16)||'—'}</td><td>${tb}</td><td>${esc(r.name||'⚠️ 資料不完整')}</td>
+        <td>${esc(r.idNo||'—')}</td><td>${esc(r.department||'—')}</td><td><strong>${esc(r.roomNo||'—')}</strong></td>
+        <td>${esc(r.date||'—')}</td><td style="max-width:100px">${esc(r.reason||'—')}</td>
+        <td><span class="badge ${sb}">${esc(r.status||'資料不完整')}</span></td>
+        <td>${r.status==='待審核'?'<span class="badge b-pend">待 Paul 核可</span>':esc(r.approvedBy||'—')}</td>
         <td style="white-space:nowrap">
           <button class="btn bo" onclick="records.detail('${r.id}')" style="padding:3px 6px;font-size:10px" title="查看完整資料">🔎 詳情</button>
-          ${r.status==='待審核'?`<button class="btn" onclick="records.approve('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--grn)" title="核可">✅ 核可</button>`:''}
-          ${r.status==='待審核'?`<button class="btn" onclick="records.reject('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--red)" title="退件">❌ 退件</button>`:''}
-          <button class="btn" onclick="records.resend('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--acc)" title="重新發送到 Telegram">📤 重發</button>
+          ${r.status!=='已核可'?`<button class="btn" onclick="records.edit('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--blu)" title="編輯後重新送審">✏️ 編輯</button>`:''}
+          ${r.status==='待審核'?`<button class="btn" onclick="records.withdraw('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--red)" title="申請人撤回">↩ 撤回</button>`:''}
+          ${dormHasRequiredFields(r)?`<button class="btn" onclick="records.resend('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--acc)" title="重新發送到 Telegram">📤 重發</button>`:''}
           <button class="btn" onclick="records.del('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--red)" title="刪除">🗑 刪除</button>
         </td>
       </tr>`;
     }).join('');
   };
   const approve = async (id) => {
-    const db=state.db(); const r=db.records.find(r=>r.id===id);
-    if(!r)return; if(!confirm(`確定核可 ${r.name} 的申請？`))return;
-    r.status='已核可'; r.approvedBy=gv('cfg-apvid')||'GA Mgr'; r.approvedAt=_localTS();
-    state.save(); query(); dash.render(); toast('✅ 已核可，正在發送群組通知…');
-    try {
-      const sent=await tgPost(dormTelegramPayload(r,'已核可'));
-      if(sent&&sent.ok===false) throw new Error(sent.error||'Telegram failed');
-      toast('✅ 核可通知已發送');
-    } catch(e) { toast('⚠️ 已核可，但 Telegram 發送失敗：'+e.message,7000); }
+    toast('⛔ 核可只能由 Paul 在 Telegram 按鈕處理，平台不會直接核可');
   };
-  const reject = async (id) => {
+  const withdraw = async (id) => {
     const db=state.db(); const r=db.records.find(r=>r.id===id);
     if(!r)return;
-    const reason=prompt('退件原因（選填）'); if(reason===null)return;
-    r.status='已退件'; r.rejectReason=reason; r.approvedAt=_localTS();
-    state.save(); query(); dash.render(); toast('❌ 已退件，正在發送群組通知…');
+    if(r.status==='已核可'){toast('⛔ 已核可申請不可撤回');return;}
+    const reason=prompt('撤回原因（選填）'); if(reason===null)return;
+    toast('↩ 正在撤回申請…');
     try {
-      const sent=await tgPost(dormTelegramPayload(r,'已退件',reason||''));
-      if(sent&&sent.ok===false) throw new Error(sent.error||'Telegram failed');
-      toast('✅ 退件通知已發送');
-    } catch(e) { toast('⚠️ 已退件，但 Telegram 發送失敗：'+e.message,7000); }
+      const result=await dormSubmitToGas(r,{withdraw:true,rejectReason:reason||''});
+      if(!result||result.ok===false)throw new Error((result&&result.error)||'GAS withdraw failed');
+      r.status='已退件';r.rejectReason=reason||'申請人收回 / Withdrawn by applicant';r.updatedAt=_localTS();r.lastTelegramSentAt=r.updatedAt;
+      state.save();query();dash.render();toast('✅ 申請已撤回／退件');
+    } catch(e) { toast('❌ 撤回失敗：'+e.message,7000); }
   };
   const resend = async (id) => {
     const r=state.db().records.find(x=>String(x.id)===String(id));
     if(!r){toast('⚠️ 找不到這筆申請');return;}
+    if(!dormHasRequiredFields(r)){toast('⚠️ 資料不完整，請先編輯補齊姓名、工號、房號、日期及原因');return;}
     if(!confirm('重新發送 '+(r.name||'此申請')+' 到 Telegram 群組？'))return;
     toast('📤 正在重發 Telegram…');
     try {
-      const sent=await tgPost(dormTelegramPayload(r));
+      let sent;
+      if(cfg.get().gasUrl) sent=await dormSubmitToGas(r,{forceResend:true});
+      else sent=await tgPost(dormTelegramPayload(r));
       if(!sent||sent.ok===false) throw new Error((sent&&sent.error)||'Telegram request failed');
       r.lastTelegramSentAt=_localTS(); r.updatedAt=r.lastTelegramSentAt;
       state.save(); query(); showDetail(id);
       toast('✅ Dorm 申請已重發到群組');
     } catch(e) { toast('❌ Dorm 重發失敗：'+e.message,7000); }
   };
-  const del = (id) => {
+  const del = async (id) => {
     if(!confirm('確定刪除此記錄？'))return;
-    state.db().records=state.db().records.filter(r=>r.id!==id);
-    state.save(); query(); dash.render(); toast('已刪除');
+    try {
+      const result=await gasPost({action:'delete',tool:'dormitory',id:id});
+      if(!result||result.ok===false)throw new Error((result&&result.error)||'GAS delete failed');
+      state.db().records=state.db().records.filter(r=>String(r.id)!==String(id));
+      state.save(); query(); dash.render(); toast('✅ 已從本機及雲端刪除');
+    } catch(e) { toast('❌ 刪除失敗，雲端資料未移除：'+e.message,7000); }
   };
   const exportXL = () => {
     const db=state.db(); if(!db.records.length){toast('無資料');return;}
@@ -1841,7 +1901,8 @@ var records = (() => {
     const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Records');
     XLSX.writeFile(wb,`VRT_Dorm_Records_${today_str()}.xlsx`); toast('✅ 已下載');
   };
-  return { query, approve, reject, resend, detail:showDetail, closeDetail, del, exportXL };
+  const edit = id => appForm.edit(id);
+  return { query, approve, withdraw, reject:withdraw, resend, edit, detail:showDetail, closeDetail, del, exportXL };
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -1914,6 +1975,7 @@ function goApply(t) {
 (function init(){
   const run=()=>{
     state.load();
+    dedupeDormRecords(true);
     cfg.load();
     updateTs(); setInterval(updateTs,1000);
     renderItems();
