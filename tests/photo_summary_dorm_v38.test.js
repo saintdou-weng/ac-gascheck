@@ -54,5 +54,10 @@ assert(gas.includes("APPROVER_TG_ID : '5026942575'"));
 assert(gas.includes("fromId !== String(CFG.APPROVER_TG_ID)"));
 assert(gas.includes('Dorm application missing required fields'));
 assert(gas.includes('Approved Dorm application cannot be edited'));
+assert(gas.includes("CORE_VERSION : 'v4.0-dorm-resend-keyboard'"));
+assert(gas.includes('Array.isArray(keyboard.inline_keyboard)'));
+assert(gas.includes('b.callback_data = String(btn.callback_data || btn.data)'));
+assert(gas.includes('function tgSendResult_'));
+assert(gas.includes("withdrawResult.error||'Telegram send failed'"));
 
 console.log('v41 photo/camera, full temperature summary, cleaning slots and Dorm approval permissions tests: PASS');
