@@ -210,7 +210,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=39-dorm-resend-callback"></script>
+<script src="./gascheck-core.js?v=40-dorm-approval-webhook"></script>
 </head>
 <body>
 
@@ -1281,12 +1281,13 @@ var appForm = (() => {
         const dormResult = await gasGet({
           action:'dormSubmit',
           data: JSON.stringify({
+            id:record.id,
             timestamp:ts, type:record.type, name:record.name, idNo:record.idNo,
             gender:record.gender==='Male'?'M':'F',
             department:record.department, position:record.position, phone:record.phone,
             roomNo:record.roomNo, date:record.date, applyDate:record.applyDate,
             reason:record.reason, items:JSON.stringify(record.items),
-            applicant:record.applicant, reviewer:record.reviewer, tgUid:'',
+            applicant:record.applicant, reviewer:record.reviewer, note:record.note, tgUid:'',
           })
         });
         /* Older GAS deployments do not implement dormSubmit and return a

@@ -2946,7 +2946,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.5-dorm-resend-callback';
+GC.version = '3.6-dorm-approval-webhook';
 global.GC = GC;
 global.GASCheckCore = GC;
 
