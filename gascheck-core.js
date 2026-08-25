@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v2.9-water-asset-authority
+   AC GASCheck — Shared Core  v3.9-hra-portal-autosync
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -501,6 +501,8 @@ const BASE_DICT = {
     'gc.cloudReady':'雲端已設定','gc.targetGroup':'目標群組','gc.defaultGroup':'AC GASCHECK 群組',
     'gc.preview':'預覽','gc.send':'發送','gc.periodMode':'期間模式','gc.periodValue':'期間',
     'gc.telegramTitle':'發送到 Telegram','gc.importTitle':'智慧匯入資料','gc.noPeriodData':'此期間沒有資料',
+    'gc.sender':'發送人','gc.senderPlaceholder':'請輸入發送人姓名','gc.senderRequired':'請先確認發送人姓名',
+    'gc.confirmSender':'確認由 {name} 發送這份摘要？',
     'gc.bilingualKm':'中／英／柬三語','gc.selectScope':'選擇資料','gc.menuLanguage':'介面語言'
   },
   en: {
@@ -530,6 +532,8 @@ const BASE_DICT = {
     'gc.cloudReady':'Cloud configured','gc.targetGroup':'Target group','gc.defaultGroup':'AC GASCHECK Group',
     'gc.preview':'Preview','gc.send':'Send','gc.periodMode':'Period mode','gc.periodValue':'Period',
     'gc.telegramTitle':'Send to Telegram','gc.importTitle':'Smart Import Data','gc.noPeriodData':'No data in this period',
+    'gc.sender':'Sent by','gc.senderPlaceholder':'Enter sender name','gc.senderRequired':'Confirm the sender name first',
+    'gc.confirmSender':'Send this report as {name}?',
     'gc.bilingualKm':'Chinese / English / Khmer','gc.selectScope':'Select data','gc.menuLanguage':'Interface language'
   },
   km: {
@@ -559,6 +563,8 @@ const BASE_DICT = {
     'gc.cloudReady':'បានកំណត់ Cloud','gc.targetGroup':'ក្រុមគោលដៅ','gc.defaultGroup':'ក្រុម AC GASCHECK',
     'gc.preview':'មើលជាមុន','gc.send':'ផ្ញើ','gc.periodMode':'របៀបរយៈពេល','gc.periodValue':'រយៈពេល',
     'gc.telegramTitle':'ផ្ញើទៅ Telegram','gc.importTitle':'នាំចូលទិន្នន័យឆ្លាតវៃ','gc.noPeriodData':'គ្មានទិន្នន័យក្នុងរយៈពេលនេះ',
+    'gc.sender':'អ្នកផ្ញើ','gc.senderPlaceholder':'បញ្ចូលឈ្មោះអ្នកផ្ញើ','gc.senderRequired':'សូមបញ្ជាក់ឈ្មោះអ្នកផ្ញើជាមុន',
+    'gc.confirmSender':'បញ្ជាក់ថាផ្ញើរបាយការណ៍នេះដោយ {name}?',
     'gc.bilingualKm':'ចិន / អង់គ្លេស / ខ្មែរ','gc.selectScope':'ជ្រើសទិន្នន័យ','gc.menuLanguage':'ភាសាចំណុចប្រទាក់'
   }
 };
@@ -692,19 +698,27 @@ const CLOUD = GC.cloud = {
     if (!CLOUD.gasUrl) throw new Error('GAS URL not set');
     const r = await fetch(CLOUD.gasUrl, {
       method: 'POST',
+      cache: 'no-store',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
     });
     const txt = await r.text();
-    try { return JSON.parse(txt); } catch (e) { return { ok: false, error: txt.slice(0, 200) }; }
+    let data;
+    try { data = JSON.parse(txt); } catch (e) { throw new Error('Cloud returned non-JSON: ' + txt.slice(0, 120)); }
+    if (!r.ok || (data && data.ok === false)) throw new Error((data && data.error) || ('HTTP ' + r.status));
+    return data;
   },
 
   async get(params) {
     if (!CLOUD.gasUrl) throw new Error('GAS URL not set');
-    const qs = new URLSearchParams(params || {}).toString();
-    const r = await fetch(CLOUD.gasUrl + (qs ? '?' + qs : ''));
+    const query = Object.assign({}, params || {}, { _t:Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8) });
+    const qs = new URLSearchParams(query).toString();
+    const r = await fetch(CLOUD.gasUrl + (qs ? '?' + qs : ''), { cache:'no-store' });
     const txt = await r.text();
-    try { return JSON.parse(txt); } catch (e) { return { ok: false, error: txt.slice(0, 200) }; }
+    let data;
+    try { data = JSON.parse(txt); } catch (e) { throw new Error('Cloud returned non-JSON: ' + txt.slice(0, 120)); }
+    if (!r.ok || (data && data.ok === false)) throw new Error((data && data.error) || ('HTTP ' + r.status));
+    return data;
   },
 
   /**
@@ -747,7 +761,7 @@ const CLOUD = GC.cloud = {
   },
 
   /**
-   * HRA Pay v3.3 同款智慧增量同步。新版 GAS 可用 manifest/bucket 時只傳有變動的月份；
+   * HRA Portal AutoSync 同款智慧增量同步。新版 GAS 可用 manifest/bucket 時只傳有變動的月份；
    * 若網頁先更新、GAS 尚未重部署，會自動退回舊式安全合併，不會中斷現場作業。
    */
   async upload(tool, localList, opt) {
@@ -793,14 +807,14 @@ const CLOUD = GC.cloud = {
 };
 
 /* ═══════════════════════════════════════════════════════════
-   2.5 SMART SYNC — HRA Pay v3.3 manifest / month bucket model
+   2.5 SMART SYNC — HRA Portal AutoSync manifest / month bucket model
    · 先讀小型 manifest，比對後只上下載變動 bucket
    · 雲端獨有歷史永遠保留；手機短資料不會覆蓋完整雲端
    · 照片先轉 Drive 連結，避免重傳 base64 與 Sheet 配額
    · sync state / pending marker 都是小設定，可留 localStorage
    ═══════════════════════════════════════════════════════════ */
 const SMART = GC.smartSync = (() => {
-  const VERSION = '1.0';
+  const VERSION = '1.1-hra-portal-autosync';
   const STATE_PREFIX = 'ac_gc_smart_sync_v1_';
   const DATE_FIELDS = ['_syncPeriod','period','periodKey','date','d','recordDate','reportDate','purchase_date','issue_date','datetime','return_date','ts','yearMonth','month'];
 
@@ -908,8 +922,28 @@ const SMART = GC.smartSync = (() => {
   function writeState(tool, value) { try { localStorage.setItem(STATE_PREFIX + tool, JSON.stringify(value)); } catch (e) {} }
   function dataOf(j) { return j && j.data !== undefined ? j.data : j; }
   function unsupported(message) { const e = new Error(message || 'Smart sync endpoint unavailable'); e.smartUnsupported = true; return e; }
+  function isUnsupportedMessage(message) {
+    return /unsupported\s+smart|unknown\s+action.*smart|smart(manifest|bucket|commit).*(unsupported|not found|not implemented)|unknown\s+(tool|module)/i.test(String(message || ''));
+  }
+  function wait(ms) { return new Promise(function (resolve) { setTimeout(resolve, ms); }); }
+  async function retryNetwork(work, attempts) {
+    let last;
+    const total = Math.max(1, Number(attempts) || 3);
+    for (let i = 0; i < total; i++) {
+      try { return await work(i); }
+      catch (e) {
+        last = e;
+        if (e && e.smartUnsupported) throw e;
+        if (i + 1 < total) await wait(300 * Math.pow(2, i));
+      }
+    }
+    throw last || new Error('Cloud sync failed');
+  }
   async function manifest(tool) {
-    const d = dataOf(await CLOUD.get({ action:'smartManifest', tool:tool }));
+    const d = dataOf(await retryNetwork(async function () {
+      try { return await CLOUD.get({ action:'smartManifest', tool:tool }); }
+      catch (e) { if (isUnsupportedMessage(e && e.message)) throw unsupported(e.message); throw e; }
+    }, 3));
     if (!d || typeof d.exists !== 'boolean') throw unsupported();
     return d;
   }
@@ -944,7 +978,7 @@ const SMART = GC.smartSync = (() => {
   async function pushPrepared(tool, records, opt, remote, migrated) {
     const local = await buildBuckets(records, opt);
     const last = readState(tool) || {}, lastH = migrated ? {} : (last.hashes || {});
-    const remoteH = migrated ? {} : (remote.hashes || {}), changed = [], remoteChanged = [], conflicts = [];
+    const remoteH = migrated ? {} : (remote.hashes || {}), changed = [], deleted = [], remoteChanged = [], conflicts = [];
     const keys = new Set(Object.keys(local).concat(Object.keys(remoteH)));
     keys.forEach(function (k) {
       const lh = local[k] && local[k].hash || '', rh = remoteH[k] || '', base = lastH[k] || '';
@@ -955,6 +989,7 @@ const SMART = GC.smartSync = (() => {
         else if (lh && rh && lh !== rh) conflicts.push(k);
         return;
       }
+      if (opt.allowDeletes && !lh && rh && base && rh === base) { deleted.push(k); return; }
       const lc = lh !== base, rc = rh !== base;
       if (lc && !rc && lh) changed.push(k);
       else if (!lc && rc) remoteChanged.push(k);
@@ -967,29 +1002,32 @@ const SMART = GC.smartSync = (() => {
     let uploaded = 0;
     for (let i = 0; i < changed.length; i++) {
       const b = local[changed[i]];
-      const r = await CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records });
+      const r = await retryNetwork(function () {
+        return CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records });
+      }, 3);
       if (!r || r.ok === false) throw new Error((r && r.error) || 'Smart bucket upload failed');
       uploaded += b.count;
     }
     const hashes = {}, counts = {};
     Object.keys(local).forEach(function (k) { hashes[k] = local[k].hash; counts[k] = local[k].count; });
-    Object.keys(remoteH).forEach(function (k) { if (!hashes[k]) { hashes[k] = remoteH[k]; counts[k] = Number((remote.counts || {})[k]) || 0; } });
+    Object.keys(remoteH).forEach(function (k) { if (!hashes[k] && deleted.indexOf(k) < 0) { hashes[k] = remoteH[k]; counts[k] = Number((remote.counts || {})[k]) || 0; } });
     const meta = Object.assign({}, typeof opt.extra === 'function' ? (opt.extra() || {}) : (opt.extra || {}), {
       periods: monthsOf(records, opt), _smartMetaHash: await hash(stable(typeof opt.extra === 'function' ? (opt.extra() || {}) : (opt.extra || {})))
     });
-    const metaChanged = migrated || changed.length || meta._smartMetaHash !== (remote.metaHash || '');
+    const metaChanged = migrated || changed.length || deleted.length || meta._smartMetaHash !== (remote.metaHash || '');
     if (!metaChanged) {
       writeState(tool, { hashes:remoteH, counts:remote.counts || {}, metaHash:remote.metaHash || '', updatedAt:U.now() });
       return { ok:true, skipped:true, uploaded:0, unchanged:records.length, changedBuckets:0, records:records };
     }
-    const commit = await CLOUD.post({ action:'smartCommit', tool:tool, uploadId:uploadId, hashes:hashes, counts:counts,
+    const commit = await retryNetwork(function () { return CLOUD.post({ action:'smartCommit', tool:tool, uploadId:uploadId, hashes:hashes, counts:counts,
       recordCount:Object.keys(counts).reduce((n, k) => n + (Number(counts[k]) || 0), 0), meta:meta,
       reportPeriod:meta.reportPeriod, reportRef:meta.reportRef, reportMonth:meta.reportMonth,
-      reportScope:meta.reportScope, reportSlot:meta.reportSlot, reportLanguage:meta.reportLanguage });
+      reportScope:meta.reportScope, reportSlot:meta.reportSlot, reportLanguage:meta.reportLanguage,
+      reportSender:meta.reportSender }); }, 3);
     if (!commit || commit.ok === false) throw new Error((commit && commit.error) || 'Smart commit failed');
     const ts = (dataOf(commit) && (dataOf(commit).timestamp || dataOf(commit).updatedAt)) || U.now();
     writeState(tool, { hashes:hashes, counts:counts, metaHash:meta._smartMetaHash, updatedAt:ts });
-    return { ok:true, uploaded:uploaded, unchanged:Math.max(0, records.length - uploaded), changedBuckets:changed.length, migrated:!!migrated, records:records, response:commit };
+    return { ok:true, uploaded:uploaded, unchanged:Math.max(0, records.length - uploaded), changedBuckets:changed.length, removedBuckets:deleted.length, migrated:!!migrated, records:records, response:commit };
   }
   async function upload(tool, localList, opt) {
     opt = opt || {};
@@ -1030,26 +1068,36 @@ const SMART = GC.smartSync = (() => {
         response:Object.assign({smart:true,migrated:true},old.meta||{}), downloaded:old.records.length, uploaded:migrated.uploaded || 0 };
     }
     if (!remote.exists) return { list:(localRows || []).map(fromCloud), stat:null, empty:true, response:remote, downloaded:0 };
-    const local = await buildBuckets(localRows, opt), out = {}, remoteH = remote.hashes || {};
-    let downloaded = 0, unchanged = 0, pending = 0;
+    const local = await buildBuckets(localRows, opt), out = {}, remoteH = remote.hashes || {}, last = readState(tool) || {}, lastH = last.hashes || {};
+    let downloaded = 0, unchanged = 0, pending = 0, removed = 0;
+    const conflicts = [];
     const keys = Array.from(new Set(Object.keys(remoteH).concat(Object.keys(local)))).sort();
     for (let i = 0; i < keys.length; i++) {
-      const k = keys[i], lb = local[k], rh = remoteH[k] || '';
+      const k = keys[i], lb = local[k], rh = remoteH[k] || '', base = lastH[k] || '';
       if (lb && rh && lb.hash === rh) { out[k] = lb.records; unchanged += lb.count; continue; }
-      if (lb && !rh) { out[k] = lb.records; pending += lb.count; continue; }
+      if (lb && !rh) {
+        if (base && lb.hash === base) { removed += lb.count; continue; }
+        out[k] = lb.records; pending += lb.count; continue;
+      }
       if (!rh) continue;
-      const bd = dataOf(await CLOUD.get({ action:'smartBucket', tool:tool, bucket:k })) || {};
+      const firstDivergence = !!(lb && !base && lb.hash !== rh);
+      const localChanged = !!(lb && base && lb.hash !== base);
+      const remoteChanged = !!(rh && base && rh !== base);
+      if (firstDivergence) conflicts.push(k);
+      if (lb && localChanged && !remoteChanged) { out[k] = lb.records; pending += lb.count; continue; }
+      if (lb && localChanged && remoteChanged && lb.hash !== rh) conflicts.push(k);
+      const bd = dataOf(await retryNetwork(function () { return CLOUD.get({ action:'smartBucket', tool:tool, bucket:k }); }, 3)) || {};
       const rows = Array.isArray(bd.records) ? bd.records : [];
       downloaded += rows.length;
-      out[k] = lb ? mergeRows(lb.records, rows, opt) : rows;
+      out[k] = lb && (firstDivergence || (localChanged && remoteChanged && lb.hash !== rh)) ? mergeRows(lb.records, rows, opt) : rows;
     }
     const merged = sortRows(Object.keys(out).reduce((a, k) => a.concat(out[k] || []), []), opt);
     writeState(tool, { hashes:remoteH, counts:remote.counts || {}, metaHash:remote.metaHash || '', updatedAt:U.now() });
     return { list:merged.map(fromCloud), stat:{added:downloaded,updated:0,kept:unchanged,total:merged.length}, empty:false,
       response:Object.assign({smart:true}, remote.meta || {}, {data:Object.assign({list:merged}, remote.meta || {})}), downloaded:downloaded,
-      unchanged:unchanged, pendingUpload:pending };
+      unchanged:unchanged, pendingUpload:pending, removed:removed, conflicts:conflicts };
   }
-  return { version:VERSION, upload, download, buildBuckets, mergeRows, semanticKey, bucketKey, stable, hash, readState };
+  return { version:VERSION, upload, download, buildBuckets, mergeRows, semanticKey, bucketKey, stable, hash, readState, retryNetwork };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -1732,7 +1780,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
     if (typeof opt.onState === 'function') opt.onState(kind, text);
   }
   const pendingKey = 'ac_gc_auto_sync_v1_' + String(opt.tool || 'tool');
-  let running = null, retryTimer = 0, queued = false, retryCount = 0;
+  let running = null, reconcileRunning = null, retryTimer = 0, reconcileTimer = 0, queued = false, retryCount = 0;
   function readPending() {
     try { return JSON.parse(localStorage.getItem(pendingKey) || 'null'); } catch (e) { return null; }
   }
@@ -1761,7 +1809,8 @@ GC.mountCloudButtons = function (mountEl, opt) {
         const local = opt.getList ? opt.getList() : [];
         const result = await CLOUD.upload(opt.tool, local, {
           idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
-          extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote
+          extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote,
+          allowDeletes:opt.allowDeletes !== false
         });
         const res = result && result.res, uploadedList = result && result.list || local;
         if (res && res.ok === false) throw new Error(res.error || I18.t('gc.upFail'));
@@ -1786,7 +1835,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
         const seen = new Set();
         const list = order.filter(function (key) { if (seen.has(key)) return false; seen.add(key); return true; }).map(key => finalMap.get(key));
         if (opt.setList) opt.setList(list);
-        clearPending(startMarker && startMarker.token);
+        if (startMarker && startMarker.token) clearPending(startMarker.token);
         retryCount = 0;
         const uploaded = Number(result && result.uploaded) || 0;
         const label = result && result.skipped ? I18.t('gc.cloudCurrent') : I18.t('gc.uploaded') + ' · ' + uploaded + ' ' + I18.t('gc.changedRows');
@@ -1828,7 +1877,8 @@ GC.mountCloudButtons = function (mountEl, opt) {
       const local = opt.getList ? opt.getList() : [];
       const r = await CLOUD.download(opt.tool, local, {
         idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
-        extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote
+        extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote,
+        allowDeletes:opt.allowDeletes !== false
       });
       if (r.empty) {
         if (!runOpt.silent) GC.toast('⚠ ' + I18.t('gc.noCloud'), 'warning');
@@ -1836,7 +1886,26 @@ GC.mountCloudButtons = function (mountEl, opt) {
       }
       else {
         if (opt.onRemote) opt.onRemote(r.response || {});
-        if (opt.setList) opt.setList(r.list);
+        /* HRA Portal 同款：下載途中若使用者又新增、修改或刪除，不可用下載開始時
+           的快照蓋回去。只把「下載期間真的改動」的本機列再合回結果。 */
+        const latest = opt.getList ? (opt.getList() || []) : local;
+        const keyOpt = {idKey:opt.idKey,dateField:opt.dateField,tsKey:opt.tsKey};
+        const keyOf = row => SMART.semanticKey(row, keyOpt);
+        const startMap = new Map((local || []).map(row => [keyOf(row), row]));
+        const latestMap = new Map((latest || []).map(row => [keyOf(row), row]));
+        const resultMap = new Map(), order = [];
+        (r.list || []).forEach(function (row) { const key=keyOf(row); if(!resultMap.has(key))order.push(key); resultMap.set(key,row); });
+        startMap.forEach(function (_row, key) { if (!latestMap.has(key)) resultMap.delete(key); });
+        latestMap.forEach(function (row, key) {
+          const before=startMap.get(key);
+          if (before && SMART.stable(row) === SMART.stable(before)) return;
+          if (!resultMap.has(key)) order.push(key);
+          const cloudRow=resultMap.get(key);
+          resultMap.set(key, cloudRow ? SMART.mergeRows([cloudRow],[row],keyOpt)[0] : row);
+        });
+        const seen=new Set(), safeList=order.filter(function(key){if(seen.has(key)||!resultMap.has(key))return false;seen.add(key);return true;}).map(key=>resultMap.get(key));
+        r.list=safeList;
+        if (opt.setList) opt.setList(safeList);
         const changed = Number(r.downloaded != null ? r.downloaded : (r.stat && r.stat.added)) || 0;
         if (!runOpt.silent) GC.toast('⬇ ' + I18.t('gc.downloaded') + ' · ' + changed + ' ' + I18.t('gc.changedRows'), 'success');
         state('ok', I18.t('gc.downloaded') + ' · ' + changed + ' ' + I18.t('gc.changedRows'));
@@ -1861,11 +1930,35 @@ GC.mountCloudButtons = function (mountEl, opt) {
     retryTimer = setTimeout(function () { runUpload({silent:true,auto:true,reason:reason || 'telegram'}); }, 80);
     return null;
   }
+  function runReconcile(reason) {
+    if (reconcileRunning) return reconcileRunning;
+    if (global.navigator && global.navigator.onLine === false) {
+      if (hasPending()) state('warning', I18.t('gc.cloudPending'));
+      return Promise.resolve({ok:false,offline:true});
+    }
+    reconcileRunning = (async function () {
+      const pulled = await runDownload({silent:true,auto:true,reason:reason || 'reconcile'});
+      if (!pulled || pulled.ok === false) return pulled;
+      return runUpload({silent:true,auto:true,reason:reason || 'reconcile'});
+    })().finally(function () { reconcileRunning = null; });
+    return reconcileRunning;
+  }
+  function scheduleReconcile(reason, delay) {
+    clearTimeout(reconcileTimer);
+    reconcileTimer=setTimeout(function(){ runReconcile(reason || 'resume'); }, Math.max(0, Number(delay) || 0));
+  }
   up.onclick = function () { runUpload({silent:false,auto:false,reason:'manual'}); };
   down.onclick = function () { runDownload({silent:false}); };
-  global.addEventListener('online', function () { if (hasPending()) scheduleAuto('online'); });
-  if (hasPending()) setTimeout(function () { scheduleAuto('resume'); }, 350);
-  return { upload:runUpload, download:runDownload, scheduleAuto:scheduleAuto, hasPending:hasPending, tool:opt.tool };
+  global.addEventListener('online', function () { scheduleReconcile('network_restored', 150); });
+  if (global.document && global.document.addEventListener) {
+    global.document.addEventListener('visibilitychange', function () {
+      if (!global.document.hidden && (!global.navigator || global.navigator.onLine !== false)) scheduleReconcile('resume', 180);
+    });
+  }
+  global.addEventListener('pageshow', function () { scheduleReconcile('pageshow', 220); });
+  if (opt.autoReconcile !== false) scheduleReconcile(hasPending() ? 'pending_resume' : 'startup', 500);
+  else if (hasPending()) setTimeout(function () { scheduleAuto('resume'); }, 350);
+  return { upload:runUpload, download:runDownload, reconcile:runReconcile, scheduleAuto:scheduleAuto, scheduleReconcile:scheduleReconcile, hasPending:hasPending, tool:opt.tool };
 };
 
 /* 模組內舊按鈕／儲存流程只排入背景同步，不再各自整包等待上傳。
@@ -1877,6 +1970,7 @@ GC.sync = (() => {
     schedule(tool, reason) { const c = controls.get(String(tool || '')); return c ? c.scheduleAuto(reason || 'record_change') : null; },
     upload(tool, opt) { const c = controls.get(String(tool || '')); return c ? c.upload(opt || {}) : Promise.resolve({ok:false,unmounted:true}); },
     download(tool, opt) { const c = controls.get(String(tool || '')); return c ? c.download(opt || {}) : Promise.resolve({ok:false,unmounted:true}); },
+    reconcile(tool, reason) { const c=controls.get(String(tool||'')); return c&&c.reconcile ? c.reconcile(reason||'manual_reconcile') : Promise.resolve({ok:false,unmounted:true}); },
     hasPending(tool) { const c = controls.get(String(tool || '')); return !!(c && c.hasPending()); }
   };
 })();
@@ -2024,7 +2118,11 @@ GC.attach = function (cfg) {
     importSchema: null, importParser: null, importAccept: null, telegramScopes: null, telegramSlots: null,
     telegramScopeMultiple: false, telegramSlotMultiple: false, telegramScopeLabel: null,
     telegramSlotFilter: null, telegramSlotField: null, telegramGroups: null,
-    telegramDefaultLanguage: 'bi', telegramDefaultSlot: 'all', hideLegacyTools: true
+    telegramDefaultLanguage: 'bi', telegramDefaultSlot: 'all', hideLegacyTools: true,
+    telegramSender: false, telegramSenderStorageKey: null, telegramRequireSender: false,
+    telegramConfirmSender: false, telegramRequireData: false, telegramValidator: null,
+    telegramAutoUpload: false,
+    cloudAutoReconcile: true, cloudAllowDeletes: true
   }, cfg || {});
   if (!C.scopeField && C.groupField) C.scopeField = C.groupField;
 
@@ -2101,6 +2199,9 @@ GC.attach = function (cfg) {
   let scope = C.telegramScopeMultiple ? ['all'] : 'all';
   let slot = C.telegramSlotMultiple ? [C.telegramDefaultSlot || 'all'] : (C.telegramDefaultSlot || 'all');
   let lang = C.telegramDefaultLanguage || 'bi';
+  const senderStorageKey = C.telegramSenderStorageKey || ('ac_gc_sender_' + String(C.tool || 'tool'));
+  let sender = '';
+  try { sender = String(localStorage.getItem(senderStorageKey) || '').trim(); } catch (e) {}
   let previewToken = 0;
   let currentPacket = null;
 
@@ -2113,7 +2214,8 @@ GC.attach = function (cfg) {
       reportMode: mode,
       reportScope: Array.isArray(scope) ? scope.join(',') : scope,
       reportSlot: Array.isArray(slot) ? slot.join(',') : slot,
-      reportLanguage: lang
+      reportLanguage: lang,
+      reportSender: sender
     };
   }
 
@@ -2135,6 +2237,7 @@ GC.attach = function (cfg) {
 
   const cloudOpt = {
     tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, extra: cloudExtra,
+    autoReconcile:C.cloudAutoReconcile !== false, allowDeletes:C.cloudAllowDeletes !== false,
     toCloud: C.toCloud, fromCloud: C.fromCloud,
     getList: function () { return (C.cloudRead || C.read)() || []; },
     setList: function (list) { (C.cloudWrite || C.write)(list); },
@@ -2202,6 +2305,7 @@ GC.attach = function (cfg) {
         '<label class="gc-field"><span data-i="gc.periodValue">' + U.escapeHtml(I18.t('gc.periodValue')) + '</span><select data-gc-ref></select></label>',
         '<label class="gc-field gc-slot-field"><span data-i="gc.slot">' + U.escapeHtml(I18.t('gc.slot')) + '</span><select data-gc-slot></select><span class="gc-multi-picks" data-gc-slot-picks hidden></span></label>',
         '<label class="gc-field"><span data-i="gc.reportLanguage">' + U.escapeHtml(I18.t('gc.reportLanguage')) + '</span><select data-gc-lang></select></label>',
+        C.telegramSender ? '<label class="gc-field"><span data-i="gc.sender">' + U.escapeHtml(I18.t('gc.sender')) + '</span><input type="text" data-gc-sender autocomplete="name" placeholder="' + U.escapeHtml(I18.t('gc.senderPlaceholder')) + '"></label>' : '',
         '<label class="gc-field"><span data-i="gc.targetGroup">' + U.escapeHtml(I18.t('gc.targetGroup')) + '</span><select data-gc-group></select></label>',
         '<div class="gc-field gc-field-wide"><span data-i="gc.preview">' + U.escapeHtml(I18.t('gc.preview')) + '</span><div class="gc-preview" data-gc-preview></div></div>',
       '</div>',
@@ -2251,6 +2355,7 @@ GC.attach = function (cfg) {
   const slotSelect = tgModal.querySelector('[data-gc-slot]');
   const slotPicks = tgModal.querySelector('[data-gc-slot-picks]');
   const langSelect = tgModal.querySelector('[data-gc-lang]');
+  const senderInput = tgModal.querySelector('[data-gc-sender]');
   const groupSelect = tgModal.querySelector('[data-gc-group]');
   const preview = tgModal.querySelector('[data-gc-preview]');
   const sendState = tgModal.querySelector('[data-gc-send-state]');
@@ -2399,6 +2504,25 @@ GC.attach = function (cfg) {
     refSelect.value = periodRef;
     refSelect.disabled = period === 'all';
   }
+  function telegramSelectionContext() {
+    return {
+      records: GC.telegram.filter(C.read() || [], C, period, periodRef, scope, slot),
+      period:period, mode:mode, ref:periodRef, scope:scope, slot:slot,
+      lang:lang, sender:sender, cfg:C
+    };
+  }
+  function telegramValidationError() {
+    const ctx = telegramSelectionContext();
+    if (C.telegramRequireData && !ctx.records.length) return I18.t('gc.noPeriodData');
+    if (C.telegramRequireSender && !String(sender || '').trim()) return I18.t('gc.senderRequired');
+    if (typeof C.telegramValidator === 'function') {
+      const result = C.telegramValidator(ctx);
+      if (typeof result === 'string') return result;
+      if (result === false) return I18.t('gc.noPeriodData');
+      if (result && result.ok === false) return result.message || result.error || I18.t('gc.noPeriodData');
+    }
+    return '';
+  }
   function collectPhotos() {
     const list = GC.telegram.filter(C.read() || [], C, period, periodRef, scope, slot);
     const out = [];
@@ -2411,7 +2535,7 @@ GC.attach = function (cfg) {
   }
   async function buildPacket() {
     const custom = typeof C.telegramBuilder === 'function'
-      ? await C.telegramBuilder({ period: period, mode: mode, ref: periodRef, scope: scope, slot: slot, lang: lang, cfg: C })
+      ? await C.telegramBuilder({ period: period, mode: mode, ref: periodRef, scope: scope, slot: slot, lang: lang, sender:sender, cfg: C })
       : null;
     const built = custom == null ? GC.telegram.buildText(C, period, mode, periodRef, scope, slot, lang) : custom;
     const packet = typeof built === 'string' ? { text: built } : (built || {});
@@ -2433,10 +2557,15 @@ GC.attach = function (cfg) {
         const photoLabel = lang === 'en' ? 'Photos' : (lang === 'km' ? 'រូបថត' : (lang === 'zh' ? '照片' : I18.t('gc.photo')));
         preview.innerHTML += '<div class="gc-preview-photo">📷 ' + packet.photos.length + ' ' + U.escapeHtml(photoLabel) + '</div>';
       }
+      const validationError = telegramValidationError();
+      sendButton.disabled = !!validationError;
+      sendState.textContent = validationError ? '⚠ ' + validationError : '';
     } catch (e) {
       if (token === previewToken) {
         currentPacket = null;
         preview.textContent = '❌ ' + e.message;
+        sendButton.disabled = true;
+        sendState.textContent = '✕ ' + e.message;
       }
     }
     if (token === previewToken) preview.classList.remove('busy');
@@ -2448,6 +2577,11 @@ GC.attach = function (cfg) {
     renderLanguages();
     renderGroups();
     refreshPeriodOptions();
+    if (senderInput) {
+      try { sender = String(localStorage.getItem(senderStorageKey) || sender || '').trim(); } catch (e) {}
+      senderInput.value = sender;
+      senderInput.placeholder = I18.t('gc.senderPlaceholder');
+    }
     I18.apply(tgModal);
     renderScopeLabel();
     updatePreview();
@@ -2463,6 +2597,17 @@ GC.attach = function (cfg) {
     setModalOpen(tgModal, true);
   }
   async function sendCurrentTelegram() {
+    const validationError = telegramValidationError();
+    if (validationError) {
+      sendState.textContent = '⚠ ' + validationError;
+      GC.toast('⚠ ' + validationError, 'warning');
+      if (C.telegramRequireSender && !sender && senderInput) senderInput.focus();
+      return;
+    }
+    if (C.telegramConfirmSender) {
+      const question = I18.t('gc.confirmSender').replace('{name}', sender);
+      if (!global.confirm(question)) return;
+    }
     sendButton.disabled = true;
     sendState.textContent = I18.t('gc.sync');
     try {
@@ -2474,11 +2619,14 @@ GC.attach = function (cfg) {
       /* 先記錄實際發送人／審查／核可狀態，再排入自動上傳；否則雲端可能
          只收到 Telegram 發送前的舊資料。 */
       if (typeof C.onTelegramSent === 'function') {
-        await C.onTelegramSent({ period:period, mode:mode, ref:periodRef, scope:scope, slot:slot, lang:lang, packet:packet });
+        await C.onTelegramSent({ period:period, mode:mode, ref:periodRef, scope:scope, slot:slot, lang:lang, sender:sender, packet:packet, cfg:C });
+      }
+      if (C.telegramSender && sender) {
+        try { localStorage.setItem(senderStorageKey, sender); } catch (e) {}
       }
       sendState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
-      if (cloudControl && (mode === 'summary' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
+      if (cloudControl && (C.telegramAutoUpload || mode === 'summary' || mode === 'review' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
       setTimeout(function () { setModalOpen(tgModal, false); }, 450);
     } catch (e) {
       sendState.textContent = '✕ ' + e.message;
@@ -2513,6 +2661,7 @@ GC.attach = function (cfg) {
     renderSlots(); updatePreview();
   };
   langSelect.onchange = function () { lang = langSelect.value || 'bi'; renderScope(); renderSlots(); updatePreview(); };
+  if (senderInput) senderInput.oninput = function () { sender = senderInput.value.trim(); updatePreview(); };
   groupSelect.onchange = updatePreview;
   sendButton.onclick = sendCurrentTelegram;
   tools.querySelector('[data-gc-open-tg]').onclick = openTelegram;
@@ -2602,7 +2751,8 @@ GC.attachLegacy = function (cfg) {
     weather: false, photo: false, importSchema: null, importParser: null,
     telegramScopes: null, scopeField: null, telegramSlots: null, telegramSlotFilter: null, telegramLanguage: false, telegramDefaultLanguage: 'bi', telegramDefaultSlot: 'all', periodRef: false,
     weatherField: 'weather',   // 各模組欄位名可能不同（如 temperature 用 'wx'）
-    photoField:   'photos'
+    photoField:   'photos',
+    cloudAutoReconcile:true, cloudAllowDeletes:true
   }, cfg || {});
 
   // 固定使用已確認可用的 Web App 入口；模組內舊的 gasUrl 只保留相容性，不再要求使用者手動設定。
@@ -2737,6 +2887,7 @@ GC.attachLegacy = function (cfg) {
 
   const cloudOpt = {
     tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, extra:C.extra,
+    autoReconcile:C.cloudAutoReconcile !== false, allowDeletes:C.cloudAllowDeletes !== false,
     toCloud: C.toCloud,
     fromCloud: C.fromCloud,
     getList: () => C.read() || [],
@@ -2766,7 +2917,7 @@ GC.attachLegacy = function (cfg) {
       }
       if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
-      if (cloudControl && (mode === 'summary' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
+      if (cloudControl && (mode === 'summary' || mode === 'review' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
     } catch (e) {
       if (telegramState) telegramState.textContent = '✕ ' + e.message;
       GC.toast('❌ ' + I18.t('gc.upFail') + ': ' + e.message, 'error');
@@ -2879,8 +3030,8 @@ const BAR_CSS = `
 .gc-modal-body{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;padding:20px 22px;overflow:auto}
 .gc-field{display:flex;flex-direction:column;gap:7px;min-width:0;color:#63718A;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
 .gc-field-wide{grid-column:1/-1}
-.gc-field select{width:100%;height:46px;padding:0 13px;border:1px solid #C9D5E5;border-radius:10px;background:#fff;color:#233149;font:500 14px/1 inherit;text-transform:none;outline:none}
-.gc-field select:focus{border-color:#1685B7;box-shadow:0 0 0 3px rgba(22,133,183,.12)}
+.gc-field select,.gc-field input{width:100%;height:46px;padding:0 13px;border:1px solid #C9D5E5;border-radius:10px;background:#fff;color:#233149;font:500 14px/1 inherit;text-transform:none;outline:none;box-sizing:border-box}
+.gc-field select:focus,.gc-field input:focus{border-color:#1685B7;box-shadow:0 0 0 3px rgba(22,133,183,.12)}
 .gc-field-muted{opacity:.62}
 .gc-multi-picks{display:flex;flex-wrap:wrap;gap:7px;padding:8px;border:1px solid #C9D5E5;border-radius:10px;background:#F8FAFD;text-transform:none}
 .gc-multi-picks[hidden]{display:none}
@@ -2946,7 +3097,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.7-dorm-approval-permissions';
+GC.version = '3.9-hra-portal-autosync';
 global.GC = GC;
 global.GASCheckCore = GC;
 

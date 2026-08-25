@@ -161,14 +161,14 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=41-dorm-approval-permissions"></script>
+<script src="./gascheck-core.js?v=44-hra-portal-autosync"></script>
 </head>
 <body>
 <div class="topbar">
   <div class="tb-logo">🧹</div>
   <div class="tb-info">
     <div class="tb-title" data-i="tb-title">清潔管理系統 · Cleaning Management</div>
-    <div class="tb-sub">VRT · Sihanoukville · v2.2</div>
+    <div class="tb-sub">VRT · Sihanoukville · v2.3</div>
   </div>
   <div class="tsl"><div class="tsd"></div><span id="ts-now">--:--</span></div>
   <div class="lgp">
@@ -426,7 +426,7 @@ var i18n = (() => {
       'rec-title':'新增清潔記錄','rec-hint':'帶 * 為必填',
       'f-date':'日期','f-loc':'地點（可多選）','f-shift':'班次','f-cleaner':'清潔員',
       'f-checker':'檢查員','f-photo-n':'照片數','f-photo':'📷 照片','f-observer':'觀察員',
-      'slots-title':'清潔時段','chk-title':'巡查項目','chk-hint':'點擊切換',
+      'slots-title':'清潔時段','chk-title':'巡查項目','chk-hint':'點擊：✓ → ✕ → 空白',
       'note-title':'備注 / 異常',
       'btn-save':'儲存記錄','btn-tg':'Telegram','btn-save-send':'儲存並發送','btn-clear':'清除',
       'fl-loc':'地點','fl-all':'全部','fl-status':'狀態','fl-month':'月份','fl-search':'搜尋',
@@ -444,7 +444,7 @@ var i18n = (() => {
       'data-mgmt':'數據管理','export-all':'匯出全部 JSON','restore':'還原備份','clear-all':'清除全部',
       'ci-smell':'氣味','ci-light':'燈光','ci-floor':'地板','ci-door':'門','ci-corner':'角落','ci-ceiling':'天花',
       'pass':'✓ 通過','fail':'✗ 不通過','select':'— 選擇 —','records':'筆','items':'個','selected':'已選','confirm-delete':'確定刪除？','confirm-area-delete':'確定刪除地點？','saved':'已儲存','deleted':'已刪除','uploading':'☁ 上傳中…','uploaded':'☁ 已上傳','downloading':'⬇ 下載中…','downloaded':'⬇ 已下載並更新','no-data':'無資料','edit':'編輯','new-area':'新區域','all-pass':'全部通過','anomaly':'異常','normal':'正常','shift-day':'Day 日班','shift-night':'Night 夜班','note-ph':'請填寫異常情況或補充說明...','search-ph':'姓名/地點...','name-ph':'姓名 Name','cleaner-ph':'Cleaner name','location-example':'例：車縫區廁所 A','desc-example':'例：車縫區西南角','cancel':'取消','save':'儲存','yes':'確認','no':'取消',
-      'status-all':'全部','status-pass':'✅ 通過','status-fail':'⚠️ 有異常','missing-location':'請輸入地點名稱','location-added':'地點已新增','select-slot-warning':'請至少選擇一個清潔時段','f-default-cleaner':'預設清潔員（套用全部）','f-cleaner-by-location':'各地點清潔員、時段與項目','select-location-first':'請先選擇一個或多個地點','missing-location-cleaner':'請指定此地點的清潔員','location-slots':'此地點時段','location-items':'此地點項目',
+      'status-all':'全部','status-pass':'✅ 通過','status-fail':'⚠️ 有異常','missing-location':'請輸入地點名稱','location-added':'地點已新增','select-slot-warning':'請至少選擇一個清潔時段','select-item-warning':'請至少把一個巡查項目設為 ✓ 或 ✕','f-default-cleaner':'預設清潔員（套用全部）','f-cleaner-by-location':'各地點清潔員、時段與項目','select-location-first':'請先選擇一個或多個地點','missing-location-cleaner':'請指定此地點的清潔員','location-slots':'此地點時段','location-items':'此地點項目',
     },
     en:{
       'tb-title':'Cleaning Management','t-dash':'Dashboard','t-rec':'New Record','t-hist':'History',
@@ -458,7 +458,7 @@ var i18n = (() => {
       'no-rec':'No records',
       'rec-title':'New Cleaning Record','rec-hint':'* Required',
       'f-date':'Date','f-loc':'Locations (multi-select)','f-shift':'Shift','f-cleaner':'Cleaner','f-checker':'Checker','f-photo-n':'Photos','f-photo':'📷 Photos','f-observer':'Observer',
-      'slots-title':'Time Slots','chk-title':'Check Items','chk-hint':'Click to toggle',
+      'slots-title':'Time Slots','chk-title':'Check Items','chk-hint':'Tap: ✓ → ✕ → blank',
       'note-title':'Notes / Anomaly',
       'btn-save':'Save Record','btn-tg':'Telegram','btn-save-send':'Save & Send','btn-clear':'Clear',
       'fl-loc':'Location','fl-all':'All','fl-status':'Status','fl-month':'Month','fl-search':'Search',
@@ -474,7 +474,7 @@ var i18n = (() => {
       'data-mgmt':'Data Management','export-all':'Export All JSON','restore':'Restore Backup','clear-all':'Clear All',
       'ci-smell':'Smell','ci-light':'Light','ci-floor':'Floor','ci-door':'Door','ci-corner':'Corner','ci-ceiling':'Ceiling',
       'pass':'✓ Pass','fail':'✗ Fail','select':'— Select —','records':'records','items':'items','selected':'selected','confirm-delete':'Delete this record?','confirm-area-delete':'Delete this location?','saved':'Saved','deleted':'Deleted','uploading':'☁ Uploading…','uploaded':'☁ Uploaded','downloading':'⬇ Downloading…','downloaded':'⬇ Downloaded and updated','no-data':'No data','edit':'Edit','new-area':'New area','all-pass':'All passed','anomaly':'Anomaly','normal':'Normal','shift-day':'Day shift','shift-night':'Night shift','note-ph':'Enter anomaly or additional notes...','search-ph':'Name/location...','name-ph':'Name','cleaner-ph':'Cleaner name','location-example':'e.g. Sewing toilet A','desc-example':'e.g. southwest corner','cancel':'Cancel','save':'Save','yes':'Confirm','no':'Cancel',
-      'status-all':'All','status-pass':'✅ Pass','status-fail':'⚠️ Anomaly','missing-location':'Enter a location name','location-added':'Location added','select-slot-warning':'Select at least one cleaning time slot','f-default-cleaner':'Default cleaner (apply to all)','f-cleaner-by-location':'Cleaner, slots & items by location','select-location-first':'Select one or more locations first','missing-location-cleaner':'Select a cleaner for this location','location-slots':'Slots for this location','location-items':'Items for this location',
+      'status-all':'All','status-pass':'✅ Pass','status-fail':'⚠️ Anomaly','missing-location':'Enter a location name','location-added':'Location added','select-slot-warning':'Select at least one cleaning time slot','select-item-warning':'Set at least one check item to ✓ or ✕','f-default-cleaner':'Default cleaner (apply to all)','f-cleaner-by-location':'Cleaner, slots & items by location','select-location-first':'Select one or more locations first','missing-location-cleaner':'Select a cleaner for this location','location-slots':'Slots for this location','location-items':'Items for this location',
     },
     km:{
       'tb-title':'ប្រព័ន្ធគ្រប់គ្រងការសំអាត','t-dash':'ផ្ទាំង','t-rec':'បន្ថែម','t-hist':'ប្រវត្តិ',
@@ -487,7 +487,7 @@ var i18n = (() => {
       'no-rec':'រកមិនឃើញ','rec-title':'កត់ត្រាការសម្អាតថ្មី','rec-hint':'* ត្រូវបំពេញ',
       'f-date':'កាលបរិច្ឆេទ','f-loc':'ទីតាំង (អាចជ្រើសច្រើន)','f-shift':'វេន','f-cleaner':'អ្នកសំអាត',
       'f-checker':'អ្នកត្រួតពិនិត្យ','f-photo':'📷 រូបថត','f-photo-n':'ចំនួនរូបថត',
-      'slots-title':'ពេលវេលាសម្អាត','chk-title':'ចំណុចត្រួតពិនិត្យ','chk-hint':'ចុចដើម្បីប្តូរ',
+      'slots-title':'ពេលវេលាសម្អាត','chk-title':'ចំណុចត្រួតពិនិត្យ','chk-hint':'ចុច៖ ✓ → ✕ → ទទេ',
       'note-title':'កំណត់សម្គាល់ / ភាពមិនប្រក្រតី','btn-save':'រក្សាទុក','btn-tg':'Telegram','btn-save-send':'រក្សាទុក និងផ្ញើ','btn-clear':'លុប',
       'fl-loc':'ទីតាំង','fl-all':'ទាំងអស់','fl-status':'ស្ថានភាព','fl-month':'ខែ','fl-search':'ស្វែងរក',
       'btn-query':'ស្វែងរក','btn-upload':'ផ្ទុកឡើង','btn-download':'ទាញយក',
@@ -506,7 +506,7 @@ var i18n = (() => {
       'data-mgmt':'ការគ្រប់គ្រងទិន្នន័យ','export-all':'នាំចេញ JSON ទាំងអស់','restore':'ស្តារបម្រុងទុក','clear-all':'លុបទាំងអស់',
       'ci-smell':'ក្លិន','ci-light':'អំពូល','ci-floor':'ជាន់','ci-door':'ទ្វារ','ci-corner':'ជ្រុង','ci-ceiling':'ពិដាន',
       'pass':'✓ ជាប់','fail':'✗ ធ្លាក់','select':'— ជ្រើស —','records':'កំណត់ត្រា','items':'ធាតុ','selected':'បានជ្រើស','confirm-delete':'លុបកំណត់ត្រានេះ?','confirm-area-delete':'លុបទីតាំងនេះ?','saved':'បានរក្សាទុក','deleted':'បានលុប','uploading':'☁ កំពុងផ្ទុកឡើង…','uploaded':'☁ បានផ្ទុកឡើង','downloading':'⬇ កំពុងទាញយក…','downloaded':'⬇ បានទាញយក និងធ្វើបច្ចុប្បន្នភាព','no-data':'គ្មានទិន្នន័យ','edit':'កែ','new-area':'តំបន់ថ្មី','all-pass':'ជាប់ទាំងអស់','anomaly':'មិនប្រក្រតី','normal':'ធម្មតា','shift-day':'វេនថ្ងៃ','shift-night':'វេនយប់','note-ph':'បញ្ចូលភាពមិនប្រក្រតី ឬកំណត់សម្គាល់បន្ថែម...','search-ph':'ឈ្មោះ/ទីតាំង...','name-ph':'ឈ្មោះ','cleaner-ph':'ឈ្មោះអ្នកសម្អាត','location-example':'ឧ. បង្គន់តំបន់ដេរ','desc-example':'ឧ. ជ្រុងនិរតី','cancel':'បោះបង់','save':'រក្សាទុក','yes':'បញ្ជាក់','no':'បោះបង់',
-      'status-all':'ទាំងអស់','status-pass':'✅ ជាប់','status-fail':'⚠️ មិនប្រក្រតី','missing-location':'សូមបញ្ចូលឈ្មោះទីតាំង','location-added':'បានបន្ថែមទីតាំង','select-slot-warning':'សូមជ្រើសរើសពេលវេលាសម្អាតយ៉ាងហោចណាស់មួយ','f-default-cleaner':'អ្នកសម្អាតលំនាំដើម (អនុវត្តទាំងអស់)','f-cleaner-by-location':'អ្នកសម្អាត ពេលវេលា និងធាតុតាមទីតាំង','select-location-first':'សូមជ្រើសរើសទីតាំងមួយ ឬច្រើនជាមុន','missing-location-cleaner':'សូមជ្រើសអ្នកសម្អាតសម្រាប់ទីតាំងនេះ','location-slots':'ពេលវេលាសម្រាប់ទីតាំងនេះ','location-items':'ធាតុសម្រាប់ទីតាំងនេះ',
+      'status-all':'ទាំងអស់','status-pass':'✅ ជាប់','status-fail':'⚠️ មិនប្រក្រតី','missing-location':'សូមបញ្ចូលឈ្មោះទីតាំង','location-added':'បានបន្ថែមទីតាំង','select-slot-warning':'សូមជ្រើសរើសពេលវេលាសម្អាតយ៉ាងហោចណាស់មួយ','select-item-warning':'សូមកំណត់ចំណុចត្រួតពិនិត្យយ៉ាងហោចណាស់មួយជា ✓ ឬ ✕','f-default-cleaner':'អ្នកសម្អាតលំនាំដើម (អនុវត្តទាំងអស់)','f-cleaner-by-location':'អ្នកសម្អាត ពេលវេលា និងធាតុតាមទីតាំង','select-location-first':'សូមជ្រើសរើសទីតាំងមួយ ឬច្រើនជាមុន','missing-location-cleaner':'សូមជ្រើសអ្នកសម្អាតសម្រាប់ទីតាំងនេះ','location-slots':'ពេលវេលាសម្រាប់ទីតាំងនេះ','location-items':'ធាតុសម្រាប់ទីតាំងនេះ',
     }
   };
   let _l = (() => {
@@ -926,6 +926,8 @@ var rec = (() => {
     if(missingLoc){ui.toast('⚠️ '+i18n.t('missing-location-cleaner')+': '+locName(missingLoc));return [];}
     const missingSlotLoc=locIds.find(id=>!state.getLocSlots(id).length);
     if(missingSlotLoc){ui.toast('⚠️ '+i18n.t('select-slot-warning')+': '+locName(missingSlotLoc));return [];}
+    const missingItemLoc=locIds.find(id=>!hasCleaningCheckValue(state.getLocChecks(id)));
+    if(missingItemLoc){ui.toast('⚠️ '+i18n.t('select-item-warning')+': '+locName(missingItemLoc));return [];}
     const now=_localTS(), batchId='clean_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2,6);
     const photos=(window._phCtl?window._phCtl.get():[]);
     return locIds.map(function(locId,index){
@@ -1503,6 +1505,7 @@ function sv(id,v){const el=document.getElementById(id);if(el)el.value=v;}
 function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
 function personName(v){return typeof v==='string'?v:(v&&typeof v==='object'?(v.name||v.label||v.id||''):'');}
 function locName(id){const l=state.db().locations.find(l=>l.id===id);return l?l.name:id||'—';}
+function hasCleaningCheckValue(checks){return Object.values(checks||{}).some(v=>v===true||v===false);}
 function fmtChk(chks,k){const v=(chks||{})[k];return v===true?'PASS':v===false?'FAIL':'—';}
 function binEmoji(t){return{general:'🗑️',fabric:'🟢',plastic:'🟠',metal:'⚫',paper:'📄',hazard:'⚠️'}[t]||'🗑️';}
 
@@ -1783,7 +1786,7 @@ function buildCleaningTelegram(opt){
   opt=opt||{};
   const cfg=opt.cfg||{};
   const all=typeof cfg.read==='function'?(cfg.read()||[]):[];
-  const period=opt.period||'month', mode=opt.mode||'summary', ref=opt.ref, scope=opt.scope||'all', slot=opt.slot||'all', lang=opt.lang||'bi';
+  const period=opt.period||'month', mode=opt.mode||'summary', ref=opt.ref, scope=opt.scope||'all', slot=opt.slot||'all', lang=opt.lang||'bi', sender=String(opt.sender||'').trim();
   const view=(typeof GC!=='undefined'&&GC.telegram)?GC.telegram.filter(all,cfg,period,ref,scope,slot):((typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'date',ref):all.slice());
   const periodLabel={day:cleaningTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:cleaningTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:cleaningTelegramText('本月','This Month','ខែនេះ',lang),year:cleaningTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:cleaningTelegramText('全部','All','ទាំងអស់',lang)}[period]||period;
   const modeLabel={summary:cleaningTelegramText('摘要','Summary','សង្ខេប',lang),review:cleaningTelegramText('審查','Review','ពិនិត្យ',lang),approval:cleaningTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
@@ -1794,7 +1797,9 @@ function buildCleaningTelegram(opt){
   const scopeLabel=selectedScopes.includes('all')?cleaningTelegramText('全部地點','All locations','គ្រប់ទីតាំង',lang):selectedScopes.map(function(id){return typeof locName==='function'?locName(id):id;}).join(', ');
   const failed=view.filter(r=>Object.values(r.checks||{}).some(v=>v===false));
   const passed=view.length-failed.length;
-  const lines=['🧹 <b>'+cleaningTelegramText('VRT 清潔','VRT Cleaning','VRT សម្អាត',lang)+'</b>','📅 '+periodLabel,'📍 '+cleaningTelegramText('地點','Locations','ទីតាំង',lang)+': '+cleaningTelegramEscape(scopeLabel),'⏱️ '+cleaningTelegramText('時段','Slots','ពេលវេលា',lang)+': '+cleaningTelegramEscape(slotLabel),'🧾 '+cleaningTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeLabel,'━━━━━━━━━━━━━━━━','📊 <b>'+cleaningTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+cleaningTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b> | '+cleaningTelegramText('通過','Pass','ជាប់',lang)+': '+passed+' | '+cleaningTelegramText('異常','Fail','ធ្លាក់',lang)+': '+failed.length,'• '+cleaningTelegramText('地點','Locations','ទីតាំង',lang)+': '+new Set(view.map(r=>r.locId).filter(Boolean)).size];
+  const lines=['🧹 <b>'+cleaningTelegramText('VRT 清潔','VRT Cleaning','VRT សម្អាត',lang)+'</b>','📅 '+periodLabel,'📍 '+cleaningTelegramText('地點','Locations','ទីតាំង',lang)+': '+cleaningTelegramEscape(scopeLabel),'⏱️ '+cleaningTelegramText('時段','Slots','ពេលវេលា',lang)+': '+cleaningTelegramEscape(slotLabel),'🧾 '+cleaningTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeLabel];
+  if(sender)lines.push('👤 '+cleaningTelegramText('發送人','Sent by','អ្នកផ្ញើ',lang)+': <b>'+cleaningTelegramEscape(sender)+'</b>');
+  lines.push('━━━━━━━━━━━━━━━━','📊 <b>'+cleaningTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+cleaningTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b> | '+cleaningTelegramText('通過','Pass','ជាប់',lang)+': '+passed+' | '+cleaningTelegramText('異常','Fail','ធ្លាក់',lang)+': '+failed.length,'• '+cleaningTelegramText('地點','Locations','ទីតាំង',lang)+': '+new Set(view.map(r=>r.locId).filter(Boolean)).size);
   const photos=[];
   if(!view.length) lines.push('⚠️ '+cleaningTelegramText('該期間沒有清潔記錄','No cleaning records in selected period','គ្មានកំណត់ត្រាសម្អាតក្នុងរយៈពេលនេះ',lang));
   let shown=0;
@@ -1810,7 +1815,17 @@ function buildCleaningTelegram(opt){
   if(view.length>shown)lines.push('… '+(view.length-shown)+' '+cleaningTelegramText('筆未展開','more record(s)','កំណត់ត្រាបន្ថែម',lang));
   if(mode==='review'||mode==='approval')lines.push('━━━━━━━━━━━━━━━━','⏳ '+cleaningTelegramText('待審查／待核可','Pending review / approval','កំពុងរង់ចាំពិនិត្យ/អនុម័ត',lang)+': '+failed.length);
   lines.push('━━━━━━━━━━━━━━━━','⏰ '+(typeof _localTS==='function'?_localTS():new Date().toLocaleString()));
-  return {text:lines.join('\n'),photos:photos};
+  return {text:lines.join('\n'),photos:photos,recordCount:view.length};
+}
+
+function validateCleaningTelegramSelection(ctx){
+  ctx=ctx||{};
+  const rows=Array.isArray(ctx.records)?ctx.records:[];
+  const lang=ctx.lang||'bi';
+  if(!rows.length)return cleaningTelegramText('所選期間、地點或時段沒有清潔記錄，不能發送','No cleaning records match the selected period, location or slot','គ្មានកំណត់ត្រាសម្អាតត្រូវនឹងរយៈពេល ទីតាំង ឬម៉ោងដែលបានជ្រើស ហើយមិនអាចផ្ញើបានទេ',lang);
+  if(rows.some(function(r){return !cleaningTelegramSlots(r).length;}))return cleaningTelegramText('有記錄未填檢查時間，請補完後再發送','A record has no check time. Complete it before sending','មានកំណត់ត្រាមិនទាន់បំពេញម៉ោងត្រួតពិនិត្យ សូមបំពេញមុនផ្ញើ',lang);
+  if(rows.some(function(r){return !hasCleaningCheckValue(r&&r.checks);} ))return cleaningTelegramText('有記錄未勾選任何巡查項目，請至少設定一項 ✓ 或 ✕','A record has no checked item. Set at least one item to ✓ or ✕','មានកំណត់ត្រាមិនទាន់កំណត់ចំណុចត្រួតពិនិត្យ សូមជ្រើសយ៉ាងហោចណាស់មួយជា ✓ ឬ ✕',lang);
+  return '';
 }
 
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
@@ -1835,13 +1850,30 @@ function buildCleaningTelegram(opt){
       telegramSlotMultiple:true,
       telegramSlotFilter:cleaningTelegramSlotFilter,
       telegramLanguage:true,
+      telegramSender:true,
+      telegramSenderStorageKey:'ac_gc_sender_cleaning_v1',
+      telegramRequireSender:true,
+      telegramConfirmSender:true,
+      telegramRequireData:true,
+      telegramValidator:validateCleaningTelegramSelection,
+      telegramAutoUpload:true,
       telegramBuilder:buildCleaningTelegram,
       extra:function(){
         const d=state.db();
         return {cleaners:(d.cleaners||[]).map(personName).filter(Boolean),checkers:(d.checkers||[]).map(personName).filter(Boolean),locations:d.locations||[],slots:d.slots||DEF_SLOTS,cfg:d.cfg||{}};
       },
       onRemote:applyCleaningCloudMeta,
-      onSync:function(){const d=state.db();(d.records||[]).forEach(function(r){r.synced=true;});state.save();},
+      onTelegramSent:function(ctx){
+        const rows=(typeof GC!=='undefined'&&GC.telegram)?GC.telegram.filter(state.db().records||[],ctx.cfg||{},ctx.period,ctx.ref,ctx.scope,ctx.slot):[];
+        const sentAt=_localTS();
+        rows.forEach(function(r){r.telegramSender=ctx.sender||'';r.telegramSentAt=sentAt;r.telegramMode=ctx.mode||'summary';r.updatedAt=sentAt;r.synced=false;});
+        state.save();
+      },
+      onSync:function(){
+        const d=state.db();(d.records||[]).forEach(function(r){r.synced=true;});
+        window._cleaningCloudApplying=true;
+        try{state.save();}finally{window._cleaningCloudApplying=false;}
+      },
       importSchema:{"date": ["日期", "date"], "locId": ["地點", "location", "loc", "ទីតាំង"], "cleaner": ["清潔人員", "cleaner", "អ្នកសម្អាត"], "checker": ["檢查人", "checker", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "ចំណាំ"]},
     read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_clean_hub_v2')||'{}'); return Array.isArray(d.records)?d.records:[]; }catch(e){ return []; } },
     write(list){ try{ const d=JSON.parse(localStorage.getItem('vrt_clean_hub_v2')||'{}'); d.records=list; localStorage.setItem('vrt_clean_hub_v2',JSON.stringify(d)); }catch(e){} },

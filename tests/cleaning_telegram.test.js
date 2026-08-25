@@ -34,6 +34,7 @@ const context = {
   DEF_SLOTS: ['07:30','10:30','14:30'],
   CHK_ITEMS: ['smell','light','floor','door','corner','ceiling'],
   CHK_ICONS: {smell:'👃',light:'💡',floor:'🧹',door:'🚪',corner:'📐',ceiling:'🏠'},
+  hasCleaningCheckValue(checks){ return Object.values(checks || {}).some(v => v === true || v === false); },
   locName(id){ return names[id] || id; },
   _localTS(){ return '2026-08-11 18:59:00'; },
   GC: {
@@ -63,7 +64,7 @@ const cfg = {
 };
 const packet = context.buildCleaningTelegram({
   cfg, period:'all', ref:'2026-08-11', mode:'summary', lang:'bi',
-  scope:['loc_office','loc_canteen'], slot:['10:30','14:30']
+  scope:['loc_office','loc_canteen'], slot:['10:30','14:30'], sender:'Paul'
 });
 
 assert(packet.text.includes('Office'));
@@ -75,7 +76,15 @@ assert(packet.text.includes('10:30, 14:30'));
 for (const icon of ['👃','💡','🧹','🚪','📐','🏠']) assert(packet.text.includes(icon));
 assert(packet.text.includes('Cleaner'));
 assert(packet.text.includes('Checker'));
+assert(packet.text.includes('Sent by'));
+assert(packet.text.includes('Paul'));
 assert.strictEqual(packet.photos.length, 2);
+assert.strictEqual(packet.recordCount, 2);
+
+assert(context.validateCleaningTelegramSelection({records:[],lang:'en'}).includes('No cleaning records'));
+assert(context.validateCleaningTelegramSelection({records:[{slots:[],checks:{smell:true}}],lang:'en'}).includes('no check time'));
+assert(context.validateCleaningTelegramSelection({records:[{slots:['10:30'],checks:{}}],lang:'en'}).includes('no checked item'));
+assert.strictEqual(context.validateCleaningTelegramSelection({records:[records[0]],lang:'en'}), '');
 
 const formPacket = context.buildCleaningSelectedRecordsTelegram(records.slice(0, 2), 'bi');
 assert(formPacket.text.includes('Office'));
@@ -91,13 +100,23 @@ assert(core.includes('telegramScopeMultiple: false'));
 assert(core.includes('telegramSlotMultiple: false'));
 assert(core.includes('scopePicks.onclick'));
 assert(core.includes('slotPicks.onclick'));
+assert(core.includes('data-gc-sender'));
+assert(core.includes("localStorage.setItem(senderStorageKey, sender)"));
+assert(core.includes('C.telegramAutoUpload || mode === \'summary\''));
 assert(html.includes('id="locs-wrap"'));
 assert(html.includes('state.getLocs()'));
 assert(html.includes('telegramScopeMultiple:true'));
 assert(html.includes('telegramSlotMultiple:true'));
-assert(html.includes('gascheck-core.js?v=41-dorm-approval-permissions'));
+assert(html.includes('gascheck-core.js?v=44-hra-portal-autosync'));
 assert(html.includes('id="loc-cleaner-map"'));
 assert(html.includes('state.getLocCleaner(locId)'));
 assert(html.includes('missing-location-cleaner'));
+assert(html.includes('v===null?true:v===true?false:null'));
+assert(html.includes('missingItemLoc'));
+assert(html.includes('telegramRequireSender:true'));
+assert(html.includes('telegramConfirmSender:true'));
+assert(html.includes('telegramRequireData:true'));
+assert(html.includes('telegramAutoUpload:true'));
+assert(html.includes('telegramSender=ctx.sender'));
 
 console.log('Cleaning Telegram multi-location/multi-slot tests passed.');

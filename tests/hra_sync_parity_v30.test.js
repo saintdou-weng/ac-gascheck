@@ -28,10 +28,10 @@ for (const name of [
     assert.doesNotThrow(() => new Function(match[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline JavaScript`);
-  assert(html.includes('gascheck-core.js?v=41-dorm-approval-permissions'), `${name} must bust the old shared-core cache`);
+  assert(html.includes('gascheck-core.js?v=44-hra-portal-autosync'), `${name} must bust the old shared-core cache`);
 }
 
-assert(core.includes("GC.version = '3.7-dorm-approval-permissions'"));
+assert(core.includes("GC.version = '3.9-hra-portal-autosync'"));
 assert(core.includes('(C.cloudRead || C.read)()'));
 assert(core.includes('(C.cloudWrite || C.write)(list)'));
 assert(core.includes('GC.sync = (() => {'));
@@ -46,7 +46,7 @@ assert(core.includes('SMART.stable(row) !== SMART.stable(before)'));
 const hook = core.indexOf("await C.onTelegramSent({ period:period");
 const auto = core.indexOf("cloudControl.scheduleAuto('telegram_' + mode)", hook);
 assert(hook >= 0 && auto > hook, 'sender/review/approval audit must be saved before Telegram auto upload');
-assert(core.includes("mode === 'summary' || mode === 'approval'"));
+assert(core.includes("mode === 'summary' || mode === 'review' || mode === 'approval'"));
 
 assert(portal.includes('await GC.cloud.upload(m.id,recs,portalSyncOpt(m))'));
 assert(portal.includes('await GC.cloud.download(m.id,portalRecords(m),portalSyncOpt(m))'));

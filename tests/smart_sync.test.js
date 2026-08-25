@@ -87,7 +87,7 @@ assert.strictEqual(manifest.hashes['m:2026-08'],undefined);
 
 const core=fs.readFileSync(path.join(__dirname,'..','gascheck-core.js'),'utf8');
 assert(core.includes("cloudControl.scheduleAuto('telegram_' + mode)"));
-assert(core.includes("mode === 'summary' || mode === 'approval'"));
+assert(core.includes("mode === 'summary' || mode === 'review' || mode === 'approval'"));
 assert(core.includes("'ac_gc_auto_sync_v1_'"));
 assert(core.includes("action:'smartManifest'"));
 assert(core.includes("action:'smartBucket'"));

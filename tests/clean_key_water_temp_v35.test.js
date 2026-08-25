@@ -17,9 +17,9 @@ for (const [name, html] of [['cleaning',cleaning],['key',key],['water',water],['
     assert.doesNotThrow(() => new Function(m[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline scripts`);
-  assert(html.includes('gascheck-core.js?v=41-dorm-approval-permissions'));
+  assert(html.includes('gascheck-core.js?v=44-hra-portal-autosync'));
 }
-assert(core.includes("GC.version = '3.7-dorm-approval-permissions'"));
+assert(core.includes("GC.version = '3.9-hra-portal-autosync'"));
 
 // Cleaning: shared defaults plus independent cleaner, slots and checks per location.
 for (const token of [
