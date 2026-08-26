@@ -208,7 +208,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=44-hra-portal-autosync"></script>
+<script src="./gascheck-core.js?v=48-hrpay-autosync-status-safe"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -1104,9 +1104,13 @@ function saveAllRec(){
       t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',wx,weatherObservation,checker,note,ts:_localTS(),updatedAt:_localTS()};
     recs.push(rec);newRecs.push(rec);
   });
-  setR(recs);toast(newRecs.length?T('saved')+' · '+T('syncup'):T('saved'),'ok');renderTodayCard(sel);updBadge();
-  // 儲存先落本機 IndexedDB；由使用者確認後按「上傳」，避免半完成資料自動送出。
-  if(newRecs.length) window._tempPendingUpload=true;
+  setR(recs);toast(newRecs.length?T('saved')+' · ☁ 自動同步 / Auto sync':T('saved'),'ok');renderTodayCard(sel);updBadge();
+  // v48：比照 HRA PAY。儲存先落本機，完成一批後自動排入雲端；手動 ☁↑/☁↓ 仍保留作強制同步。
+  if(newRecs.length){
+    window._tempPendingUpload=false;
+    if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule) GC.sync.schedule('temperature','batch_save',250);
+    else gasBulkSync(newRecs);
+  }
   updateTempUploadButton();
 }
 

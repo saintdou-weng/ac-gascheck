@@ -477,7 +477,7 @@ const BASE_DICT = {
   zh: {
     'gc.upload':'上傳雲端','gc.download':'下載雲端','gc.sync':'同步中…',
     'gc.uploaded':'已上傳雲端','gc.downloaded':'已下載並合併','gc.cloudCurrent':'雲端已是最新',
-    'gc.autoSyncing':'Telegram 已發送，雲端背景同步中','gc.cloudPending':'雲端待補傳，連線後自動重試','gc.changedRows':'筆變更',
+    'gc.autoSyncing':'☁ 同步中…','gc.cloudPending':'☁ 待同步','gc.cloudOffline':'☁ 離線待傳','gc.cloudRetry':'⚠ 雲端待重試','gc.cloudSynced':'✅ 雲端已同步','gc.cloudChecked':'☁ 已檢查','gc.changedRows':'筆變更',
     'gc.upFail':'上傳失敗','gc.downFail':'下載失敗','gc.noCloud':'雲端尚無資料',
     'gc.merged':'筆已合併','gc.added':'筆新增','gc.updated':'筆更新','gc.kept':'筆本地保留',
     'gc.day':'日','gc.week':'週','gc.month':'月','gc.year':'年','gc.all':'全部',
@@ -508,7 +508,7 @@ const BASE_DICT = {
   en: {
     'gc.upload':'Upload','gc.download':'Download','gc.sync':'Syncing…',
     'gc.uploaded':'Uploaded to cloud','gc.downloaded':'Downloaded & merged','gc.cloudCurrent':'Cloud already current',
-    'gc.autoSyncing':'Telegram sent; cloud syncing in background','gc.cloudPending':'Cloud upload pending; retries when online','gc.changedRows':'changed',
+    'gc.autoSyncing':'☁ Syncing…','gc.cloudPending':'☁ Pending sync','gc.cloudOffline':'☁ Offline · pending','gc.cloudRetry':'⚠ Cloud retry pending','gc.cloudSynced':'✅ Cloud synced','gc.cloudChecked':'☁ Checked','gc.changedRows':'changed',
     'gc.upFail':'Upload failed','gc.downFail':'Download failed','gc.noCloud':'No cloud data',
     'gc.merged':'merged','gc.added':'added','gc.updated':'updated','gc.kept':'kept local',
     'gc.day':'Day','gc.week':'Week','gc.month':'Month','gc.year':'Year','gc.all':'All',
@@ -539,7 +539,7 @@ const BASE_DICT = {
   km: {
     'gc.upload':'ផ្ទុកឡើង','gc.download':'ទាញយក','gc.sync':'កំពុងធ្វើសមកាលកម្ម…',
     'gc.uploaded':'បានផ្ទុកឡើងលើ Cloud','gc.downloaded':'បានទាញយក និងបញ្ចូលគ្នា','gc.cloudCurrent':'Cloud ទាន់សម័យរួចហើយ',
-    'gc.autoSyncing':'បានផ្ញើ Telegram; កំពុងផ្ទុកទៅ Cloud នៅផ្ទៃខាងក្រោយ','gc.cloudPending':'រង់ចាំផ្ទុកទៅ Cloud ហើយនឹងសាកល្បងម្ដងទៀតពេលមានអ៊ីនធឺណិត','gc.changedRows':'បានផ្លាស់ប្ដូរ',
+    'gc.autoSyncing':'☁ កំពុងធ្វើសមកាលកម្ម…','gc.cloudPending':'☁ រង់ចាំសមកាលកម្ម','gc.cloudOffline':'☁ អុហ្វឡាញ · រង់ចាំផ្ញើ','gc.cloudRetry':'⚠ រង់ចាំសាកល្បង Cloud ម្ដងទៀត','gc.cloudSynced':'✅ Cloud បានសមកាលកម្ម','gc.cloudChecked':'☁ បានពិនិត្យ','gc.changedRows':'បានផ្លាស់ប្ដូរ',
     'gc.upFail':'ការផ្ទុកឡើងបរាជ័យ','gc.downFail':'ការទាញយកបរាជ័យ','gc.noCloud':'គ្មានទិន្នន័យលើ Cloud',
     'gc.merged':'បានបញ្ចូលគ្នា','gc.added':'បានបន្ថែម','gc.updated':'បានធ្វើបច្ចុប្បន្នភាព','gc.kept':'រក្សាទុកក្នុងតំបន់',
     'gc.day':'ថ្ងៃ','gc.week':'សប្ដាហ៍','gc.month':'ខែ','gc.year':'ឆ្នាំ','gc.all':'ទាំងអស់',
@@ -1796,12 +1796,22 @@ GC.mountCloudButtons = function (mountEl, opt) {
     } catch (e) {}
   }
   function hasPending() { try { return !!localStorage.getItem(pendingKey); } catch (e) { return false; } }
+  function hhmm() { try { return new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',hour12:false}); } catch (e) { return ''; } }
+  function isOnline() { try { return !(global.navigator && global.navigator.onLine === false); } catch (e) { return true; } }
+  function reasonDelay(reason, requested) {
+    const r=String(reason||'').toLowerCase();
+    let d=(requested==null?900:Number(requested)); if(!isFinite(d)||d<0)d=900;
+    /* HRA PAY v3.9.5 同款：重要提交幾乎立即開始，普通新增/修改/刪除採 debounce。 */
+    if(/^(smart_import|import|telegram|telegram_|telegram-|combined_daily_summary|approval|review|restore|file_change|file-change|file_delete|file-delete)/.test(r)) return Math.min(d,60);
+    if(/^(batch_save|batch-save|batch_delete|batch-delete)/.test(r)) return Math.min(d,250);
+    return d;
+  }
 
   async function runUpload(runOpt) {
     runOpt = runOpt || {};
     if (running) return running;
     busy(true);
-    state('busy', runOpt.auto ? I18.t('gc.autoSyncing') : I18.t('gc.sync'));
+    state('busy', I18.t('gc.autoSyncing'));
     const startMarker = readPending();
     queued = false;
     running = (async function () {
@@ -1839,14 +1849,18 @@ GC.mountCloudButtons = function (mountEl, opt) {
         retryCount = 0;
         const uploaded = Number(result && result.uploaded) || 0;
         const label = result && result.skipped ? I18.t('gc.cloudCurrent') : I18.t('gc.uploaded') + ' · ' + uploaded + ' ' + I18.t('gc.changedRows');
-        state('ok', label);
+        const passive=/^(startup|startup_reconcile|pending_resume|reconcile|resume|pageshow|network_restored)$/i.test(String(runOpt.reason||''));
+        const statusText=(passive && !startMarker && result && result.skipped && !(local||[]).length)
+          ? I18.t('gc.cloudChecked') + (hhmm()?' '+hhmm():'')
+          : I18.t('gc.cloudSynced') + (hhmm()?' '+hhmm():'');
+        state('ok', statusText);
         if (!runOpt.silent) GC.toast('☁ ' + label, 'success');
         if (opt.onDone) opt.onDone(list, result);
         return Object.assign({ok:true}, result || {});
       } catch (e) {
         markPending(runOpt.reason || 'retry');
         retryCount += 1;
-        const msg = runOpt.auto ? I18.t('gc.cloudPending') : I18.t('gc.upFail') + ': ' + e.message;
+        const msg = runOpt.auto ? (isOnline()?I18.t('gc.cloudRetry'):I18.t('gc.cloudOffline')) : I18.t('gc.upFail') + ': ' + e.message;
         state(runOpt.auto ? 'warning' : 'error', msg);
         if (!runOpt.silent) GC.toast('❌ ' + msg, 'error');
         if (runOpt.auto && global.navigator && global.navigator.onLine !== false) {
@@ -1922,18 +1936,21 @@ GC.mountCloudButtons = function (mountEl, opt) {
     }
   }
 
-  function scheduleAuto(reason) {
-    markPending(reason || 'telegram');
-    state('busy', I18.t('gc.autoSyncing'));
+  function scheduleAuto(reason, delay) {
+    reason=reason || 'record_change';
+    markPending(reason);
+    if (!isOnline()) { state('warning', I18.t('gc.cloudOffline')); return null; }
+    state('warning', I18.t('gc.cloudPending'));
     if (running) { queued = true; return running; }
     clearTimeout(retryTimer);
-    retryTimer = setTimeout(function () { runUpload({silent:true,auto:true,reason:reason || 'telegram'}); }, 80);
+    const wait=reasonDelay(reason,delay);
+    retryTimer = setTimeout(function () { runUpload({silent:true,auto:true,reason:reason}); }, wait);
     return null;
   }
   function runReconcile(reason) {
     if (reconcileRunning) return reconcileRunning;
     if (global.navigator && global.navigator.onLine === false) {
-      if (hasPending()) state('warning', I18.t('gc.cloudPending'));
+      if (hasPending()) state('warning', I18.t('gc.cloudOffline'));
       return Promise.resolve({ok:false,offline:true});
     }
     reconcileRunning = (async function () {
@@ -1949,14 +1966,14 @@ GC.mountCloudButtons = function (mountEl, opt) {
   }
   up.onclick = function () { runUpload({silent:false,auto:false,reason:'manual'}); };
   down.onclick = function () { runDownload({silent:false}); };
-  global.addEventListener('online', function () { scheduleReconcile('network_restored', 150); });
+  global.addEventListener('online', function () { scheduleReconcile('network_restored', 120); });
   if (global.document && global.document.addEventListener) {
     global.document.addEventListener('visibilitychange', function () {
-      if (!global.document.hidden && (!global.navigator || global.navigator.onLine !== false)) scheduleReconcile('resume', 180);
+      if (!global.document.hidden && (!global.navigator || global.navigator.onLine !== false)) scheduleReconcile('resume', 150);
     });
   }
-  global.addEventListener('pageshow', function () { scheduleReconcile('pageshow', 220); });
-  if (opt.autoReconcile !== false) scheduleReconcile(hasPending() ? 'pending_resume' : 'startup', 500);
+  global.addEventListener('pageshow', function () { scheduleReconcile('pageshow', 150); });
+  if (opt.autoReconcile !== false) scheduleReconcile(hasPending() ? 'pending_resume' : 'startup', 450);
   else if (hasPending()) setTimeout(function () { scheduleAuto('resume'); }, 350);
   return { upload:runUpload, download:runDownload, reconcile:runReconcile, scheduleAuto:scheduleAuto, scheduleReconcile:scheduleReconcile, hasPending:hasPending, tool:opt.tool };
 };
@@ -1967,7 +1984,7 @@ GC.sync = (() => {
   const controls = new Map();
   return {
     register(tool, control) { if (tool && control) controls.set(String(tool), control); return control; },
-    schedule(tool, reason) { const c = controls.get(String(tool || '')); return c ? c.scheduleAuto(reason || 'record_change') : null; },
+    schedule(tool, reason, delay) { const c = controls.get(String(tool || '')); return c ? c.scheduleAuto(reason || 'record_change', delay) : null; },
     upload(tool, opt) { const c = controls.get(String(tool || '')); return c ? c.upload(opt || {}) : Promise.resolve({ok:false,unmounted:true}); },
     download(tool, opt) { const c = controls.get(String(tool || '')); return c ? c.download(opt || {}) : Promise.resolve({ok:false,unmounted:true}); },
     reconcile(tool, reason) { const c=controls.get(String(tool||'')); return c&&c.reconcile ? c.reconcile(reason||'manual_reconcile') : Promise.resolve({ok:false,unmounted:true}); },
@@ -3097,7 +3114,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.9-hra-portal-autosync';
+GC.version = '3.10-hrpay-autosync-status-safe';
 global.GC = GC;
 global.GASCheckCore = GC;
 
