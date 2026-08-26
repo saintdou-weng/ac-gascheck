@@ -10,7 +10,7 @@ assert(ehs.includes('function ehsWasteDuplicateKey(r)'));
 assert(ehs.includes("rows=ehsUniqueWasteRows(rows)"));
 assert(ehs.includes('onTelegramSent:markEhsTelegramSent'));
 assert(ehs.includes('同日期、公司、重量及時間不可登記兩次'));
-assert(temp.includes("├ 🌡️ "+"'+tempTelegramText('溫度','Temp'"));
+assert(temp.includes("tempTgTable(['Date','Zone','Slot','Temp','RH','Status']"));
 assert(temp.includes('function tempTelegramCombinedStatus(ts,hs,lang)'));
 assert(temp.includes('onTelegramSent:markTemperatureTelegramSent'));
 assert(!temp.includes("r.summarySentAt=sentAt;r.updatedAt=sentAt"));
