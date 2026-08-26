@@ -20,7 +20,7 @@ assert(core.includes("mode === 'summary' || mode === 'review' || mode === 'appro
 assert(core.includes("if (base && lb.hash === base) { removed += lb.count; continue; }"), 'unchanged local rows must accept confirmed cloud deletion');
 assert(core.includes("if (opt.allowDeletes && !lh && rh && base && rh === base)"), 'three-way-safe local deletion must reach cloud');
 assert(core.includes('retryNetwork(function ()'), 'smart buckets/commit must retry transient failures');
-assert(gas.includes("CORE_VERSION : 'v4.2-recent-report-reminder'"));
+assert(gas.includes("CORE_VERSION : 'v4.3-dedupe-report-reminder'"));
 assert(gas.includes("String(old.lastUploadId||'')===uploadId"), 'smart commit retry must be idempotent');
 assert(gas.includes('replaceRecords_(sheet,gcSmartSortRows_(kept.concat(changedRows)))'), 'Sheet compatibility index must remove stale rows from changed buckets');
 htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=44-hra-portal-autosync'),name+' must load v44 core'));

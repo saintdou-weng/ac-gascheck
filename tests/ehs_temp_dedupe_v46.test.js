@@ -1,0 +1,20 @@
+const assert=require('assert');
+const fs=require('fs');
+const path=require('path');
+const root=path.join(__dirname,'..');
+const ehs=fs.readFileSync(path.join(root,'ac_gascheck_ehs_v2.html'),'utf8');
+const temp=fs.readFileSync(path.join(root,'ac_gascheck_temperature_v2.html'),'utf8');
+const gas=fs.readFileSync(path.join(root,'ac_gascheck_core_v3_fixed.gs'),'utf8');
+
+assert(ehs.includes('function ehsWasteDuplicateKey(r)'));
+assert(ehs.includes("rows=ehsUniqueWasteRows(rows)"));
+assert(ehs.includes('onTelegramSent:markEhsTelegramSent'));
+assert(ehs.includes('同日期、公司、重量及時間不可登記兩次'));
+assert(temp.includes("├ 🌡️ "+"'+tempTelegramText('溫度','Temp'"));
+assert(temp.includes('function tempTelegramCombinedStatus(ts,hs,lang)'));
+assert(temp.includes('onTelegramSent:markTemperatureTelegramSent'));
+assert(!temp.includes("r.summarySentAt=sentAt;r.updatedAt=sentAt"));
+assert(gas.includes('function recordReportCompletionEpoch_(rec)'));
+assert(gas.includes("const fields=['updatedAt','modifiedAt','savedAt','submittedAt','createdAt','timestamp'];"));
+assert(gas.includes("CORE_VERSION : 'v4.3-dedupe-report-reminder'"));
+console.log('ehs/temp dedupe v46 source tests: PASS');

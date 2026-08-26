@@ -1880,6 +1880,12 @@ function tempTelegramStatus(k,lang){
   const labels={cold:['過冷','Too cold','ត្រជាក់ពេក'],cool:['涼爽','Cool','ត្រជាក់'],ok:['正常','Normal','ធម្មតា'],warm:['偏熱','Warm','ក្តៅ'],hot:['過熱','Too hot','ក្តៅពេក'],dry:['過乾','Dry','ស្ងួត'],humid:['偏濕','Humid','សើម'],vhum:['過濕','Very humid','សើមខ្លាំង']}[k]||[k,k,k];
   return tempTelegramText(labels[0],labels[1],labels[2],lang);
 }
+function tempTelegramCombinedStatus(ts,hs,lang){
+  const keys=[];if(ts&&ts.k)keys.push(ts.k);if(hs&&hs.k)keys.push(hs.k);
+  const abnormal=[...new Set(keys.filter(function(k){return k&&k!=='ok';}))];
+  if(!abnormal.length)return tempTelegramStatus('ok',lang);
+  return abnormal.map(function(k){return tempTelegramStatus(k,lang);}).join(' / ');
+}
 function tempTelegramWeather(k,lang){
   const labels={sunny:['晴','Sunny','មេឃស្រឡះ'],cloudy:['多雲','Cloudy','មានពពក'],rain:['雨','Rain','ភ្លៀង'],heavyRain:['大雨','Heavy rain','ភ្លៀងខ្លាំង'],storm:['雷雨','Storm','ព្យុះ'],hot:['酷熱','Hot','ក្ដៅ'],humid:['潮濕','Humid','សើម']}[k];
   return labels?tempTelegramText(labels[0],labels[1],labels[2],lang):String(k||'');
@@ -1919,9 +1925,14 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
       const z=zones.find(x=>x.id===r.z);
       const name=z?(lang==='zh'?(z.zh||z.en||z.id):lang==='en'?(z.en||z.zh||z.id):lang==='km'?(z.km||z.en||z.zh||z.id):((z.en||z.zh||z.id)+' / '+(z.zh||z.en||z.id))):String(r.z||'?');
       const per=r.p==='morning'?tempTelegramText('早上','Morning','ពេលព្រឹក',lang):tempTelegramText('下午','Afternoon','ពេលរសៀល',lang);
-      const ts=tSt(r.t),hs=hSt(r.h);
-      const status=[ts&&tempTelegramStatus(ts.k,lang),hs&&tempTelegramStatus(hs.k,lang)].filter(Boolean).join(' / ')||tempTelegramText('正常','Normal','ធម្មតា',lang);
-      lines.push('🏭 '+name+' | '+per+' | 🌡️ '+(r.t!==''&&r.t!=null?r.t+'°C':'--')+' | 💧 '+(r.h!==''&&r.h!=null?r.h+'%':'--')+' | '+status+(r.wx?' | '+tempTelegramWeather(r.wx,lang):'')+(r.checker?' | 👤 '+r.checker:''));
+      const ts=tSt(r.t),hs=hSt(r.h),status=tempTelegramCombinedStatus(ts,hs,lang);
+      // v46 改成「欄位式」區塊，不再把所有資料擠在同一長行；手機 Telegram 更容易掃讀。
+      lines.push('🏭 <b>'+name+'</b>');
+      lines.push('├ ⏱️ '+tempTelegramText('時段','Slot','ពេលវេលា',lang)+': <b>'+per+'</b>');
+      lines.push('├ 🌡️ '+tempTelegramText('溫度','Temp','សីតុណ្ហភាព',lang)+': <b>'+(r.t!==''&&r.t!=null?r.t+'°C':'--')+'</b>   💧 '+tempTelegramText('濕度','Humidity','សំណើម',lang)+': <b>'+(r.h!==''&&r.h!=null?r.h+'%':'--')+'</b>');
+      lines.push('├ 📌 '+tempTelegramText('狀態','Status','ស្ថានភាព',lang)+': <b>'+status+'</b>   🌤️ '+tempTelegramText('天氣','Weather','អាកាសធាតុ',lang)+': '+(r.wx?tempTelegramWeather(r.wx,lang):'—'));
+      lines.push('└ 👤 '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+(r.checker||'—'));
+      lines.push('────────────');
       count++;
     });
   });
@@ -1937,7 +1948,7 @@ async function sendTodayCombinedTemp(){
   const packet=buildTGPeriodMsg('day','summary',date,'all','bi');
   try{
     await sendTemperatureTelegramPacket(packet,'-5113064563');
-    const sentAt=_localTS(),all=getR();all.forEach(r=>{if(String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon')){r.telegramSentAt=sentAt;r.summarySentAt=sentAt;r.updatedAt=sentAt;}});setR(all);
+    const sentAt=_localTS(),all=getR();all.forEach(r=>{if(String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon')){r.telegramSentAt=sentAt;r.telegramMode='summary';r.summarySentAt=sentAt;}});setR(all);
     if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','combined_daily_summary');
     window._tempPendingUpload=false;updateTempUploadButton();toast('✅ '+tempTelegramText('早上＋下午摘要已發送並排入雲端','AM + PM summary sent and queued for cloud','បានផ្ញើសង្ខេបព្រឹក + រសៀល','zh'),'ok');
   }catch(ex){toast('Telegram: '+ex.message,'err');}
@@ -2305,6 +2316,15 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
 </script>
 
 <script>
+/* v46：Telegram 成功後記錄已發 Summary / Approval，但不改 updatedAt。 */
+function markTemperatureTelegramSent(ctx){
+  ctx=ctx||{};if(typeof GC==='undefined'||!GC.telegram)return;
+  const all=getR(),selected=GC.telegram.filter(all,ctx.cfg||{dateField:'d',telegramSlotFilter:function(r,slot){return tempTelegramSlotMatch(r,slot);}},ctx.period||'month',ctx.ref,ctx.scope||'all',ctx.slot||'all');
+  const ids=new Set(selected.map(function(r){return String(r&&r.id||'');}).filter(Boolean)),sentAt=_localTS(),mode=ctx.mode||'summary';
+  all.forEach(function(r){if(!ids.has(String(r&&r.id||'')))return;r.telegramSentAt=sentAt;r.telegramMode=mode;if(mode==='summary')r.summarySentAt=sentAt;if(mode==='approval')r.approvalSentAt=sentAt;if(mode==='review')r.reviewSentAt=sentAt;});
+  setR(all);renderAll();
+}
+
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
 (function(){
   function boot(){
@@ -2328,6 +2348,7 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       telegramSlotFilter:(r,slot)=>tempTelegramSlotMatch(r,slot),
       telegramLanguage:true,
       telegramBuilder:({period,mode,ref,slot,lang})=>buildTGPeriodMsg(period,mode,ref,slot,lang),
+      onTelegramSent:markTemperatureTelegramSent,
       extra:()=>({zones:getZ(),zonesMode:'merge'}),
       onRemote:(d)=>{if(d&&Array.isArray(d.zones)){const z=mergeTempZones(getZ(),d.zones);if(JSON.stringify(z)!==JSON.stringify(getZ())){setZ(z);renderAll();}}},
       importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "checker": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "notes", "ចំណាំ"]},

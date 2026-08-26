@@ -1197,11 +1197,48 @@ function autoFillB(id,sel){
 }
 function clearBBatch(){if(!bRows.length)return;if(!confirm(ehsText('清除所有未提交內容？','Clear all unsaved entries?','លុបព័ត៌មានដែលមិនទាន់រក្សាទុកទាំងអស់?')))return;bRows=[];addBRow();}
 
+/* v46 Waste 防重複：同日期 + 同供應商/公司 + 同重量 + 同進出時間視為同一筆。
+   名字、車牌、檢查人不同不應讓同一車廢料被重複登記。 */
+function ehsWasteKeyPart(v){return String(v==null?'':v).trim().replace(/\s+/g,' ').toUpperCase();}
+function ehsWasteTimeKey(v){
+  const s=String(v||'').trim().toLowerCase();if(!s)return '';
+  const m=s.match(/(\d{1,2})(?::(\d{1,2}))?\s*(am|pm)?/);if(!m)return ehsWasteKeyPart(s);
+  let h=Number(m[1]),min=Number(m[2]||0);if(m[3]==='pm'&&h<12)h+=12;if(m[3]==='am'&&h===12)h=0;
+  return String(h).padStart(2,'0')+':'+String(min).padStart(2,'0');
+}
+function ehsWasteDuplicateKey(r){
+  if(!r)return '';
+  const date=ehsYmd(r.date),supplier=ehsWasteKeyPart(r.supplier||r.company),kg=kgNumber(r.weight_kg!=null?r.weight_kg:r.kg);
+  const tin=ehsWasteTimeKey(r.time_in!=null?r.time_in:r.timein),tout=ehsWasteTimeKey(r.time_out!=null?r.time_out:r.timeout);
+  if(!date||!supplier||!(kg>0))return '';
+  return [date,supplier,kg.toFixed(3),tin,tout].join('|');
+}
+function ehsFindWasteDuplicate(existing,candidate,excludeId){
+  const key=ehsWasteDuplicateKey(candidate);if(!key)return null;
+  return (existing||[]).find(function(r){return String(r&&r.id||'')!==String(excludeId||'')&&ehsWasteDuplicateKey(r)===key;})||null;
+}
+function ehsUniqueWasteRows(rows){
+  const seen=new Set();return (rows||[]).filter(function(r){
+    if(!(r&&((r.sourceType==='waste')||(r.module==='gate'))))return true;
+    const k=ehsWasteDuplicateKey(r);if(!k)return true;if(seen.has(k))return false;seen.add(k);return true;
+  });
+}
+
 async function submitModB(){
   const started=bRows.filter(function(r){return r.date||r.supplier||r.name||r.car||r.solid||r.industrial||String(r.kg||r.timein||r.timeout||r.gate||r.checked_by||r.remark||'').trim()||photoArray(r.photos).length;});
   const valid=bRows.filter(function(r){return r.date&&r.supplier&&kgNumber(r.kg)>0;});
   if(started.length!==valid.length){showToast(ehsText('⚠️ 每筆已填內容都必須有日期、供應商及大於 0 的重量；純數字自動視為 kg','⚠️ Every started row needs a date, supplier and weight above 0; plain numbers are treated as kg','⚠️ គ្រប់ជួរដែលបានបំពេញត្រូវមានកាលបរិច្ឆេទ អ្នកផ្គត់ផ្គង់ និងទម្ងន់លើស 0; លេខធម្មតាត្រូវចាត់ជា kg'));return;}
   if(!valid.length){showToast(ehsText('⚠️ 每筆必須填日期、供應商及大於 0 的重量；未寫 kg 會自動視為 kg','⚠️ Date, supplier and weight above 0 are required; numbers without a unit are treated as kg','⚠️ ត្រូវបញ្ចូលកាលបរិច្ឆេទ អ្នកផ្គត់ផ្គង់ និងទម្ងន់លើស 0; លេខគ្មានឯកតាត្រូវចាត់ជា kg'));return;}
+  const ldBefore=loadLocal(),existingWaste=Array.isArray(ldBefore.gate)?ldBefore.gate:[];
+  const batchKeys=new Map();
+  for(const row of valid){
+    const candidate={date:row.date,supplier:row.supplier,weight_kg:kgNumber(row.kg),time_in:row.timein,time_out:row.timeout};
+    const k=ehsWasteDuplicateKey(candidate);
+    if(k&&batchKeys.has(k)){showToast(ehsText('⛔ 已阻止重複：同日期、公司、重量及時間不可登記兩次','⛔ Duplicate blocked: same date, company, weight and time cannot be registered twice','⛔ បានទប់ស្កាត់កំណត់ត្រាស្ទួន: កាលបរិច្ឆេទ ក្រុមហ៊ុន ទម្ងន់ និងពេលវេលាដូចគ្នា'));return;}
+    if(k)batchKeys.set(k,true);
+    const dup=ehsFindWasteDuplicate(existingWaste,candidate,row._editId);
+    if(dup){showToast(ehsText('⛔ 已有相同 Waste 記錄：'+row.date+' / '+row.supplier+' / '+kgNumber(row.kg)+' kg / '+(row.timein||'—')+'→'+(row.timeout||'—'),'⛔ Duplicate Waste record already exists: '+row.date+' / '+row.supplier+' / '+kgNumber(row.kg)+' kg / '+(row.timein||'—')+'→'+(row.timeout||'—'),'⛔ មានកំណត់ត្រា Waste ដូចគ្នារួចហើយ'));return;}
+  }
   const btn=document.getElementById('b-submit-btn');
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 提交中...';
   const now=_localTS();
@@ -1988,6 +2025,8 @@ function buildEhsTelegram(opt){
   const scope=opt.scope||'all';
   const slot=opt.slot||'all',lang=opt.lang||'bi';
   let rows=typeof GC!=='undefined'&&GC.telegram?GC.telegram.filter(all,cfg,opt.period||'month',opt.ref,scope,slot):(typeof GC!=='undefined'&&GC.period?GC.period.filter(all,opt.period||'month','date',opt.ref):all.slice());
+  // v46 Telegram 再做一次 Waste 防重複，舊資料即使已存在重複列也只發一次。
+  rows=ehsUniqueWasteRows(rows);
   const esc=function(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');};
   const periodLabel={day:ehsTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:ehsTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:ehsTelegramText('本月','This Month','ខែនេះ',lang),year:ehsTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:ehsTelegramText('全部','All','ទាំងអស់',lang)}[opt.period||'month']||opt.period;
   const modeLabel={summary:ehsTelegramText('摘要','Summary','សង្ខេប',lang),review:ehsTelegramText('審查','Review','ពិនិត្យ',lang),approval:ehsTelegramText('核可','Approval','អនុម័ត',lang)}[opt.mode||'summary']||opt.mode;
@@ -2020,7 +2059,10 @@ function buildEhsTelegram(opt){
 function mergeEhsImport(current,incoming){
   const normalize=function(r){const waste=r&&((r.sourceType==='waste')||(r.module==='gate'));const out=Object.assign({},r,{date:ehsYmd(r&&r.date),photos:photoArray(r&&r.photos),module:waste?'gate':'internal',sourceType:waste?'waste':'recycle'});if(waste)out.weight_kg=kgNumber(out.weight_kg);else{out.plastic_kg=kgNumber(out.plastic_kg);out.fabric_kg=kgNumber(out.fabric_kg);out.core_kg=kgNumber(out.core_kg);out.total_kg=kgNumber(out.total_kg)||out.plastic_kg+out.fabric_kg+out.core_kg;}return out;};
   const out=(current||[]).map(normalize);
-  const key=function(r){return [r.sourceType||((r.module==='gate')?'waste':'recycle'),r.date,r.name||'',r.supplier||'',r.car_number||'',r.time_in||'',r.time_out||'',r.plastic_kg||'',r.fabric_kg||'',r.core_kg||'',r.total_kg||'',r.weight_kg||''].join('|');};
+  const key=function(r){
+    if(r&&((r.sourceType==='waste')||(r.module==='gate')))return 'waste|'+ehsWasteDuplicateKey(r);
+    return [r.sourceType||'recycle',r.date,r.plastic_kg||'',r.fabric_kg||'',r.core_kg||'',r.total_kg||''].join('|');
+  };
   const by=new Map(out.map(function(r){return [key(r),r];}));
   (incoming||[]).forEach(function(r){
     const k=key(r),old=by.get(k);
@@ -2041,6 +2083,19 @@ function mergeEhsImport(current,incoming){
 </datalist>
 
 <script>
+/* v46：Telegram 成功後在實際涵蓋的 EHS 記錄留下 Summary / Approval 時間。
+   不修改 updatedAt，避免「發完摘要本身又被當成資料異動」而再次觸發提醒。 */
+function markEhsTelegramSent(ctx){
+  ctx=ctx||{};if(typeof GC==='undefined'||!GC.telegram)return;
+  const ld=loadLocal(),all=[];
+  (ld.internal||[]).forEach(function(r){all.push(Object.assign({module:'internal',sourceType:'recycle'},r));});
+  (ld.gate||[]).forEach(function(r){all.push(Object.assign({module:'gate',sourceType:'waste'},r));});
+  const selected=GC.telegram.filter(all,ctx.cfg||{dateField:'date',scopeField:'sourceType',telegramSlotFilter:ehsTelegramSlotFilter},ctx.period||'month',ctx.ref,ctx.scope||'all',ctx.slot||'all');
+  const ids=new Set(selected.map(function(r){return String(r&&r.id||'');}).filter(Boolean)),sentAt=_localTS(),mode=ctx.mode||'summary';
+  function mark(list){(list||[]).forEach(function(r){if(!ids.has(String(r&&r.id||'')))return;r.telegramSentAt=sentAt;r.telegramMode=mode;if(mode==='summary')r.summarySentAt=sentAt;if(mode==='approval')r.approvalSentAt=sentAt;if(mode==='review')r.reviewSentAt=sentAt;});}
+  mark(ld.internal);mark(ld.gate);saveLocal(ld);refreshEhsAll();
+}
+
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
 (function(){
   function boot(){
@@ -2062,6 +2117,7 @@ function mergeEhsImport(current,incoming){
       telegramSlotFilter:ehsTelegramSlotFilter,
       telegramLanguage:true,
       telegramBuilder:buildEhsTelegram,
+      onTelegramSent:markEhsTelegramSent,
       importParser:parseEhsSmartImport,
       mergeImport:mergeEhsImport,
       importSchema:{"date": ["日期", "date", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "recycle weight", "ទម្ងន់"], "supplier": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "weight_kg": ["重量", "kg", "weight", "ទម្ងន់"], "checked_by": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remark": ["備註", "remark", "note", "ចំណាំ"]},

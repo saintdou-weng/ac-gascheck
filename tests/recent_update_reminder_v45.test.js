@@ -92,5 +92,5 @@ assert.strictEqual(third.notify[0].groupKey,'waterdrum:all:2026-08');
 assert.strictEqual(sent,2);
 
 assert(gas.includes("markMonths:monthly&&monthly.sent?[target]:[]"),'day-5 monthly reminder must suppress an immediate duplicate recent reminder');
-assert(gas.includes("CORE_VERSION : 'v4.2-recent-report-reminder'"));
+assert(gas.includes("CORE_VERSION : 'v4.3-dedupe-report-reminder'"));
 console.log('recent update reminder v45 tests: PASS');
