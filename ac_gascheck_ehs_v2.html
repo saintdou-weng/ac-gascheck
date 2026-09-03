@@ -95,6 +95,10 @@ select.bi{cursor:pointer}
 .record-toolbar{margin-left:auto;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
 .record-total{font-size:11px;color:var(--dim);font-weight:500;letter-spacing:0;text-transform:none}
 .row-actions{display:flex;gap:5px;white-space:nowrap}.row-mini{padding:4px 8px;font-size:11px}
+.waste-select{width:16px;height:16px;accent-color:var(--accent);cursor:pointer;vertical-align:middle}
+.waste-selected td{background:#ecfdf5!important}
+.waste-clean-btn{padding:4px 9px;font-size:11px}
+.waste-delete-count{min-width:18px;height:18px;padding:0 5px;border-radius:9px;background:var(--red);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:10px}
 .month-link{border:1px solid var(--border);background:#fff;border-radius:5px;padding:4px 8px;cursor:pointer;color:var(--blue);font-size:11px;font-weight:600}
 .month-link:hover{background:#eff6ff}
 .report-charts{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:1px solid var(--border2)}
@@ -142,7 +146,7 @@ select.bi{cursor:pointer}
 .rp-ok{border:0;background:#1A3E78;color:#fff;padding:8px 20px;border-radius:7px;
   font:600 13px/1 inherit;cursor:pointer}
 </style>
-<script src="./gascheck-core.js?v=50-no-copy-code"></script>
+<script src="./gascheck-core.js?v=51-waste-safe-delete"></script>
 </head>
 <body>
 <div class="topbar">
@@ -297,12 +301,19 @@ select.bi{cursor:pointer}
   <!-- Selected-period Waste records -->
   <div class="sec" id="b-month-records">
     <div class="sec-head">📋 Waste 記錄 <span class="note" id="b-month-label"></span>
-      <span class="record-toolbar"><button class="btn btn-secondary row-mini" onclick="exportEhsPeriod('gate')">⬇ Excel</button></span>
+      <span class="record-toolbar">
+        <button class="btn btn-secondary waste-clean-btn" onclick="selectWasteRows('all')">☑ 全選</button>
+        <button class="btn btn-secondary waste-clean-btn" onclick="selectWasteRows('noPhoto')">📷 選無照片</button>
+        <button class="btn btn-secondary waste-clean-btn" onclick="selectWasteRows('badTime')">⏱ 選時間異常</button>
+        <button class="btn btn-secondary waste-clean-btn" onclick="repairWasteDuplicates(true)">🧹 清理重複</button>
+        <button class="btn btn-danger waste-clean-btn" id="b-delete-selected" onclick="deleteSelectedWaste()" disabled>🗑️ 刪除選取 <span class="waste-delete-count" id="b-selected-count">0</span></button>
+        <button class="btn btn-secondary row-mini" onclick="exportEhsPeriod('gate')">⬇ Excel</button>
+      </span>
     </div>
     <div class="htable-wrap">
       <table class="htable">
         <thead><tr>
-          <th>#</th><th>日期</th><th>姓名</th><th>供應商</th><th>廢料類型</th>
+          <th><input class="waste-select" id="b-select-all" type="checkbox" aria-label="Select all" onchange="selectVisibleWaste(this.checked)"> #</th><th>日期</th><th>姓名</th><th>供應商</th><th>廢料類型</th>
           <th>重量 (kg)</th><th>Time In</th><th>Time Out</th><th>停留</th><th>檢查人</th><th>照片</th><th>異常</th><th>操作</th>
         </tr></thead>
         <tbody id="b-month-body"></tbody>
@@ -543,7 +554,10 @@ const EHS_LABELS = [
   ['Recycle (kg)','Recycle (kg)','Recycle (kg)'],['Waste 記錄','Waste Records','កំណត់ត្រា Waste'],
   ['Recycle 記錄','Recycle Records','កំណត់ត្រា Recycle'],['Waste 收料重量 (kg)','Waste Received Weight (kg)','ទម្ងន់ Waste ទទួល (kg)'],
   ['月份','Month','ខែ'],['總重量','Total Weight','ទម្ងន់សរុប'],['記錄','Records','កំណត់ត្រា'],['照片','Photos','រូបថត'],
-  ['操作','Actions','សកម្មភាព'],['查看','View','មើល'],['重量 (kg)','Weight (kg)','ទម្ងន់ (kg)']
+  ['操作','Actions','សកម្មភាព'],['查看','View','មើល'],['重量 (kg)','Weight (kg)','ទម្ងន់ (kg)'],
+  ['全選','Select All','ជ្រើសទាំងអស់'],['選無照片','Select No Photo','ជ្រើសគ្មានរូប'],
+  ['選時間異常','Select Invalid Time','ជ្រើសពេលវេលាមិនត្រឹមត្រូវ'],['清理重複','Clean Duplicates','សម្អាតកំណត់ត្រាស្ទួន'],
+  ['刪除選取','Delete Selected','លុបដែលបានជ្រើស']
 ].map(x=>({zh:x[0],en:x[1],km:x[2]}));
 const EHS_PARTS = [
   ['Recycle','Recycle','Recycle'],['Waste','Waste','Waste'],['內部廢料','Recycle','Recycle'],
@@ -576,6 +590,11 @@ EHS_PARTS.push(
   {zh:'Telegram/雲端',en:'Telegram / Cloud',km:'Telegram / Cloud'},
   {zh:'快速操作',en:'Quick actions',km:'សកម្មភាពរហ័ស'},
   {zh:'智慧匯入',en:'Smart Import',km:'នាំចូលឆ្លាតវៃ'},
+  {zh:'全選',en:'Select All',km:'ជ្រើសទាំងអស់'},
+  {zh:'選無照片',en:'Select No Photo',km:'ជ្រើសគ្មានរូប'},
+  {zh:'選時間異常',en:'Select Invalid Time',km:'ជ្រើសពេលវេលាមិនត្រឹមត្រូវ'},
+  {zh:'清理重複',en:'Clean Duplicates',km:'សម្អាតកំណត់ត្រាស្ទួន'},
+  {zh:'刪除選取',en:'Delete Selected',km:'លុបដែលបានជ្រើស'},
   {zh:'摘要期間',en:'Summary period',km:'រយៈពេលសង្ខេប'},
   {zh:'審查',en:'Review',km:'ពិនិត្យ'},
   {zh:'Approval',en:'Approval',km:'អនុម័ត'}
@@ -666,10 +685,21 @@ function switchTab(id){
 
 /* ========== LOCAL STORAGE ========== */
 function loadLocal(){
-  try{return JSON.parse(localStorage.getItem(LOCAL_KEY))||{gate:[],internal:[],monthly:[]};}
-  catch(e){return{gate:[],internal:[],monthly:[]};}
+  try{
+    const d=JSON.parse(localStorage.getItem(LOCAL_KEY))||{};
+    d.gate=Array.isArray(d.gate)?d.gate:[];d.internal=Array.isArray(d.internal)?d.internal:[];d.monthly=Array.isArray(d.monthly)?d.monthly:[];d.tombstones=Array.isArray(d.tombstones)?d.tombstones:[];
+    const deleted=new Set(d.tombstones.map(function(t){return String(t&&t.id||'');}).filter(Boolean));
+    d.gate=d.gate.filter(function(r){return r&&!r._deleted&&!deleted.has(String(r.id||''));});
+    d.internal=d.internal.filter(function(r){return r&&!r._deleted&&!deleted.has(String(r.id||''));});
+    return d;
+  }
+  catch(e){return{gate:[],internal:[],monthly:[],tombstones:[]};}
 }
-function saveLocal(d){localStorage.setItem(LOCAL_KEY,JSON.stringify(d));}
+function saveLocal(d){
+  const result=ehsPrepareLocalData(d||{});
+  localStorage.setItem(LOCAL_KEY,JSON.stringify(result.data));
+  return result;
+}
 
 function showToast(msg,dur=3000){
   const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
@@ -906,7 +936,8 @@ function renderBAnalysis(){
       const anom=r.anomaly?'<span class="badge badge-anom">⚠️</span>':'—';
       const dur=r.duration_min!=null?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'—';
       const photos=photoArray(r.photos);
-      return `<tr><td>${i+1}</td><td>${ehsEsc(ehsYmd(r.date))}</td><td>${ehsEsc(r.name||'—')}</td><td><strong>${ehsEsc(r.supplier||'—')}</strong></td>
+      const selected=ehsWasteSelectedIds.has(String(r.id||''));
+      return `<tr class="${selected?'waste-selected':''}"><td><input class="waste-select" type="checkbox" data-waste-id="${ehsEsc(r.id)}" aria-label="Select row ${i+1}" ${selected?'checked':''} onchange="toggleWasteSelection('${ehsEsc(r.id)}',this.checked)"> ${i+1}</td><td>${ehsEsc(ehsYmd(r.date))}</td><td>${ehsEsc(r.name||'—')}</td><td><strong>${ehsEsc(r.supplier||'—')}</strong></td>
         <td>${wtype}</td><td><strong>${kgDisplay(r.weight_kg)}</strong></td><td>${ehsEsc(r.time_in||'—')}</td><td>${ehsEsc(r.time_out||'—')}</td>
         <td>${dur}</td><td>${ehsEsc(r.checked_by||'—')}</td><td>${typeof GC!=='undefined'&&GC.photo?GC.photo.cell(photos):'📷 '+photos.length}</td><td>${anom}</td><td><span class="row-actions"><button class="btn btn-secondary row-mini" onclick="editRecord('${ehsEsc(r.id)}','gate')">✏️</button><button class="btn btn-danger row-mini" onclick="deleteRecord('${ehsEsc(r.id)}','gate')">🗑️</button></span></td></tr>`;
     }).join('');
@@ -915,6 +946,7 @@ function renderBAnalysis(){
   const sN=moRecs.filter(r=>r.supplier==='SONYAPICH').length;
   document.getElementById('b-month-footer').textContent=`K.S.W.M: ${kN} ${ehsText('趟','trips','ជើង')} | SONYAPICH: ${sN} ${ehsText('趟','trips','ជើង')} | ${ehsText('合計','Total','សរុប')}: ${moRecs.length} · ${kgDisplay(totalKg)}`;
   ehsViewState.gate=filterRecs.slice();
+  updateWasteSelectionUi();
 }
 
 /* ========== REPORT ========== */
@@ -1034,14 +1066,7 @@ function openStoredPhotos(id){
 async function deleteRecord(id,module){
   if(!id||id==='undefined'){showToast('⚠️ 無效ID');return;}
   if(!confirm(ehsText('確定刪除此筆記錄？本機及雲端會一併刪除。','Delete this record from both this device and cloud?','លុបកំណត់ត្រានេះពីឧបករណ៍ និង Cloud មែនទេ?')))return;
-  const ld=loadLocal();
-  if(module==='gate')ld.gate=ld.gate.filter(r=>r.id!==id);
-  else ld.internal=ld.internal.filter(r=>r.id!==id);
-  saveLocal(ld);
-  let cloudOk=false;
-  try{const res=typeof GC!=='undefined'&&GC.cloud?await GC.cloud.post({action:'delete',tool:'ehs',id:id}):await gasPost({action:'delete',tool:'ehs',id:id});cloudOk=!!(res&&res.ok!==false);}catch(e){}
-  refreshEhsAll();
-  showToast(cloudOk?ehsText('🗑️ 本機及雲端已刪除','🗑️ Deleted locally and from cloud','🗑️ បានលុបពីឧបករណ៍ និង Cloud'):ehsText('⚠️ 本機已刪除；雲端離線，稍後請再同步','⚠️ Deleted locally; cloud is offline','⚠️ បានលុបក្នុងឧបករណ៍; Cloud មិនអនឡាញ'));
+  await ehsDeleteRecords([{id:String(id),module:module==='gate'?'gate':'internal'}],{reason:'manual_delete'});
 }
 
 function exportHistoryExcel(){
@@ -1151,6 +1176,7 @@ async function submitModA(){
 
 /* ========== MODULE B BATCH INPUT ========== */
 let bRows=[];
+let ehsWasteSubmitBusy=false;
 function addBRow(){
   const id='B-'+Date.now()+'-'+Math.floor(Math.random()*9999);
   bRows.push({id,date:'',name:'',supplier:'',car:'',solid:false,industrial:false,kg:'',timein:'',timeout:'',gate:'',checked_by:'',remark:'',photos:[]});
@@ -1197,49 +1223,193 @@ function autoFillB(id,sel){
 }
 function clearBBatch(){if(!bRows.length)return;if(!confirm(ehsText('清除所有未提交內容？','Clear all unsaved entries?','លុបព័ត៌មានដែលមិនទាន់រក្សាទុកទាំងអស់?')))return;bRows=[];addBRow();}
 
-/* v46 Waste 防重複：同日期 + 同供應商/公司 + 同重量 + 同進出時間視為同一筆。
-   名字、車牌、檢查人不同不應讓同一車廢料被重複登記。 */
+/* v51 Waste 防重複／刪除保護：
+   同日期 + 同供應商/公司 + 同重量 + 同 Time In 視為同一次回收。
+   Time Out 即使一筆缺少或不一致，也不能把同一車拆成兩筆累計。 */
+const ehsWasteSelectedIds=new Set();
 function ehsWasteKeyPart(v){return String(v==null?'':v).trim().replace(/\s+/g,' ').toUpperCase();}
+function ehsWasteTimeMinutes(v){
+  const s=String(v||'').trim().toLowerCase();if(!s)return null;
+  const m=s.match(/^(\d{1,2})(?::(\d{1,2}))?\s*(am|pm)?$/);if(!m)return null;
+  let h=Number(m[1]),min=Number(m[2]||0);if(min<0||min>59)return null;
+  if(m[3]){if(h<1||h>23)return null;if(h<=12){if(m[3]==='pm'&&h<12)h+=12;if(m[3]==='am'&&h===12)h=0;}}
+  else if(h<0||h>23)return null;
+  return h*60+min;
+}
 function ehsWasteTimeKey(v){
-  const s=String(v||'').trim().toLowerCase();if(!s)return '';
-  const m=s.match(/(\d{1,2})(?::(\d{1,2}))?\s*(am|pm)?/);if(!m)return ehsWasteKeyPart(s);
-  let h=Number(m[1]),min=Number(m[2]||0);if(m[3]==='pm'&&h<12)h+=12;if(m[3]==='am'&&h===12)h=0;
-  return String(h).padStart(2,'0')+':'+String(min).padStart(2,'0');
+  const n=ehsWasteTimeMinutes(v);if(n==null)return '';
+  return String(Math.floor(n/60)).padStart(2,'0')+':'+String(n%60).padStart(2,'0');
 }
 function ehsWasteDuplicateKey(r){
   if(!r)return '';
   const date=ehsYmd(r.date),supplier=ehsWasteKeyPart(r.supplier||r.company),kg=kgNumber(r.weight_kg!=null?r.weight_kg:r.kg);
-  const tin=ehsWasteTimeKey(r.time_in!=null?r.time_in:r.timein),tout=ehsWasteTimeKey(r.time_out!=null?r.time_out:r.timeout);
-  if(!date||!supplier||!(kg>0))return '';
-  return [date,supplier,kg.toFixed(3),tin,tout].join('|');
+  const tin=ehsWasteTimeKey(r.time_in!=null?r.time_in:r.timein);
+  if(!date||!supplier||!(kg>0)||!tin)return '';
+  return [date,supplier,kg.toFixed(3),tin].join('|');
+}
+function ehsWasteExactDuplicateKey(r){
+  const base=ehsWasteDuplicateKey(r);if(!base)return '';
+  return base+'|'+ehsWasteTimeKey(r.time_out!=null?r.time_out:r.timeout);
+}
+function ehsWasteTimeIssue(r){
+  const tin=ehsWasteTimeMinutes(r&&(r.time_in!=null?r.time_in:r.timein));
+  const rawOut=String(r&&(r.time_out!=null?r.time_out:r.timeout)||'').trim();
+  if(tin==null)return 'time_in';
+  if(!rawOut)return '';
+  const tout=ehsWasteTimeMinutes(rawOut);if(tout==null||tout<=tin)return 'time_out';
+  return '';
 }
 function ehsFindWasteDuplicate(existing,candidate,excludeId){
   const key=ehsWasteDuplicateKey(candidate);if(!key)return null;
   return (existing||[]).find(function(r){return String(r&&r.id||'')!==String(excludeId||'')&&ehsWasteDuplicateKey(r)===key;})||null;
 }
 function ehsUniqueWasteRows(rows){
-  const seen=new Set();return (rows||[]).filter(function(r){
-    if(!(r&&((r.sourceType==='waste')||(r.module==='gate'))))return true;
-    const k=ehsWasteDuplicateKey(r);if(!k)return true;if(seen.has(k))return false;seen.add(k);return true;
+  return ehsConsolidateWasteRows(rows||[]).rows;
+}
+function ehsWasteStamp(r){
+  const raw=String(r&&(r.updatedAt||r.submitted_at||r.createdAt)||'').trim();
+  const n=Date.parse(raw.replace(' ','T'));return isNaN(n)?0:n;
+}
+function ehsWasteQuality(r){
+  const photos=photoArray(r&&r.photos).length,tin=ehsWasteTimeMinutes(r&&r.time_in),tout=ehsWasteTimeMinutes(r&&r.time_out);
+  const validOut=tin!=null&&tout!=null&&tout>tin;
+  const fields=['name','car_number','solid_waste','industrial_waste','gate_keeper','checked_by','remark'].reduce(function(n,k){return n+(String(r&&r[k]||'').trim()?1:0);},0);
+  return photos*100000+(validOut?10000:(tin!=null?3000:0))+fields*100+Math.min(99,Math.floor(ehsWasteStamp(r)/86400000)%100);
+}
+function ehsMergePreferredWaste(group){
+  const sorted=group.slice().sort(function(a,b){return ehsWasteQuality(b.row)-ehsWasteQuality(a.row)||ehsWasteStamp(b.row)-ehsWasteStamp(a.row)||a.index-b.index;});
+  const winner=Object.assign({},sorted[0].row),photos=[];
+  sorted.forEach(function(x){
+    photoArray(x.row.photos).forEach(function(p){if(p&&!photos.includes(p))photos.push(p);});
+    Object.keys(x.row||{}).forEach(function(k){if((winner[k]===undefined||winner[k]===null||winner[k]==='')&&x.row[k]!==undefined&&x.row[k]!==null&&x.row[k]!=='')winner[k]=x.row[k];});
   });
+  winner.photos=photos;
+  const dur=calcDuration(winner.time_in,winner.time_out);if(dur!=null){winner.duration_min=dur;winner.anomaly=dur>180;}
+  if(sorted.length>1)winner.updatedAt=_localTS();
+  return {row:winner,index:Math.min.apply(null,sorted.map(function(x){return x.index;})),removed:sorted.slice(1).map(function(x){return x.row;}),reason:'duplicate_exact'};
+}
+function ehsConsolidateWasteRows(rows){
+  const indexed=(rows||[]).filter(Boolean).map(function(row,index){return {row:Object.assign({},row),index:index};});
+  const nonWaste=indexed.filter(function(x){return !((x.row.sourceType==='waste')||(x.row.module==='gate'));});
+  const waste=indexed.filter(function(x){return (x.row.sourceType==='waste')||(x.row.module==='gate');});
+  const exact=new Map(),stage=[],removed=[];
+  waste.forEach(function(x){const k=ehsWasteExactDuplicateKey(x.row);if(!k){stage.push(x);return;}if(!exact.has(k))exact.set(k,[]);exact.get(k).push(x);});
+  exact.forEach(function(group){const picked=ehsMergePreferredWaste(group);stage.push({row:picked.row,index:picked.index});picked.removed.forEach(function(r){removed.push({row:r,reason:picked.reason,winnerId:picked.row.id||''});});});
+
+  /* 一筆有照片、一筆無照片且日期／供應商／重量／Time In 相同時，
+     即使 Time Out 不一致，保留有照片可追溯的記錄，移除無照片影子筆。 */
+  const shadow=new Map();stage.forEach(function(x){const k=ehsWasteDuplicateKey(x.row);if(!k)return;if(!shadow.has(k))shadow.set(k,[]);shadow.get(k).push(x);});
+  const shadowRemoved=new Set();
+  shadow.forEach(function(group){
+    const photoRows=group.filter(function(x){return photoArray(x.row.photos).length>0;});if(!photoRows.length)return;
+    group.forEach(function(x){if(photoArray(x.row.photos).length)return;shadowRemoved.add(String(x.row.id||'@'+x.index));removed.push({row:x.row,reason:'duplicate_no_photo_or_time_mismatch',winnerId:photoRows[0].row.id||''});});
+  });
+  const active=stage.filter(function(x){return !shadowRemoved.has(String(x.row.id||'@'+x.index));});
+  return {rows:nonWaste.concat(active).sort(function(a,b){return a.index-b.index;}).map(function(x){return x.row;}),removed:removed};
+}
+function ehsMakeTombstone(r,reason,winnerId){
+  if(!r||!r.id)return null;const now=_localTS();
+  return {id:String(r.id),module:r.module==='internal'?'internal':'gate',sourceType:r.sourceType==='recycle'?'recycle':'waste',date:ehsYmd(r.date),deletedAt:now,updatedAt:now,reason:reason||'deleted',winnerId:winnerId||'',fingerprint:ehsWasteDuplicateKey(r)};
+}
+function ehsPrepareLocalData(input){
+  const d=Object.assign({},input||{});d.gate=Array.isArray(d.gate)?d.gate.filter(Boolean):[];d.internal=Array.isArray(d.internal)?d.internal.filter(Boolean):[];d.monthly=Array.isArray(d.monthly)?d.monthly:[];d.tombstones=Array.isArray(d.tombstones)?d.tombstones.filter(function(t){return t&&t.id;}):[];
+  const tombBy=new Map();d.tombstones.forEach(function(t){const id=String(t.id),old=tombBy.get(id);if(!old||String(t.updatedAt||t.deletedAt||'')>String(old.updatedAt||old.deletedAt||''))tombBy.set(id,t);});
+  d.gate=d.gate.filter(function(r){return r&&!r._deleted&&!tombBy.has(String(r.id||''));});
+  d.internal=d.internal.filter(function(r){return r&&!r._deleted&&!tombBy.has(String(r.id||''));});
+  const clean=ehsConsolidateWasteRows(d.gate.map(function(r){return Object.assign({module:'gate',sourceType:'waste'},r);}));
+  d.gate=clean.rows.map(function(r){
+    const out=Object.assign({},r,{module:'gate',sourceType:'waste',date:ehsYmd(r.date),weight_kg:kgNumber(r.weight_kg),photos:photoArray(r.photos)}),dur=calcDuration(r.time_in,r.time_out);
+    if(dur!=null&&(Number(out.duration_min)!==dur||out.anomaly!==(dur>180))){out.duration_min=dur;out.anomaly=dur>180;out.updatedAt=_localTS();}
+    return out;
+  });
+  clean.removed.forEach(function(item){const t=ehsMakeTombstone(item.row,item.reason,item.winnerId);if(t)tombBy.set(String(t.id),t);});
+  d.tombstones=Array.from(tombBy.values());d.dataVersion=51;
+  return {data:d,removed:clean.removed};
+}
+function repairWasteDuplicates(notifyUser){
+  const result=saveLocal(loadLocal()),count=result.removed.length;
+  result.removed.forEach(function(item){if(item&&item.row&&item.row.id)ehsWasteSelectedIds.delete(String(item.row.id));});
+  if(count){
+    if(notifyUser)showToast(ehsText('🧹 已移除 '+count+' 筆重複／無照片影子記錄，正在同步刪除','🧹 Removed '+count+' duplicate/no-photo shadow records; syncing deletion','🧹 បានលុបកំណត់ត្រាស្ទួន/គ្មានរូប '+count+'; កំពុងសមកាលកម្ម'));
+    setTimeout(async function(){try{await ehsFlushTombstones({silent:true});}catch(e){}if(typeof GC!=='undefined'&&GC.sync)GC.sync.schedule('ehs','batch_delete',80);},700);
+  }else if(notifyUser)showToast(ehsText('✅ 沒有找到重複記錄','✅ No duplicate records found','✅ រកមិនឃើញកំណត់ត្រាស្ទួន'));
+  refreshEhsAll();return result;
+}
+function ehsCloudPost(payload){
+  if(typeof GC!=='undefined'&&GC.cloud&&GC.cloud.post)return GC.cloud.post(payload);
+  return gasPost(payload).then(function(r){if(!r||r.ok===false)throw new Error(r&&r.error||'cloud request failed');return r;});
+}
+async function ehsFlushTombstones(opt){
+  opt=opt||{};const snapshot=loadLocal(),pending=(snapshot.tombstones||[]).filter(function(t){return t&&t.id;});
+  if(!pending.length)return {ok:true,deleted:0};
+  if(typeof navigator!=='undefined'&&navigator.onLine===false)throw new Error('offline');
+  const ids=Array.from(new Set(pending.map(function(t){return String(t.id);}))),done=new Set();
+  try{
+    const res=await ehsCloudPost({action:'deleteBatch',tool:'ehs',ids:ids});
+    if(!res||res.ok===false)throw new Error(res&&res.error||'batch delete failed');ids.forEach(function(id){done.add(id);});
+  }catch(batchErr){
+    for(const id of ids){try{const res=await ehsCloudPost({action:'delete',tool:'ehs',id:id});if(res&&res.ok!==false)done.add(id);}catch(e){}}
+  }
+  if(done.size){const latest=loadLocal();latest.tombstones=(latest.tombstones||[]).filter(function(t){return !done.has(String(t.id));});saveLocal(latest);}
+  if(done.size!==ids.length)throw new Error('pending cloud deletes: '+(ids.length-done.size));
+  if(!opt.silent)showToast(ehsText('☁ 已確認雲端刪除 '+done.size+' 筆','☁ Confirmed '+done.size+' cloud deletions','☁ បានបញ្ជាក់ការលុបពី Cloud '+done.size+' កំណត់ត្រា'));
+  return {ok:true,deleted:done.size};
+}
+async function ehsDeleteRecords(items,opt){
+  opt=opt||{};const ld=loadLocal(),byId=new Map();
+  (items||[]).forEach(function(item){if(item&&item.id)byId.set(String(item.id),item);});if(!byId.size)return {ok:true,deleted:0};
+  const all=(ld.gate||[]).concat(ld.internal||[]),tombs=Array.isArray(ld.tombstones)?ld.tombstones.slice():[];
+  all.forEach(function(r){const item=byId.get(String(r&&r.id||''));if(!item)return;const t=ehsMakeTombstone(r,opt.reason||'manual_delete','');if(t)tombs.push(t);});
+  ld.gate=(ld.gate||[]).filter(function(r){return !byId.has(String(r.id||''));});ld.internal=(ld.internal||[]).filter(function(r){return !byId.has(String(r.id||''));});ld.tombstones=tombs;saveLocal(ld);
+  byId.forEach(function(_v,id){ehsWasteSelectedIds.delete(id);});refreshEhsAll();
+  let cloudOk=false;try{await ehsFlushTombstones({silent:true});cloudOk=true;}catch(e){}
+  if(typeof GC!=='undefined'&&GC.sync)GC.sync.schedule('ehs',byId.size>1?'batch_delete':'record_delete',80);
+  showToast(cloudOk?ehsText('🗑️ 本機及雲端已刪除 '+byId.size+' 筆','🗑️ Deleted '+byId.size+' records locally and from cloud','🗑️ បានលុប '+byId.size+' កំណត់ត្រាពីឧបករណ៍ និង Cloud'):ehsText('⚠️ 本機已刪除 '+byId.size+' 筆；雲端待連線後自動補刪','⚠️ Deleted '+byId.size+' locally; cloud deletion is queued','⚠️ បានលុបក្នុងឧបករណ៍ '+byId.size+'; រង់ចាំលុបពី Cloud'));
+  return {ok:true,deleted:byId.size,cloud:cloudOk};
+}
+function updateWasteSelectionUi(){
+  const live=new Set((loadLocal().gate||[]).map(function(r){return String(r.id||'');}));Array.from(ehsWasteSelectedIds).forEach(function(id){if(!live.has(id))ehsWasteSelectedIds.delete(id);});
+  document.querySelectorAll('[data-waste-id]').forEach(function(cb){const on=ehsWasteSelectedIds.has(String(cb.getAttribute('data-waste-id')||''));cb.checked=on;const tr=cb.closest('tr');if(tr)tr.classList.toggle('waste-selected',on);});
+  const visible=(ehsViewState.gate||[]).map(function(r){return String(r.id||'');}).filter(Boolean),all=visible.length&&visible.every(function(id){return ehsWasteSelectedIds.has(id);});
+  const master=document.getElementById('b-select-all');if(master){master.checked=!!all;master.indeterminate=!all&&visible.some(function(id){return ehsWasteSelectedIds.has(id);});}
+  const count=document.getElementById('b-selected-count'),btn=document.getElementById('b-delete-selected');if(count)count.textContent=ehsWasteSelectedIds.size;if(btn)btn.disabled=!ehsWasteSelectedIds.size;
+}
+function toggleWasteSelection(id,checked){if(checked)ehsWasteSelectedIds.add(String(id));else ehsWasteSelectedIds.delete(String(id));updateWasteSelectionUi();}
+function selectVisibleWaste(checked){(ehsViewState.gate||[]).forEach(function(r){const id=String(r.id||'');if(!id)return;if(checked)ehsWasteSelectedIds.add(id);else ehsWasteSelectedIds.delete(id);});updateWasteSelectionUi();}
+function selectWasteRows(mode){
+  const rows=ehsViewState.gate||[];ehsWasteSelectedIds.clear();
+  if(mode==='all')rows.forEach(function(r){if(r&&r.id)ehsWasteSelectedIds.add(String(r.id));});
+  if(mode==='noPhoto')rows.forEach(function(r){if(r&&r.id&&!photoArray(r.photos).length)ehsWasteSelectedIds.add(String(r.id));});
+  if(mode==='badTime')rows.forEach(function(r){if(r&&r.id&&ehsWasteTimeIssue(r))ehsWasteSelectedIds.add(String(r.id));});
+  updateWasteSelectionUi();if(!ehsWasteSelectedIds.size&&mode!=='all')showToast(mode==='noPhoto'?ehsText('✅ 此期間沒有無照片記錄','✅ No no-photo records in this period','✅ គ្មានកំណត់ត្រាគ្មានរូបក្នុងរយៈពេលនេះ'):ehsText('✅ 此期間沒有時間異常記錄','✅ No invalid-time records in this period','✅ គ្មានកំណត់ត្រាពេលវេលាមិនត្រឹមត្រូវ'));
+}
+async function deleteSelectedWaste(){
+  const ids=Array.from(ehsWasteSelectedIds),ld=loadLocal(),rows=(ld.gate||[]).filter(function(r){return ids.includes(String(r.id||''));});if(!rows.length){updateWasteSelectionUi();return;}
+  if(!confirm(ehsText('確定一次刪除選取的 '+rows.length+' 筆 Waste？本機及雲端會同步刪除。','Delete the '+rows.length+' selected Waste records locally and from cloud?','លុបកំណត់ត្រា Waste ដែលបានជ្រើស '+rows.length+' ពីឧបករណ៍ និង Cloud មែនទេ?')))return;
+  await ehsDeleteRecords(rows.map(function(r){return {id:String(r.id),module:'gate'};}),{reason:'batch_delete'});
 }
 
 async function submitModB(){
+  if(ehsWasteSubmitBusy){showToast(ehsText('⏳ 正在儲存，請勿重複送出','⏳ Saving; duplicate submission is blocked','⏳ កំពុងរក្សាទុក មិនអាចដាក់ស្ទួនបានទេ'));return;}
   const started=bRows.filter(function(r){return r.date||r.supplier||r.name||r.car||r.solid||r.industrial||String(r.kg||r.timein||r.timeout||r.gate||r.checked_by||r.remark||'').trim()||photoArray(r.photos).length;});
-  const valid=bRows.filter(function(r){return r.date&&r.supplier&&kgNumber(r.kg)>0;});
-  if(started.length!==valid.length){showToast(ehsText('⚠️ 每筆已填內容都必須有日期、供應商及大於 0 的重量；純數字自動視為 kg','⚠️ Every started row needs a date, supplier and weight above 0; plain numbers are treated as kg','⚠️ គ្រប់ជួរដែលបានបំពេញត្រូវមានកាលបរិច្ឆេទ អ្នកផ្គត់ផ្គង់ និងទម្ងន់លើស 0; លេខធម្មតាត្រូវចាត់ជា kg'));return;}
-  if(!valid.length){showToast(ehsText('⚠️ 每筆必須填日期、供應商及大於 0 的重量；未寫 kg 會自動視為 kg','⚠️ Date, supplier and weight above 0 are required; numbers without a unit are treated as kg','⚠️ ត្រូវបញ្ចូលកាលបរិច្ឆេទ អ្នកផ្គត់ផ្គង់ និងទម្ងន់លើស 0; លេខគ្មានឯកតាត្រូវចាត់ជា kg'));return;}
+  const valid=bRows.filter(function(r){return r.date&&r.supplier&&kgNumber(r.kg)>0&&String(r.timein||'').trim();});
+  if(started.length!==valid.length){showToast(ehsText('⚠️ 每筆已填內容都必須有日期、供應商、大於 0 的重量及 Time In','⚠️ Every started row needs a date, supplier, weight above 0 and Time In','⚠️ គ្រប់ជួរត្រូវមានកាលបរិច្ឆេទ អ្នកផ្គត់ផ្គង់ ទម្ងន់លើស 0 និង Time In'));return;}
+  if(!valid.length){showToast(ehsText('⚠️ 日期、供應商、重量及 Time In 都是必填','⚠️ Date, supplier, weight and Time In are required','⚠️ ត្រូវបញ្ចូលកាលបរិច្ឆេទ អ្នកផ្គត់ផ្គង់ ទម្ងន់ និង Time In'));return;}
   const ldBefore=loadLocal(),existingWaste=Array.isArray(ldBefore.gate)?ldBefore.gate:[];
   const batchKeys=new Map();
   for(const row of valid){
+    if(ehsWasteTimeMinutes(row.timein)==null||ehsWasteTimeIssue({time_in:row.timein,time_out:row.timeout})){
+      showToast(ehsText('⛔ 時間格式不正確，且 Time Out 必須晚於 Time In','⛔ Invalid time; Time Out must be later than Time In','⛔ ពេលវេលាមិនត្រឹមត្រូវ ហើយ Time Out ត្រូវក្រោយ Time In'));return;
+    }
     const candidate={date:row.date,supplier:row.supplier,weight_kg:kgNumber(row.kg),time_in:row.timein,time_out:row.timeout};
     const k=ehsWasteDuplicateKey(candidate);
-    if(k&&batchKeys.has(k)){showToast(ehsText('⛔ 已阻止重複：同日期、公司、重量及時間不可登記兩次','⛔ Duplicate blocked: same date, company, weight and time cannot be registered twice','⛔ បានទប់ស្កាត់កំណត់ត្រាស្ទួន: កាលបរិច្ឆេទ ក្រុមហ៊ុន ទម្ងន់ និងពេលវេលាដូចគ្នា'));return;}
+    if(k&&batchKeys.has(k)){showToast(ehsText('⛔ 已阻止重複：同日期、公司、重量及 Time In 不可登記兩次','⛔ Duplicate blocked: same date, company, weight and Time In cannot be registered twice','⛔ បានទប់ស្កាត់កំណត់ត្រាស្ទួន: កាលបរិច្ឆេទ ក្រុមហ៊ុន ទម្ងន់ និង Time In ដូចគ្នា'));return;}
     if(k)batchKeys.set(k,true);
     const dup=ehsFindWasteDuplicate(existingWaste,candidate,row._editId);
     if(dup){showToast(ehsText('⛔ 已有相同 Waste 記錄：'+row.date+' / '+row.supplier+' / '+kgNumber(row.kg)+' kg / '+(row.timein||'—')+'→'+(row.timeout||'—'),'⛔ Duplicate Waste record already exists: '+row.date+' / '+row.supplier+' / '+kgNumber(row.kg)+' kg / '+(row.timein||'—')+'→'+(row.timeout||'—'),'⛔ មានកំណត់ត្រា Waste ដូចគ្នារួចហើយ'));return;}
   }
   const btn=document.getElementById('b-submit-btn');
+  ehsWasteSubmitBusy=true;
   btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 提交中...';
   const now=_localTS();
   const ld=loadLocal();
@@ -1266,22 +1436,14 @@ async function submitModB(){
     showToast('✅ 已提交 '+valid.length+' 筆至雲端');
   }catch(e){showToast('⚠️ 本機已儲存 ('+valid.length+' 筆)，雲端離線');}
   btn.disabled=false;btn.innerHTML='📨 '+ehsText('批次提交','Batch Submit','ដាក់ស្នើជាក្រុម')+' (<span id="b-row-count">0</span> '+ehsText('筆','records','កំណត់ត្រា')+')';
+  ehsWasteSubmitBusy=false;
   bRows=[];addBRow();
   refreshEhsAll();
 }
 
 function calcDuration(tin,tout){
   if(!tin||!tout)return null;
-  const parseT=s=>{
-    s=s.toLowerCase().trim();
-    const pm=s.includes('pm');const am=s.includes('am');
-    s=s.replace(/am|pm/g,'').trim();
-    let [h,m]=(s.includes(':'))?s.split(':').map(Number):[parseInt(s),0];
-    if(isNaN(h))return null;
-    if(pm&&h!==12)h+=12;if(am&&h===12)h=0;
-    return h*60+m;
-  };
-  const t1=parseT(tin),t2=parseT(tout);
+  const t1=ehsWasteTimeMinutes(tin),t2=ehsWasteTimeMinutes(tout);
   if(t1===null||t2===null)return null;
   return t2>t1?t2-t1:null;
 }
@@ -1772,13 +1934,11 @@ async function submitBatchImport(){
     const isWaste=r.sourceType==='waste'||(r.sourceType==null&&importType==='gate');
     const target=isWaste?ld.gate:ld.internal;
     const signature=isWaste
-      ? [r.date,r.name,r.supplier,r.car_number,r.time_in,r.time_out].join('|')
+      ? ehsWasteDuplicateKey(r)
       : [r.date,r.plastic_kg,r.fabric_kg,r.core_kg,r.total_kg].join('|');
     const old=target.find(x=>{
-      const vals=isWaste
-        ? [x.date,x.name,x.supplier,x.car_number,x.time_in,x.time_out]
-        : [x.date,x.plastic_kg,x.fabric_kg,x.core_kg,x.total_kg];
-      return vals.join('|')===signature;
+      if(isWaste)return signature&&ehsWasteDuplicateKey(x)===signature;
+      const vals=[x.date,x.plastic_kg,x.fabric_kg,x.core_kg,x.total_kg];return vals.join('|')===signature;
     });
     if(old){
       const merged=Array.from(new Set([...(Array.isArray(old.photos)?old.photos:[]),...(Array.isArray(r.photos)?r.photos:[])]));
@@ -1824,6 +1984,7 @@ function getWeek(d){
 /* ========== INIT ========== */
 (function init(){
   const run=()=>{
+    repairWasteDuplicates(false);
     setLang(lang); buildYearSelect('a-p-year',renderAAnalysis); buildMonthSelect('a-p-month',renderAAnalysis);
     buildYearSelect('b-p-year',renderBAnalysis); buildMonthSelect('b-p-month',renderBAnalysis);
     buildYearSelect('r-year',renderReport); buildMonthSelect('r-month',renderReport); buildYearSelect('h-year',queryHistory);
@@ -2165,15 +2326,16 @@ function markEhsTelegramSent(ctx){
       importParser:parseEhsSmartImport,
       mergeImport:mergeEhsImport,
       importSchema:{"date": ["日期", "date", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "recycle weight", "ទម្ងន់"], "supplier": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "weight_kg": ["重量", "kg", "weight", "ទម្ងន់"], "checked_by": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
+      beforeCloudSync:function(){return ehsFlushTombstones({silent:true});},
       onSync:function(){setTimeout(refreshEhsAll,0);},
       onImport:function(){setTimeout(refreshEhsAll,0);},
-    read(){ try{ const d=JSON.parse(localStorage.getItem('vrt_waste_v3')||'{}'); let o=[];
+    read(){ try{ const d=loadLocal(); let o=[];
         (Array.isArray(d.internal)?d.internal:[]).forEach(r=>o.push(Object.assign({module:'internal',sourceType:'recycle'},r,{date:ehsYmd(r.date),plastic_kg:kgNumber(r.plastic_kg),fabric_kg:kgNumber(r.fabric_kg),core_kg:kgNumber(r.core_kg),total_kg:kgNumber(r.total_kg)||kgNumber(r.plastic_kg)+kgNumber(r.fabric_kg)+kgNumber(r.core_kg),photos:photoArray(r.photos),sourceType:r.sourceType||'recycle'})));
         (Array.isArray(d.gate)?d.gate:[]).forEach(r=>o.push(Object.assign({module:'gate',sourceType:'waste'},r,{date:ehsYmd(r.date),weight_kg:kgNumber(r.weight_kg),photos:photoArray(r.photos),sourceType:r.sourceType||'waste'})));
         return o; }catch(e){ return []; } },
-    write(list){ try{ const d=JSON.parse(localStorage.getItem('vrt_waste_v3')||'{}'); const monthly=Array.isArray(d.monthly)?d.monthly:[]; d.gate=[];d.internal=[];
-        (list||[]).forEach(r=>{ const waste=r.sourceType==='waste'||r.module==='gate'; const clean=Object.assign({},r,{date:ehsYmd(r.date),photos:photoArray(r.photos),module:waste?'gate':'internal',sourceType:waste?'waste':'recycle'});if(waste)clean.weight_kg=kgNumber(clean.weight_kg);else{clean.plastic_kg=kgNumber(clean.plastic_kg);clean.fabric_kg=kgNumber(clean.fabric_kg);clean.core_kg=kgNumber(clean.core_kg);clean.total_kg=kgNumber(clean.total_kg)||clean.plastic_kg+clean.fabric_kg+clean.core_kg;} d[waste?'gate':'internal'].push(clean); });
-        d.monthly=monthly; localStorage.setItem('vrt_waste_v3',JSON.stringify(d)); }catch(e){} },
+    write(list){ try{ const old=loadLocal(),d={gate:[],internal:[],monthly:Array.isArray(old.monthly)?old.monthly:[],tombstones:Array.isArray(old.tombstones)?old.tombstones.slice():[]};const deleted=new Set(d.tombstones.map(function(t){return String(t&&t.id||'');}).filter(Boolean));
+        (list||[]).forEach(r=>{if(!r)return;if(r._deleted){const t=ehsMakeTombstone(r,r.reason||'cloud_tombstone',r.winnerId||'');if(t&&!deleted.has(String(t.id))){d.tombstones.push(t);deleted.add(String(t.id));}return;}if(deleted.has(String(r.id||'')))return;const waste=r.sourceType==='waste'||r.module==='gate'; const clean=Object.assign({},r,{date:ehsYmd(r.date),photos:photoArray(r.photos),module:waste?'gate':'internal',sourceType:waste?'waste':'recycle'});if(waste)clean.weight_kg=kgNumber(clean.weight_kg);else{clean.plastic_kg=kgNumber(clean.plastic_kg);clean.fabric_kg=kgNumber(clean.fabric_kg);clean.core_kg=kgNumber(clean.core_kg);clean.total_kg=kgNumber(clean.total_kg)||clean.plastic_kg+clean.fabric_kg+clean.core_kg;} d[waste?'gate':'internal'].push(clean); });
+        saveLocal(d); }catch(e){} },
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();

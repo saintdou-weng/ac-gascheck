@@ -18,7 +18,7 @@ assert(gas.includes("if (!ok) return tgSendText_(chatId, '♻️ AC GASCHECK Pla
   '/gc must report a successful plain-text fallback');
 
 for (const html of [cleaning, temp, dorm]) {
-  assert(html.includes('gascheck-core.js?v=50-no-copy-code'));
+  assert(html.includes('gascheck-core.js?v=51-waste-safe-delete'));
 }
 
 assert(cleaning.includes('function applyCleaningCloudMeta'), 'Cleaning must restore shared staff/settings');

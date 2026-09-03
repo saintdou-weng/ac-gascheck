@@ -20,10 +20,10 @@ assert(core.includes("mode === 'summary' || mode === 'review' || mode === 'appro
 assert(core.includes("if (base && lb.hash === base) { removed += lb.count; continue; }"), 'unchanged local rows must accept confirmed cloud deletion');
 assert(core.includes("if (opt.allowDeletes && !lh && rh && base && rh === base)"), 'three-way-safe local deletion must reach cloud');
 assert(core.includes('retryNetwork(function ()'), 'smart buckets/commit must retry transient failures');
-assert(gas.includes("CORE_VERSION : 'v4.4-same-day-edit-weekly-reminder'"));
+assert(gas.includes("CORE_VERSION : 'v4.5-waste-dedupe-batch-delete'"));
 assert(gas.includes("String(old.lastUploadId||'')===uploadId"), 'smart commit retry must be idempotent');
 assert(gas.includes('replaceRecords_(sheet,gcSmartSortRows_(kept.concat(changedRows)))'), 'Sheet compatibility index must remove stale rows from changed buckets');
-htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=50-no-copy-code'),name+' must load v50 core cache key'));
+htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=51-waste-safe-delete'),name+' must load v51 core cache key'));
 
 const store={};
 const document={

@@ -17,7 +17,7 @@ for (const [name, html] of [['cleaning',cleaning],['key',key],['water',water],['
     assert.doesNotThrow(() => new Function(m[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline scripts`);
-  assert(html.includes('gascheck-core.js?v=50-no-copy-code'));
+  assert(html.includes('gascheck-core.js?v=51-waste-safe-delete'));
 }
 assert(core.includes("GC.version = '3.11-same-day-edit-reminder-safe'"));
 

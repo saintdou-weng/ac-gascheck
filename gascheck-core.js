@@ -1006,6 +1006,9 @@ const SMART = GC.smartSync = (() => {
         return CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records });
       }, 3);
       if (!r || r.ok === false) throw new Error((r && r.error) || 'Smart bucket upload failed');
+      const saved=dataOf(r)||{};
+      if (saved.hash) b.hash=String(saved.hash);
+      if (saved.count!==undefined) b.count=Math.max(0,Number(saved.count)||0);
       uploaded += b.count;
     }
     const hashes = {}, counts = {};
@@ -1816,6 +1819,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
     queued = false;
     running = (async function () {
       try {
+        if (typeof opt.beforeSync === 'function') await opt.beforeSync({direction:'upload',reason:runOpt.reason||''});
         const local = opt.getList ? opt.getList() : [];
         const result = await CLOUD.upload(opt.tool, local, {
           idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
@@ -1888,6 +1892,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
     busy(true);
     state('busy', I18.t('gc.sync'));
     try {
+      if (typeof opt.beforeSync === 'function') await opt.beforeSync({direction:'download',reason:runOpt.reason||''});
       const local = opt.getList ? opt.getList() : [];
       const r = await CLOUD.download(opt.tool, local, {
         idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
@@ -2269,6 +2274,7 @@ GC.attach = function (cfg) {
     tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, extra: cloudExtra,
     autoReconcile:C.cloudAutoReconcile !== false, allowDeletes:C.cloudAllowDeletes !== false,
     toCloud: C.toCloud, fromCloud: C.fromCloud,
+    beforeSync:C.beforeCloudSync,
     getList: function () { return (C.cloudRead || C.read)() || []; },
     setList: function (list) { (C.cloudWrite || C.write)(list); },
     onState: setCloudState,
@@ -2920,6 +2926,7 @@ GC.attachLegacy = function (cfg) {
     autoReconcile:C.cloudAutoReconcile !== false, allowDeletes:C.cloudAllowDeletes !== false,
     toCloud: C.toCloud,
     fromCloud: C.fromCloud,
+    beforeSync:C.beforeCloudSync,
     getList: () => C.read() || [],
     setList: list => C.write(list),
     onRemote: d => { if (C.onRemote) C.onRemote(d || {}); },

@@ -11,7 +11,7 @@ const clean = read('ac_gascheck_cleaning_v2.html');
 const temp = read('ac_gascheck_temperature_v2.html');
 const dorm = read('ac_gascheck_dormitory_v2.html');
 const water = read('ac_gascheck_waterdrum_v2.html');
-const cache = 'gascheck-core.js?v=50-no-copy-code';
+const cache = 'gascheck-core.js?v=51-waste-safe-delete';
 
 assert(core.includes("GC.version = '3.11-same-day-edit-reminder-safe'"));
 assert(core.includes('capture="environment"'));
@@ -54,7 +54,7 @@ assert(gas.includes("APPROVER_TG_ID : '5026942575'"));
 assert(gas.includes("fromId !== String(CFG.APPROVER_TG_ID)"));
 assert(gas.includes('Dorm application missing required fields'));
 assert(gas.includes('Approved Dorm application cannot be edited'));
-assert(gas.includes("CORE_VERSION : 'v4.4-same-day-edit-weekly-reminder'"));
+assert(gas.includes("CORE_VERSION : 'v4.5-waste-dedupe-batch-delete'"));
 assert(gas.includes('Array.isArray(keyboard.inline_keyboard)'));
 assert(gas.includes('b.callback_data = String(btn.callback_data || btn.data)'));
 assert(gas.includes('function tgSendResult_'));
