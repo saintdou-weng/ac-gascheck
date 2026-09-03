@@ -62,9 +62,9 @@ const now=new Date('2026-08-24T12:00:00Z');
 const audit=context.auditRecentUpdateCompletion_(now);
 const keys=Array.from(audit.missing,x=>x.groupKey);
 assert.deepStrictEqual(keys,[
-  'cleaning:all:2026-07','cleaning:all:2026-08','dormitory:all:2026-10','ehs:recycle:2026-08','waterdrum:all:2026-08'
+  'cleaning:all:2026-08','ehs:recycle:2026-08','waterdrum:all:2026-08'
 ]);
-assert(!audit.missing.some(x=>x.records.some(item=>item.record.id==='c-old'||item.record.id==='k-old')),'June business dates must be ignored when running in August');
+assert(!audit.missing.some(x=>x.records.some(item=>['c-old','c-jul','k-old','a-future','d-future'].includes(item.record.id))),'previous, historical and future-month business dates must be ignored by the daily current-month reminder');
 assert.strictEqual(audit.missing.find(x=>x.groupKey==='cleaning:all:2026-08').count,1,'weekly summary must cover the Aug 23 record but the later Aug 24 edit remains pending');
 assert(audit.missing.some(x=>x.groupKey==='waterdrum:all:2026-08'),'Review must not count as Summary/Approval completion');
 assert(!audit.missing.some(x=>x.tool==='asset'),'future record with a later approval is complete');
@@ -82,7 +82,7 @@ const second=context.sendRecentUpdateMissingReport_({now});
 assert.strictEqual(first.sent,true);
 assert.strictEqual(second.skipped,true);
 assert.strictEqual(sent,1,'same unchanged pending batch must notify once');
-assert(lastText.includes('2026-10'),'future dated pending data must appear');
+assert(!lastText.includes('2026-10'),'future-month data must not appear in the current-month reminder');
 
 sheets.waterdrum.rows[1][2]='2026-08-24 11:00:00';
 const third=context.sendRecentUpdateMissingReport_({now});
@@ -91,6 +91,7 @@ assert.strictEqual(third.notify.length,1,'only the newly changed group should no
 assert.strictEqual(third.notify[0].groupKey,'waterdrum:all:2026-08');
 assert.strictEqual(sent,2);
 
-assert(gas.includes("markMonths:monthly&&monthly.sent?[target]:[]"),'day-5 monthly reminder must suppress an immediate duplicate recent reminder');
-assert(gas.includes("CORE_VERSION : 'v4.3-dedupe-report-reminder'"));
+assert(gas.includes("businessDate.slice(0,7)!==currentMonth"),'daily reminder must only inspect current-month business dates');
+assert(gas.includes('sendWeeklyPendingApprovalReport_(now)'),'daily trigger must also enforce the once-per-week pending approval reminder');
+assert(gas.includes("CORE_VERSION : 'v4.4-same-day-edit-weekly-reminder'"));
 console.log('recent update reminder v45 tests: PASS');

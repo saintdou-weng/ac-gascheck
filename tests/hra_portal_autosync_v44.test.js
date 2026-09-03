@@ -9,21 +9,21 @@ const core=fs.readFileSync(path.join(root,'gascheck-core.js'),'utf8');
 const gas=fs.readFileSync(path.join(root,'ac_gascheck_core_v3_fixed.gs'),'utf8');
 const htmls=fs.readdirSync(root).filter(x=>/^ac_gascheck_.*\.html$/.test(x));
 
-assert(core.includes("GC.version = '3.9-hra-portal-autosync'"));
+assert(core.includes("GC.version = '3.11-same-day-edit-reminder-safe'"));
 assert(core.includes("cache:'no-store'"), 'cloud GET must bypass mobile/WebView caches');
 assert(core.includes("{ _t:Date.now().toString(36)"), 'cloud GET must contain a cache buster');
-assert(core.includes("scheduleReconcile(hasPending() ? 'pending_resume' : 'startup', 500)"));
+assert(core.includes("scheduleReconcile(hasPending() ? 'pending_resume' : 'startup', 450)"));
 assert(core.includes("global.document.addEventListener('visibilitychange'"));
 assert(core.includes("global.addEventListener('pageshow'"));
-assert(core.includes("scheduleReconcile('network_restored', 150)"));
+assert(core.includes("scheduleReconcile('network_restored', 120)"));
 assert(core.includes("mode === 'summary' || mode === 'review' || mode === 'approval'"));
 assert(core.includes("if (base && lb.hash === base) { removed += lb.count; continue; }"), 'unchanged local rows must accept confirmed cloud deletion');
 assert(core.includes("if (opt.allowDeletes && !lh && rh && base && rh === base)"), 'three-way-safe local deletion must reach cloud');
 assert(core.includes('retryNetwork(function ()'), 'smart buckets/commit must retry transient failures');
-assert(gas.includes("CORE_VERSION : 'v4.3-dedupe-report-reminder'"));
+assert(gas.includes("CORE_VERSION : 'v4.4-same-day-edit-weekly-reminder'"));
 assert(gas.includes("String(old.lastUploadId||'')===uploadId"), 'smart commit retry must be idempotent');
 assert(gas.includes('replaceRecords_(sheet,gcSmartSortRows_(kept.concat(changedRows)))'), 'Sheet compatibility index must remove stale rows from changed buckets');
-htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=44-hra-portal-autosync'),name+' must load v44 core'));
+htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=50-no-copy-code'),name+' must load v50 core cache key'));
 
 const store={};
 const document={

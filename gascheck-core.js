@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v3.9-hra-portal-autosync
+   AC GASCheck — Shared Core  v3.11-same-day-edit-reminder-safe
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -2138,7 +2138,7 @@ GC.attach = function (cfg) {
     telegramDefaultLanguage: 'bi', telegramDefaultSlot: 'all', hideLegacyTools: true,
     telegramSender: false, telegramSenderStorageKey: null, telegramRequireSender: false,
     telegramConfirmSender: false, telegramRequireData: false, telegramValidator: null,
-    telegramAutoUpload: false,
+    telegramAutoUpload: false, telegramSameDayUpdate: false, telegramPhotoDedupe: false,
     cloudAutoReconcile: true, cloudAllowDeletes: true
   }, cfg || {});
   if (!C.scopeField && C.groupField) C.scopeField = C.groupField;
@@ -2224,16 +2224,29 @@ GC.attach = function (cfg) {
 
   function reportActivityMeta() {
     const ref = periodRef || U.ymd(new Date());
-    return {
+    const scopeKey = Array.isArray(scope) ? scope.join(',') : scope;
+    const meta = {
       reportPeriod: period,
       reportRef: ref,
       reportMonth: String(ref).slice(0, 7),
       reportMode: mode,
-      reportScope: Array.isArray(scope) ? scope.join(',') : scope,
+      reportScope: scopeKey,
       reportSlot: Array.isArray(slot) ? slot.join(',') : slot,
       reportLanguage: lang,
       reportSender: sender
     };
+    /* Temperature / Cleaning 的日報只保留同一天一則 Telegram 主訊息。
+       上午先送；下午或同日再次送出時，GAS 會依 messageKey 編輯原訊息。 */
+    if (C.telegramSameDayUpdate && period === 'day') {
+      meta.updateExisting = true;
+      meta.messageKey = String(C.tool || 'module') + '|' + String(ref).slice(0, 10);
+    }
+    /* 照片去重由 GAS 保存已送內容指紋；同一報告範圍再次發送時只傳新照片。 */
+    if (C.telegramPhotoDedupe) {
+      meta.dedupePhotos = true;
+      meta.photoDedupeKey = meta.messageKey || [String(C.tool || 'module'), period, ref, scopeKey || 'all'].join('|');
+    }
+    return meta;
   }
 
   function cloudExtra() {
@@ -3114,7 +3127,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.10-hrpay-autosync-status-safe';
+GC.version = '3.11-same-day-edit-reminder-safe';
 global.GC = GC;
 global.GASCheckCore = GC;
 
