@@ -16,5 +16,5 @@ assert(temp.includes('onTelegramSent:markTemperatureTelegramSent'));
 assert(!temp.includes("r.summarySentAt=sentAt;r.updatedAt=sentAt"));
 assert(gas.includes('function recordReportCompletionEpoch_(rec)'));
 assert(gas.includes("const fields=['updatedAt','modifiedAt','savedAt','submittedAt','createdAt','timestamp'];"));
-assert(gas.includes("CORE_VERSION : 'v4.5-waste-dedupe-batch-delete'"));
+assert(gas.includes("CORE_VERSION : 'v4.6-clean-temp-unified-sync'"));
 console.log('ehs/temp dedupe v46 source tests: PASS');

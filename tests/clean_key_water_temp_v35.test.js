@@ -17,9 +17,9 @@ for (const [name, html] of [['cleaning',cleaning],['key',key],['water',water],['
     assert.doesNotThrow(() => new Function(m[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline scripts`);
-  assert(html.includes('gascheck-core.js?v=51-waste-safe-delete'));
+  assert(html.includes('gascheck-core.js?v=52-clean-temp-unified-sync'));
 }
-assert(core.includes("GC.version = '3.11-same-day-edit-reminder-safe'"));
+assert(core.includes("GC.version = '3.12-clean-temp-unified-sync-safe'"));
 
 // Cleaning: shared defaults plus independent cleaner, slots and checks per location.
 for (const token of [
@@ -56,7 +56,8 @@ for (const token of [
   "buildTGPeriodMsg('day','summary',date,'all','bi')",
   "const effectiveSlot=period==='day'?'all':slot",
   "Morning + Afternoon (combined)",
-  "GC.sync.schedule('temperature','combined_daily_summary')"
+  "uploadTemperatureNow('telegram_combined_preflight')",
+  "uploadTemperatureNow('telegram_combined_status')"
 ]) assert(temp.includes(token), `temperature missing ${token}`);
 
 console.log('Cleaning / Key / Water / Temperature v35 workflow tests: PASS');

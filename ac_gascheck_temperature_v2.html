@@ -131,6 +131,13 @@ tbody tr:hover{background:var(--bg);}
 .ptog{display:flex;background:var(--bg);border-radius:8px;padding:2px;gap:2px;}
 .pbtn{padding:5px 13px;border:none;background:transparent;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text2);transition:.2s;font-family:inherit;}
 .pbtn.on{background:var(--card);color:var(--pri);box-shadow:var(--shadow-sm);}
+.period-step{width:34px;height:34px;border:1.5px solid var(--border);border-radius:8px;background:var(--card);color:var(--pri);font:800 15px/1 inherit;cursor:pointer}
+.period-step:hover{border-color:var(--pri);background:var(--pri-bg)}
+.period-pick{height:34px;border:1.5px solid var(--border);border-radius:8px;background:var(--card);color:var(--text);padding:5px 10px;font:600 12px/1.2 inherit;outline:none;min-width:105px}
+.period-pick:focus{border-color:var(--pri)}
+.period-label{font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap}
+.overview-title{margin:18px 0 10px;padding:8px 12px;border-left:4px solid var(--pri);background:var(--pri-bg);border-radius:7px;font-size:13px;font-weight:800;color:var(--text)}
+.temp-overview-bar{align-items:center;position:sticky;top:0;z-index:15}
 /* REC GRID */
 .rgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:13px;margin-bottom:14px;}
 .rzcard{background:var(--card);border-radius:var(--r);border:1.5px solid var(--border);padding:13px;transition:.2s;}
@@ -204,11 +211,12 @@ tbody tr:hover{background:var(--bg);}
   .zper{grid-template-columns:1fr;}
   .zp:first-child{border-right:none;border-bottom:1px solid var(--border);}
   .sgrid{grid-template-columns:1fr 1fr;}
+  .temp-overview-bar .period-label{width:100%;order:9}.temp-overview-bar .period-pick{flex:1;min-width:0}.temp-overview-bar .btn{flex:1}
 }
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=51-waste-safe-delete"></script>
+<script src="./gascheck-core.js?v=52-clean-temp-unified-sync"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -225,10 +233,8 @@ tbody tr:hover{background:var(--bg);}
 </div></div>
 <!-- TABS -->
 <div class="tabs">
-  <button class="tab on" id="tab-dash" onclick="showTab('dash')">📊 <span id="i-tab-dash">儀表板</span></button>
+  <button class="tab on" id="tab-dash" onclick="showTab('dash')">📊 <span id="i-tab-dash">總覽與記錄</span></button>
   <button class="tab" id="tab-rec" onclick="showTab('rec')">✏️ <span id="i-tab-rec">記錄</span></button>
-  <button class="tab" id="tab-hist" onclick="showTab('hist')">📋 <span id="i-tab-hist">歷史</span></button>
-  <button class="tab" id="tab-anal" onclick="showTab('anal')">📈 <span id="i-tab-anal">分析</span></button>
   <button class="tab" id="tab-zones" onclick="showTab('zones')">🏭 <span id="i-tab-zones">區域</span></button>
   <button class="tab" id="tab-alert" onclick="showTab('alert')">⚠️ <span id="i-tab-alert">異常</span> <span class="tbadge" id="abadge" style="display:none">0</span></button>
   <button class="tab" id="tab-set" onclick="showTab('set')">⚙️ <span id="i-tab-set">設定</span></button>
@@ -237,8 +243,25 @@ tbody tr:hover{background:var(--bg);}
 
 <!-- ═══ DASHBOARD ═══ -->
 <div class="pnl on" id="pnl-dash">
-  <div class="sgrid" id="dash-stats"></div>
-  <div class="cbar">
+  <div class="cbar temp-overview-bar" id="temp-overview-bar">
+    <select id="ov-zone" class="period-pick" onchange="setTempOverviewZone(this.value)"><option value="all">全部區域</option></select>
+    <div class="ptog">
+      <button class="pbtn" id="ovd" onclick="setTempOverviewPeriod('day')">日</button>
+      <button class="pbtn" id="ovw" onclick="setTempOverviewPeriod('week')">週</button>
+      <button class="pbtn on" id="ovm" onclick="setTempOverviewPeriod('month')">月</button>
+      <button class="pbtn" id="ovy" onclick="setTempOverviewPeriod('year')">年</button>
+    </div>
+    <button type="button" class="period-step" onclick="shiftTempOverview(-1)" aria-label="Previous">◀</button>
+    <select id="ov-year" class="period-pick" onchange="setTempOverviewYear(this.value)"></select>
+    <select id="ov-ref" class="period-pick" onchange="setTempOverviewRef(this.value)"></select>
+    <button type="button" class="period-step" onclick="shiftTempOverview(1)" aria-label="Next">▶</button>
+    <select id="ov-slot" class="period-pick" onchange="setTempOverviewSlot(this.value)"><option value="all">全部時段</option><option value="morning">早上</option><option value="afternoon">下午</option></select>
+    <button class="btn bg sm" onclick="exportXL('overview')" id="i-overview-export">📥 Excel</button>
+    <button class="btn bp sm" onclick="showTab('rec')" id="i-addrec">＋ 新增記錄</button>
+    <span class="period-label" id="temp-period-label">—</span>
+  </div>
+  <div class="sgrid" id="dash-stats" style="display:none"></div>
+  <div class="cbar" style="display:none">
     <span class="clbl" id="i-date">日期</span>
     <div class="date-nav"><button type="button" onclick="shiftTempDate('dash-date',-1)">◀</button><input type="date" id="dash-date" style="width:155px" onchange="renderDash()"><button type="button" onclick="shiftTempDate('dash-date',1)">▶</button></div>
     <div class="ptog">
@@ -246,8 +269,8 @@ tbody tr:hover{background:var(--bg);}
       <button class="pbtn" id="dbpm" onclick="setDP('afternoon')">下午</button>
       <button class="pbtn" id="dball" onclick="setDP('all')">全天</button>
     </div>
-    <button class="btn bp sm ml" onclick="showTab('rec')" id="i-addrec">＋ 新增記錄</button>
   </div>
+  <div class="overview-title" id="i-overview-latest">🕒 所選期間最新讀值</div>
   <div class="zgrid" id="dash-zones"></div>
   <div id="dash-anom"></div>
 </div>
@@ -301,7 +324,7 @@ tbody tr:hover{background:var(--bg);}
 
 <!-- ═══ HISTORY ═══ -->
 <div class="pnl" id="pnl-hist">
-  <div class="cbar">
+  <div class="cbar" style="display:none">
     <span class="clbl" id="i-filter">篩選</span>
     <select id="hzone" onchange="renderHist()" style="width:155px"><option value="all" id="i-allz">全部區域</option></select>
     <select id="hperiod" onchange="renderHist()" style="width:120px">
@@ -318,7 +341,7 @@ tbody tr:hover{background:var(--bg);}
     <button class="btn bg sm" onclick="exportXL()" id="i-expxl">📥 Excel</button>
   </div>
   <!-- Navigation bar -->
-  <div style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--r);padding:10px 16px;margin-bottom:12px;box-shadow:var(--shadow-sm);border:1px solid var(--border);">
+  <div style="display:none;align-items:center;justify-content:space-between;background:var(--card);border-radius:var(--r);padding:10px 16px;margin-bottom:12px;box-shadow:var(--shadow-sm);border:1px solid var(--border);">
     <div style="display:flex;align-items:center;gap:8px;">
       <span class="clbl" id="i-filter-lbl">篩選</span>
       <select id="hzone2" onchange="syncZoneFilter();renderHist()" style="width:150px"><option value="all">全部區域</option></select>
@@ -345,7 +368,7 @@ tbody tr:hover{background:var(--bg);}
 
 <!-- ═══ ANALYSIS ═══ -->
 <div class="pnl" id="pnl-anal">
-  <div class="cbar">
+  <div class="cbar" style="display:none">
     <span class="clbl" id="i-filter2">篩選</span>
     <select id="azone" onchange="renderAnal()" style="width:155px"><option value="all">全部區域</option></select>
     <div class="ptog">
@@ -569,7 +592,7 @@ tbody tr:hover{background:var(--bg);}
 const D={
 zh:{
   'app-title':'VRT 溫濕度管理系統','app-sub':'西港萬泰成衣有限公司',
-  'tab-dash':'儀表板','tab-rec':'記錄','tab-hist':'歷史','tab-anal':'分析','tab-zones':'區域','tab-alert':'異常','tab-set':'設定',
+  'tab-dash':'總覽與記錄','tab-rec':'記錄','tab-hist':'歷史','tab-anal':'分析','tab-zones':'區域','tab-alert':'異常','tab-set':'設定',
   am:'早上 08:00~09:00',pm:'下午 15:30~16:30',all:'全天',
   cold:'過冷',cool:'涼爽',ok:'正常',warm:'偏熱',hot:'過熱',dry:'偏乾',humid:'偏濕',vhum:'過濕',
   date:'日期',zone:'區域',per:'時段',note:'備註',checker:'檢查人',act:'操作',wx:'🌤️ 天氣', wxcol:'天氣',
@@ -607,7 +630,7 @@ zh:{
 },
 en:{
   'app-title':'VRT Temp & Humidity Monitor','app-sub':'Vantage River Textiles Co., Ltd.',
-  'tab-dash':'Dashboard','tab-rec':'Record','tab-hist':'History','tab-anal':'Analysis','tab-zones':'Zones','tab-alert':'Alerts','tab-set':'Settings',
+  'tab-dash':'Overview & Records','tab-rec':'Record','tab-hist':'History','tab-anal':'Analysis','tab-zones':'Zones','tab-alert':'Alerts','tab-set':'Settings',
   am:'Morning 08:00~09:00',pm:'Afternoon 15:30~16:30',all:'All Day',
   cold:'Cold',cool:'Cool',ok:'Normal',warm:'Warm',hot:'Hot',dry:'Dry',humid:'Humid',vhum:'Very Humid',
   date:'Date',zone:'Zone',per:'Period',note:'Notes',checker:'Inspector',act:'Actions',wx:'🌤️ Weather', wxcol:'Weather',
@@ -645,7 +668,7 @@ en:{
 },
 km:{
   'app-title':'VRT ប្រព័ន្ធតាមដានសីតុណ្ហភាព','app-sub':'ក្រុមហ៊ុន វ៉ានថាជ រីវ័រ ថេ',
-  'tab-dash':'ផ្ទាំងគ្រប់គ្រង','tab-rec':'កំណត់ត្រា','tab-hist':'ប្រវត្តិ','tab-anal':'វិភាគ','tab-zones':'តំបន់','tab-alert':'ព្រមាន','tab-set':'ការកំណត់',
+  'tab-dash':'ទិដ្ឋភាព និងកំណត់ត្រា','tab-rec':'កំណត់ត្រា','tab-hist':'ប្រវត្តិ','tab-anal':'វិភាគ','tab-zones':'តំបន់','tab-alert':'ព្រមាន','tab-set':'ការកំណត់',
   am:'ព្រឹក 08:00~09:00',pm:'រសៀល 15:30~16:30',all:'ថ្ងៃទាំងមូល',
   cold:'ត្រជាក់',cool:'ត្រជាក់ស្រួល',ok:'ធម្មតា',warm:'កក្តៅ',hot:'ក្តៅខ្លាំង',dry:'ស្ងួត',humid:'សើម',vhum:'សើមខ្លាំង',
   date:'កាលបរិច្ឆេទ',zone:'តំបន់',per:'វេលា',note:'កំណត់ចំណាំ',checker:'អ្នកត្រួតពិនិត្យ',act:'ប្រតិបត្តិការ',wx:'🌤️ អាកាសធាតុ', wxcol:'អាកាសធាតុ',
@@ -685,7 +708,8 @@ km:{
 // ══════════════════════════════════════════
 // STATE & STORAGE
 // ══════════════════════════════════════════
-let LANG='zh', DP='morning', RP='morning', HV='month', AV='month', HP=1;
+let LANG='zh', DP='morning', RP='morning', HV='day', AV='day', HP=1;
+let _tempOverviewPeriod='month', _tempOverviewRef=new Date();
 let _tempSelectedZones = new Set();
 const PER_PAGE=30;
 let editZID=null, cfCB=null;
@@ -722,8 +746,20 @@ function tempRecordKey(r){
   const d=String(r.d!==undefined?r.d:(r.date||'')).slice(0,10);
   const p=String(r.p!==undefined?r.p:(r.period||'')).toLowerCase();
   const z=String(r.z!==undefined?r.z:(r.zoneId||r.zone||''));
-  if(d||p||z)return 'slot:'+d+'|'+p+'|'+z;
+  if(d&&p&&z)return 'slot:'+d+'|'+p+'|'+z;
   return r.id?'id:'+String(r.id):'';
+}
+function tempPhotoList(v){
+  if(Array.isArray(v))return v.filter(Boolean);
+  if(!v)return[];
+  if(typeof v==='string'&&v.trim().charAt(0)==='['){try{const a=JSON.parse(v);return Array.isArray(a)?a.filter(Boolean):[];}catch(e){}}
+  return[v];
+}
+function mergeTempRecord(a,b){
+  const ot=String(a&&a.updatedAt||a&&a.ts||''),nt=String(b&&b.updatedAt||b&&b.ts||''),out=nt&&(!ot||nt>ot)?Object.assign({},a,b):Object.assign({},b,a);
+  out.photos=Array.from(new Set(tempPhotoList(a&&a.photos).concat(tempPhotoList(b&&b.photos))));
+  ['telegramSentAt','summarySentAt','reviewSentAt','approvalSentAt'].forEach(k=>{const v=[a&&a[k],b&&b[k]].filter(Boolean).sort().pop();if(v)out[k]=v;});
+  return out;
 }
 function compactTempRecords(list){
   const map=new Map();
@@ -734,8 +770,7 @@ function compactTempRecords(list){
     const k=tempRecordKey(r); if(!k)return;
     const old=map.get(k);
     if(!old){map.set(k,r);return;}
-    const ot=String(old.updatedAt||old.ts||''),nt=String(r.updatedAt||r.ts||'');
-    map.set(k,nt&&(!ot||nt>ot)?Object.assign({},old,r):Object.assign({},r,old));
+    map.set(k,mergeTempRecord(old,r));
   });
   return Array.from(map.values());
 }
@@ -743,9 +778,12 @@ function tempStorageRecord(r){
   const out={id:r.id||'',z:r.z||'',d:r.d||'',p:r.p||'',t:r.t!==undefined?r.t:'',h:r.h!==undefined?r.h:'',wx:r.wx||'',checker:String(r.checker||'').slice(0,200),note:String(r.note||'').slice(0,2000),ts:r.ts||'',updatedAt:r.updatedAt||''};
   if(r.telegramSentAt)out.telegramSentAt=r.telegramSentAt;
   if(r.summarySentAt)out.summarySentAt=r.summarySentAt;
+  if(r.reviewSentAt)out.reviewSentAt=r.reviewSentAt;
+  if(r.approvalSentAt)out.approvalSentAt=r.approvalSentAt;
+  if(r.telegramMode)out.telegramMode=r.telegramMode;
   const weatherObservation=parseWeatherObservation(r.weatherObservation||r.liveWeather);
   if(weatherObservation)out.weatherObservation=weatherObservation;
-  const photos=Array.isArray(r.photos)?r.photos.filter(p=>typeof p==='string'&&!/^data:image\//i.test(p)&&p.length<=4096):[];
+  const photos=tempPhotoList(r.photos).filter(p=>typeof p==='string'&&!/^data:image\//i.test(p)&&p.length<=4096);
   if(photos.length)out.photos=photos;
   return out;
 }
@@ -891,6 +929,7 @@ function applyI18n(){
   if(reper){reper.options[0].text=T('am');reper.options[1].text=T('pm');}
   // Repopulate zone selects with new language
   popSelects();
+  if(typeof syncTempOverviewControls==='function')syncTempOverviewControls();
 }
 
 // ══════════════════════════════════════════
@@ -911,18 +950,77 @@ const wkKey=d=>{const dt=new Date(d),j1=new Date(dt.getFullYear(),0,1),w=Math.ce
 const moKey=d=>d.slice(0,7);
 const yrKey=d=>d.slice(0,4);
 
+/* v52 統一期間控制：Dashboard、Analysis、History 共用同一個日期範圍。
+   使用者只選日／週／月／年、年份與期間，毋須再手動調兩個日期。 */
+function tempMidnight(v){const d=v instanceof Date?new Date(v.getFullYear(),v.getMonth(),v.getDate()):new Date(String(v||today())+'T00:00:00');return isNaN(d)?new Date():d;}
+function tempWeekStart(v){const d=tempMidnight(v);d.setDate(d.getDate()-((d.getDay()+6)%7));return d;}
+function tempPeriodRange(period,ref){
+  const r=tempMidnight(ref);let from=tempMidnight(r),to=tempMidnight(r);
+  if(period==='week'){from=tempWeekStart(r);to=new Date(from);to.setDate(to.getDate()+6);}
+  else if(period==='month'){from=new Date(r.getFullYear(),r.getMonth(),1);to=new Date(r.getFullYear(),r.getMonth()+1,0);}
+  else if(period==='year'){from=new Date(r.getFullYear(),0,1);to=new Date(r.getFullYear(),11,31);}
+  return {from:_localYMD(from),to:_localYMD(to)};
+}
+function tempOverviewYears(){
+  const found=new Set([new Date().getFullYear(),_tempOverviewRef.getFullYear()]);
+  getR().forEach(r=>{const y=Number(String(r.d||'').slice(0,4));if(y>=2000&&y<=2100)found.add(y);});
+  const a=Array.from(found),min=Math.min.apply(null,a),max=Math.max.apply(null,a);for(let y=min-1;y<=max+1;y++)found.add(y);
+  return Array.from(found).sort((a,b)=>b-a);
+}
+function tempOverviewRefs(year){
+  const out=[];
+  if(_tempOverviewPeriod==='year')return [{value:_localYMD(new Date(year,0,1)),label:String(year)}];
+  if(_tempOverviewPeriod==='month'){for(let m=0;m<12;m++)out.push({value:_localYMD(new Date(year,m,1)),label:(D[LANG]&&D[LANG].months?D[LANG].months[m]:String(m+1))+' '+year});return out;}
+  if(_tempOverviewPeriod==='day'){for(let d=new Date(year,0,1);d.getFullYear()===year;d.setDate(d.getDate()+1))out.push({value:_localYMD(d),label:_localYMD(d).slice(5)});return out;}
+  let d=tempWeekStart(new Date(year,0,4)),n=1;
+  while(d.getFullYear()<=year){const e=new Date(d);e.setDate(e.getDate()+6);if(e.getFullYear()>=year)out.push({value:_localYMD(d),label:'W'+String(n).padStart(2,'0')+' · '+_localYMD(d).slice(5)+'–'+_localYMD(e).slice(5)});d.setDate(d.getDate()+7);if(++n>54)break;}
+  return out;
+}
+function tempOverviewFilteredRecords(){
+  const rg=tempPeriodRange(_tempOverviewPeriod,_tempOverviewRef),zone=document.getElementById('ov-zone')?.value||'all',slot=document.getElementById('ov-slot')?.value||'all';
+  return getR().filter(function(r){const d=String(r.d||'').slice(0,10);return d>=rg.from&&d<=rg.to&&(zone==='all'||r.z===zone)&&(slot==='all'||r.p===slot);});
+}
+function syncTempOverviewControls(){
+  const p=_tempOverviewPeriod,r=tempMidnight(_tempOverviewRef),ys=document.getElementById('ov-year'),rs=document.getElementById('ov-ref');
+  ['day','week','month','year'].forEach(x=>{const b=document.getElementById('ov'+x[0]);if(b){b.classList.toggle('on',p===x);b.textContent=T('view_'+x);}});
+  if(ys){ys.innerHTML=tempOverviewYears().map(y=>`<option value="${y}">${y}</option>`).join('');ys.value=String(r.getFullYear());}
+  if(rs){const refs=tempOverviewRefs(r.getFullYear());let selected=_localYMD(p==='week'?tempWeekStart(r):p==='month'?new Date(r.getFullYear(),r.getMonth(),1):p==='year'?new Date(r.getFullYear(),0,1):r);rs.innerHTML=refs.map(x=>`<option value="${x.value}">${x.label}</option>`).join('');if(!refs.some(x=>x.value===selected)&&refs.length)selected=refs[0].value;rs.value=selected;rs.disabled=p==='year';}
+  const zone=document.getElementById('ov-zone')?.value||'all',slot=document.getElementById('ov-slot')?.value||'all',rg=tempPeriodRange(p,r);
+  ['hzone','hzone2','azone'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=zone;});
+  ['hperiod','hperiod2'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=slot;});
+  [['hfrom',rg.from],['hto',rg.to],['afrom',rg.from],['ato',rg.to]].forEach(x=>{const el=document.getElementById(x[0]);if(el)el.value=x[1];});
+  HV='day';AV=p==='year'?'month':'day';DP=slot==='morning'?'morning':slot==='afternoon'?'afternoon':'all';
+  const dates=tempOverviewFilteredRecords().map(x=>String(x.d||'').slice(0,10)).sort(),snap=dates.length?dates[dates.length-1]:(today()>=rg.from&&today()<=rg.to?today():rg.to),dd=document.getElementById('dash-date');if(dd)dd.value=snap;
+  const label=document.getElementById('temp-period-label');if(label)label.textContent=rg.from===rg.to?rg.from:(rg.from+' → '+rg.to);
+  const latest=document.getElementById('i-overview-latest');if(latest)latest.textContent=(LANG==='en'?'🕒 Latest readings in selected period':LANG==='km'?'🕒 ទិន្នន័យចុងក្រោយក្នុងរយៈពេល':'🕒 所選期間最新讀值')+' · '+snap;
+  const analysisTitle=document.getElementById('temp-analysis-title');if(analysisTitle)analysisTitle.textContent=LANG==='en'?'📈 Period analysis':LANG==='km'?'📈 ការវិភាគតាមរយៈពេល':'📈 期間分析';
+  const historyTitle=document.getElementById('temp-history-title');if(historyTitle)historyTitle.textContent=LANG==='en'?'📋 Detailed records':LANG==='km'?'📋 កំណត់ត្រាលម្អិត':'📋 詳細記錄';
+  const slotSel=document.getElementById('ov-slot');if(slotSel&&slotSel.options.length>=3){slotSel.options[0].text=T('allp');slotSel.options[1].text=T('am');slotSel.options[2].text=T('pm');}
+}
+function refreshTempOverview(){syncTempOverviewControls();renderDash();renderAnal();renderHist();}
+function setTempOverviewPeriod(p){_tempOverviewPeriod=['day','week','month','year'].includes(p)?p:'month';HP=1;refreshTempOverview();}
+function shiftTempOverview(n){const d=tempMidnight(_tempOverviewRef);if(_tempOverviewPeriod==='day')d.setDate(d.getDate()+n);else if(_tempOverviewPeriod==='week')d.setDate(d.getDate()+n*7);else if(_tempOverviewPeriod==='month')d.setMonth(d.getMonth()+n);else d.setFullYear(d.getFullYear()+n);_tempOverviewRef=d;HP=1;refreshTempOverview();}
+function setTempOverviewYear(v){const y=Number(v);if(!isFinite(y))return;const d=tempMidnight(_tempOverviewRef),day=d.getDate();d.setDate(1);d.setFullYear(y);d.setDate(Math.min(day,new Date(y,d.getMonth()+1,0).getDate()));_tempOverviewRef=d;HP=1;refreshTempOverview();}
+function setTempOverviewRef(v){_tempOverviewRef=tempMidnight(v);HP=1;refreshTempOverview();}
+function setTempOverviewZone(){HP=1;refreshTempOverview();}
+function setTempOverviewSlot(){HP=1;refreshTempOverview();}
+function mergeTemperatureViews(){
+  const dash=document.getElementById('pnl-dash'),anal=document.getElementById('pnl-anal'),hist=document.getElementById('pnl-hist');if(!dash||dash.dataset.unified==='1')return;dash.dataset.unified='1';
+  if(anal){const t=document.createElement('div');t.id='temp-analysis-title';t.className='overview-title';t.textContent=LANG==='en'?'📈 Period analysis':LANG==='km'?'📈 ការវិភាគតាមរយៈពេល':'📈 期間分析';dash.appendChild(t);while(anal.firstChild)dash.appendChild(anal.firstChild);anal.remove();}
+  if(hist){const t=document.createElement('div');t.id='temp-history-title';t.className='overview-title';t.textContent=LANG==='en'?'📋 Detailed records':LANG==='km'?'📋 កំណត់ត្រាលម្អិត':'📋 詳細記錄';dash.appendChild(t);while(hist.firstChild)dash.appendChild(hist.firstChild);hist.remove();}
+}
+
 // ══════════════════════════════════════════
 // TABS
 // ══════════════════════════════════════════
 function showTab(n){
+  if(n==='hist'||n==='anal')n='dash';
   document.querySelectorAll('.pnl').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
   document.getElementById('pnl-'+n).classList.add('on');
   document.getElementById('tab-'+n).classList.add('on');
-  if(n==='dash')renderDash();
+  if(n==='dash')refreshTempOverview();
   if(n==='rec'){renderRec();ensureLiveWeather();}
-  if(n==='hist')renderHist();
-  if(n==='anal')renderAnal();
   if(n==='zones')renderZones();
   if(n==='alert')renderAlert();
   if(n==='set')renderSet();
@@ -943,9 +1041,11 @@ function renderDash(){
   const dd=document.getElementById('dash-date');
   if(!dd.value)dd.value=today();
   const sel=dd.value;
-  const zones=getZ().filter(z=>z.on);
+  const zoneFilter=document.getElementById('ov-zone')?.value||'all';
+  const periodFilter=document.getElementById('ov-slot')?.value||'all';
+  const zones=getZ().filter(z=>z.on&&(zoneFilter==='all'||z.id===zoneFilter));
   const recs=getR();
-  const dr=recs.filter(r=>r.d===sel);
+  const dr=recs.filter(r=>r.d===sel&&(zoneFilter==='all'||r.z===zoneFilter)&&(periodFilter==='all'||r.p===periodFilter));
   const anom=dr.filter(r=>isAnom(r));
   const crit=dr.filter(r=>isCrit(r));
 
@@ -1217,12 +1317,9 @@ function renderHist(){
   if(hf)recs=recs.filter(r=>r.d>=hf);if(ht)recs=recs.filter(r=>r.d<=ht);
   recs.sort((a,b)=>b.d.localeCompare(a.d)||(b.ts||'').localeCompare(a.ts||''));
   const zones=getZ();
-  if(HV==='day'){renderHistTbl(recs,zones);}
-  else{
-    const kfn=HV==='week'?wkKey:HV==='month'?moKey:yrKey;
-    const groups={};recs.forEach(r=>{const k=kfn(r.d);if(!groups[k])groups[k]={k,recs:[]};groups[k].recs.push(r);});
-    renderHistAgg(Object.values(groups).sort((a,b)=>b.k.localeCompare(a.k)),zones);
-  }
+  /* 統計已在同頁 Analysis 顯示；History 固定列出可編輯的逐筆資料，
+     避免週／月／年又出現另一份重複統計表。 */
+  renderHistTbl(recs,zones);
 }
 
 function renderHistTbl(recs,zones){
@@ -1291,9 +1388,11 @@ function setAV(v){AV=v;['day','week','month','year'].forEach(x=>document.getElem
 
 function renderAnal(){
   const zf=document.getElementById('azone').value;
+  const pf=document.getElementById('ov-slot')?.value||'all';
   const af=document.getElementById('afrom').value,at2=document.getElementById('ato').value;
   let recs=getR();
   if(zf!=='all')recs=recs.filter(r=>r.z===zf);
+  if(pf!=='all')recs=recs.filter(r=>r.p===pf);
   if(af)recs=recs.filter(r=>r.d>=af);if(at2)recs=recs.filter(r=>r.d<=at2);
   const zones=getZ().filter(z=>z.on&&(zf==='all'||z.id===zf));
   const kfn=AV==='day'?d=>d:AV==='week'?wkKey:AV==='month'?moKey:yrKey;
@@ -1323,19 +1422,19 @@ function renderAnal(){
 
   const cOpts=(yLbl)=>({responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'},tooltip:{mode:'index',intersect:false}},scales:{x:{ticks:{maxRotation:40,maxTicksLimit:12}},y:{title:{display:true,text:yLbl}}}});
 
-  if(chT)chT.destroy();
-  chT=new Chart(document.getElementById('ctmp'),{type:'line',data:{labels:keys,datasets:mkDS('t',zones)},options:cOpts('°C')});
-
-  if(chH)chH.destroy();
-  chH=new Chart(document.getElementById('chum'),{type:'line',data:{labels:keys,datasets:mkDS('h',zones)},options:cOpts('%RH')});
-
-  const acrit=keys.map(k=>recs.filter(r=>kfn(r.d)===k&&isCrit(r)).length);
-  const awarn=keys.map((k,i)=>recs.filter(r=>kfn(r.d)===k&&isAnom(r)&&!isCrit(r)).length);
-  if(chA)chA.destroy();
-  chA=new Chart(document.getElementById('canom'),{type:'bar',data:{labels:keys,datasets:[
-    {label:T('crit'),data:acrit,backgroundColor:'#ef4444bb'},
-    {label:T('warn'),data:awarn,backgroundColor:'#f59e0bbb'},
-  ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,ticks:{stepSize:1}}}}});
+  if(typeof Chart!=='undefined'){
+    if(chT)chT.destroy();
+    chT=new Chart(document.getElementById('ctmp'),{type:'line',data:{labels:keys,datasets:mkDS('t',zones)},options:cOpts('°C')});
+    if(chH)chH.destroy();
+    chH=new Chart(document.getElementById('chum'),{type:'line',data:{labels:keys,datasets:mkDS('h',zones)},options:cOpts('%RH')});
+    const acrit=keys.map(k=>recs.filter(r=>kfn(r.d)===k&&isCrit(r)).length);
+    const awarn=keys.map(k=>recs.filter(r=>kfn(r.d)===k&&isAnom(r)&&!isCrit(r)).length);
+    if(chA)chA.destroy();
+    chA=new Chart(document.getElementById('canom'),{type:'bar',data:{labels:keys,datasets:[
+      {label:T('crit'),data:acrit,backgroundColor:'#ef4444bb'},
+      {label:T('warn'),data:awarn,backgroundColor:'#f59e0bbb'},
+    ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,ticks:{stepSize:1}}}}});
+  }
 
   // Stats Table
   document.getElementById('at-head').innerHTML=`<tr><th>${T('zone')}</th><th>${T('an_cnt')}</th><th>${T('an_avgt')}</th><th>${T('an_maxt')}</th><th>${T('an_mint')}</th><th>${T('an_avgh')}</th><th>${T('an_maxh')}</th><th>${T('an_minh')}</th><th>${T('an_anom')}</th></tr>`;
@@ -1704,8 +1803,8 @@ function delRec(id){confirmAction(T('cdelrec'),()=>{setR(getR().filter(r=>r.id!=
 // ══════════════════════════════════════════
 // IMPORT / EXPORT
 // ══════════════════════════════════════════
-function exportXL(){
-  const recs=getR();const zones=getZ();
+function exportXL(scope){
+  const recs=scope==='overview'?tempOverviewFilteredRecords():getR();const zones=getZ().filter(z=>scope!=='overview'||(document.getElementById('ov-zone')?.value||'all')==='all'||z.id===document.getElementById('ov-zone').value);
   if(!recs.length){toast(T('nodata'),'err');return;}
   const months={};recs.forEach(r=>{const mk=r.d.slice(0,7);if(!months[mk])months[mk]=[];months[mk].push(r);});
   const wb=XLSX.utils.book_new();const mnms=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -1726,7 +1825,7 @@ function exportXL(){
     });
     XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(shData),mnms[+mo-1]);
   });
-  XLSX.writeFile(wb,'VRT_TH_'+today()+'.xlsx');toast(T('expok'),'ok');
+  XLSX.writeFile(wb,'VRT_TH_'+(scope==='overview'?_tempOverviewPeriod+'_':'')+today()+'.xlsx');toast(T('expok'),'ok');
 }
 
 function exportJSON(){
@@ -1990,17 +2089,21 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
   return {text:lines.join('\n'),photos:photos};
 }
 async function sendTodayCombinedTemp(){
+  if(window._tempTelegramSending)return;
   const date=(document.getElementById('rec-date')||{}).value||today();
   saveAllRec();
   const dayRows=getR().filter(r=>String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon'));
   if(!dayRows.length){toast(tempTelegramText('當日尚無已儲存記錄','No saved records for this day','មិនមានកំណត់ត្រាដែលបានរក្សាទុកសម្រាប់ថ្ងៃនេះ','zh'),'err');return;}
-  const packet=buildTGPeriodMsg('day','summary',date,'all','bi');
+  setTempTelegramSending(true);
   try{
+    await uploadTemperatureNow('telegram_combined_preflight');
+    const packet=buildTGPeriodMsg('day','summary',date,'all','bi');
     await sendTemperatureTelegramPacket(packet,'-5113064563',{reportPeriod:'day',reportMode:'summary',reportRef:date,reportMonth:date.slice(0,7),reportScope:'all',reportSlot:'all',updateExisting:true,messageKey:'temperature|'+date,dedupePhotos:true,photoDedupeKey:'temperature|'+date});
     const sentAt=_localTS(),all=getR();all.forEach(r=>{if(String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon')){r.telegramSentAt=sentAt;r.telegramMode='summary';r.summarySentAt=sentAt;}});setR(all);
-    if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','combined_daily_summary');
-    window._tempPendingUpload=false;updateTempUploadButton();toast('✅ '+tempTelegramText('早上＋下午摘要已發送並排入雲端','AM + PM summary sent and queued for cloud','បានផ្ញើសង្ខេបព្រឹក + រសៀល','zh'),'ok');
-  }catch(ex){toast('Telegram: '+ex.message,'err');}
+    try{await uploadTemperatureNow('telegram_combined_status');}catch(syncErr){if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','telegram_status_retry',60);}
+    window._tempPendingUpload=false;updateTempUploadButton();toast('✅ '+tempTelegramText('雲端已確認，早上＋下午摘要已發送','Cloud confirmed; AM + PM summary sent','បានបញ្ជាក់លើ Cloud និងផ្ញើសង្ខេបព្រឹក + រសៀល','zh'),'ok');
+  }catch(ex){if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','telegram_record_retry',60);toast('Telegram: '+ex.message+'；資料已保留本機，未重複發送','err');}
+  finally{setTempTelegramSending(false);}
 }
 function prevTG(){
   const period=(document.getElementById('tg-period')||{}).value||'month';
@@ -2010,6 +2113,7 @@ function prevTG(){
   const p=document.getElementById('tg-prev');p.textContent=typeof packet==='string'?packet:(packet.text||'');p.style.display='block';
 }
 async function sendTG(){
+  if(window._tempTelegramSending)return;
   const cfg=getTG();
   const period=(document.getElementById('tg-period')||{}).value||'month';
   const mode=(document.getElementById('tg-type')||{}).value||'summary';
@@ -2017,12 +2121,30 @@ async function sendTG(){
   const packet=typeof buildTGPeriodMsg==='function'?buildTGPeriodMsg(period,mode,ref):{text:buildTGmsg('daily',ref)};
   const msg=typeof packet==='string'?packet:(packet.text||'');
   if(!msg||!msg.trim()){toast('訊息內容為空，請確認日期有記錄','err');return;}
+  setTempTelegramSending(true);
   try{
+    await uploadTemperatureNow('telegram_report_preflight');
     const meta={reportPeriod:period,reportMode:mode,reportRef:ref,reportMonth:String(ref).slice(0,7),reportScope:'all',reportSlot:'all',dedupePhotos:true,photoDedupeKey:['temperature',period,ref].join('|')};
     if(period==='day'){meta.updateExisting=true;meta.messageKey='temperature|'+String(ref).slice(0,10);meta.photoDedupeKey=meta.messageKey;}
     const d=await sendTemperatureTelegramPacket(packet,cfg.chat||'-5113064563',meta);
     d.ok?toast('Telegram 發送成功 ✅','ok'):toast('Telegram 錯誤: '+(d.description||''),'err');
   }catch(ex){toast('網路錯誤: '+ex.message,'err');}
+  finally{setTempTelegramSending(false);}
+}
+
+function setTempTelegramSending(yes){
+  window._tempTelegramSending=!!yes;
+  ['i-send-combined','i-send'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=!!yes;});
+}
+async function uploadTemperatureNow(reason){
+  if(window.GC&&GC.sync){
+    const out=await GC.sync.upload('temperature',{silent:true,reason:reason||'record_save'});
+    if(!out||out.ok===false)throw new Error(out&&out.error&&out.error.message||out&&out.error||'Cloud upload failed');
+    return out;
+  }
+  const url=(getGAS().url||GAS_DEFAULT_URL).trim();if(!url)throw new Error('GAS URL is missing');
+  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'push',tool:'temperature',records:getR().map(enrichRec),zones:getZ(),zonesMode:'merge'})});
+  const data=await response.json();if(!data||data.ok===false)throw new Error(data&&data.error||'Cloud upload failed');return data;
 }
 
 async function sendTemperatureTelegramPacket(packet,chatId,meta){
@@ -2057,6 +2179,11 @@ function enrichRec(r){
     checker:     r.checker||r.checked_by||r.checkBy||'',
     note:        r.note||'',
     photos:      r.photos||[],
+    telegramSentAt:r.telegramSentAt||'',
+    telegramMode:r.telegramMode||'',
+    summarySentAt:r.summarySentAt||'',
+    reviewSentAt:r.reviewSentAt||'',
+    approvalSentAt:r.approvalSentAt||'',
     submittedAt: r.ts||r.updatedAt||_localTS(),
     updatedAt:   r.updatedAt||r.ts||_localTS()
   };
@@ -2077,7 +2204,12 @@ function normalizeRec(r){
     weatherObservation:parseWeatherObservation(r.weatherObservation||r.liveWeather),
     checker:r.checker||r.checked_by||r.checkBy||'',
     note: r.note||'',
-    photos:Array.isArray(r.photos)?r.photos:[],
+    photos:tempPhotoList(r.photos),
+    telegramSentAt:r.telegramSentAt||'',
+    telegramMode:r.telegramMode||'',
+    summarySentAt:r.summarySentAt||'',
+    reviewSentAt:r.reviewSentAt||'',
+    approvalSentAt:r.approvalSentAt||'',
     ts:   r.submittedAt||r.updatedAt||'',
     updatedAt:r.updatedAt||r.submittedAt||''
   };
@@ -2277,7 +2409,7 @@ function popSelects(){
   const zones=getZ();
   const allOpt=`<option value="all">${T('allz')}</option>`;
   const zoneOpts=allOpt+zones.map(z=>`<option value="${z.id}">${znm(z)}</option>`).join('');
-  ['hzone','azone','alzone','hzone2'].forEach(id=>{
+  ['hzone','azone','alzone','hzone2','ov-zone'].forEach(id=>{
     const el=document.getElementById(id);if(!el)return;
     const prev=el.value;el.innerHTML=zoneOpts;try{el.value=prev;}catch(e){}
   });
@@ -2298,7 +2430,7 @@ function updBadge(){
 function renderAll(){
   popSelects();
   const active=document.querySelector('.tab.on')?.id?.replace('tab-','');
-  if(active==='dash')renderDash();
+  if(active==='dash')refreshTempOverview();
   else if(active==='rec')renderRec();
   else if(active==='hist')renderHist();
   else if(active==='anal')renderAnal();
@@ -2326,7 +2458,7 @@ function init(){
   ['hfrom','afrom','alfrom'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=d30s;});
   ['hto','ato','alto'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=td;});
   if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==LANG)GC.i18n.set(LANG);
-  popSelects();applyI18n();renderDash();updBadge();renderHNavLabel();updateTempUploadButton();
+  mergeTemperatureViews();popSelects();applyI18n();refreshTempOverview();updBadge();updateTempUploadButton();
   setInterval(tick,1000);tick();
   // 啟動時靜默從雲端拉取最新資料
   setTimeout(gasPullOnInit, 800);
@@ -2386,6 +2518,7 @@ function markTemperatureTelegramSent(ctx){
       gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'d',
       idField:'id',
+      cloudKey:tempRecordKey,
       groupField:'z',
       groupLabel:'Zone',
       weather:true,
@@ -2398,12 +2531,14 @@ function markTemperatureTelegramSent(ctx){
       telegramSlots:[{value:'all',zh:'早上＋下午（合併）',en:'Morning + Afternoon (combined)',km:'ព្រឹក + រសៀល (បញ្ចូលគ្នា)'},{value:'morning',zh:'只發早上 08:00–09:00',en:'Morning only 08:00–09:00',km:'តែពេលព្រឹក 08:00–09:00'},{value:'afternoon',zh:'只發下午 15:30–16:30',en:'Afternoon only 15:30–16:30',km:'តែពេលរសៀល 15:30–16:30'}],
       telegramSlotFilter:(r,slot)=>tempTelegramSlotMatch(r,slot),
       telegramLanguage:true,
+      telegramAutoUpload:true,
       telegramSameDayUpdate:true,
       telegramPhotoDedupe:true,
       telegramBuilder:({period,mode,ref,slot,lang})=>buildTGPeriodMsg(period,mode,ref,slot,lang),
       onTelegramSent:markTemperatureTelegramSent,
       extra:()=>({zones:getZ(),zonesMode:'merge'}),
       onRemote:(d)=>{if(d&&Array.isArray(d.zones)){const z=mergeTempZones(getZ(),d.zones);if(JSON.stringify(z)!==JSON.stringify(getZ())){setZ(z);renderAll();}}},
+      onSync:(list)=>{if(Array.isArray(list))setR(list);renderAll();updateTempUploadButton();},
       importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "checker": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "notes", "ចំណាំ"]},
     read(){ try{ const raw=localStorage.getItem('vrt_th_r'); if(!raw) return [];
         const d=JSON.parse(raw); if(Array.isArray(d)) return d;

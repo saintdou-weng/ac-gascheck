@@ -28,10 +28,10 @@ for (const name of [
     assert.doesNotThrow(() => new Function(match[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline JavaScript`);
-  assert(html.includes('gascheck-core.js?v=51-waste-safe-delete'), `${name} must load the current shared-core cache key`);
+  assert(html.includes('gascheck-core.js?v=52-clean-temp-unified-sync'), `${name} must load the current shared-core cache key`);
 }
 
-assert(core.includes("GC.version = '3.11-same-day-edit-reminder-safe'"));
+assert(core.includes("GC.version = '3.12-clean-temp-unified-sync-safe'"));
 assert(core.includes('(C.cloudRead || C.read)()'));
 assert(core.includes('(C.cloudWrite || C.write)(list)'));
 assert(core.includes('GC.sync = (() => {'));
@@ -60,7 +60,7 @@ assert(asset.includes("GC.sync.hasPending('asset')"), 'Asset startup refresh mus
 assert(!asset.includes('updateUHdr();loadFromGAS();'), 'Asset login must not block on the legacy full-load path');
 assert(!/window\.assetTelegramSent=[^;]+await saveToGAS\(\)/.test(asset));
 assert(cleaning.includes("GC.sync.schedule('cleaning','record_save')"));
-assert(cleaning.includes("GC.sync.schedule('cleaning','telegram_record')"));
+assert(cleaning.includes("uploadNow('telegram_record_preflight')"));
 assert(ehs.includes("GC.sync.schedule('ehs','recycle_save')"));
 assert(ehs.includes("GC.sync.schedule('ehs','waste_save')"));
 assert(ehs.includes("GC.sync.schedule('ehs','smart_import')"));

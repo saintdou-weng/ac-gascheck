@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v3.11-same-day-edit-reminder-safe
+   AC GASCheck — Shared Core  v3.12-clean-temp-unified-sync-safe
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -824,7 +824,7 @@ const SMART = GC.smartSync = (() => {
     if (typeof v === 'number' || typeof v === 'boolean' || typeof v === 'string') return JSON.stringify(v);
     if (Array.isArray(v)) return '[' + v.map(stable).join(',') + ']';
     if (typeof v === 'object') return '{' + Object.keys(v).sort().filter(function (k) {
-      return !/^_smart/.test(k) && !/^(updatedAt|createdAt|savedAt|modifiedAt|timestamp|cloudUpdatedAt|lastCloudUpdatedAt)$/.test(k);
+      return !/^_smart/.test(k) && !/^(synced|_localPending|updatedAt|createdAt|savedAt|modifiedAt|timestamp|cloudUpdatedAt|lastCloudUpdatedAt)$/.test(k);
     }).map(function (k) { return JSON.stringify(k) + ':' + stable(v[k]); }).join(',') + '}';
     return JSON.stringify(text(v));
   }
@@ -866,6 +866,10 @@ const SMART = GC.smartSync = (() => {
   }
   function semanticKey(row, opt) {
     if (!row || typeof row !== 'object') return stable(row);
+    if (opt && typeof opt.keyFn === 'function') {
+      const custom = opt.keyFn(row);
+      if (custom !== undefined && custom !== null && custom !== '') return 'business:' + text(custom);
+    }
     const keys = [opt && opt.idKey, '_syncId', '_k', 'id', 'uuid', 'recordId', 'code'].filter(Boolean);
     for (let i = 0; i < keys.length; i++) {
       const k = keys[i];
@@ -1822,7 +1826,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
         if (typeof opt.beforeSync === 'function') await opt.beforeSync({direction:'upload',reason:runOpt.reason||''});
         const local = opt.getList ? opt.getList() : [];
         const result = await CLOUD.upload(opt.tool, local, {
-          idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
+          idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField, keyFn:opt.keyFn,
           extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote,
           allowDeletes:opt.allowDeletes !== false
         });
@@ -1832,7 +1836,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
            否則第一輪完成會吃掉後來的操作。只把照片 Drive 連結等轉換套回
            未變動列；新變更保留給 queued_change 下一輪。 */
         const latest = opt.getList ? (opt.getList() || []) : uploadedList;
-        const keyOf = row => SMART.semanticKey(row, {idKey:opt.idKey,dateField:opt.dateField,tsKey:opt.tsKey});
+        const keyOf = row => SMART.semanticKey(row, {idKey:opt.idKey,dateField:opt.dateField,tsKey:opt.tsKey,keyFn:opt.keyFn});
         const startMap = new Map((local || []).map(row => [keyOf(row), row]));
         const latestMap = new Map((latest || []).map(row => [keyOf(row), row]));
         const finalMap = new Map(), order = [];
@@ -1896,7 +1900,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
       const local = opt.getList ? opt.getList() : [];
       const r = await CLOUD.download(opt.tool, local, {
         idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
-        extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote,
+        extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote, keyFn:opt.keyFn,
         allowDeletes:opt.allowDeletes !== false
       });
       if (r.empty) {
@@ -1908,7 +1912,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
         /* HRA Portal 同款：下載途中若使用者又新增、修改或刪除，不可用下載開始時
            的快照蓋回去。只把「下載期間真的改動」的本機列再合回結果。 */
         const latest = opt.getList ? (opt.getList() || []) : local;
-        const keyOpt = {idKey:opt.idKey,dateField:opt.dateField,tsKey:opt.tsKey};
+        const keyOpt = {idKey:opt.idKey,dateField:opt.dateField,tsKey:opt.tsKey,keyFn:opt.keyFn};
         const keyOf = row => SMART.semanticKey(row, keyOpt);
         const startMap = new Map((local || []).map(row => [keyOf(row), row]));
         const latestMap = new Map((latest || []).map(row => [keyOf(row), row]));
@@ -2137,7 +2141,7 @@ GC.attach = function (cfg) {
   const C = Object.assign({
     dateField: 'date', idField: 'id', groupField: null, scopeField: null,
     weather: false, photo: false, weatherField: 'weather', photoField: 'photos',
-    importSchema: null, importParser: null, importAccept: null, telegramScopes: null, telegramSlots: null,
+    importSchema: null, importParser: null, importAccept: null, cloudKey: null, telegramScopes: null, telegramSlots: null,
     telegramScopeMultiple: false, telegramSlotMultiple: false, telegramScopeLabel: null,
     telegramSlotFilter: null, telegramSlotField: null, telegramGroups: null,
     telegramDefaultLanguage: 'bi', telegramDefaultSlot: 'all', hideLegacyTools: true,
@@ -2271,7 +2275,7 @@ GC.attach = function (cfg) {
   }
 
   const cloudOpt = {
-    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, extra: cloudExtra,
+    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, keyFn:C.cloudKey, extra: cloudExtra,
     autoReconcile:C.cloudAutoReconcile !== false, allowDeletes:C.cloudAllowDeletes !== false,
     toCloud: C.toCloud, fromCloud: C.fromCloud,
     beforeSync:C.beforeCloudSync,
@@ -2279,9 +2283,9 @@ GC.attach = function (cfg) {
     setList: function (list) { (C.cloudWrite || C.write)(list); },
     onState: setCloudState,
     onRemote: function (d) { if (C.onRemote) C.onRemote(d || {}); },
-    onDone: function () {
+    onDone: function (list, result) {
       refreshPeriodOptions();
-      if (C.onSync) C.onSync();
+      if (C.onSync) C.onSync(list, result);
       const state = tools.querySelector('.gc-cloud-state');
       if (state) state.classList.add('ok');
     }
@@ -2647,6 +2651,12 @@ GC.attach = function (cfg) {
     sendButton.disabled = true;
     sendState.textContent = I18.t('gc.sync');
     try {
+      /* 需要即時保存的模組先等雲端確認，再送 Telegram。群組只要看得到
+         訊息，Dashboard／History 就已能從雲端下載到同一批資料。 */
+      if (cloudControl && C.telegramAutoUpload) {
+        const uploaded = await cloudControl.upload({silent:true,auto:false,reason:'telegram_preflight'});
+        if (!uploaded || uploaded.ok === false) throw new Error(uploaded && uploaded.error && uploaded.error.message || I18.t('gc.upFail'));
+      }
       const packet = await buildPacket();
       await GC.telegram.send(
         packet.text, packet.photos, packet.buttons,
@@ -3134,7 +3144,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.11-same-day-edit-reminder-safe';
+GC.version = '3.12-clean-temp-unified-sync-safe';
 global.GC = GC;
 global.GASCheckCore = GC;
 

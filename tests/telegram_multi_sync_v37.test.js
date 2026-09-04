@@ -12,20 +12,22 @@ const dorm = read('ac_gascheck_dormitory_v2.html');
 
 assert(core.includes('extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote'),
   'download must forward remote metadata to the module');
-assert(core.includes("GC.version = '3.11-same-day-edit-reminder-safe'"));
+assert(core.includes("GC.version = '3.12-clean-temp-unified-sync-safe'"));
 assert(gas.includes('function telegramSafeFallback_'), 'Telegram needs an HTML-safe retry');
 assert(gas.includes("if (!ok) return tgSendText_(chatId, '♻️ AC GASCHECK Platform\\n'"),
   '/gc must report a successful plain-text fallback');
 
 for (const html of [cleaning, temp, dorm]) {
-  assert(html.includes('gascheck-core.js?v=51-waste-safe-delete'));
+  assert(html.includes('gascheck-core.js?v=52-clean-temp-unified-sync'));
 }
 
 assert(cleaning.includes('function applyCleaningCloudMeta'), 'Cleaning must restore shared staff/settings');
 assert(cleaning.includes('cleaners:(d.cleaners||[]).map(personName)'));
 assert(cleaning.includes('onRemote:applyCleaningCloudMeta'));
-assert(cleaning.includes('records:Array.isArray(smart.list)?smart.list:[]'),
-  'Cleaning manual download must use the smart-sync result');
+assert(cleaning.includes("const smart=await GC.sync.download('cleaning',{silent:false})"),
+  'Cleaning manual download must await smart-sync');
+assert(cleaning.includes('onSync:function(list)'),
+  'Cleaning smart-sync result must update the same state used by the overview');
 
 assert(temp.includes('let _tempSelectedZones = new Set()'));
 assert(temp.includes('function selectTempZones(yes)'));

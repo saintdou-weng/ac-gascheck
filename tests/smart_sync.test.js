@@ -85,6 +85,38 @@ manifest=context.handleGcSmartManifestGet_({tool:'ehs'});
 assert.strictEqual(manifest.recordCount,1,'delete must update smart manifest');
 assert.strictEqual(manifest.hashes['m:2026-08'],undefined);
 
+sheets.cleaning=new Sheet('cleaning',[
+  ['id','date','locId','slots','photos','updatedAt'],
+  ['clean-a','2026-09-03','canteen','["07:30"]','["a.jpg"]','2026-09-03 08:00:00'],
+  ['clean-b','2026-09-03','canteen','["07:30"]','["b.jpg"]','2026-09-03 09:00:00']
+]);
+sheets.temperature=new Sheet('temperature',[
+  ['id','date','period','zoneId','temperature','updatedAt'],
+  ['temp-a','2026-09-03','morning','za',27,'2026-09-03 08:00:00'],
+  ['temp-b','2026-09-03','morning','za',28,'2026-09-03 08:30:00']
+]);
+const legacyTempRows=[
+  {id:'temp-a',date:'2026-09-03',period:'morning',zoneId:'za',temperature:27,updatedAt:'2026-09-03 08:00:00'},
+  {id:'temp-b',date:'2026-09-03',period:'morning',zoneId:'za',temperature:28,updatedAt:'2026-09-03 08:30:00'}
+];
+context.saveGcSmartFile_(context.gcSmartBucketName_('temperature','legacy_temp','m:2026-09'),JSON.stringify(legacyTempRows));
+context.saveGcSmartFile_(context.gcSmartManifestName_('temperature'),JSON.stringify({version:1,tool:'temperature',lastUploadId:'legacy_temp',recordCount:2,buckets:{'m:2026-09':{hash:'legacy',count:2,source:'legacy_temp'}},meta:{}}));
+const cleanup=context.cleanupCleaningTemperatureDuplicates();
+assert.strictEqual(cleanup.tools.cleaning.after,1,'v52 cleanup must consolidate Cleaning device duplicates');
+assert.strictEqual(cleanup.tools.temperature.after,1,'v52 cleanup must consolidate Temperature device duplicates');
+assert.strictEqual(context.sheetToJson_(sheets.cleaning)[0].id,'clean-b');
+assert.strictEqual(context.sheetToJson_(sheets.temperature)[0].id,'temp-b');
+assert.strictEqual(context.handleGcSmartManifestGet_({tool:'temperature'}).recordCount,1,'v52 cleanup must rebuild an existing SmartSync manifest');
+const offlineEdit=context.sanitizeGcRecords_('cleaning',[
+  {id:'clean-a',date:'2026-09-03',locId:'canteen',slots:['07:30'],cleaner:'Offline edit',updatedAt:'2026-09-03 10:00:00'}
+],'offline_alias_test');
+assert.strictEqual(offlineEdit.rows.length,1,'an offline edit from a duplicate device ID must not be discarded');
+assert.strictEqual(offlineEdit.rows[0].id,'clean-b','duplicate device ID must map to the retained cloud ID');
+context.markGcDeletedRecords_('cleaning',['clean-b'],'user_delete');
+assert.strictEqual(context.sanitizeGcRecords_('cleaning',[
+  {id:'clean-a',date:'2026-09-03',locId:'canteen',slots:['07:30'],updatedAt:'2026-09-03 11:00:00'}
+],'deleted_alias_test').rows.length,0,'an explicitly deleted canonical record must not revive through an old alias');
+
 const core=fs.readFileSync(path.join(__dirname,'..','gascheck-core.js'),'utf8');
 assert(core.includes("cloudControl.scheduleAuto('telegram_' + mode)"));
 assert(core.includes("mode === 'summary' || mode === 'review' || mode === 'approval'"));
@@ -104,6 +136,13 @@ const clientWindow={document:clientDocument,localStorage:clientLocalStorage,cryp
 const clientContext={window:clientWindow,document:clientDocument,localStorage:clientLocalStorage,console,setTimeout,clearTimeout,URLSearchParams,Blob:function(){},URL:{createObjectURL(){return'';},revokeObjectURL(){}},TextEncoder};
 vm.createContext(clientContext);vm.runInContext(core,clientContext,{filename:'gascheck-core.js'});
 (async()=>{
+  const businessMerged=clientWindow.GC.smartSync.mergeRows(
+    [{id:'phone-a',date:'2026-09-03',locId:'canteen',updatedAt:'2026-09-03 08:00:00'}],
+    [{id:'phone-b',date:'2026-09-03',locId:'canteen',updatedAt:'2026-09-03 09:00:00'}],
+    {idKey:'id',dateField:'date',tsKey:'updatedAt',keyFn:r=>'clean:'+r.date+'|'+r.locId+'|07:30'}
+  );
+  assert.strictEqual(businessMerged.length,1,'custom business key must merge different device IDs');
+  assert.strictEqual(businessMerged[0].id,'phone-b');
   const buckets=await clientWindow.GC.smartSync.buildBuckets([
     {id:'july',date:'2026-07-01',value:1},
     {id:'aug',date:'2026-08-01',value:2}

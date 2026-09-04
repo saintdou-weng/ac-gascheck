@@ -9,7 +9,7 @@ const core=fs.readFileSync(path.join(root,'gascheck-core.js'),'utf8');
 const gas=fs.readFileSync(path.join(root,'ac_gascheck_core_v3_fixed.gs'),'utf8');
 const htmls=fs.readdirSync(root).filter(x=>/^ac_gascheck_.*\.html$/.test(x));
 
-assert(core.includes("GC.version = '3.11-same-day-edit-reminder-safe'"));
+assert(core.includes("GC.version = '3.12-clean-temp-unified-sync-safe'"));
 assert(core.includes("cache:'no-store'"), 'cloud GET must bypass mobile/WebView caches');
 assert(core.includes("{ _t:Date.now().toString(36)"), 'cloud GET must contain a cache buster');
 assert(core.includes("scheduleReconcile(hasPending() ? 'pending_resume' : 'startup', 450)"));
@@ -20,10 +20,10 @@ assert(core.includes("mode === 'summary' || mode === 'review' || mode === 'appro
 assert(core.includes("if (base && lb.hash === base) { removed += lb.count; continue; }"), 'unchanged local rows must accept confirmed cloud deletion');
 assert(core.includes("if (opt.allowDeletes && !lh && rh && base && rh === base)"), 'three-way-safe local deletion must reach cloud');
 assert(core.includes('retryNetwork(function ()'), 'smart buckets/commit must retry transient failures');
-assert(gas.includes("CORE_VERSION : 'v4.5-waste-dedupe-batch-delete'"));
+assert(gas.includes("CORE_VERSION : 'v4.6-clean-temp-unified-sync'"));
 assert(gas.includes("String(old.lastUploadId||'')===uploadId"), 'smart commit retry must be idempotent');
 assert(gas.includes('replaceRecords_(sheet,gcSmartSortRows_(kept.concat(changedRows)))'), 'Sheet compatibility index must remove stale rows from changed buckets');
-htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=51-waste-safe-delete'),name+' must load v51 core cache key'));
+htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=52-clean-temp-unified-sync'),name+' must load v52 core cache key'));
 
 const store={};
 const document={
