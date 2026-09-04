@@ -16,9 +16,9 @@ for (const [name, html] of [['dorm', dorm], ['key', key], ['water', water]]) {
     assert.doesNotThrow(() => new Function(match[1]), `${name} inline script ${count} must parse`);
   }
   assert(count > 0);
-  assert(html.includes('gascheck-core.js?v=52-clean-temp-unified-sync'));
+  assert(html.includes('gascheck-core.js?v=53-reminder-temp-dorm-sync'));
 }
-assert(core.includes("GC.version = '3.12-clean-temp-unified-sync-safe'"));
+assert(core.includes("GC.version = '3.13-reminder-temp-dorm-sync-safe'"));
 
 // Dorm: one-tap all OK, one-tap room OK, and independent photo sets by facility.
 for (const token of [

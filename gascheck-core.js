@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v3.12-clean-temp-unified-sync-safe
+   AC GASCheck — Shared Core  v3.13-reminder-temp-dorm-sync-safe
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -3144,7 +3144,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.12-clean-temp-unified-sync-safe';
+GC.version = '3.13-reminder-temp-dorm-sync-safe';
 global.GC = GC;
 global.GASCheckCore = GC;
 

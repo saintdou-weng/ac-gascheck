@@ -28,10 +28,10 @@ for (const name of [
     assert.doesNotThrow(() => new Function(match[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline JavaScript`);
-  assert(html.includes('gascheck-core.js?v=52-clean-temp-unified-sync'), `${name} must load the current shared-core cache key`);
+  assert(html.includes('gascheck-core.js?v=53-reminder-temp-dorm-sync'), `${name} must load the current shared-core cache key`);
 }
 
-assert(core.includes("GC.version = '3.12-clean-temp-unified-sync-safe'"));
+assert(core.includes("GC.version = '3.13-reminder-temp-dorm-sync-safe'"));
 assert(core.includes('(C.cloudRead || C.read)()'));
 assert(core.includes('(C.cloudWrite || C.write)(list)'));
 assert(core.includes('GC.sync = (() => {'));

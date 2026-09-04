@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>VRT · Dormitory Hub v2.1</title>
+<title>VRT · Dormitory Hub v2.2</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&family=Noto+Sans+Khmer:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
@@ -210,7 +210,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=52-clean-temp-unified-sync"></script>
+<script src="./gascheck-core.js?v=53-reminder-temp-dorm-sync"></script>
 </head>
 <body>
 
@@ -219,7 +219,7 @@ select.fi{cursor:pointer}
   <a href="./ac_gascheck_portal_v1.html" class="tb-back">← 平台</a>
   <div style="flex:1;min-width:0">
     <div class="tb-title">🏠 宿舍管理</div>
-    <div class="tb-sub">Dormitory Hub · v2.1</div>
+    <div class="tb-sub">Dormitory Hub · v2.2</div>
   </div>
   <div class="tb-ts"><div class="tb-dot"></div><span id="ts-now">--:--:--</span></div>
   <div id="cloud-badge" class="cloud-badge off" onclick="cfg.togglePanel()">☁ GAS</div>
@@ -233,7 +233,7 @@ select.fi{cursor:pointer}
 <!-- SUB HEADER -->
 <div class="sub-hdr">
   <div class="sh-name" id="sh-name" data-i="sh-name">宿舍管理中心 · Dormitory Hub</div>
-  <div class="sh-sub">VRT · Sihanoukville · v2.1</div>
+  <div class="sh-sub">VRT · Sihanoukville · v2.2</div>
 </div>
 
 <!-- TABS -->
@@ -468,6 +468,7 @@ select.fi{cursor:pointer}
     <div class="fbg"><div class="fbl" data-i="f-room">房號</div><input class="fbi" id="fl-room" placeholder="A-201" style="max-width:80px"></div>
     <div class="fbg"><div class="fbl" data-i="fl-search">搜尋</div><input class="fbi" id="fl-search" placeholder="姓名/工號..." style="min-width:110px"></div>
     <button class="btn bp" style="padding:6px 12px;font-size:11px" onclick="records.query()">🔍 查詢</button>
+    <button class="btn bo" style="padding:6px 12px;font-size:11px" onclick="records.showAllPending()">⏳ 全部月份待核</button>
     <button class="btn bg2" style="padding:6px 12px;font-size:11px" onclick="records.exportXL()">📤 Excel</button>
     <button class="btn bb" style="padding:6px 12px;font-size:11px" onclick="cloud.pullRecords()">⬇ GAS 同步</button>
   </div>
@@ -810,7 +811,7 @@ function makeDateEngine(labelId, onChange) {
 // Three date engines: dashboard, inspection, records
 var de = makeDateEngine('dn-label',    () => dash.render());
 var inspDE = makeDateEngine('dn-insp-label', () => {});
-var recDE = makeDateEngine('dn-rec-label',  () => records.query());
+var recDE = makeDateEngine('dn-rec-label',  () => {window._dormPendingAllDates=false;records.query();});
 
 // ═══════════════════════════════════════════════════════════════
 // STATE
@@ -832,6 +833,11 @@ var state = (() => {
   const save = () => {
     try { localStorage.setItem(SK, JSON.stringify(_db)); } catch(e) {}
     updateDbInfo();
+  };
+  const replaceRecords = list => {
+    _db.records=Array.isArray(list)?list.filter(r=>r&&typeof r==='object'):[];
+    save();
+    return _db.records;
   };
   const db = () => _db;
   const getItems = () => _items;
@@ -870,7 +876,7 @@ var state = (() => {
       thChk.textContent=_ftype==='in'?(lang==='en'?'Recv ✓':'領取 ✓'):(lang==='en'?'Return ✓':'歸還 ✓');
     }
   };
-  return { load, save, db, getItems, setItems, getFType, setFType, getInspLoc, setInspLoc, getInspData, resetInspData, applyFormType };
+  return { load, save, replaceRecords, db, getItems, setItems, getFType, setFType, getInspLoc, setInspLoc, getInspData, resetInspData, applyFormType };
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -1020,7 +1026,8 @@ var tgPost = async (body) => {
     if(next.data&&!next.callback_data) next.callback_data=next.data;
     return next;
   }) : row).filter(Boolean);
-  normalizedRows.push([{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_dormitory_v2.html'}]);
+  const hasPendingApproval=normalizedRows.some(row=>Array.isArray(row)&&row.some(btn=>/^dorm_(?:ok|rej)_/.test(String(btn&& (btn.callback_data||btn.data)||''))));
+  normalizedRows.push([{text:hasPendingApproval?'⏳ Open Pending / 開啟待核':'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_dormitory_v2.html'+(hasPendingApproval?'?view=pending':'')}]);
   payload.reply_markup = {inline_keyboard:normalizedRows};
   try {
     if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.send)
@@ -1050,7 +1057,7 @@ function dormTelegramPayload(record, statusOverride, rejectReasonOverride) {
     note?'📎 備注 / Note：'+esc(note):'',
     items.length?'📦 物品 / Items：'+items.length+' · '+(record.type==='搬入'?'已領取':'已歸還')+' '+checked+' · ⚠️ '+damaged:'',
     '👤 審核人 / Reviewer：'+esc(record.reviewer||'Phea'),
-    status==='待審核'?'🔐 核可對象 / Approval by：Paul Weng（Telegram only）':'',
+    status==='待審核'?'🔐 核可對象 / Approval by：Paul Weng（Dashboard / Telegram）':'',
     '✅ 核可人 / Approver：'+esc(record.approvedBy||'—'),
     status==='已退件'?'❌ 狀態 / Status：已退件 / Rejected'+(rejectReason?' · '+esc(rejectReason):''):
       status==='已核可'?'✅ 狀態 / Status：已核可 / Approved':'⏳ 狀態 / Status：待審核 / Pending',
@@ -1168,7 +1175,7 @@ var ui = (() => {
     if(t==='dash')    dash.render();
     if(t==='roster')  roster.load();
     if(t==='insp')    { insp.renderTable(); }
-    if(t==='records') records.query();
+    if(t==='records'){records.query();setTimeout(function(){records.refreshStatus(false);},80);}
     if(t==='viol')    viol.renderList();
     if(t==='settings'){ cfg.load(); }
   };
@@ -1244,22 +1251,22 @@ var dash = (() => {
 // ═══════════════════════════════════════════════════════════════
 function dormRecordKey(record){
   record=record||{};
-  return [record.type,record.idNo,record.roomNo,record.date,record.reason]
+  return [record.type,record.idNo,record.roomNo,record.date]
     .map(v=>String(v==null?'':v).trim().toLowerCase().replace(/\s+/g,' ')).join('|');
 }
 function dormHasRequiredFields(record){
   return ['name','idNo','roomNo','date','reason'].every(k=>String(record&&record[k]||'').trim()!=='');
 }
 function dormDuplicate(list, record, excludeId){
-  const key=dormRecordKey(record); if(!key||key==='||||')return null;
+  const key=dormRecordKey(record); if(!key||key==='|||')return null;
   return (Array.isArray(list)?list:[]).find(r=>String(r&&r.id||'')!==String(excludeId||'')&&dormRecordKey(r)===key)||null;
 }
 function dedupeDormRecords(showToast){
   const db=state.db(); const source=Array.isArray(db.records)?db.records:[]; const map=new Map(); let removed=0;
-  const rank=r=>r&&r.status==='已核可'?3:r&&r.status==='待審核'?2:r&&r.status==='已退件'?1:0;
+  const rank=r=>r&&r.status==='已核可'?3:(r&&r.status?1:0);
   source.forEach(r=>{
     const key=dormRecordKey(r);
-    if(!key||key==='||||'){ map.set('id:'+String(r&&r.id||Math.random()),r); return; }
+    if(!key||key==='|||'){ map.set('id:'+String(r&&r.id||Math.random()),r); return; }
     const old=map.get(key);
     if(!old){ map.set(key,r); return; }
     const newer=rank(r)>rank(old)||(rank(r)===rank(old)&&String(r.updatedAt||r.timestamp||'')>String(old.updatedAt||old.timestamp||''));
@@ -1802,6 +1809,7 @@ var records = (() => {
     const itemText=items.length?items.map(function(it,i){
       return (i+1)+'. '+esc(it.name||'—')+' · '+(it.checked?'✅':'⬜')+' · '+esc(it.condition||'Good')+(it.note?' · '+esc(it.note):'');
     }).join('<br>'):'—';
+    const decisionButtons=r.status==='待審核'?'<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><button class="btn bg2" onclick="records.approve(\''+esc(r.id)+'\')">✅ Paul 核可 / Approve</button><button class="btn br2" onclick="records.reject(\''+esc(r.id)+'\')">❌ 退件 / Reject</button></div>':'';
     el.style.display='block';
     el.innerHTML='<div class="card" style="border:2px solid var(--acc);background:var(--card)">'+
       '<div class="ch"><span class="ch-ic">🔎</span><span class="ch-tl">申請詳情 / Application details</span><button class="btn bo" style="margin-left:auto;padding:4px 9px" onclick="records.closeDetail()">✕ 關閉</button></div>'+
@@ -1809,10 +1817,10 @@ var records = (() => {
       '👤 '+esc(r.name||'—')+' · '+esc(r.idNo||'—')+' · 🛏 '+esc(r.roomNo||'—')+'<br>'+
       '🏢 '+esc(r.department||'—')+' · 📅 '+esc(r.date||'—')+' · 📝 '+esc(r.reason||'—')+'<br>'+
       '👤 審核人 / Reviewer: '+esc(r.reviewer||'—')+' · ✅ 核可人 / Approver: '+esc(r.approvedBy||'—')+'<br>'+
-      '🔐 核可對象 / Approval by: '+(r.status==='待審核'?'Paul Weng（Telegram only）':'—')+'<br>'+
+      '🔐 核可對象 / Approval by: '+(r.status==='待審核'?'Paul Weng（Dashboard / Telegram）':'—')+'<br>'+ 
       '📦 物品 / Items:<br>'+itemText+
       (r.lastTelegramSentAt?'<br>📤 最近發送 / Last sent: '+esc(r.lastTelegramSentAt):'')+
-      '</div></div>';
+      decisionButtons+'</div></div>';
     el.scrollIntoView({behavior:'smooth',block:'nearest'});
   };
   const closeDetail = () => {
@@ -1823,12 +1831,14 @@ var records = (() => {
     dedupeDormRecords(false);
     const type=gv('fl-type'), status=gv('fl-status'), room=gv('fl-room').toLowerCase(), search=gv('fl-search').toLowerCase();
     const {from,to}=recDE.getRange();
+    const pendingAll=status==='待審核'&&window._dormPendingAllDates===true;
+    if(pendingAll){const label=document.getElementById('dn-rec-label');if(label)label.textContent='全部月份待核 / All pending';}
     const recs=state.db().records.filter(r=>{
       if(type&&r.type!==type) return false;
       if(status&&r.status!==status) return false;
       if(room&&!(r.roomNo||'').toLowerCase().includes(room)) return false;
-      const ts=(r.timestamp||'').split('T')[0];
-      if(ts&&(ts<from||ts>to)) return false;
+      const ts=String(r.timestamp||r.date||'').slice(0,10);
+      if(!pendingAll&&ts&&(ts<from||ts>to)) return false;
       if(search&&!JSON.stringify(r).toLowerCase().includes(search)) return false;
       return true;
     }).sort((a,b)=>(b.timestamp||'').localeCompare(a.timestamp||''));
@@ -1846,6 +1856,7 @@ var records = (() => {
         <td>${r.status==='待審核'?'<span class="badge b-pend">待 Paul 核可</span>':esc(r.approvedBy||'—')}</td>
         <td style="white-space:nowrap">
           <button class="btn bo" onclick="records.detail('${r.id}')" style="padding:3px 6px;font-size:10px" title="查看完整資料">🔎 詳情</button>
+          ${r.status==='待審核'?`<button class="btn" onclick="records.approve('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--grn)" title="Paul 直接核可">✅ 核可</button><button class="btn" onclick="records.reject('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--red)" title="退件">❌ 退件</button>`:''}
           ${r.status!=='已核可'?`<button class="btn" onclick="records.edit('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--blu)" title="編輯後重新送審">✏️ 編輯</button>`:''}
           ${r.status==='待審核'?`<button class="btn" onclick="records.withdraw('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--red)" title="申請人撤回">↩ 撤回</button>`:''}
           ${dormHasRequiredFields(r)?`<button class="btn" onclick="records.resend('${r.id}')" style="padding:3px 6px;font-size:10px;color:var(--acc)" title="重新發送到 Telegram">📤 重發</button>`:''}
@@ -1854,8 +1865,39 @@ var records = (() => {
       </tr>`;
     }).join('');
   };
-  const approve = async (id) => {
-    toast('⛔ 核可只能由 Paul 在 Telegram 按鈕處理，平台不會直接核可');
+  const showAllPending = () => {
+    window._dormPendingAllDates=true;sv('fl-status','待審核');query();
+  };
+  let _decisionBusy=false,_lastStatusSync=0;
+  const applyRemoteRecord = record => {
+    if(!record||!record.id)return;
+    const db=state.db(),old=db.records.find(r=>String(r.id)===String(record.id));
+    if(old)Object.assign(old,record);else db.records.push(record);
+    state.save();dedupeDormRecords(false);query();dash.render();showDetail(record.id);
+  };
+  const decide = async (id,decision) => {
+    if(_decisionBusy)return;
+    const r=state.db().records.find(x=>String(x.id)===String(id));if(!r){toast('⚠️ 找不到這筆申請');return;}
+    if(r.status!=='待審核'){toast('ℹ️ 這筆已處理：'+r.status);query();return;}
+    const approved=decision==='approve';let rejectReason='';
+    if(approved){if(!confirm('確認由 Paul 核可 '+(r.name||'此申請')+' · '+(r.roomNo||'—')+'？'))return;}
+    else{rejectReason=prompt('請輸入退件原因 / Reject reason');if(rejectReason===null)return;if(!rejectReason.trim()){toast('⚠️ 退件原因不可空白');return;}}
+    _decisionBusy=true;toast(approved?'⏳ 正在核可並同步雲端…':'⏳ 正在退件並同步雲端…');
+    try{
+      const c=cfg.get(),result=await gasPost({action:'dormDecision',id:String(id),decision:decision,approver:'Paul Weng',approverId:String(c.approverTgId||'5026942575'),rejectReason:rejectReason});
+      if(!result||result.ok===false)throw new Error((result&&result.error)||'Dorm decision failed');
+      if(!result.record)throw new Error('雲端未回傳最新申請狀態，畫面未變更');
+      applyRemoteRecord(result.record);
+      if(result.alreadyProcessed)toast('ℹ️ 雲端最新狀態：'+(result.record.status||'已處理')+'；畫面已更新',6000);
+      else toast((approved?'✅ 已核可':'❌ 已退件')+(result.sent===false?'；狀態已保存，Telegram 結果通知稍後重試':'；雲端與 Telegram 已更新'),6000);
+    }catch(e){toast('❌ 處理失敗，狀態未變更：'+e.message,7000);}
+    finally{_decisionBusy=false;}
+  };
+  const approve = id => decide(id,'approve');
+  const reject = id => decide(id,'reject');
+  const refreshStatus = async force => {
+    const now=Date.now();if(_decisionBusy||(!force&&now-_lastStatusSync<15000))return;_lastStatusSync=now;
+    try{if(typeof GC!=='undefined'&&GC.sync)await GC.sync.download('dormitory',{silent:true,reason:'dorm_status_refresh'});else await cloud.pull();}catch(e){}
   };
   const withdraw = async (id) => {
     const db=state.db(); const r=db.records.find(r=>r.id===id);
@@ -1902,7 +1944,7 @@ var records = (() => {
     XLSX.writeFile(wb,`VRT_Dorm_Records_${today_str()}.xlsx`); toast('✅ 已下載');
   };
   const edit = id => appForm.edit(id);
-  return { query, approve, withdraw, reject:withdraw, resend, edit, detail:showDetail, closeDetail, del, exportXL };
+  return { query, showAllPending, approve, reject, refreshStatus, withdraw, resend, edit, detail:showDetail, closeDetail, del, exportXL };
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -1993,6 +2035,13 @@ function goApply(t) {
     recDE.set('month',document.querySelector('#pane-records .dnp[data-p="month"]'));
     const q=cfg.get().quarter||'Q1'; const iq=document.getElementById('insp-q'); if(iq)iq.value=q;
     dash.render(); updateDbInfo(); settings.renderIRRooms();
+    try{
+      const qv=new URLSearchParams(location.search).get('view');
+      if(qv==='pending'){
+        ui.tab('records');records.showAllPending();
+        setTimeout(function(){records.refreshStatus(true);},700);
+      }
+    }catch(e){}
   };
   if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 })();
@@ -2009,20 +2058,15 @@ function goApply(t) {
       gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'date',
       idField:'id',
+      cloudKey:dormRecordKey,
       groupField:'roomNo',
       groupLabel:'Room',
       weather:false,
       photo:true,
       importSchema:{"name": ["姓名", "name", "ឈ្មោះ"], "gender": ["性別", "gender", "ភេទ"], "idNo": ["身分證", "idno", "id", "អត្តសញ្ញាណប័ណ្ណ"], "department": ["部門", "dept", "department", "នាយកដ្ឋាន"], "roomNo": ["房號", "room", "roomno", "បន្ទប់"], "date": ["日期", "date", "ថ្ងៃ"], "reason": ["原因", "reason", "មូលហេតុ"]},
-    read(){ try{ const raw=localStorage.getItem('vrt_dorm_hub_v2'); if(!raw) return [];
-        const d=JSON.parse(raw); if(Array.isArray(d)) return d;
-        if(Array.isArray(d.records)) return d.records;
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])) return d[k];
-        return []; }catch(e){ return []; } },
-    write(list){ try{ const raw=localStorage.getItem('vrt_dorm_hub_v2'); let d=raw?JSON.parse(raw):null;
-        if(Array.isArray(d)||d===null){ localStorage.setItem('vrt_dorm_hub_v2',JSON.stringify({records:list})); return; }
-        for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])){ d[k]=list; localStorage.setItem('vrt_dorm_hub_v2',JSON.stringify(d)); return; }
-        d.records=list; localStorage.setItem('vrt_dorm_hub_v2',JSON.stringify(d)); }catch(e){ localStorage.setItem('vrt_dorm_hub_v2',JSON.stringify({records:list})); } },
+      onSync(list){if(Array.isArray(list)){state.replaceRecords(list);dedupeDormRecords(false);}dash.render();records.query();},
+    read(){return (state.db().records||[]).slice();},
+    write(list){state.replaceRecords(list);dedupeDormRecords(false);},
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();

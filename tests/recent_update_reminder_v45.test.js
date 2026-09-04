@@ -93,5 +93,5 @@ assert.strictEqual(sent,2);
 
 assert(gas.includes("businessDate.slice(0,7)!==currentMonth"),'daily reminder must only inspect current-month business dates');
 assert(gas.includes('sendWeeklyPendingApprovalReport_(now)'),'daily trigger must also enforce the once-per-week pending approval reminder');
-assert(gas.includes("CORE_VERSION : 'v4.6-clean-temp-unified-sync'"));
+assert(gas.includes("CORE_VERSION : 'v4.7-reminder-temp-dorm-sync'"));
 console.log('recent update reminder v45 tests: PASS');

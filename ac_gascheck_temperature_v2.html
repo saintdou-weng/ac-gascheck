@@ -216,7 +216,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=52-clean-temp-unified-sync"></script>
+<script src="./gascheck-core.js?v=53-reminder-temp-dorm-sync"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -2020,7 +2020,7 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
   const view=((typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'d',ref):all.slice()).filter(r=>tempTelegramSlotMatch(r,effectiveSlot));
   const periodName={day:tempTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:tempTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:tempTelegramText('本月','This Month','ខែនេះ',lang),year:tempTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:tempTelegramText('全部','All','ទាំងអស់',lang)}[period]||period;
   const modeName={summary:tempTelegramText('摘要','Summary','សង្ខេប',lang),review:tempTelegramText('審查','Review','ពិនិត្យ',lang),approval:tempTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
-  const slotName={all:tempTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:tempTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:tempTelegramText('下午','Afternoon','ពេលរសៀល',lang)}[effectiveSlot||'all']||effectiveSlot||'all';
+  const slotName={all:tempTelegramText('AM／PM 分開顯示','AM / PM shown separately','បង្ហាញ AM / PM ដាច់ដោយឡែក',lang),morning:tempTelegramText('AM 早上 08:00–09:00','AM Morning 08:00–09:00','AM ពេលព្រឹក 08:00–09:00',lang),afternoon:tempTelegramText('PM 下午 15:30–16:30','PM Afternoon 15:30–16:30','PM ពេលរសៀល 15:30–16:30',lang)}[effectiveSlot||'all']||effectiveSlot||'all';
   const temps=view.filter(r=>r.t!==''&&r.t!=null&&!isNaN(r.t)).map(r=>+r.t), hums=view.filter(r=>r.h!==''&&r.h!=null&&!isNaN(r.h)).map(r=>+r.h);
   const photos=[];
   view.forEach(r=>{(typeof GC!=='undefined'&&GC.util?GC.util.asArray(r.photos):Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
@@ -2055,8 +2055,8 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
   }
   if(!view.length){lines.push('━━━━━━━━━━━━━━━━',tempTelegramText('暫無記錄','No records','គ្មានកំណត់ត្រា',lang),'⏰ '+new Date().toLocaleString());return {text:lines.join('\n'),photos:photos};}
 
-  const zones=getZ(),sorted=view.slice().sort((a,b)=>String(a.z||'').localeCompare(String(b.z||''))||String(a.d||'').localeCompare(String(b.d||''))||String(a.p||'').localeCompare(String(b.p||'')));
-  const zoneIds=[...new Set(sorted.map(r=>String(r.z||'')).filter(Boolean))];
+  const zones=getZ(),zoneOrder=new Map(zones.map(function(z,index){return [String(z.id),index];})),slotOrder={morning:0,afternoon:1};
+  const sorted=view.slice().sort(function(a,b){return String(a.d||'').localeCompare(String(b.d||''))||(slotOrder[a.p]??9)-(slotOrder[b.p]??9)||(zoneOrder.get(String(a.z))??999)-(zoneOrder.get(String(b.z))??999)||String(a.z||'').localeCompare(String(b.z||''));});
   const maxRows=20,shown=sorted.slice(0,maxRows);
   const zoneFullName=function(id){
     const z=zones.find(x=>String(x.id)===String(id));
@@ -2066,19 +2066,21 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang){
     if(lang==='km')return z.km||z.en||z.zh||z.id;
     return (z.en||z.zh||z.id)+' / '+(z.zh||z.en||z.id);
   };
-  lines.push('━━━━━━━━━━━━━━━━','🏭 <b>'+tempTelegramText('分區巡檢明細','Area Inspection Details','ព័ត៌មានត្រួតពិនិត្យតាមតំបន់',lang)+'</b>');
-  zoneIds.forEach(function(id){
-    const areaRows=shown.filter(function(r){return String(r.z||'')===String(id);});
-    if(!areaRows.length)return;
-    lines.push('🏭 <b>'+tempTgEsc(zoneFullName(id))+'</b>');
-    lines.push('🌡️ <b>'+tempTelegramText('溫度／濕度','Temperature / Humidity','សីតុណ្ហភាព / សំណើម',lang)+'</b>');
-    lines.push(tempTgTable(['Date','Slot','Temp','RH','Status'],[5,5,6,5,9],areaRows.map(function(r){
-      return [String(r.d||'').slice(5,10)||'—',tempTgSlotCode(r.p),r.t!==''&&r.t!=null?String(r.t)+'C':'--',r.h!==''&&r.h!=null?String(r.h)+'%':'--',tempTgStatusCode(r)];
-    })));
-    lines.push('🌤️ <b>'+tempTelegramText('天氣','Weather','អាកាសធាតុ',lang)+'</b>');
-    lines.push(tempTgTable(['Date','Slot','Weather'],[5,5,12],areaRows.map(function(r){return [String(r.d||'').slice(5,10)||'—',tempTgSlotCode(r.p),tempTgWeatherCode(r.wx)];})));
-    lines.push('👤 <b>'+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+'</b>');
-    lines.push(tempTgTable(['Date','Slot','Inspector'],[5,5,20],areaRows.map(function(r){return [String(r.d||'').slice(5,10)||'—',tempTgSlotCode(r.p),r.checker||'—'];})));
+  const weatherIcon=function(k){return ({sunny:'☀️',cloudy:'☁️',rain:'🌧️',heavyRain:'🌧️',storm:'⛈️',hot:'🔥',humid:'💧'})[k]||'🌤️';};
+  const slotTitle=function(p){return p==='morning'?tempTelegramText('AM｜早上 08:00–09:00','AM | Morning 08:00–09:00','AM | ពេលព្រឹក 08:00–09:00',lang):tempTelegramText('PM｜下午 15:30–16:30','PM | Afternoon 15:30–16:30','PM | ពេលរសៀល 15:30–16:30',lang);};
+  lines.push('━━━━━━━━━━━━━━━━','📋 <b>'+tempTelegramText('依日期、AM／PM 分開','By date, separated into AM / PM','តាមកាលបរិច្ឆេទ បែងចែកជា AM / PM',lang)+'</b>');
+  [...new Set(shown.map(function(r){return String(r.d||'').slice(0,10);})).values()].filter(Boolean).forEach(function(date){
+    lines.push('📅 <b>'+tempTgEsc(date)+'</b>');
+    ['morning','afternoon'].forEach(function(p){
+      const slotRows=shown.filter(function(r){return String(r.d||'').slice(0,10)===date&&r.p===p;});if(!slotRows.length)return;
+      lines.push((p==='morning'?'🌅 ':'🌇 ')+'<b>'+tempTgEsc(slotTitle(p))+'</b>');
+      slotRows.forEach(function(r){
+        const status=tempTgStatusCode(r),ok=status==='OK';
+        lines.push('🏭 <b>'+tempTgEsc(zoneFullName(r.z))+'</b>',
+          '  🌡️ '+tempTgEsc(r.t!==''&&r.t!=null?String(r.t)+'°C':'--')+' · 💧 '+tempTgEsc(r.h!==''&&r.h!=null?String(r.h)+'%':'--')+' · '+weatherIcon(r.wx)+' '+tempTgEsc(tempTgWeatherCode(r.wx))+' · '+(ok?'✅ ':'⚠️ ')+tempTgEsc(status),
+          '  👤 '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+tempTgEsc(r.checker||'—'));
+      });
+    });
   });
   if(sorted.length>shown.length)lines.push('… '+tempTgEsc(String(sorted.length-shown.length))+' '+tempTelegramText('筆其餘記錄略；完整資料請開啟平台','more records; open dashboard for full data','កំណត់ត្រាបន្ថែម; បើកផ្ទាំងគ្រប់គ្រងសម្រាប់ទិន្នន័យពេញ',lang));
   if(anomalies){
@@ -2127,7 +2129,10 @@ async function sendTG(){
     const meta={reportPeriod:period,reportMode:mode,reportRef:ref,reportMonth:String(ref).slice(0,7),reportScope:'all',reportSlot:'all',dedupePhotos:true,photoDedupeKey:['temperature',period,ref].join('|')};
     if(period==='day'){meta.updateExisting=true;meta.messageKey='temperature|'+String(ref).slice(0,10);meta.photoDedupeKey=meta.messageKey;}
     const d=await sendTemperatureTelegramPacket(packet,cfg.chat||'-5113064563',meta);
-    d.ok?toast('Telegram 發送成功 ✅','ok'):toast('Telegram 錯誤: '+(d.description||''),'err');
+    if(!d||d.ok===false)throw new Error((d&&d.description)||'Telegram 發送失敗');
+    markTemperatureTelegramSent({period:period,mode:mode,ref:ref,scope:'all',slot:'all',cfg:{dateField:'d',telegramSlotFilter:function(r,s){return tempTelegramSlotMatch(r,s);}}});
+    try{await uploadTemperatureNow('telegram_report_status');}catch(syncErr){if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','telegram_status_retry',60);}
+    toast('Telegram 發送成功，完成狀態已同步 ✅','ok');
   }catch(ex){toast('網路錯誤: '+ex.message,'err');}
   finally{setTempTelegramSending(false);}
 }
@@ -2502,7 +2507,8 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
 /* v46：Telegram 成功後記錄已發 Summary / Approval，但不改 updatedAt。 */
 function markTemperatureTelegramSent(ctx){
   ctx=ctx||{};if(typeof GC==='undefined'||!GC.telegram)return;
-  const all=getR(),selected=GC.telegram.filter(all,ctx.cfg||{dateField:'d',telegramSlotFilter:function(r,slot){return tempTelegramSlotMatch(r,slot);}},ctx.period||'month',ctx.ref,ctx.scope||'all',ctx.slot||'all');
+  const markSlot=(ctx.period||'month')==='day'?'all':(ctx.slot||'all');
+  const all=getR(),selected=GC.telegram.filter(all,ctx.cfg||{dateField:'d',telegramSlotFilter:function(r,slot){return tempTelegramSlotMatch(r,slot);}},ctx.period||'month',ctx.ref,ctx.scope||'all',markSlot);
   const ids=new Set(selected.map(function(r){return String(r&&r.id||'');}).filter(Boolean)),sentAt=_localTS(),mode=ctx.mode||'summary';
   all.forEach(function(r){if(!ids.has(String(r&&r.id||'')))return;r.telegramSentAt=sentAt;r.telegramMode=mode;if(mode==='summary')r.summarySentAt=sentAt;if(mode==='approval')r.approvalSentAt=sentAt;if(mode==='review')r.reviewSentAt=sentAt;});
   setR(all);renderAll();

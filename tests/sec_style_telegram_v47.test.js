@@ -3,12 +3,14 @@ const assert = require('assert');
 const temp = fs.readFileSync('ac_gascheck_temperature_v2.html','utf8');
 const ehs = fs.readFileSync('ac_gascheck_ehs_v2.html','utf8');
 
-// Temperature uses SEC-like monospace tables and still collects photos.
+// Temperature keeps the compact overview table, then shows human-readable
+// date → AM → PM details with full area names, and still collects photos.
 assert(temp.includes("tempTgTable(['Item','Qty']"));
-assert(temp.includes("tempTgTable(['Date','Slot','Temp','RH','Status']"));
-assert(temp.includes("tempTgTable(['Date','Slot','Weather']"));
-assert(temp.includes("tempTgTable(['Date','Slot','Inspector']"));
-assert(temp.includes("'🏭 <b>'+tempTgEsc(zoneFullName(id))"));
+assert(temp.includes("['morning','afternoon'].forEach(function(p)"));
+assert(temp.includes("AM | Morning 08:00–09:00"));
+assert(temp.includes("PM | Afternoon 15:30–16:30"));
+assert(temp.includes("'🏭 <b>'+tempTgEsc(zoneFullName(r.z))"));
+assert(temp.includes("tempTelegramText('檢查人','Inspector'"));
 assert(temp.includes("return '<blockquote><b>'+tempTgEsc(line(headers))"));
 assert(!temp.includes("return '<pre>'+tempTgEsc"));
 assert(temp.includes("photos.length<5"));
