@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v3.13-reminder-temp-dorm-sync-safe
+   AC GASCheck — Shared Core  v3.14-import-summary-safe
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -1410,14 +1410,18 @@ const IMPORT = GC.import = {
     const H = headers.map(IMPORT.norm);
     const out = {};
     Object.keys(schema).forEach(field => {
-      const cands = schema[field].map(IMPORT.norm);
+      const cands = schema[field].map(IMPORT.norm).filter(Boolean);
       let idx = -1;
       // 完全相等優先
       for (let i = 0; i < H.length && idx < 0; i++)
-        if (cands.includes(H[i])) idx = i;
+        if (H[i] && cands.includes(H[i])) idx = i;
       // 再退而求其次：包含
-      for (let i = 0; i < H.length && idx < 0; i++)
-        if (cands.some(c => c && (H[i].includes(c) || c.includes(H[i])))) idx = i;
+      // 空白標題不可參與包含比對；任何字串都包含空字串，舊邏輯會把
+      // 月報中的日期、門檻與備註誤配到第一個空白欄位。
+      for (let i = 0; i < H.length && idx < 0; i++) {
+        if (!H[i]) continue;
+        if (cands.some(c => H[i].length >= 2 && c.length >= 2 && (H[i].includes(c) || c.includes(H[i])))) idx = i;
+      }
       out[field] = idx;
     });
     return out;
@@ -1448,7 +1452,10 @@ const IMPORT = GC.import = {
               const headers = nonEmpty[ri].map(x => String(x == null ? '' : x));
               const map = IMPORT.autoMap(headers, schema);
               const matched = Object.keys(map).filter(k => map[k] >= 0).length;
-              if (matched && (!best || matched > best.score)) {
+              // 多欄 schema 至少命中兩個真實標題，避免報表標題或備註中偶然
+              // 出現一個關鍵字便把其後所有列當成業務資料。
+              const minimum = fields.length > 1 ? 2 : 1;
+              if (matched >= minimum && (!best || matched > best.score)) {
                 best = { score: matched, headers, rows: nonEmpty.slice(ri + 1), sheetName };
               }
             }
@@ -3144,7 +3151,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.13-reminder-temp-dorm-sync-safe';
+GC.version = '3.14-import-summary-safe';
 global.GC = GC;
 global.GASCheckCore = GC;
 

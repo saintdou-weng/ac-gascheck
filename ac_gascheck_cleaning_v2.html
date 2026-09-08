@@ -169,7 +169,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=53-reminder-temp-dorm-sync"></script>
+<script src="./gascheck-core.js?v=54-temp-clean-import-safe"></script>
 </head>
 <body>
 <div class="topbar">
@@ -772,6 +772,59 @@ function upsertCleaningRecords(current,incoming){
 }
 function cleaningToCloud(r){const out=normalizeCleaningRecord(r);delete out.synced;delete out._localPending;return out;}
 function cleaningFromCloud(r){const out=normalizeCleaningRecord(r);out.synced=true;return out;}
+
+/* Cleaning 智慧匯入必須把本平台匯出的 Slots 與六個勾選項還原；舊版只讀
+   日期、地點與人名，匯入後會被 Telegram 完整性檢查擋住。 */
+function cleaningImportDate(v){
+  if(v instanceof Date&&!isNaN(v))return _localYMD(v);
+  if(typeof v==='number'&&isFinite(v)&&v>20000&&v<80000){const x=new Date(Date.UTC(1899,11,30)+Math.floor(v)*86400000);return [x.getUTCFullYear(),String(x.getUTCMonth()+1).padStart(2,'0'),String(x.getUTCDate()).padStart(2,'0')].join('-');}
+  const out=cleaningDateValue(v),m=out.match(/^(20\d{2})-(\d{2})-(\d{2})$/);if(!m)return'';
+  const x=new Date(+m[1],+m[2]-1,+m[3]);return x.getFullYear()===+m[1]&&x.getMonth()===+m[2]-1&&x.getDate()===+m[3]?out:'';
+}
+function cleaningImportNorm(v){return String(v==null?'':v).toLowerCase().replace(/\u200b/g,'').replace(/[\s_\-\/()（）:：.]/g,'');}
+function cleaningImportCheck(v){
+  if(v===true||v===false)return v;if(v===1)return true;if(v===0)return false;
+  const s=String(v==null?'':v).trim().toLowerCase();if(!s||/^(?:—|-|n\/a|null)$/.test(s))return null;
+  if(/^(?:pass|ok|normal|yes|y|true|good|✓|✔|✅|正常|通過)$/.test(s))return true;
+  if(/^(?:fail|ng|abnormal|no|n|false|bad|x|✕|✗|❌|異常|不合格)$/.test(s))return false;
+  return null;
+}
+function cleaningImportSlots(v){
+  if(v instanceof Date&&!isNaN(v))return [String(v.getHours()).padStart(2,'0')+':'+String(v.getMinutes()).padStart(2,'0')];
+  if(typeof v==='number'&&v>=0&&v<1){const mins=Math.round(v*1440)%1440;return [String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0')];}
+  return cleaningSlotsValue(v).map(function(x){const m=String(x).match(/^(\d{1,2}):(\d{2})/);return m?String(+m[1]).padStart(2,'0')+':'+m[2]:String(x);});
+}
+function cleaningImportLocation(value,locations,pending){
+  const raw=String(value==null?'':value).trim(),key=cleaningImportNorm(raw);if(!key)return null;
+  let found=(locations||[]).find(function(x){return String(x.id)===raw||cleaningImportNorm(x.name)===key;});
+  if(found)return{id:String(found.id),name:found.name||raw,def:null};
+  let base='loc_'+key.replace(/[^a-z0-9]+/g,'').slice(0,36);if(base==='loc_')base='loc_imported_'+cleaningHash(raw);
+  let id=base,n=2;while((locations||[]).some(function(x){return String(x.id)===id;}))id=base+'_'+n++;
+  const def={id:id,name:raw,type:'other',resp:'',updatedAt:_localTS()};locations.push(def);pending.set(id,def);return{id:id,name:raw,def:def};
+}
+function parseCleaningSmartImport(file,schema){
+  if(typeof GC==='undefined'||!GC.import)return Promise.reject(new Error('Import component not ready'));
+  return GC.import.parse(file,schema).then(function(parsed){
+    const map=GC.import.autoMap(parsed.headers||[],schema||{}),locations=(state.db().locations||[]).map(function(x){return Object.assign({},x);}),pending=new Map(),objects=[];
+    (parsed.rows||[]).forEach(function(row){
+      const date=map.date>=0?cleaningImportDate(row[map.date]):'',loc=map.locId>=0?cleaningImportLocation(row[map.locId],locations,pending):null;
+      const slots=map.slots>=0?cleaningImportSlots(row[map.slots]):[];
+      const checks={};CHK_ITEMS.forEach(function(k){checks[k]=map[k]>=0?cleaningImportCheck(row[map[k]]):null;});
+      if(!date||!loc||!slots.length||!CHK_ITEMS.some(function(k){return checks[k]===true||checks[k]===false;}))return;
+      const cleaner=map.cleaner>=0?String(row[map.cleaner]||'').trim():'',checker=map.checker>=0?String(row[map.checker]||'').trim():'',note=map.note>=0?String(row[map.note]||'').trim():'';
+      const base={date:date,locId:loc.id,slots:slots,shift:map.shift>=0?String(row[map.shift]||'').trim():'',cleaner:cleaner,checker:checker,checks:checks,note:note,photos:[],photoCount:map.photoCount>=0?(Number(row[map.photoCount])||0):0,timestamp:map.timestamp>=0?String(row[map.timestamp]||'').trim():'',_locationDef:loc.def||null};
+      base.id='clean_imp_'+cleaningHash(cleaningRecordKey(base));objects.push(base);
+    });
+    if(!objects.length)throw new Error('No complete Cleaning rows found (Date, Location, Slots and checks are required)');
+    const warnings=[];if(pending.size)warnings.push('新增地點 / New location: '+Array.from(pending.values()).map(function(x){return x.name;}).join(', '));
+    return{objects:compactCleaningRecords(objects),headers:parsed.headers||[],rows:[],sheetName:parsed.sheetName||'',summary:{warnings:warnings,validRows:objects.length}};
+  });
+}
+function mergeCleaningSmartImport(current,incoming){
+  const db=state.db(),locations=db.locations||[],known=new Set(locations.map(function(x){return String(x.id);}));
+  const rows=(incoming||[]).map(function(raw){const r=Object.assign({},raw),def=r._locationDef;delete r._locationDef;if(def&&def.id&&!known.has(String(def.id))){locations.push(Object.assign({},def));known.add(String(def.id));}return r;});
+  db.locations=locations;return upsertCleaningRecords(current||[],rows);
+}
 
 var state = (() => {
   let _db = {records:[],sixsRecords:[],locations:[],bins:[],cleaners:[],checkers:[],slots:[...DEF_SLOTS],cfg:{}};
@@ -2021,7 +2074,10 @@ function validateCleaningTelegramSelection(ctx){
         if(Array.isArray(list))state.replaceRecords(list,{sync:false});
         state.populate();refreshCleanOverview();updateDbInfo();
       },
-      importSchema:{"date": ["日期", "date"], "locId": ["地點", "location", "loc", "ទីតាំង"], "cleaner": ["清潔人員", "cleaner", "អ្នកសម្អាត"], "checker": ["檢查人", "checker", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "ចំណាំ"]},
+      importSchema:{"date": ["日期", "date"], "locId": ["地點", "location", "loc", "ទីតាំង"], "shift": ["班別", "shift"], "cleaner": ["清潔人員", "cleaner", "អ្នកសម្អាត"], "checker": ["檢查人", "checker", "អ្នកត្រួតពិនិត្យ"], "slots": ["時段", "檢查時間", "slots", "check time"], "smell": ["氣味", "smell"], "light": ["燈光", "light"], "floor": ["地板", "floor"], "door": ["門", "door"], "corner": ["角落", "corner"], "ceiling": ["天花", "天花板", "ceiling"], "note": ["備註", "note", "ចំណាំ"], "photoCount": ["照片數", "photocount", "photo count"], "timestamp": ["提交時間", "submitted", "timestamp"]},
+      importParser:parseCleaningSmartImport,
+      mergeImport:mergeCleaningSmartImport,
+      onImport:function(rows){state.populate();refreshCleanOverview();updateDbInfo();if(rows&&rows.length&&typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule)GC.sync.schedule('cleaning','smart_import');},
     read(){ return compactCleaningRecords(state.db().records||[]); },
     write(list){ state.replaceRecords((list||[]).map(cleaningFromCloud),{sync:false}); },
     });

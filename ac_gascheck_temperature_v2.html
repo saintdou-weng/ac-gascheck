@@ -216,7 +216,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=53-reminder-temp-dorm-sync"></script>
+<script src="./gascheck-core.js?v=54-temp-clean-import-safe"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -749,6 +749,18 @@ function tempRecordKey(r){
   if(d&&p&&z)return 'slot:'+d+'|'+p+'|'+z;
   return r.id?'id:'+String(r.id):'';
 }
+function validTempBusinessDate(v){
+  const m=String(v||'').match(/^(20\d{2})-(\d{2})-(\d{2})$/);if(!m)return false;
+  const y=+m[1],mo=+m[2],d=+m[3],x=new Date(y,mo-1,d);
+  return x.getFullYear()===y&&x.getMonth()===mo-1&&x.getDate()===d;
+}
+function validTempBusinessRecord(r){
+  if(!r||!validTempBusinessDate(r.d))return false;
+  if(r.p!=='morning'&&r.p!=='afternoon')return false;
+  if(!String(r.z||'').trim())return false;
+  const tv=r.t===''||r.t==null?null:Number(r.t),hv=r.h===''||r.h==null?null:Number(r.h);
+  return (tv!==null&&isFinite(tv)&&tv>=-50&&tv<=80)||(hv!==null&&isFinite(hv)&&hv>=0&&hv<=100);
+}
 function tempPhotoList(v){
   if(Array.isArray(v))return v.filter(Boolean);
   if(!v)return[];
@@ -767,6 +779,9 @@ function compactTempRecords(list){
     if(!raw||typeof raw!=='object')return;
     const isLong=raw.date!==undefined||raw.zoneId!==undefined||raw.temperature!==undefined||raw.humidity!==undefined;
     const r=isLong?normalizeRec(raw):raw;
+    // 舊共用匯入器曾把「18~32°C」、日號、假日與備註當成日期／區域。
+    // 這些不是業務記錄，不可再進入月報、統計或同步。
+    if(!validTempBusinessRecord(r))return;
     const k=tempRecordKey(r); if(!k)return;
     const old=map.get(k);
     if(!old){map.set(k,r);return;}
@@ -1834,78 +1849,201 @@ function exportJSON(){
   a.download='VRT_TH_'+today()+'.json';a.click();toast(T('expok'),'ok');
 }
 
-function importXL(evt){
-  const file=evt.target.files[0];if(!file)return;
-  const log=document.getElementById('imp-log');log.style.display='block';log.textContent='⏳ 讀取中...';
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      // cellDates:false ensures date-formatted cells return raw serial numbers, not Date objects
-      const wb=XLSX.read(e.target.result,{type:'binary',cellDates:false,raw:true});
-      const mnMap={jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,oct:10,nov:11,dec:12};
-      let recs=getR();const existIds=new Set(recs.map(r=>r.d+'|'+r.p+'|'+r.z));
-      const newRecs=[];
-      let added=0,skipped=0;
-      const zones=getZ();
-      // Helper: safely parse a numeric value from a cell (number or string)
-      const numCell=v=>{
-        if(v===null||v===undefined||v==='')return '';
-        if(typeof v==='number')return isNaN(v)?'':v;
-        const n=parseFloat(String(v).replace(/[^0-9.\-]/g,''));
-        return isNaN(n)?'':n;
-      };
-      wb.SheetNames.forEach(sn=>{
-        const mn=mnMap[sn.toLowerCase()];if(!mn)return;
-        const sh=wb.Sheets[sn];const rows=XLSX.utils.sheet_to_json(sh,{header:1,defval:'',raw:true});
-        // Year detection: row index 1, col 0 is the date serial (Excel BIFF date)
-        let year=new Date().getFullYear();
-        const r1raw=rows[1]?.[0];
-        if(r1raw instanceof Date){year=r1raw.getFullYear();}
-        else if(typeof r1raw==='number'&&r1raw>40000){
-          year=new Date(Math.round((r1raw-25569)*86400*1000)).getFullYear();
-        } else if(typeof r1raw==='string'){
-          const m=String(r1raw).match(/\d{4}/);if(m)year=+m[0];
-        }
-        // 依匯出表頭尋找每個區域的四欄；找不到時才依順序回退，支援新增第 4、5…區域。
-        const head=rows[1]||[];
-        const norm=s=>String(s||'').toLowerCase().replace(/[\s_\-()（）:：%]/g,'');
-        const zm=zones.filter(z=>z.on).map((z,zi)=>{
-          const zn=[norm(z.en),norm(z.zh)].filter(Boolean);
-          let start=-1;
-          for(let ci=1;ci<head.length;ci++){
-            const h=norm(head[ci]);
-            if(zn.some(n=>n&&h.indexOf(n)>=0)&&h.indexOf('morningtemp')>=0){start=ci;break;}
-          }
-          if(start<0)start=1+zi*4;
-          return {cols:[start,start+1,start+2,start+3],id:z.id};
+function tempImportText(v){return String(v==null?'':v).replace(/\u200b/g,'').trim();}
+function tempImportNorm(v){
+  return tempImportText(v).toLowerCase().replace(/warehouse/g,'wh').replace(/workshop/g,'')
+    .replace(/[\s_\-\/()（）:：.%°~]/g,'');
+}
+function tempImportNumber(v,kind){
+  if(v==null||v==='')return '';
+  let n='';
+  if(typeof v==='number')n=isFinite(v)?v:'';
+  else{
+    const s=tempImportText(v).replace(/,/g,'.');
+    // 只接受單一數值及其單位；「Change date 01-05-2026」等備註不可拆成數字。
+    const m=s.match(/^([+-]?\d+(?:\.\d+)?)\s*(?:°?\s*c|%|％)?$/i);
+    if(m)n=Number(m[1]);
+  }
+  if(n===''||!isFinite(n))return '';
+  if(kind==='t'&&(n<-50||n>80))return '';
+  if(kind==='h'&&(n<0||n>100))return '';
+  return n;
+}
+function tempImportExcelDate(v){
+  if(v instanceof Date&&!isNaN(v))return [v.getFullYear(),String(v.getMonth()+1).padStart(2,'0'),String(v.getDate()).padStart(2,'0')].join('-');
+  if(typeof v==='number'&&isFinite(v)&&v>20000&&v<80000){
+    const x=new Date(Date.UTC(1899,11,30)+Math.floor(v)*86400000);
+    return [x.getUTCFullYear(),String(x.getUTCMonth()+1).padStart(2,'0'),String(x.getUTCDate()).padStart(2,'0')].join('-');
+  }
+  const s=tempImportText(v),m=s.match(/\b(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})\b/);
+  if(m){const out=m[1]+'-'+String(+m[2]).padStart(2,'0')+'-'+String(+m[3]).padStart(2,'0');return validTempBusinessDate(out)?out:'';}
+  return '';
+}
+function tempImportMonthKey(sheetName,rows){
+  const top=(rows||[]).slice(0,8);
+  for(let ri=0;ri<top.length;ri++)for(let ci=0;ci<(top[ri]||[]).length;ci++){
+    const iso=tempImportExcelDate(top[ri][ci]);if(iso)return iso.slice(0,7);
+    const m=tempImportText(top[ri][ci]).match(/\b(20\d{2})[-/.](\d{1,2})\b/);
+    if(m&&+m[2]>=1&&+m[2]<=12)return m[1]+'-'+String(+m[2]).padStart(2,'0');
+  }
+  const months={january:1,jan:1,february:2,feb:2,march:3,mar:3,april:4,apr:4,may:5,june:6,jun:6,july:7,jul:7,august:8,aug:8,september:9,sep:9,october:10,oct:10,november:11,nov:11,december:12,dec:12};
+  const sn=tempImportText(sheetName).toLowerCase();let month=0;
+  Object.keys(months).some(function(k){if(sn===k||sn.indexOf(k)===0){month=months[k];return true;}return false;});
+  let year='';top.some(function(row){return (row||[]).some(function(cell){const m=tempImportText(cell).match(/\b(20\d{2})\b/);if(m){year=m[1];return true;}return false;});});
+  return month?(year||String(new Date().getFullYear()))+'-'+String(month).padStart(2,'0'):'';
+}
+function tempImportDay(v){
+  if(typeof v==='number'&&isFinite(v)&&Math.round(v)===v&&v>=1&&v<=31)return v;
+  const s=tempImportText(v);return /^\d{1,2}$/.test(s)&&+s>=1&&+s<=31?+s:0;
+}
+function tempImportSlot(v){
+  const s=tempImportText(v).toLowerCase();
+  if(/afternoon|\bpm\b|下午|រសៀល|15[.:]?(?:30)?/.test(s))return'afternoon';
+  if(/morning|\bam\b|早上|上午|ព្រឹក|0?8[.:]?(?:00)?/.test(s))return'morning';
+  return'';
+}
+function tempImportZoneCanonical(v){return tempImportNorm(v).replace(/inside/g,'').replace(/area/g,'').replace(/factory/g,'building');}
+function tempImportResolveZone(name,zones,pending){
+  const raw=tempImportText(name),key=tempImportZoneCanonical(raw);if(!key)return null;
+  let found=(zones||[]).find(function(z){return [z.id,z.zh,z.en,z.km].some(function(v){return tempImportZoneCanonical(v)===key;});});
+  if(!found){
+    const aliases={buildinga:'za',buildingb:'zb',buildingbwh:'zc'};
+    if(aliases[key])found=(zones||[]).find(function(z){return String(z.id)===aliases[key];});
+  }
+  if(!found){
+    found=(zones||[]).find(function(z){return [z.zh,z.en,z.km].some(function(v){
+      const n=tempImportZoneCanonical(v);if(!n||key.length<6)return false;
+      const ratio=Math.min(n.length,key.length)/Math.max(n.length,key.length);
+      return ratio>=0.8&&(n.indexOf(key)>=0||key.indexOf(n)>=0);
+    });});
+  }
+  if(found)return{id:String(found.id),name:raw,def:null};
+  let base='z_'+key.replace(/[^a-z0-9]+/g,'').slice(0,36);if(base==='z_')base='z_imported';
+  let id=base,n=2;while((zones||[]).some(function(z){return String(z.id)===id;}))id=base+'_'+n++;
+  const palette=['#0ea5e9','#10b981','#f59e0b','#ec4899','#14b8a6','#6366f1'];
+  const def={id:id,zh:raw,en:raw,km:raw,col:palette[(zones||[]).length%palette.length],desc:'Excel import',on:true,updatedAt:_localTS()};
+  zones.push(def);pending.set(id,def);return{id:id,name:raw,def:def};
+}
+function tempImportRecord(ds,slot,zone,t,h,checker,note){
+  return{id:'temp_imp_'+ds.replace(/-/g,'')+'_'+slot+'_'+zone.id,z:zone.id,d:ds,p:slot,t:t,h:h,checker:tempImportText(checker),note:tempImportText(note),ts:_localTS(),_zoneName:zone.name,_zoneDef:zone.def||null};
+}
+function tempImportColumn(headers,aliases){
+  const h=(headers||[]).map(tempImportNorm),a=(aliases||[]).map(tempImportNorm).filter(Boolean);
+  let at=h.findIndex(function(x){return x&&a.indexOf(x)>=0;});
+  if(at>=0)return at;
+  return h.findIndex(function(x){return x&&a.some(function(y){return x.indexOf(y)>=0||y.indexOf(x)>=0;});});
+}
+function parseTemperatureRowsFromSheet(sheetName,rows,zones,pending){
+  const out=[],monthKey=tempImportMonthKey(sheetName,rows),maxDay=monthKey?new Date(+monthKey.slice(0,4),+monthKey.slice(5,7),0).getDate():31;
+  let metricRow=-1;
+  for(let ri=0;ri<Math.min((rows||[]).length,20);ri++){
+    const keys=(rows[ri]||[]).map(tempImportNorm),tc=keys.filter(function(x){return x==='temperature'||x==='temp';}).length,hc=keys.filter(function(x){return x==='humidity'||x==='hum';}).length;
+    if(tc&&hc){metricRow=ri;break;}
+  }
+  if(metricRow>=2&&monthKey){
+    const metrics=rows[metricRow]||[],slotRow=rows[metricRow-1]||[],zoneRow=rows[metricRow-2]||[];
+    const pairs=[];let zoneName='';
+    for(let c=0;c<metrics.length;c++){
+      if(tempImportText(zoneRow[c]))zoneName=tempImportText(zoneRow[c]);
+      const mk=tempImportNorm(metrics[c]),next=tempImportNorm(metrics[c+1]);
+      if((mk==='temperature'||mk==='temp')&&(next==='humidity'||next==='hum')){
+        const slot=tempImportSlot(slotRow[c]),zone=tempImportResolveZone(zoneName,zones,pending);
+        if(slot&&zone)pairs.push({tc:c,hc:c+1,slot:slot,zone:zone});
+      }
+    }
+    for(let ri=metricRow+1;ri<rows.length;ri++){
+      const row=rows[ri]||[],day=tempImportDay(row[0]);if(!day||day>maxDay)continue;
+      const ds=monthKey+'-'+String(day).padStart(2,'0');
+      pairs.forEach(function(p){const t=tempImportNumber(row[p.tc],'t'),h=tempImportNumber(row[p.hc],'h');if(t!==''||h!=='')out.push(tempImportRecord(ds,p.slot,p.zone,t,h,'',''));});
+    }
+    if(out.length)return out;
+  }
+
+  // 支援本平台匯出的扁平表頭：Zone Morning Temp / Morning Hum / Afternoon ...
+  let flatRow=-1,flatPairs=[];
+  for(let ri=0;ri<Math.min((rows||[]).length,20)&&flatRow<0;ri++){
+    const head=rows[ri]||[],dateCol=tempImportColumn(head,['Date','日期']);if(dateCol<0)continue;
+    const pairs=[];
+    for(let c=0;c<head.length-1;c++){
+      const n=tempImportNorm(head[c]),slot=n.indexOf('afternoon')>=0?'afternoon':n.indexOf('morning')>=0?'morning':'';
+      if(!slot||n.indexOf('temp')<0||tempImportNorm(head[c+1]).indexOf('hum')<0)continue;
+      const zoneName=tempImportText(head[c]).replace(/\b(?:morning|afternoon)[\s\S]*$/i,'').trim(),zone=tempImportResolveZone(zoneName,zones,pending);
+      if(zone)pairs.push({tc:c,hc:c+1,slot:slot,zone:zone,dateCol:dateCol});
+    }
+    if(pairs.length){flatRow=ri;flatPairs=pairs;}
+  }
+  if(flatRow>=0&&monthKey){
+    for(let ri=flatRow+1;ri<rows.length;ri++){
+      const row=rows[ri]||[],full=tempImportExcelDate(row[flatPairs[0].dateCol]),day=full?+full.slice(8):tempImportDay(row[flatPairs[0].dateCol]);
+      const ds=full||(day&&day<=maxDay?monthKey+'-'+String(day).padStart(2,'0'):'');if(!ds)continue;
+      flatPairs.forEach(function(p){const t=tempImportNumber(row[p.tc],'t'),h=tempImportNumber(row[p.hc],'h');if(t!==''||h!=='')out.push(tempImportRecord(ds,p.slot,p.zone,t,h,'',''));});
+    }
+    if(out.length)return out;
+  }
+
+  // 也接受一般直列表：Date / Zone / Period / Temperature / Humidity。
+  for(let hi=0;hi<Math.min((rows||[]).length,30);hi++){
+    const head=rows[hi]||[],map={
+      d:tempImportColumn(head,['日期','date','ថ្ងៃ']),z:tempImportColumn(head,['區域','zone','區域ID','តំបន់']),
+      p:tempImportColumn(head,['時段','period','slot','time']),t:tempImportColumn(head,['溫度','temp','temperature','សីតុណ្ហភាព']),
+      h:tempImportColumn(head,['濕度','humidity','hum','សំណើម']),checker:tempImportColumn(head,['檢查人','inspector','checker','checked by']),note:tempImportColumn(head,['備註','note','notes'])
+    };
+    if(map.d<0||map.z<0||map.p<0||(map.t<0&&map.h<0))continue;
+    for(let ri=hi+1;ri<rows.length;ri++){
+      const row=rows[ri]||[],ds=tempImportExcelDate(row[map.d]),slot=tempImportSlot(row[map.p]),zone=tempImportResolveZone(row[map.z],zones,pending);
+      if(!ds||!slot||!zone)continue;
+      const t=map.t>=0?tempImportNumber(row[map.t],'t'):'',h=map.h>=0?tempImportNumber(row[map.h],'h'):'';
+      if(t!==''||h!=='')out.push(tempImportRecord(ds,slot,zone,t,h,map.checker>=0?row[map.checker]:'',map.note>=0?row[map.note]:''));
+    }
+    break;
+  }
+  return out;
+}
+function parseTemperatureSmartImport(file){
+  return new Promise(function(resolve,reject){
+    if(typeof XLSX==='undefined')return reject(new Error('SheetJS (XLSX) not loaded'));
+    const reader=new FileReader();reader.onerror=function(){reject(reader.error||new Error('Unable to read file'));};
+    reader.onload=function(e){
+      try{
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:false,raw:true}),zones=getZ().map(function(z){return Object.assign({},z);}),pending=new Map(),objects=[],used=[];
+        wb.SheetNames.forEach(function(sn){
+          if(/^chart(?:s)?$/i.test(tempImportText(sn)))return;
+          const ws=wb.Sheets[sn];if(!ws)return;
+          let range;try{range=ws['!ref']?XLSX.utils.decode_range(ws['!ref']):null;}catch(ignore){range=null;}
+          if(range){range.s={r:0,c:0};range.e.r=Math.min(range.e.r,200);range.e.c=Math.min(range.e.c,60);}
+          const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true,range:range||undefined});
+          const parsed=parseTemperatureRowsFromSheet(sn,rows,zones,pending);if(parsed.length){objects.push.apply(objects,parsed);used.push(sn);}
         });
-        for(let ri=6;ri<rows.length;ri++){
-          const row=rows[ri];
-          const dayRaw=numCell(row[0]);
-          if(dayRaw===''||dayRaw<1||dayRaw>31)continue;
-          const day=Math.round(dayRaw);
-          const ds=`${year}-${String(mn).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
-          zm.forEach(z=>{
-            if(!z.id)return;
-            [['morning',z.cols[0],z.cols[1]],['afternoon',z.cols[2],z.cols[3]]].forEach(([p,tc,hc])=>{
-              const tv=numCell(row[tc]),hv=numCell(row[hc]);
-              if(tv===''&&hv==='')return;
-              const key=ds+'|'+p+'|'+z.id;
-              if(existIds.has(key)){skipped++;return;}
-              const nrec={id:'r'+Date.now()+Math.random().toString(36).slice(2,6),z:z.id,d:ds,p,t:tv,h:hv,note:'',ts:_localTS()};
-              recs.push(nrec);newRecs.push(nrec);
-              existIds.add(key);added++;
-            });
-          });
-        }
-      });
-      setR(recs);log.textContent=`✅ 完成：新增 ${added} 筆，跳過重複 ${skipped} 筆`;
-      toast(T('impok')+' ('+added+'筆)','ok');renderAll();updBadge();
-      // 批量同步歷史資料到雲端
-      if(newRecs.length>0) gasBulkSync(newRecs);
-    }catch(ex){log.textContent='❌ 匯入失敗: '+ex.message+' | '+ex.stack;toast('匯入失敗','err');}
-  };
-  reader.readAsBinaryString(file);evt.target.value='';
+        const clean=compactTempRecords(objects);if(!clean.length)throw new Error('No valid temperature rows found');
+        const warnings=[];if(pending.size)warnings.push('新增區域 / New zone: '+Array.from(pending.values()).map(function(z){return z.en;}).join(', '));
+        resolve({objects:clean,headers:[],rows:[],sheetName:used.join(', '),summary:{warnings:warnings,validRows:clean.length,usedSheets:used}});
+      }catch(ex){reject(ex);}
+    };
+    reader.readAsArrayBuffer(file);
+  });
+}
+function mergeTempSmartImport(current,incoming){
+  const zones=getZ().slice(),known=new Set(zones.map(function(z){return String(z.id);}));let zonesChanged=false;
+  const rows=(incoming||[]).map(function(raw){
+    const r=Object.assign({},raw),def=r._zoneDef;delete r._zoneDef;delete r._zoneName;
+    if(def&&def.id&&!known.has(String(def.id))){zones.push(Object.assign({},def));known.add(String(def.id));zonesChanged=true;}
+    return r;
+  }).filter(validTempBusinessRecord);
+  if(zonesChanged)setZ(zones);
+  return compactTempRecords((current||[]).concat(rows));
+}
+async function importXL(evt){
+  const input=evt.target,file=input.files[0];if(!file)return;input.value='';
+  const log=document.getElementById('imp-log');log.style.display='block';log.textContent='⏳ 讀取中...';
+  try{
+    const meta=await parseTemperatureSmartImport(file),rows=(meta.objects||[]),before=new Set(getR().map(tempRecordKey)),now=_localTS();
+    rows.forEach(function(r){r.updatedAt=now;r.ts=r.ts||now;});
+    const added=rows.filter(function(r){return !before.has(tempRecordKey(r));}).length,updated=rows.length-added;
+    setR(mergeTempSmartImport(getR(),rows));
+    log.textContent='✅ 完成：有效 '+rows.length+' 筆；新增 '+added+'，更新／合併 '+updated+'；工作表 '+(meta.sheetName||'—');
+    toast(T('impok')+' ('+rows.length+'筆)','ok');renderAll();updBadge();
+    if(rows.length)gasBulkSync(rows);
+  }catch(ex){log.textContent='❌ 匯入失敗: '+ex.message;toast('匯入失敗：'+ex.message,'err');}
 }
 
 function importJSON(evt){
@@ -2014,10 +2152,13 @@ function tempTgStatusCode(r){
 }
 function tempTgWeatherCode(k){return ({sunny:'Sunny',cloudy:'Cloudy',rain:'Rain',heavyRain:'H.Rain',storm:'Storm',hot:'Hot',humid:'Humid'})[k]||String(k||'—');}
 function tempTgSlotCode(p){return p==='morning'?'AM':(p==='afternoon'?'PM':String(p||'—').slice(0,4));}
-function buildTGPeriodMsg(period,mode,ref,slot,lang){
+function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
   const all=getR();
   const effectiveSlot=period==='day'?'all':slot;
-  const view=((typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'d',ref):all.slice()).filter(r=>tempTelegramSlotMatch(r,effectiveSlot));
+  const selectedScopes=(Array.isArray(scope)?scope:[scope]).map(function(v){return String(v||'');}).filter(Boolean);
+  const view=((typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'d',ref):all.slice())
+    .filter(function(r){return tempTelegramSlotMatch(r,effectiveSlot);})
+    .filter(function(r){return !selectedScopes.length||selectedScopes.indexOf('all')>=0||selectedScopes.indexOf(String(r.z||''))>=0;});
   const periodName={day:tempTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:tempTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:tempTelegramText('本月','This Month','ខែនេះ',lang),year:tempTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:tempTelegramText('全部','All','ទាំងអស់',lang)}[period]||period;
   const modeName={summary:tempTelegramText('摘要','Summary','សង្ខេប',lang),review:tempTelegramText('審查','Review','ពិនិត្យ',lang),approval:tempTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
   const slotName={all:tempTelegramText('AM／PM 分開顯示','AM / PM shown separately','បង្ហាញ AM / PM ដាច់ដោយឡែក',lang),morning:tempTelegramText('AM 早上 08:00–09:00','AM Morning 08:00–09:00','AM ពេលព្រឹក 08:00–09:00',lang),afternoon:tempTelegramText('PM 下午 15:30–16:30','PM Afternoon 15:30–16:30','PM ពេលរសៀល 15:30–16:30',lang)}[effectiveSlot||'all']||effectiveSlot||'all';
@@ -2527,6 +2668,9 @@ function markTemperatureTelegramSent(ctx){
       cloudKey:tempRecordKey,
       groupField:'z',
       groupLabel:'Zone',
+      scopeField:'z',
+      telegramScopeLabel:{zh:'選擇區域',en:'Select zones',km:'ជ្រើសតំបន់'},
+      telegramScopes:function(){return [{value:'all',zh:'全部區域',en:'All zones',km:'គ្រប់តំបន់'}].concat(getZ().filter(function(z){return z&&z.on!==false&&z.id;}).map(function(z){return {value:z.id,zh:z.zh||z.en||z.id,en:z.en||z.zh||z.id,km:z.km||z.en||z.zh||z.id};}));},
       weather:true,
       weatherField:'wx',
       photoField:'photos',
@@ -2540,12 +2684,16 @@ function markTemperatureTelegramSent(ctx){
       telegramAutoUpload:true,
       telegramSameDayUpdate:true,
       telegramPhotoDedupe:true,
-      telegramBuilder:({period,mode,ref,slot,lang})=>buildTGPeriodMsg(period,mode,ref,slot,lang),
+      telegramRequireData:true,
+      telegramBuilder:({period,mode,ref,scope,slot,lang})=>buildTGPeriodMsg(period,mode,ref,slot,lang,scope),
       onTelegramSent:markTemperatureTelegramSent,
       extra:()=>({zones:getZ(),zonesMode:'merge'}),
       onRemote:(d)=>{if(d&&Array.isArray(d.zones)){const z=mergeTempZones(getZ(),d.zones);if(JSON.stringify(z)!==JSON.stringify(getZ())){setZ(z);renderAll();}}},
       onSync:(list)=>{if(Array.isArray(list))setR(list);renderAll();updateTempUploadButton();},
-      importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "checker": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "notes", "ចំណាំ"]},
+      importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "p": ["時段", "period", "slot", "time"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "checker": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "notes", "ចំណាំ"]},
+      importParser:parseTemperatureSmartImport,
+      mergeImport:mergeTempSmartImport,
+      onImport:function(rows){renderAll();updBadge();updateTempUploadButton();if(rows&&rows.length)gasBulkSync(rows);},
     read(){ try{ const raw=localStorage.getItem('vrt_th_r'); if(!raw) return [];
         const d=JSON.parse(raw); if(Array.isArray(d)) return d;
         for(const k of ['records','list','items','data','rows']) if(Array.isArray(d[k])) return d[k];

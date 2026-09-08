@@ -132,6 +132,10 @@ for(const token of [
 assert(gas.includes('function persistDormRecordEverywhere_'));
 assert(gas.includes('function handleDormPlatformDecision_'));
 assert(gas.includes('function backfillReportCompletionMarkers()'));
+assert(gas.includes('function resumeGascheckV53()'));
+assert(gas.includes("const V53_UPGRADE_STATE_KEY='GASCHECK_V53_UPGRADE_STATE_V2'"));
+assert(gas.includes("if(tool==='temperature'&&Object.keys(out.tools).length)"));
+assert(gas.includes('state.backfillTools=done;saveV53UpgradeState_(state)'));
 assert(gas.includes('result.ehsWaste=cleanupEhsWasteDuplicates()'));
 assert(gas.includes('result.cleaningTemperature=cleanupCleaningTemperatureDuplicates()'));
 assert(gas.includes('result.dormitory=cleanupDormitoryStatusDuplicates()'));

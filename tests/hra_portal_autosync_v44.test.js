@@ -9,7 +9,7 @@ const core=fs.readFileSync(path.join(root,'gascheck-core.js'),'utf8');
 const gas=fs.readFileSync(path.join(root,'ac_gascheck_core_v3_fixed.gs'),'utf8');
 const htmls=fs.readdirSync(root).filter(x=>/^ac_gascheck_.*\.html$/.test(x));
 
-assert(core.includes("GC.version = '3.13-reminder-temp-dorm-sync-safe'"));
+assert(core.includes("GC.version = '3.14-import-summary-safe'"));
 assert(core.includes("cache:'no-store'"), 'cloud GET must bypass mobile/WebView caches');
 assert(core.includes("{ _t:Date.now().toString(36)"), 'cloud GET must contain a cache buster');
 assert(core.includes("scheduleReconcile(hasPending() ? 'pending_resume' : 'startup', 450)"));
@@ -23,7 +23,7 @@ assert(core.includes('retryNetwork(function ()'), 'smart buckets/commit must ret
 assert(gas.includes("CORE_VERSION : 'v4.7-reminder-temp-dorm-sync'"));
 assert(gas.includes("String(old.lastUploadId||'')===uploadId"), 'smart commit retry must be idempotent');
 assert(gas.includes('replaceRecords_(sheet,gcSmartSortRows_(kept.concat(changedRows)))'), 'Sheet compatibility index must remove stale rows from changed buckets');
-htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=53-reminder-temp-dorm-sync'),name+' must load v53 core cache key'));
+htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=54-temp-clean-import-safe'),name+' must load v54 core cache key'));
 
 const store={};
 const document={
