@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v3.14-import-summary-safe
+   AC GASCheck — Shared Core  v3.15-temp-telegram-delivery
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -2128,7 +2128,11 @@ GC.telegram = {
       chatId: chatId || DEFAULT_CHAT_ID,
       tool: tool || ''
     }, meta || {}));
-    if (!res || res.ok === false) throw new Error((res && res.error) || 'Telegram request failed');
+    if (!res || res.ok !== true) throw new Error((res && res.error) || 'Telegram request failed');
+    // 只有 Telegram API 回傳 message_id（或確認原訊息未變）才算真正送達。
+    // 避免舊後端／中介層只回 ok:true，畫面顯示成功但群組實際沒有訊息。
+    const confirmedMessage = res.notModified === true || (res.messageId !== undefined && res.messageId !== null && String(res.messageId) !== '');
+    if (!confirmedMessage) throw new Error('Telegram 未回傳送達確認 / No delivery confirmation');
     return res;
   }
 };
@@ -3151,7 +3155,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.14-import-summary-safe';
+GC.version = '3.15-temp-telegram-delivery';
 global.GC = GC;
 global.GASCheckCore = GC;
 

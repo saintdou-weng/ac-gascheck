@@ -216,7 +216,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=54-temp-clean-import-safe"></script>
+<script src="./gascheck-core.js?v=55-temp-month-delivery"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -2111,8 +2111,8 @@ function buildTGmsg(type,date){
     m+=now;return m;
   }
 }
-// 共用上方 Telegram 按鈕使用的詳細報告：保留每個日期、區域、時段、溫度、濕度與狀態，
-// 不再只送「za / zb」分組筆數。訊息上限前保留完整列，避免 Telegram 拒收過長內容。
+// 共用上方 Telegram 按鈕：日報保留逐區明細；週／月／年／全部改為精簡統計，
+// 只展開異常，避免大量匯入後超過 Telegram 單則訊息上限而整則收不到。
 function tempTelegramText(zh,en,km,lang){
   if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
   return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
@@ -2136,11 +2136,14 @@ function tempTelegramSlotMatch(r,slot){ return !slot||slot==='all'||String(r.p||
    weather and inspector in separate fixed-width tables for every area. */
 function tempTgEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function tempTgClean(v){return String(v==null?'':v).replace(/\s+/g,' ').trim();}
+function tempTgShort(v,w){
+  const x=tempTgClean(v),n=Math.max(2,Number(w)||24);return x.length>n?x.slice(0,n-1)+'…':x;
+}
 function tempTgCell(v,w){
   let x=tempTgClean(v);if(x.length>w)x=x.slice(0,Math.max(1,w-1))+'…';return x.padEnd(w,' ');
 }
 function tempTgTable(headers,widths,rows){
-  const line=function(cols){return cols.map(function(v){return tempTgClean(v);}).join(' │ ');};
+  const line=function(cols){return cols.map(function(v,index){return tempTgShort(v,(widths||[])[index]||24);}).join(' │ ');};
   const body=rows.map(line);
   return '<blockquote><b>'+tempTgEsc(line(headers))+'</b>'+(body.length?'\n'+tempTgEsc(body.join('\n')):'')+'</blockquote>';
 }
@@ -2183,7 +2186,10 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
   lines.push(tempTgTable(['Item','Qty'],[16,9],[
     ['Records',view.length],['Zones',zoneCount],['Normal',normal],['Abnormal',anomalies],['Pending',pending],['Avg Temp',avg(temps)+' C'],['Avg Hum',avg(hums)+' %'],['Photos',photos.length]
   ]));
-  if(checkers.length)lines.push('👤 '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+tempTgEsc(checkers.join(', ')));
+  if(checkers.length){
+    const shownCheckers=checkers.slice(0,6).map(function(v){return tempTgShort(v,32);});
+    lines.push('👤 '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+tempTgEsc(shownCheckers.join(', '))+(checkers.length>shownCheckers.length?' +'+(checkers.length-shownCheckers.length):''));
+  }
   if(liveObservation){
     lines.push('🌐 <b>'+tempTelegramText('即時室外天氣','Live outdoor weather','អាកាសធាតុខាងក្រៅបច្ចុប្បន្ន',lang)+'</b>');
     lines.push(tempTgTable(['Weather','Temp','Hum','Rain'],[8,7,5,7],[[
@@ -2209,6 +2215,38 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
   };
   const weatherIcon=function(k){return ({sunny:'☀️',cloudy:'☁️',rain:'🌧️',heavyRain:'🌧️',storm:'⛈️',hot:'🔥',humid:'💧'})[k]||'🌤️';};
   const slotTitle=function(p){return p==='morning'?tempTelegramText('AM｜早上 08:00–09:00','AM | Morning 08:00–09:00','AM | ពេលព្រឹក 08:00–09:00',lang):tempTelegramText('PM｜下午 15:30–16:30','PM | Afternoon 15:30–16:30','PM | ពេលរសៀល 15:30–16:30',lang);};
+
+  // 日報維持使用者熟悉的逐區明細；較長期間只列彙總與異常，正常資料不重複堆疊。
+  if(period!=='day'){
+    const byZone=new Map();
+    sorted.forEach(function(r){const key=String(r.z||'—');if(!byZone.has(key))byZone.set(key,[]);byZone.get(key).push(r);});
+    const zoneRows=Array.from(byZone.entries()).sort(function(a,b){return (zoneOrder.get(a[0])??999)-(zoneOrder.get(b[0])??999)||a[0].localeCompare(b[0]);}).slice(0,10).map(function(entry){
+      const rows=entry[1],zt=rows.filter(function(r){return r.t!==''&&r.t!=null&&!isNaN(r.t);}).map(function(r){return +r.t;}),zh=rows.filter(function(r){return r.h!==''&&r.h!=null&&!isNaN(r.h);}).map(function(r){return +r.h;});
+      return [zoneFullName(entry[0]),rows.length,avg(zt)+'C',avg(zh)+'%',rows.filter(isAnom).length];
+    });
+    lines.push('━━━━━━━━━━━━━━━━','🏭 <b>'+tempTelegramText('區域摘要','Zone Summary','សង្ខេបតំបន់',lang)+'</b>');
+    lines.push(tempTgTable(['Zone','Rec','Avg T','Avg H','Abn'],[28,5,7,7,4],zoneRows));
+    if(byZone.size>zoneRows.length)lines.push('… +'+(byZone.size-zoneRows.length)+' '+tempTelegramText('個區域；完整資料請開啟平台','zones; open dashboard for full data','តំបន់; បើកផ្ទាំងគ្រប់គ្រងសម្រាប់ទិន្នន័យពេញ',lang));
+
+    const slotRows=['morning','afternoon'].map(function(p){
+      const rows=sorted.filter(function(r){return r.p===p;}),st=rows.filter(function(r){return r.t!==''&&r.t!=null&&!isNaN(r.t);}).map(function(r){return +r.t;}),sh=rows.filter(function(r){return r.h!==''&&r.h!=null&&!isNaN(r.h);}).map(function(r){return +r.h;});
+      return [tempTgSlotCode(p),rows.length,avg(st)+'C',avg(sh)+'%',rows.filter(isAnom).length];
+    }).filter(function(row){return row[1]>0;});
+    if(slotRows.length){
+      lines.push('⏱️ <b>'+tempTelegramText('時段摘要','Slot Summary','សង្ខេបតាមពេល',lang)+'</b>');
+      lines.push(tempTgTable(['Slot','Rec','Avg T','Avg H','Abn'],[6,5,7,7,4],slotRows));
+    }
+
+    const abnormalRows=sorted.filter(isAnom),shownAbnormal=abnormalRows.slice(0,8);
+    if(shownAbnormal.length){
+      lines.push('⚠️ <b>'+tempTelegramText('異常明細','Abnormal Details','ព័ត៌មានមិនប្រក្រតី',lang)+'</b>');
+      shownAbnormal.forEach(function(r){lines.push('• '+tempTgEsc(String(r.d||'').slice(0,10)+' · '+tempTgSlotCode(r.p)+' · '+tempTgShort(zoneFullName(r.z),34)+' · '+tempTgStatusCode(r)+' · '+(r.t!==''?r.t+'C':'--')+' · '+(r.h!==''?r.h+'%':'--')));});
+      if(abnormalRows.length>shownAbnormal.length)lines.push('… +'+(abnormalRows.length-shownAbnormal.length)+' '+tempTelegramText('筆異常；完整資料請開啟平台','abnormal records; open dashboard for full data','កំណត់ត្រាមិនប្រក្រតី; បើកផ្ទាំងគ្រប់គ្រងសម្រាប់ទិន្នន័យពេញ',lang));
+    }else lines.push('✅ '+tempTelegramText('本期間沒有異常','No abnormalities in this period','គ្មានភាពមិនប្រក្រតីក្នុងរយៈពេលនេះ',lang));
+    lines.push('━━━━━━━━━━━━━━━━','⚠️ '+tempTelegramText('異常','Anomaly','មិនប្រក្រតី',lang)+': <b>'+anomalies+'</b> | 📋 '+tempTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b>','⏰ '+new Date().toLocaleString());
+    return {text:lines.join('\n'),photos:photos};
+  }
+
   lines.push('━━━━━━━━━━━━━━━━','📋 <b>'+tempTelegramText('依日期、AM／PM 分開','By date, separated into AM / PM','តាមកាលបរិច្ឆេទ បែងចែកជា AM / PM',lang)+'</b>');
   [...new Set(shown.map(function(r){return String(r.d||'').slice(0,10);})).values()].filter(Boolean).forEach(function(date){
     lines.push('📅 <b>'+tempTgEsc(date)+'</b>');
@@ -2217,9 +2255,9 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
       lines.push((p==='morning'?'🌅 ':'🌇 ')+'<b>'+tempTgEsc(slotTitle(p))+'</b>');
       slotRows.forEach(function(r){
         const status=tempTgStatusCode(r),ok=status==='OK';
-        lines.push('🏭 <b>'+tempTgEsc(zoneFullName(r.z))+'</b>',
+        lines.push('🏭 <b>'+tempTgEsc(tempTgShort(zoneFullName(r.z),48))+'</b>',
           '  🌡️ '+tempTgEsc(r.t!==''&&r.t!=null?String(r.t)+'°C':'--')+' · 💧 '+tempTgEsc(r.h!==''&&r.h!=null?String(r.h)+'%':'--')+' · '+weatherIcon(r.wx)+' '+tempTgEsc(tempTgWeatherCode(r.wx))+' · '+(ok?'✅ ':'⚠️ ')+tempTgEsc(status),
-          '  👤 '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+tempTgEsc(r.checker||'—'));
+          '  👤 '+tempTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+tempTgEsc(tempTgShort(r.checker||'—',40)));
       });
     });
   });
@@ -2270,12 +2308,16 @@ async function sendTG(){
     const meta={reportPeriod:period,reportMode:mode,reportRef:ref,reportMonth:String(ref).slice(0,7),reportScope:'all',reportSlot:'all',dedupePhotos:true,photoDedupeKey:['temperature',period,ref].join('|')};
     if(period==='day'){meta.updateExisting=true;meta.messageKey='temperature|'+String(ref).slice(0,10);meta.photoDedupeKey=meta.messageKey;}
     const d=await sendTemperatureTelegramPacket(packet,cfg.chat||'-5113064563',meta);
-    if(!d||d.ok===false)throw new Error((d&&d.description)||'Telegram 發送失敗');
+    if(!tempTelegramDeliveryConfirmed(d))throw new Error((d&&(d.error||d.description))||'Telegram 未回傳送達確認');
     markTemperatureTelegramSent({period:period,mode:mode,ref:ref,scope:'all',slot:'all',cfg:{dateField:'d',telegramSlotFilter:function(r,s){return tempTelegramSlotMatch(r,s);}}});
     try{await uploadTemperatureNow('telegram_report_status');}catch(syncErr){if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','telegram_status_retry',60);}
     toast('Telegram 發送成功，完成狀態已同步 ✅','ok');
   }catch(ex){toast('網路錯誤: '+ex.message,'err');}
   finally{setTempTelegramSending(false);}
+}
+
+function tempTelegramDeliveryConfirmed(data){
+  return !!(data&&data.ok===true&&(data.notModified===true||(data.messageId!==undefined&&data.messageId!==null&&String(data.messageId)!=='')));
 }
 
 function setTempTelegramSending(yes){
@@ -2300,7 +2342,7 @@ async function sendTemperatureTelegramPacket(packet,chatId,meta){
   const url=(getGAS().url||GAS_DEFAULT_URL).trim();
   const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({action:'telegram',tool:'temperature',chatId:chatId||'-5113064563',text:packet.text||'',photos:packet.photos||[],buttons},meta||{}))});
   const data=await response.json();
-  if(!data||data.ok===false)throw new Error((data&&data.error)||'Telegram request failed');
+  if(!tempTelegramDeliveryConfirmed(data))throw new Error((data&&(data.error||data.description))||'Telegram 未回傳送達確認 / No delivery confirmation');
   return data;
 }
 

@@ -11,9 +11,9 @@ const clean = read('ac_gascheck_cleaning_v2.html');
 const temp = read('ac_gascheck_temperature_v2.html');
 const dorm = read('ac_gascheck_dormitory_v2.html');
 const water = read('ac_gascheck_waterdrum_v2.html');
-const cache = 'gascheck-core.js?v=54-temp-clean-import-safe';
+const cache = 'gascheck-core.js?v=55-temp-month-delivery';
 
-assert(core.includes("GC.version = '3.14-import-summary-safe'"));
+assert(core.includes("GC.version = '3.15-temp-telegram-delivery'"));
 assert(core.includes('capture="environment"'));
 assert(core.includes('gc-photo-camera'));
 assert(core.includes("I18.t('gc.chooseFile')"));

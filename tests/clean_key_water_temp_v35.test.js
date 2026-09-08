@@ -17,9 +17,9 @@ for (const [name, html] of [['cleaning',cleaning],['key',key],['water',water],['
     assert.doesNotThrow(() => new Function(m[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline scripts`);
-  assert(html.includes('gascheck-core.js?v=54-temp-clean-import-safe'));
+  assert(html.includes('gascheck-core.js?v=55-temp-month-delivery'));
 }
-assert(core.includes("GC.version = '3.14-import-summary-safe'"));
+assert(core.includes("GC.version = '3.15-temp-telegram-delivery'"));
 
 // Cleaning: shared defaults plus independent cleaner, slots and checks per location.
 for (const token of [
