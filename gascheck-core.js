@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AC GASCheck — Shared Core  v3.15-temp-telegram-delivery
+   AC GASCheck — Shared Core  v3.16-key-water-daily-monthly
    共用核心：三語 / 安全雲端合併 / 照片 / 智慧匯入 / 期間篩選 / 儀表板
    用法：於 </head> 前加入 script 標籤，src="./gascheck-core.js"
    （與各模組 HTML 放在同一層目錄，不需 shared 資料夾）
@@ -1171,6 +1171,7 @@ const PHOTO = GC.photo = {
     opt = opt || {};
     let photos = PHOTO.list(opt.photos).slice();
     const max = opt.max || 4;
+    let busy=false;
     const id = U.uid('ph');
     const cameraId = U.uid('phcam');
 
@@ -1202,15 +1203,17 @@ const PHOTO = GC.photo = {
       const processInput = async input => {
         if (!input) return;
         const files = Array.from(input.files || []);
-        if (!files.length) return;
+        if (!files.length || busy) return;
+        busy=true;if(opt.onBusy)opt.onBusy(true);
         let changed = false;
         for (const f of files) {
           if (photos.length >= max) break;
           try { photos.push(await PHOTO.compress(f)); changed = true; }
-          catch (err) { console.warn('photo', err); }
+          catch (err) { console.warn('photo', err);GC.toast('照片讀取失敗 / Photo could not be read','error'); }
         }
         input.value = '';
         render();
+        busy=false;if(opt.onBusy)opt.onBusy(false);
         if (changed && opt.onChange) opt.onChange(photos);
       };
       const input = el.querySelector('#' + id);
@@ -1231,6 +1234,7 @@ const PHOTO = GC.photo = {
     const rerenderOnLanguage = function () { render(); };
     global.addEventListener('gc:langchange', rerenderOnLanguage);
     return {
+      isBusy: () => busy,
       get: () => photos.slice(),
       set: arr => { photos = PHOTO.list(arr).slice(); render(); },
       clear: () => { photos = []; render(); },
@@ -1333,7 +1337,7 @@ GC.weather = {
 const PERIOD = GC.period = {
   /** 取得期間起訖（本地時間） */
   range(mode, ref) {
-    const d = ref ? new Date(ref) : new Date();
+    const d = ref ? new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(ref)) ? String(ref)+'T00:00:00' : ref) : new Date();
     const y = d.getFullYear(), m = d.getMonth(), dd = d.getDate();
     let from, to;
     switch (mode) {
@@ -1359,7 +1363,7 @@ const PERIOD = GC.period = {
     return list.filter(x => {
       const raw = x && x[f];
       if (!raw) return false;
-      const t = new Date(raw);
+      const t = new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(raw)) ? String(raw)+'T00:00:00' : raw);
       if (isNaN(t)) return false;
       return t >= r.from && t < r.to;
     });
@@ -2029,6 +2033,7 @@ GC.telegram = {
     let view = PERIOD.filter(Array.isArray(list) ? list : [], period || 'month', cfg.dateField || 'date', ref);
     const scopes = (Array.isArray(scope) ? scope : [scope]).map(function (v) { return v == null ? '' : String(v); }).filter(Boolean);
     const slots = (Array.isArray(slot) ? slot : [slot]).map(function (v) { return v == null ? '' : String(v); }).filter(Boolean);
+    if (typeof cfg.telegramScopeFilter === 'function') view=view.filter(r=>cfg.telegramScopeFilter(r,scope));
     if (cfg.scopeField && scopes.length && !scopes.includes('all')) {
       view = view.filter(r => scopes.includes(String(r && r[cfg.scopeField] || '')));
     }
@@ -2101,7 +2106,37 @@ GC.telegram = {
     lines.push('━━━━━━━━━━━━━━━━', '⏰ ' + U.ymdhms());
     return lines.join('\n');
   },
+  // Each page is independently valid HTML. Never truncate a daily row.
+  paginateRows(header, columns, rows, footer, maxRows) {
+    header=String(header||'');footer=String(footer||'');maxRows=maxRows||12;
+    const render=chunk=>header+'\n<blockquote><b>'+U.escapeHtml(columns)+'</b>\n'+chunk.map(U.escapeHtml).join('\n')+'</blockquote>'+(footer?'\n'+footer:'');
+    const chunks=[];let chunk=[];
+    (rows||[]).forEach(row=>{
+      row=String(row);
+      if(chunk.length&&(chunk.length>=maxRows||render(chunk.concat(row)).length>3450)){chunks.push(chunk);chunk=[];}
+      if(render([row]).length>3450)throw new Error('單日內容過長，請選擇較少區域 / Select fewer zones for this report');
+      chunk.push(row);
+    });
+    if(chunk.length||!chunks.length)chunks.push(chunk);
+    return chunks.map((part,i)=>'['+(i+1)+'/'+chunks.length+']\n'+render(part));
+  },
   async send(text, photos, buttons, chatId, tool, meta) {
+    if(Array.isArray(text)){
+      if(!text.length||text.some(page=>!String(page).trim()||String(page).length>3900))throw new Error('Invalid Telegram report pages');
+      const base=Object.assign({},meta||{}),key=String(base.messageKey||[tool,base.reportPeriod,base.reportRef,base.reportMode,base.reportScope,base.reportSlot,base.reportLanguage].join('|'));
+      const receipts=[];
+      for(let i=0;i<text.length;i++){
+        const pageMeta=Object.assign({},base,{updateExisting:true,messageKey:key+'|page'+(i+1),dedupePhotos:true,photoDedupeKey:key});
+        // The last confirmed page alone records report completion and carries photos/actions.
+        if(i<text.length-1)Object.keys(pageMeta).filter(k=>/^report/.test(k)).forEach(k=>delete pageMeta[k]);
+        try{
+          const result=await GC.telegram.send(text[i],i===text.length-1?photos:[],i===text.length-1?buttons:[],chatId,tool,pageMeta);
+          receipts.push(result.messageId);
+        }catch(err){throw new Error('第 '+(i+1)+'/'+text.length+' 頁未完成 / Page '+(i+1)+'/'+text.length+': '+err.message);}
+        if(i<text.length-1)await new Promise(resolve=>setTimeout(resolve,1100));
+      }
+      return {ok:true,messageId:receipts[receipts.length-1],messageIds:receipts,pagesSent:receipts.length,totalPages:text.length};
+    }
     if (!text) throw new Error('No Telegram text');
     const dashboardUrl = DASHBOARD_BASE_URL + (DASHBOARD_PATHS[tool] || 'ac_gascheck_portal_v1.html');
     const portalUrl = DASHBOARD_BASE_URL + 'ac_gascheck_portal_v1.html';
@@ -2123,7 +2158,7 @@ GC.telegram = {
     if (!hasPortal) finalButtons.push([{ text: '🏠 Main Portal / 總平台', url: portalUrl }]);
     const res = await CLOUD.post(Object.assign({
       action: 'telegram', text: text,
-      photos: Array.isArray(photos) ? photos.slice(0, 5) : [],
+      photos: PHOTO.list(photos).slice(0, 5),
       buttons: finalButtons,
       chatId: chatId || DEFAULT_CHAT_ID,
       tool: tool || ''
@@ -2578,8 +2613,8 @@ GC.attach = function (cfg) {
     const list = GC.telegram.filter(C.read() || [], C, period, periodRef, scope, slot);
     const out = [];
     list.forEach(function (r) {
-      U.asArray(r && r[C.photoField]).forEach(function (p) {
-        if (typeof p === 'string' && p.indexOf('data:image/') === 0 && out.length < 5) out.push(p);
+      PHOTO.list(r && r[C.photoField]).forEach(function (p) {
+        if (/^(data:image\/|https?:\/\/)/i.test(p) && !out.includes(p) && out.length < 5) out.push(p);
       });
     });
     return out;
@@ -2609,7 +2644,8 @@ GC.attach = function (cfg) {
         preview.innerHTML += '<div class="gc-preview-photo">📷 ' + packet.photos.length + ' ' + U.escapeHtml(photoLabel) + '</div>';
       }
       const validationError = telegramValidationError();
-      sendButton.disabled = !!validationError;
+      if(packet.notice)preview.insertAdjacentHTML('afterbegin','<div class="gc-preview-photo">⚠ '+U.escapeHtml(packet.notice)+'</div>');
+      sendButton.disabled = telegramSending || !!validationError;
       sendState.textContent = validationError ? '⚠ ' + validationError : '';
     } catch (e) {
       if (token === previewToken) {
@@ -2622,6 +2658,7 @@ GC.attach = function (cfg) {
     if (token === previewToken) preview.classList.remove('busy');
   }
   function refreshModal() {
+    tgModal.querySelectorAll('[data-gc-mode]').forEach(b=>{b.hidden=Array.isArray(C.telegramModes)&&!C.telegramModes.includes(b.dataset.gcMode);b.style.display=b.hidden?'none':'';});
     renderScope();
     renderPeriods();
     renderSlots();
@@ -2647,7 +2684,9 @@ GC.attach = function (cfg) {
     sendState.textContent = '';
     setModalOpen(tgModal, true);
   }
+  let telegramSending=false;
   async function sendCurrentTelegram() {
+    if(telegramSending)return;
     const validationError = telegramValidationError();
     if (validationError) {
       sendState.textContent = '⚠ ' + validationError;
@@ -2659,6 +2698,8 @@ GC.attach = function (cfg) {
       const question = I18.t('gc.confirmSender').replace('{name}', sender);
       if (!global.confirm(question)) return;
     }
+    telegramSending=true;
+    const lockedControls=Array.from(tgModal.querySelectorAll('input,select,button')).filter(el=>!el.hasAttribute('data-gc-close')).map(el=>({el,disabled:el.disabled}));lockedControls.forEach(x=>x.el.disabled=true);
     sendButton.disabled = true;
     sendState.textContent = I18.t('gc.sync');
     try {
@@ -2670,7 +2711,7 @@ GC.attach = function (cfg) {
       }
       const packet = await buildPacket();
       await GC.telegram.send(
-        packet.text, packet.photos, packet.buttons,
+        packet.pages || packet.text, packet.photos, packet.buttons,
         groupSelect.value || DEFAULT_CHAT_ID, C.tool, reportActivityMeta()
       );
       /* 先記錄實際發送人／審查／核可狀態，再排入自動上傳；否則雲端可能
@@ -2689,7 +2730,7 @@ GC.attach = function (cfg) {
       sendState.textContent = '✕ ' + e.message;
       GC.toast('❌ ' + e.message, 'error');
     }
-    sendButton.disabled = false;
+    telegramSending=false;lockedControls.forEach(x=>x.el.disabled=x.disabled);sendButton.disabled = false;
   }
 
   tgModal.querySelectorAll('[data-gc-close]').forEach(function (b) { b.onclick = function () { setModalOpen(tgModal, false); }; });
@@ -2969,7 +3010,7 @@ GC.attachLegacy = function (cfg) {
       const packet = typeof built === 'string' ? { text: built, photos: [] } : (built || { text: '', photos: [] });
       const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
       const buttons = packet.buttons || [[{text:'📊 Open Dashboard / 開啟平台',url:dashUrl}]];
-      await GC.telegram.send(packet.text, packet.photos, buttons, null, C.tool, reportActivityMeta());
+      await GC.telegram.send(packet.pages || packet.text, packet.photos, buttons, null, C.tool, reportActivityMeta());
       if (typeof C.onTelegramSent === 'function') {
         await C.onTelegramSent({ period, mode, ref:periodRef, scope, slot, lang, packet });
       }
@@ -3155,7 +3196,7 @@ const BAR_CSS = `
 })();
 
 /* ── 匯出 ── */
-GC.version = '3.15-temp-telegram-delivery';
+GC.version = '3.16-key-water-daily-monthly';
 global.GC = GC;
 global.GASCheckCore = GC;
 

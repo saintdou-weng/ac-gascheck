@@ -17,9 +17,9 @@ for (const [name, html] of [['cleaning',cleaning],['key',key],['water',water],['
     assert.doesNotThrow(() => new Function(m[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline scripts`);
-  assert(html.includes('gascheck-core.js?v=55-temp-month-delivery'));
+  assert(html.includes('gascheck-core.js?v=56-key-water-monthly'));
 }
-assert(core.includes("GC.version = '3.15-temp-telegram-delivery'"));
+assert(core.includes("GC.version = '3.16-key-water-daily-monthly'"));
 
 // Cleaning: shared defaults plus independent cleaner, slots and checks per location.
 for (const token of [

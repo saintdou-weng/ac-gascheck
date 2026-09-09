@@ -33,7 +33,7 @@ assert(key.includes('.km-period-tabs button.on{background:#1a3a5c!important'));
 // Key photo selection is visible and supports mobile gallery/camera choices.
 assert(key.includes('class="km-native-photo-input"'));
 assert(key.includes('keyMasterPickPhotos(this)'));
-assert(key.includes('masterDraftPhotos.slice(0,2)'));
+assert(key.includes('masterDraftPhotos.slice()'));
 assert(key.includes('.key-master-table th,.key-batch-table th{background:#1a3a5c!important;color:#fff!important'));
 assert(!core.includes('accept="image/*" capture="environment" multiple hidden'));
 

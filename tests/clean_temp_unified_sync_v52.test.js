@@ -61,7 +61,7 @@ assert(temp.includes('telegramAutoUpload:true'));
 assert(temp.includes('onSync:(list)=>{if(Array.isArray(list))setR(list);renderAll();updateTempUploadButton();}'));
 assert(temp.indexOf("await uploadTemperatureNow('telegram_combined_preflight')")<temp.indexOf('await sendTemperatureTelegramPacket(packet'),'Temperature combined summary must confirm cloud before Telegram');
 assert(core.includes("reason:'telegram_preflight'"));
-assert(core.indexOf("reason:'telegram_preflight'")<core.indexOf('await GC.telegram.send('),'Shared Telegram modal must confirm cloud first for opted-in modules');
+assert(core.indexOf("reason:'telegram_preflight'")<core.indexOf('await GC.telegram.send(',core.indexOf('async function sendCurrentTelegram()')),'Shared Telegram modal must confirm cloud first for opted-in modules');
 assert(core.includes("if (opt && typeof opt.keyFn === 'function')"),'SmartSync must use business key before device ID');
 
 // Client Cleaning compaction merges cross-device IDs and preserves both photos.
@@ -79,7 +79,7 @@ assert.deepStrictEqual(Array.from(crows[0].photos).sort(),['a.jpg','b.jpg']);
 
 const tcStart=temp.indexOf('function tempStoredList(d)');
 const tcEnd=temp.indexOf('function tempStorageRecord(r)',tcStart);
-const tcCtx={Map,Set,Date,JSON,Math,String,Number,Object,Array};vm.createContext(tcCtx);vm.runInContext(temp.slice(tcStart,tcEnd),tcCtx);
+const tcCtx={Map,Set,Date,JSON,Math,String,Number,Object,Array,getZ:()=>[]};vm.createContext(tcCtx);vm.runInContext(temp.slice(temp.indexOf('function tempReportZoneDefaults'),temp.indexOf('function tempImportZoneCanonical'))+temp.slice(tcStart,tcEnd),tcCtx);
 const trows=tcCtx.compactTempRecords([
   {id:'t-phone-a',d:'2026-09-03',p:'morning',z:'za',t:27,photos:['a.jpg'],updatedAt:'2026-09-03 08:00:00'},
   {id:'t-phone-b',d:'2026-09-03',p:'morning',z:'za',t:28,photos:['b.jpg'],updatedAt:'2026-09-03 08:30:00'}

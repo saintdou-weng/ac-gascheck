@@ -114,11 +114,12 @@ assert.strictEqual(completionRows[0].summarySentAt,'2026-09-03 09:00:00');
 assert.strictEqual(completionRows[1].summarySentAt,undefined);
 
 // Temp Telegram details are date-first, all AM rows before all PM rows, with full area names.
-assert(temp.includes("['morning','afternoon'].forEach(function(p)"));
+assert(temp.includes("['morning','afternoon'].forEach(p=>"));
 assert(temp.includes("AM | Morning 08:00–09:00"));
 assert(temp.includes("PM | Afternoon 15:30–16:30"));
 assert(temp.includes('zoneFullName(r.z)'));
-assert(temp.includes("'📋 <b>'+tempTelegramText('依日期、AM／PM 分開'"));
+assert(temp.includes("AM 08:00–09:00</b>"));
+assert(temp.includes("PM 15:30–16:30</b>"));
 
 // Dorm Pending can be opened from reminder, approved/rejected in-page, and refreshes shared memory.
 for(const token of [

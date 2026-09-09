@@ -45,18 +45,7 @@ const tctx={Date,Math,Number,String,Array,Object,Set,Map,isNaN,getR:()=>records,
 const start=temp.indexOf('function tempTelegramText');
 const end=temp.indexOf('async function sendTodayCombinedTemp',start);
 assert(start>=0&&end>start);
-vm.createContext(tctx);vm.runInContext(temp.slice(start,end),tctx);
-const monthly=tctx.buildTGPeriodMsg('month','summary','2026-08-01','all','bi','all');
-assert.strictEqual(records.length,208);
-assert(monthly.text.includes('Zone Summary'));
-assert(monthly.text.includes('Slot Summary'));
-assert(!monthly.text.includes('By date, separated into AM / PM'),'monthly summary must not repeat normal row details');
-assert(monthly.text.includes('2026-08-26'),'anomaly at the end of the month must still be included');
-assert(monthly.text.length<3000,'monthly Telegram summary must retain generous headroom below 4096 characters');
-assert.deepStrictEqual(Array.from(monthly.photos),['https://example.test/photo.jpg']);
-const daily=tctx.buildTGPeriodMsg('day','summary','2026-08-01','all','bi','all');
-assert(daily.text.includes('By date, separated into AM / PM'),'daily detail must remain available');
-
+vm.createContext(tctx);vm.runInContext(temp.slice(temp.indexOf('function tempReportZoneDefaults'),temp.indexOf('function tempImportZoneCanonical')),tctx);vm.runInContext(temp.slice(start,end),tctx);
 // The browser may display success only after the GAS bridge relays Telegram's
 // message_id. A bare ok:true is not proof that the group received anything.
 const store={};
@@ -70,11 +59,22 @@ const window={document,localStorage,crypto:crypto.webcrypto,TextEncoder,addEvent
 const cctx={window,document,localStorage,console,setTimeout,clearTimeout,URLSearchParams,Blob:function(){},URL:{createObjectURL(){return'';},revokeObjectURL(){}},TextEncoder,CustomEvent:function(){}};
 vm.createContext(cctx);vm.runInContext(core,cctx,{filename:'gascheck-core.js'});
 
+tctx.GC.telegram.paginateRows=window.GC.telegram.paginateRows;
+const monthly=tctx.buildTGPeriodMsg('month','summary','2026-08-01','all','bi','all');
+assert.strictEqual(records.length,208);
+assert.strictEqual(monthly.pages.length,3);
+assert.strictEqual((monthly.text.match(/2026-08-\d{2} │/g)||[]).length,31);
+assert(monthly.text.includes('2026-08-26') && monthly.text.includes('28/95⚠'));
+assert(monthly.pages.every(p=>p.length<3900));
+assert.deepStrictEqual(Array.from(monthly.photos),['https://example.test/photo.jpg']);
+const daily=tctx.buildTGPeriodMsg('day','summary','2026-08-01','all','bi','all');
+assert(daily.text.includes('AM 08:00–09:00')&&daily.text.includes('PM 15:30–16:30'),'daily AM/PM retained');assert(daily.text.length<1600);assert.equal((daily.text.match(/• /g)||[]).length,8);
+
 (async()=>{
   window.GC.cloud.post=async()=>({ok:true});
   await assert.rejects(()=>window.GC.telegram.send('test',[],[],null,'temperature',{}),/No delivery confirmation/);
   window.GC.cloud.post=async()=>({ok:true,messageId:12345});
   const result=await window.GC.telegram.send('test',[],[],null,'temperature',{});
   assert.strictEqual(result.messageId,12345);
-  console.log('v55 Temperature compact monthly delivery and Telegram confirmation tests: PASS');
+  console.log('v56 Temperature daily monthly rows and Telegram confirmation tests: PASS');
 })().catch(err=>{console.error(err);process.exit(1);});

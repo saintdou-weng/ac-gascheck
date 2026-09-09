@@ -11,9 +11,9 @@ const clean = read('ac_gascheck_cleaning_v2.html');
 const temp = read('ac_gascheck_temperature_v2.html');
 const dorm = read('ac_gascheck_dormitory_v2.html');
 const water = read('ac_gascheck_waterdrum_v2.html');
-const cache = 'gascheck-core.js?v=55-temp-month-delivery';
+const cache = 'gascheck-core.js?v=56-key-water-monthly';
 
-assert(core.includes("GC.version = '3.15-temp-telegram-delivery'"));
+assert(core.includes("GC.version = '3.16-key-water-daily-monthly'"));
 assert(core.includes('capture="environment"'));
 assert(core.includes('gc-photo-camera'));
 assert(core.includes("I18.t('gc.chooseFile')"));
@@ -22,7 +22,7 @@ assert(core.includes("finalButtons.push([{ text: '📊 Open Dashboard / 開啟�
 assert(core.includes("finalButtons.push([{ text: '🏠 Main Portal / 總平台', url: portalUrl }])"));
 
 assert(asset.includes('id="f-pc"') && asset.includes('capture="environment"'));
-assert(water.includes('wdr-camera-') && water.includes('capture="environment"'));
+assert(water.includes('GC.photo.mount') && core.includes('capture="environment"'));
 assert(key.includes('km-file-picker') && key.includes('km-camera-picker'));
 assert(key.includes('id="km-master-photos"'));
 assert(key.includes('keyEmbeddedPhotos') || key.includes('embedded photos'));
@@ -54,7 +54,7 @@ assert(gas.includes("APPROVER_TG_ID : '5026942575'"));
 assert(gas.includes("fromId !== String(CFG.APPROVER_TG_ID)"));
 assert(gas.includes('Dorm application missing required fields'));
 assert(gas.includes('Approved Dorm application cannot be edited'));
-assert(gas.includes("CORE_VERSION : 'v4.7-reminder-temp-dorm-sync'"));
+assert(gas.includes("CORE_VERSION : 'v4.8-key-water-monthly-reports'"));
 assert(gas.includes('Array.isArray(keyboard.inline_keyboard)'));
 assert(gas.includes('b.callback_data = String(btn.callback_data || btn.data)'));
 assert(gas.includes('function tgSendResult_'));

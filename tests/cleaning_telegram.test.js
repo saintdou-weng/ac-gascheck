@@ -107,7 +107,7 @@ assert(html.includes('id="locs-wrap"'));
 assert(html.includes('state.getLocs()'));
 assert(html.includes('telegramScopeMultiple:true'));
 assert(html.includes('telegramSlotMultiple:true'));
-assert(html.includes('gascheck-core.js?v=55-temp-month-delivery'));
+assert(html.includes('gascheck-core.js?v=56-key-water-monthly'));
 assert(html.includes('id="loc-cleaner-map"'));
 assert(html.includes('state.getLocCleaner(locId)'));
 assert(html.includes('missing-location-cleaner'));

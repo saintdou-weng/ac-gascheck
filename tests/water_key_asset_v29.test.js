@@ -18,7 +18,7 @@ for (const [name, html] of [['water',water],['key',key],['asset',asset]]) {
   assert(scripts > 0, name + ' must contain executable scripts');
 }
 
-assert(core.includes("GC.version = '3.15-temp-telegram-delivery'"));
+assert(core.includes("GC.version = '3.16-key-water-daily-monthly'"));
 assert(core.includes('GC.attendance = (() => {'));
 assert(core.includes('wdr_cfg_\\d{4}_\\d{2}'));
 assert(core.includes('vrt_key_tombstones'));
@@ -32,7 +32,7 @@ assert(water.includes('function migrateMonthConfigs()'));
 assert(water.includes("drumLiters:20"));
 assert(water.includes('syncAttendanceHeadcount'));
 assert(water.includes("photos.slice(0,2)"));
-assert(water.includes("'💰 '+waterTelegramText('總額','Grand total'"));
+assert(water.includes("totals.ft+totals.st"));
 assert(water.includes("data-wdr-period=\"day\""));
 assert(water.includes("data-wdr-period=\"week\""));
 assert(water.includes("data-wdr-period=\"month\""));

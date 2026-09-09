@@ -16,9 +16,9 @@ for (const [name, html] of [['dorm', dorm], ['key', key], ['water', water]]) {
     assert.doesNotThrow(() => new Function(match[1]), `${name} inline script ${count} must parse`);
   }
   assert(count > 0);
-  assert(html.includes('gascheck-core.js?v=55-temp-month-delivery'));
+  assert(html.includes('gascheck-core.js?v=56-key-water-monthly'));
 }
-assert(core.includes("GC.version = '3.15-temp-telegram-delivery'"));
+assert(core.includes("GC.version = '3.16-key-water-daily-monthly'"));
 
 // Dorm: one-tap all OK, one-tap room OK, and independent photo sets by facility.
 for (const token of [
@@ -41,7 +41,7 @@ for (const token of [
 // Water: entry modes are genuinely different and monthly defaults are visible/effective-dated.
 for (const token of [
   "if(mainPeriod==='year')return allWaterRows()",
-  "if(mainPeriod==='month'||mainPeriod==='year'){renderWaterAggregateTable",
+  "if(mainPeriod==='year'){renderWaterAggregateTable",
   'function aggregateWaterRows(rows)', 'function renderWaterAggregateTable(rows)',
   'window.prevMonth = prevMonth = function(){shiftWaterPeriod(-1);}',
   'window.nextMonth = nextMonth = function(){shiftWaterPeriod(1);}',

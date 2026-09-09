@@ -6,10 +6,10 @@ const ehs = fs.readFileSync('ac_gascheck_ehs_v2.html','utf8');
 // Temperature keeps day detail, while longer periods use compact zone/slot
 // summaries and expand only abnormal records. Photos remain supported.
 assert(temp.includes("tempTgTable(['Item','Qty']"));
-assert(temp.includes("['morning','afternoon'].forEach(function(p)"));
+assert(temp.includes("['morning','afternoon'].forEach(p=>"));
 assert(temp.includes("AM | Morning 08:00–09:00"));
 assert(temp.includes("PM | Afternoon 15:30–16:30"));
-assert(temp.includes("'🏭 <b>'+tempTgEsc(tempTgShort(zoneFullName(r.z),48))"));
+assert(temp.includes("reportZones.forEach(z=>"));
 assert(temp.includes("if(period!=='day')"));
 assert(temp.includes("tempTelegramText('區域摘要','Zone Summary'"));
 assert(temp.includes("tempTelegramText('時段摘要','Slot Summary'"));
