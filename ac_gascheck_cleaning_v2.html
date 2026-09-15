@@ -822,12 +822,13 @@ function parseCleaningSmartImport(file,schema){
 }
 function mergeCleaningSmartImport(current,incoming){
   const db=state.db(),locations=db.locations||[],known=new Set(locations.map(function(x){return String(x.id);}));
-  const rows=(incoming||[]).map(function(raw){const r=Object.assign({},raw),def=r._locationDef;delete r._locationDef;if(def&&def.id&&!known.has(String(def.id))){locations.push(Object.assign({},def));known.add(String(def.id));}return r;});
+  let locationAdded=false;const rows=(incoming||[]).map(function(raw){const r=Object.assign({},raw),def=r._locationDef;delete r._locationDef;if(def&&def.id&&!known.has(String(def.id))){locations.push(Object.assign({},def));known.add(String(def.id));locationAdded=true;}return r;});
+  if(locationAdded)state.touchConfig();
   db.locations=locations;return upsertCleaningRecords(current||[],rows);
 }
 
 var state = (() => {
-  let _db = {records:[],sixsRecords:[],locations:[],bins:[],cleaners:[],checkers:[],slots:[...DEF_SLOTS],cfg:{}};
+  let _db = {records:[],sixsRecords:[],locations:[],bins:[],cleaners:[],checkers:[],slots:[...DEF_SLOTS],cfg:{},configUpdatedAt:''};
   let _selLocs = [], _selSlots = [], _chkState = {}, _sixsState = {}, _locCleaners = {}, _locSlots = {}, _locChecks = {};
   const copyChecks = src => { const out={}; CHK_ITEMS.forEach(k=>out[k]=src&&Object.prototype.hasOwnProperty.call(src,k)?src[k]:null); return out; };
 
@@ -838,13 +839,13 @@ var state = (() => {
     } catch(e) {}
     _db.records=compactCleaningRecords(_db.records||[]);
     if(!_db.sixsRecords) _db.sixsRecords=[];
-    if(!_db.locations || !_db.locations.length) _db.locations=[
+    if(!_db.locations || !_db.locations.length){ _db.locations=[
       {id:'loc_toilet_a',   name:'Toilet A',      type:'廁所',   resp:'Nin'},
       {id:'loc_toilet_b',   name:'Toilet B',      type:'廁所',   resp:'Nin'},
       {id:'loc_factory',    name:'Factory Floor', type:'廠房',   resp:'Phea'},
       {id:'loc_office',     name:'Office',        type:'辦公室', resp:'Sry Oun'},
       {id:'loc_canteen',    name:'Canteen',       type:'飯堂',   resp:'Phea'},
-    ];
+    ];_db.configUpdatedAt=_db.configUpdatedAt||new Date().toISOString();}
     if(!_db.bins) _db.bins=[];
     if(!_db.cleaners) _db.cleaners=[];
     if(!_db.checkers) _db.checkers=[];
@@ -863,6 +864,7 @@ var state = (() => {
     return true;
   };
    const db = () => _db;
+  const touchConfig = () => { _db.configUpdatedAt=new Date().toISOString(); };
   const replaceRecords = (list,opt) => { _db.records=compactCleaningRecords(list||[]);save(Object.assign({sync:false},opt||{}));return _db.records; };
   const upsertRecords = (list,opt) => { _db.records=upsertCleaningRecords(_db.records||[],list||[]);save(opt||{});return _db.records; };
   const resetChk = () => { _chkState={}; CHK_ITEMS.forEach(k=>_chkState[k]=null); };
@@ -922,7 +924,7 @@ var state = (() => {
     renderSlots();
     renderCheckGrid();
   };
-  return { load, save, db, replaceRecords, upsertRecords, resetChk, getChk, setChk, getLocs, toggleLoc, resetLocs, getLocCleaner, setLocCleaner, applyDefaultCleaner, getLocSlots, toggleLocSlot, getLocChecks, cycleLocCheck, getSlots, toggleSlot, resetSlots, resetSixs, getSixs, setSixs, populate };
+  return { load, save, db, touchConfig, replaceRecords, upsertRecords, resetChk, getChk, setChk, getLocs, toggleLoc, resetLocs, getLocCleaner, setLocCleaner, applyDefaultCleaner, getLocSlots, toggleLocSlot, getLocChecks, cycleLocCheck, getSlots, toggleSlot, resetSlots, resetSixs, getSixs, setSixs, populate };
 })();
 
 /* ═══ API MODULE ═══ */
@@ -1243,14 +1245,19 @@ function applyCleaningCloudMeta(payload){
     });
     return out;
   };
-  if(Array.isArray(meta.cleaners))db.cleaners=names(db.cleaners,meta.cleaners);
-  if(Array.isArray(meta.checkers))db.checkers=names(db.checkers,meta.checkers);
-  if(Array.isArray(meta.slots))db.slots=Array.from(new Set((db.slots||DEF_SLOTS).concat(meta.slots.map(String)))).sort();
-  if(Array.isArray(meta.locations)){
-    const byId=new Map((db.locations||[]).map(function(x){return [String(x.id),x];}));
-    meta.locations.forEach(function(x){if(x&&x.id){const k=String(x.id);byId.set(k,Object.assign({},byId.get(k)||{},x));}});
-    db.locations=Array.from(byId.values());
-  }
+  const remoteRev=String(meta.configUpdatedAt||''),localRev=String(db.configUpdatedAt||''),remoteWins=!!remoteRev&&(!localRev||remoteRev>=localRev);
+  if(remoteWins){
+    if(Array.isArray(meta.cleaners))db.cleaners=meta.cleaners.map(personName).filter(Boolean);
+    if(Array.isArray(meta.checkers))db.checkers=meta.checkers.map(personName).filter(Boolean);
+    if(Array.isArray(meta.slots))db.slots=Array.from(new Set(meta.slots.map(String))).sort();
+    if(Array.isArray(meta.locations))db.locations=meta.locations.filter(function(x){return x&&x.id;}).map(function(x){return Object.assign({},x);});
+    db.configUpdatedAt=remoteRev;
+  }else if(!remoteRev){
+    if(Array.isArray(meta.cleaners))db.cleaners=names(db.cleaners,meta.cleaners);
+    if(Array.isArray(meta.checkers))db.checkers=names(db.checkers,meta.checkers);
+    if(Array.isArray(meta.slots))db.slots=Array.from(new Set((db.slots||DEF_SLOTS).concat(meta.slots.map(String)))).sort();
+    if(Array.isArray(meta.locations)){const byId=new Map((db.locations||[]).map(function(x){return [String(x.id),x];}));meta.locations.forEach(function(x){if(x&&x.id)byId.set(String(x.id),Object.assign({},byId.get(String(x.id))||{},x));});db.locations=Array.from(byId.values());}
+  }else if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule)GC.sync.schedule('cleaning','newer_local_config');
   if(meta.cfg&&typeof meta.cfg==='object')db.cfg=Object.assign({},db.cfg||{},meta.cfg);
   window._cleaningCloudApplying=true;
   try{ state.save(); }finally{ window._cleaningCloudApplying=false; }
@@ -1584,7 +1591,7 @@ var areas = (() => {
   const add = () => {
     const name=gv('a-name').trim(), type=gv('a-type'), resp=gv('a-resp');
     if(!name){ui.toast('⚠️ '+i18n.t('missing-location'));return;}
-    state.db().locations.push({id:'loc'+Date.now(),name,type,resp});
+    state.db().locations.push({id:'loc'+Date.now(),name,type,resp,updatedAt:_localTS()});state.touchConfig();
     state.save(); render(); state.populate();
     ['a-name','a-resp'].forEach(id=>sv(id,'')); hideAdd();
     ui.toast('✅ '+i18n.t('location-added'));
@@ -1631,7 +1638,7 @@ var staff = (() => {
     const name=gv(id).trim(); if(!name)return;
     if(type==='cleaner') state.db().cleaners.push(name);
     else state.db().checkers.push(name);
-    state.save(); state.populate(); renderStaff(); sv(id,'');
+    state.touchConfig();state.save(); state.populate(); renderStaff(); sv(id,'');
     ui.toast('✅ 已新增');
   };
   return {add};
@@ -1643,10 +1650,10 @@ var slotCfg = (() => {
     const v=gv('new-slot').trim();
     if(!v||!/^\d{2}:\d{2}$/.test(v)){ui.toast('⚠️ 格式 HH:MM');return;}
     const slots=state.db().slots;
-    if(!slots.includes(v)){slots.push(v);slots.sort();state.save();renderSlotTags();renderSlots();}
+    if(!slots.includes(v)){slots.push(v);slots.sort();state.touchConfig();state.save();renderSlotTags();renderSlots();}
     sv('new-slot','');
   };
-  const reset = () => {state.db().slots=[...DEF_SLOTS];state.save();renderSlotTags();renderSlots();};
+  const reset = () => {state.db().slots=[...DEF_SLOTS];state.touchConfig();state.save();renderSlotTags();renderSlots();};
   return {add, reset};
 })();
 
@@ -1777,7 +1784,7 @@ function renderStaff(){
 function staff_del(type,idx){
   if(type==='cleaner')state.db().cleaners.splice(idx,1);
   else state.db().checkers.splice(idx,1);
-  state.save();state.populate();renderStaff();
+  state.touchConfig();state.save();state.populate();renderStaff();
 }
 
 function renderSlotTags(){
@@ -1786,10 +1793,10 @@ function renderSlotTags(){
   el.innerHTML=slots.map((s,i)=>`<div class="stag">${s}<span class="del" onclick="slot_del(${i})">✕</span></div>`).join('');
 }
 
-function slot_del(i){state.db().slots.splice(i,1);state.save();renderSlotTags();renderSlots();}
+function slot_del(i){state.db().slots.splice(i,1);state.touchConfig();state.save();renderSlotTags();renderSlots();}
 function delRec(id){if(!confirm(i18n.t('confirm-delete')))return;state.db().records=state.db().records.filter(r=>r.id!==id);state.save();hist.query();api.post({action:'delete',tool:'cleaning',id:id}).catch(function(){});}
 function delBin(id){if(!confirm(i18n.t('confirm-delete')))return;state.db().bins=state.db().bins.filter(b=>b.id!==id);state.save();binMap.render();}
-function delArea(id){if(!confirm(i18n.t('confirm-area-delete')))return;state.db().locations=state.db().locations.filter(l=>l.id!==id);state.save();areas.render();state.populate();}
+function delArea(id){if(!confirm(i18n.t('confirm-area-delete')))return;state.db().locations=state.db().locations.filter(l=>l.id!==id);state.touchConfig();state.save();areas.render();state.populate();}
 function calcSixsScore(){sixs.calcScore();sixs.updateHeader();}
 
 function updateDbInfo(){
@@ -2056,7 +2063,7 @@ function validateCleaningTelegramSelection(ctx){
       fromCloud:cleaningFromCloud,
       extra:function(){
         const d=state.db();
-        return {cleaners:(d.cleaners||[]).map(personName).filter(Boolean),checkers:(d.checkers||[]).map(personName).filter(Boolean),locations:d.locations||[],slots:d.slots||DEF_SLOTS,cfg:d.cfg||{}};
+        return {cleaners:(d.cleaners||[]).map(personName).filter(Boolean),checkers:(d.checkers||[]).map(personName).filter(Boolean),locations:d.locations||[],slots:d.slots||DEF_SLOTS,cfg:d.cfg||{},configUpdatedAt:d.configUpdatedAt||''};
       },
       onRemote:applyCleaningCloudMeta,
       onTelegramSent:function(ctx){

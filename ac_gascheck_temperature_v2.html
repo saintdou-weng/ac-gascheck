@@ -714,7 +714,7 @@ let _tempSelectedZones = new Set();
 const PER_PAGE=30;
 let editZID=null, cfCB=null;
 const GAS_DEFAULT_URL='https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
-const LSZ='vrt_th_z', LSR='vrt_th_r', LSTH='vrt_th_th', LSTG='vrt_th_tg', LSGAS='vrt_th_gas', LSLANG='vrt_th_lang', LSLIVEWX='vrt_th_live_weather_cache';
+const LSZ='vrt_th_z', LSZREV='vrt_th_z_rev_v1', LSR='vrt_th_r', LSTH='vrt_th_th', LSTG='vrt_th_tg', LSGAS='vrt_th_gas', LSLANG='vrt_th_lang', LSLIVEWX='vrt_th_live_weather_cache';
 const LIVE_WEATHER_DEFAULT={lat:10.625,lon:103.523,locationKey:'livewx_default_loc'};
 window._liveWeather=null;
 window._liveWeatherLoading=false;
@@ -732,8 +732,28 @@ const DZ=[
 const DTH={t:{cold:18,cool:23,warm:32,hot:35},h:{dry:40,humid:80,vhum:90}};
 
 const T=k=>(D[LANG]||D.zh)[k]||(D.zh[k]||k);
-const getZ=()=>{try{const d=localStorage.getItem(LSZ);return d?JSON.parse(d):JSON.parse(JSON.stringify(DZ));}catch{return JSON.parse(JSON.stringify(DZ));}};
-const setZ=z=>localStorage.setItem(LSZ,JSON.stringify(z));
+function compactTempZones(list){
+  const out=[],byId=new Map(),defaults=tempReportZoneDefaults();
+  (Array.isArray(list)?list:[]).forEach(function(raw){
+    if(!raw||!raw.id)return;
+    const canonical=tempCanonicalZoneId(raw.id,list)||tempCanonicalZoneId(raw.en,list)||tempCanonicalZoneId(raw.zh,list)||String(raw.id),base=defaults.find(function(x){return x.id===canonical;})||{};
+    const z=Object.assign({},base,raw,{id:canonical}),old=byId.get(canonical);
+    if(!old){byId.set(canonical,z);out.push(z);return;}
+    const newer=String(z.updatedAt||'')>=String(old.updatedAt||'')?z:old;
+    Object.assign(old,base,newer,{id:canonical});
+  });
+  return out;
+}
+const getZ=()=>{try{const d=localStorage.getItem(LSZ),raw=d?JSON.parse(d):JSON.parse(JSON.stringify(DZ)),clean=compactTempZones(raw);if(d&&JSON.stringify(clean)!==JSON.stringify(raw)){localStorage.setItem(LSZ,JSON.stringify(clean));localStorage.setItem(LSZREV,new Date().toISOString());}return clean;}catch{return JSON.parse(JSON.stringify(DZ));}};
+const getZRev=()=>{try{return localStorage.getItem(LSZREV)||'';}catch(e){return'';}};
+const setZ=(z,opt)=>{localStorage.setItem(LSZ,JSON.stringify(z));const rev=opt&&opt.remote?String(opt.revision||''):new Date().toISOString();if(rev)localStorage.setItem(LSZREV,rev);};
+function applyRemoteTempZones(zones,revision){
+  if(!Array.isArray(zones))return false;
+  const rr=String(revision||''),lr=getZRev();
+  if(rr&&lr&&rr<lr){if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','newer_local_zone_config');return false;}
+  if(rr){setZ(zones,{remote:true,revision:rr});return true;}
+  const merged=mergeTempZones(getZ(),zones);if(JSON.stringify(merged)!==JSON.stringify(getZ()))setZ(merged);return true;
+}
 
 // 溫度資料一個「日期＋時段＋區域」只應有一筆；下載合併時先去重，避免雲端歷史重複資料把 localStorage 撐爆。
 function tempStoredList(d){
@@ -1520,11 +1540,11 @@ function saveZone(){
     zones.push({id:'z'+Date.now().toString(36),zh,en,km:document.getElementById('zm-km').value.trim(),
       col:document.getElementById('zm-col').value,desc:document.getElementById('zm-desc').value.trim(),on:document.getElementById('zm-act').checked,updatedAt:_localTS()});
   }
-  setZ(zones);closeMod('zm-over');toast(T('saved'),'ok');renderAll();syncZoneConfig('merge');
+  setZ(zones);closeMod('zm-over');toast(T('saved'),'ok');renderAll();syncZoneConfig('replace');
 }
 
 function delZone(id){confirmAction(T('cdelzone'),()=>{const old=getR().filter(r=>r.z===id).map(r=>r.id);setZ(getZ().filter(z=>z.id!==id));setR(getR().filter(r=>r.z!==id));old.forEach(gasDelete);toast(T('deleted'),'inf');renderAll();syncZoneConfig('replace');});}
-function resetZones(){confirmAction(T('crstzone'),()=>{setZ(JSON.parse(JSON.stringify(DZ)));toast('已重置','inf');popSelects();renderZones();});}
+function resetZones(){confirmAction(T('crstzone'),()=>{setZ(JSON.parse(JSON.stringify(DZ)));toast('已重置','inf');popSelects();renderZones();syncZoneConfig('replace');});}
 
 // ══════════════════════════════════════════
 // ALERTS
@@ -1914,8 +1934,8 @@ function tempReportZoneDefaults(){return [
 ];}
 function tempCanonicalZoneId(value,definitions){
   const token=v=>String(v||'').normalize('NFKC').toLowerCase().replace(/inside|area/g,'').replace(/factory/g,'building').replace(/[\s_\-\/().（）]+/g,'');
-  const aliases={za:'za',buildinga:'za',buildingaworkshop:'za',aworkshop:'za','a廠車間':'za','a厂车间':'za',zb:'zb',buildingb:'zb',buildingbworkshop:'zb',bworkshop:'zb','b廠車間':'zb','b厂车间':'zb',zc:'zc',buildingbwh:'zc',buildingbwarehouse:'zc',bwarehouse:'zc','b廠倉庫':'zc','b厂仓库':'zc',zbuildingafinishingwh:'z_buildingafinishingwh',zbuildingafinishingwarehouse:'z_buildingafinishingwh',buildingafinishingwh:'z_buildingafinishingwh',buildingafinishingwarehouse:'z_buildingafinishingwh',afinishingwh:'z_buildingafinishingwh','a廠後整倉':'z_buildingafinishingwh','a廠成品倉':'z_buildingafinishingwh'};
-  const direct=v=>aliases[token(v)]||'';
+  const aliases={za:'za',buildinga:'za',buildingaworkshop:'za',aworkshop:'za','a廠車間':'za','a厂车间':'za',zb:'zb',buildingb:'zb',buildingbworkshop:'zb',bworkshop:'zb','b廠車間':'zb','b厂车间':'zb',zc:'zc',buildingbwh:'zc',buildingbwarehouse:'zc',bwarehouse:'zc','b廠倉庫':'zc','b厂仓库':'zc',zbuildingafinishingwh:'z_buildingafinishingwh',zbuildingafinishingwarehouse:'z_buildingafinishingwh',buildingafinishingwh:'z_buildingafinishingwh',buildingafinishingwarehouse:'z_buildingafinishingwh',afinishingwh:'z_buildingafinishingwh',oldfinishing:'z_buildingafinishingwh','a廠後整倉':'z_buildingafinishingwh','a廠成品倉':'z_buildingafinishingwh'};
+  const direct=v=>{const k=token(v);return aliases[k]||(/^z?buildingafinishing(?:wh|warehouse)\d+$/.test(k)?'z_buildingafinishingwh':'');};
   const def=(Array.isArray(definitions)?definitions:[]).find(z=>z&&String(z.id)===String(value));
   return (def&&[def.en,def.zh,def.id].map(direct).find(Boolean))||direct(value)||'';
 }
@@ -2380,7 +2400,7 @@ async function uploadTemperatureNow(reason){
     return out;
   }
   const url=(getGAS().url||GAS_DEFAULT_URL).trim();if(!url)throw new Error('GAS URL is missing');
-  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'push',tool:'temperature',records:getR().map(enrichRec),zones:getZ(),zonesMode:'merge'})});
+  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'push',tool:'temperature',records:getR().map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()})});
   const data=await response.json();if(!data||data.ok===false)throw new Error(data&&data.error||'Cloud upload failed');return data;
 }
 
@@ -2498,7 +2518,7 @@ async function syncUp(){
   document.getElementById('sstatus').textContent='上傳中...';
   try{
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempSync',records:recs.map(enrichRec),zones:getZ(),zonesMode:'merge',full:true})});
+      body:JSON.stringify({type:'tempSync',records:recs.map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev(),full:true})});
     document.getElementById('sdot').className='syncdt sd-ok';
     document.getElementById('sstatus').textContent='✅ 已連接';
     window._tempPendingUpload=false;
@@ -2526,7 +2546,7 @@ async function syncDown(){
       const mergeResult=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(getR(),cloudRecs,'id','updatedAt'):null;
       const merged=mergeResult?mergeResult.list:[...cloudRecs,...getR()];
       const localKept=mergeResult&&mergeResult.stat?mergeResult.stat.kept:0;
-      if(Array.isArray(d.zones))setZ(mergeTempZones(getZ(),d.zones));
+      if(Array.isArray(d.zones))applyRemoteTempZones(d.zones,d.zoneConfigUpdatedAt);
       setR(merged);
       document.getElementById('sdot').className='syncdt sd-ok';
       document.getElementById('sstatus').textContent='✅ 已連接';
@@ -2547,7 +2567,7 @@ async function gasAutoSync(newRecs){
   try{
     // no-cors: GAS CORS 限制，用 fire-and-forget 模式
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempSync',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'merge'})});
+      body:JSON.stringify({type:'tempSync',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()})});
     document.getElementById('sdot').className='syncdt sd-ok';
     document.getElementById('sstatus').textContent='✅ 已同步';
   }catch(ex){
@@ -2562,7 +2582,7 @@ async function gasBulkSync(newRecs){
   if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){GC.sync.schedule('temperature','smart_import');return;}
   try{
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempImport',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'merge'})});
+      body:JSON.stringify({type:'tempImport',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()})});
     if(true){
       document.getElementById('sdot').className='syncdt sd-ok';
       document.getElementById('sstatus').textContent='✅ 已同步';
@@ -2590,7 +2610,7 @@ async function gasDelete(id){
 async function syncZoneConfig(mode){
   const url=getGAS().url;if(!url)return;
   if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){GC.sync.schedule('temperature','zone_config');return;}
-  try{await fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify({action:'push',tool:'temperature',records:[],zones:getZ(),zonesMode:mode||'merge'})});}
+  try{await fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify({action:'push',tool:'temperature',records:[],zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()})});}
   catch(ex){console.warn('syncZoneConfig failed:',ex.message);}
 }
 
@@ -2605,9 +2625,7 @@ async function gasPullOnInit(){
       const local=getR();
       const merged=(typeof GC!=='undefined'&&GC.cloud)?GC.cloud.merge(local,cloudRecs,'id','updatedAt').list:[...cloudRecs,...local];
       const oldZones=getZ();
-      const mergedZones=Array.isArray(d.zones)?mergeTempZones(oldZones,d.zones):oldZones;
-      const zonesChanged=JSON.stringify(mergedZones)!==JSON.stringify(oldZones);
-      if(Array.isArray(d.zones))setZ(mergedZones);
+      const zonesChanged=Array.isArray(d.zones)?applyRemoteTempZones(d.zones,d.zoneConfigUpdatedAt):false;
       if(merged.length!==local.length||zonesChanged){
         setR(merged);
         renderAll();
@@ -2781,8 +2799,8 @@ function markTemperatureTelegramSent(ctx){
       telegramRequireData:true,
       telegramBuilder:({period,mode,ref,scope,slot,lang})=>buildTGPeriodMsg(period,mode,ref,slot,lang,scope),
       onTelegramSent:markTemperatureTelegramSent,
-      extra:()=>({zones:getZ(),zonesMode:'merge'}),
-      onRemote:(d)=>{if(d&&Array.isArray(d.zones)){const z=mergeTempZones(getZ(),d.zones);if(JSON.stringify(z)!==JSON.stringify(getZ())){setZ(z);renderAll();}}},
+      extra:()=>({zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()}),
+      onRemote:(d)=>{if(d&&Array.isArray(d.zones)&&applyRemoteTempZones(d.zones,d.zoneConfigUpdatedAt)){renderAll();}},
       onSync:(list)=>{if(Array.isArray(list))setR(list);renderAll();updateTempUploadButton();},
       importSchema:{"d": ["日期", "date", "ថ្ងៃ"], "z": ["區域", "zone", "區域ID", "តំបន់"], "p": ["時段", "period", "slot", "time"], "t": ["溫度", "temp", "temperature", "សីតុណ្ហភាព"], "h": ["濕度", "humidity", "សំណើម"], "checker": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "note": ["備註", "note", "notes", "ចំណាំ"]},
       importParser:parseTemperatureSmartImport,
