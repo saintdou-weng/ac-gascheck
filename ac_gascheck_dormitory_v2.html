@@ -210,7 +210,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=56-key-water-monthly"></script>
+<script src="./gascheck-core.js?v=56-key-water-monthly&patch=60-telegram-periods"></script>
 </head>
 <body>
 
@@ -2059,6 +2059,7 @@ function goApply(t) {
       dateField:'date',
       idField:'id',
       cloudKey:dormRecordKey,
+      telegramAutoUpload:true,telegramRequireData:true,
       groupField:'roomNo',
       groupLabel:'Room',
       weather:false,

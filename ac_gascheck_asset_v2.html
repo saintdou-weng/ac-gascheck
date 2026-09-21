@@ -287,7 +287,7 @@ body{background:var(--bg);color:var(--tx);font-family:'Noto Sans TC','Segoe UI',
 }
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=56-key-water-monthly"></script>
+<script src="./gascheck-core.js?v=56-key-water-monthly&patch=60-telegram-periods"></script>
 </head>
 <body>
 
@@ -2325,6 +2325,7 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
       photo:true,
       telegramLanguage:true,
       telegramBuilder:buildAssetTelegram,
+      telegramAutoUpload:true,telegramRequireData:true,
       onTelegramSent:assetTelegramSent,
       toCloud:r=>Object.assign({},r,{id:r.id||r.code,updatedAt:r.updatedAt||_localTS()}),
       fromCloud:r=>Object.assign({},r,{id:r.id||r.code}),

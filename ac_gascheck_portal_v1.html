@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>AC GASCHECK Portal</title>
-<script src="./gascheck-core.js?v=56-key-water-monthly"></script>
+<script src="./gascheck-core.js?v=56-key-water-monthly&patch=60-telegram-periods"></script>
 <style>
 :root{--acc:#F97316;--nv:#0F1E3D;--nv2:#1A3458;--gold:#FCD34D;--w:#fff;--mt:rgba(255,255,255,.62);--r:12px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -633,7 +633,12 @@ function clearUidCache() {
 // ═══════════════════════════════════════════════════════════════
 // SEND TELEGRAM MENU (from Portal)
 // ═══════════════════════════════════════════════════════════════
+var tgMenuSending=false;
 function sendTgMenu() {
+  if(tgMenuSending)return;
+  tgMenuSending=true;
+  var controls=Array.from(document.querySelectorAll('button[onclick="sendTgMenu()"]'));
+  controls.forEach(function(b){b.disabled=true;});
   var now=new Date().toLocaleString('zh-TW',{timeZone:'Asia/Phnom_Penh',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});
   var cnt=getCount();
   var text='♻️ <b>AC GASCHECK 平台</b> — '+now+'\n'+
@@ -649,12 +654,14 @@ function sendTgMenu() {
     [{text:'♻️ EHS',       url:BASE_URL+'ac_gascheck_ehs_v2.html'         },{text:'💧 Water', url:BASE_URL+'ac_gascheck_waterdrum_v2.html'}],
     [{text:'🌡️ Temp',      url:BASE_URL+'ac_gascheck_temperature_v2.html' },{text:'🏠 Portal',url:BASE_URL+'ac_gascheck_portal_v1.html'}],
   ];
-  gasPost({action:'telegramMenu',chatId:CHAT_ID,text:text,buttons:buttons})
+  return gasPost({action:'telegramMenu',chatId:CHAT_ID,text:text,buttons:buttons})
     .then(function(d){
-      if(d.ok!==false){toast('✅ Telegram 已發送');log('✓ TG menu via GAS','ok');}
-      else{toast('❌ '+(d.error||'Telegram 發送失敗'));log('✗ TG via GAS','err');}
+      if(!d||d.ok!==true)throw new Error(d&&d.error||'Telegram 發送失敗');
+      if(d.notModified!==true&&(d.messageId==null||String(d.messageId)===''))throw new Error('Telegram 未回傳送達確認 / No delivery confirmation');
+      toast('✅ Telegram 已發送');log('✓ TG menu via GAS','ok');
     })
-    .catch(function(e){toast('❌ '+e.message);log('✗ '+e.message,'err');});
+    .catch(function(e){toast('❌ '+e.message);log('✗ '+e.message,'err');})
+    .finally(function(){tgMenuSending=false;controls.forEach(function(b){b.disabled=false;});});
 }
 
 // ── Helpers ───────────────────────────────────────────────────

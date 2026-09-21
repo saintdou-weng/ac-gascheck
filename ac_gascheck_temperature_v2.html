@@ -216,7 +216,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=56-key-water-monthly"></script>
+<script src="./gascheck-core.js?v=56-key-water-monthly&patch=60-telegram-periods"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -2801,6 +2801,7 @@ function markTemperatureTelegramSent(ctx){
       periodRef:true,
       telegramSlots:[{value:'all',zh:'早上＋下午（合併）',en:'Morning + Afternoon (combined)',km:'ព្រឹក + រសៀល (បញ្ចូលគ្នា)'},{value:'morning',zh:'只發早上 08:00–09:00',en:'Morning only 08:00–09:00',km:'តែពេលព្រឹក 08:00–09:00'},{value:'afternoon',zh:'只發下午 15:30–16:30',en:'Afternoon only 15:30–16:30',km:'តែពេលរសៀល 15:30–16:30'}],
       telegramSlotFilter:(r,slot)=>tempTelegramSlotMatch(r,slot),
+      telegramSlotsByPeriod:{day:['all']},
       telegramLanguage:true,
       telegramAutoUpload:true,
       telegramSameDayUpdate:true,

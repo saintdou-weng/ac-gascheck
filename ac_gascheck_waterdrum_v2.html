@@ -469,7 +469,7 @@ document.addEventListener('click', function(e) {
   font-size:18px; cursor:pointer; color:#94a3b8; }
 
 </style>
-<script src="./gascheck-core.js?v=56-key-water-monthly"></script>
+<script src="./gascheck-core.js?v=56-key-water-monthly&patch=60-telegram-periods"></script>
 </head>
 <body>
 <!-- Currency Settings Panel -->
@@ -2069,7 +2069,11 @@ function showToast(msg, type='info') {
 
 // ==================== INIT ====================
 
-function sendToTelegram() { if(typeof previewTelegramMessage==='function') previewTelegramMessage(); }
+function sendToTelegram() {
+  const button=document.querySelector('[data-gc-open-tg]');
+  if(button)button.click();
+  else showToast('發送面板載入中，請稍後再試 / Send panel is loading; please retry','warning');
+}
 function toggleCurrencyPanel() {
   var p=document.getElementById('currency-panel');
   if(p) p.classList.toggle('open');
@@ -2336,7 +2340,7 @@ function buildWaterTelegram(opt){
   };
   window.saveMonthData = saveMonthData = function(year,month,rows){
     const now=_localTS();
-    const clean=(rows||[]).map(r=>Object.assign({},r,{updatedAt:r.updatedAt||now,photos:Array.isArray(r.photos)?r.photos.slice():[],fPhotos:Array.isArray(r.fPhotos)?r.fPhotos.slice():[],sPhotos:Array.isArray(r.sPhotos)?r.sPhotos.slice():[]}));
+    const clean=(rows||[]).map(r=>Object.assign({},r,{updatedAt:r.updatedAt||now,photos:GC.photo.list(r.photos),fPhotos:GC.photo.list(r.fPhotos),sPhotos:GC.photo.list(r.sPhotos)}));
     localStorage.setItem(storageKey(year,month),JSON.stringify(clean));
     localStorage.setItem('wdr_last_saved',now);
   };
@@ -2348,7 +2352,7 @@ function buildWaterTelegram(opt){
     for(let d=1;d<=days;d++){
       const found=saved.find(r=>+r.day===d);
       const row=found?Object.assign({},emptyRow(d),found):emptyRow(d);
-      row.fTime=row.fTime==='morning'?mc.morningTime:row.fTime==='afternoon'?mc.afternoonTime:(row.fTime||'');row.sTime=row.sTime==='morning'?mc.morningTime:row.sTime==='afternoon'?mc.afternoonTime:(row.sTime||'');row.photos=Array.isArray(row.photos)?row.photos.slice():[];row.fPhotos=Array.isArray(row.fPhotos)?row.fPhotos.slice():[];row.sPhotos=Array.isArray(row.sPhotos)?row.sPhotos.slice():[];
+      row.fTime=row.fTime==='morning'?mc.morningTime:row.fTime==='afternoon'?mc.afternoonTime:(row.fTime||'');row.sTime=row.sTime==='morning'?mc.morningTime:row.sTime==='afternoon'?mc.afternoonTime:(row.sTime||'');row.photos=GC.photo.list(row.photos);row.fPhotos=GC.photo.list(row.fPhotos);row.sPhotos=GC.photo.list(row.sPhotos);
       currentRows.push(row);
     }
     updatePeriodLabel();renderTable();renderSummaryCards();updateLastSaved();
@@ -2362,7 +2366,7 @@ function buildWaterTelegram(opt){
 
   let waterLocation='all',waterPhotoControllers=[];
   const wtx=(zh,en,km)=>waterTelegramText(zh,en,km||en,currentLang);
-  function rowPhotos(row,scope){return [...new Set((row.photos||[]).concat(scope==='staff'?[]:(row.fPhotos||[]),scope==='factory'?[]:(row.sPhotos||[])))];}
+  function rowPhotos(row,scope){return [...new Set(GC.photo.list(row.photos).concat(scope==='staff'?[]:GC.photo.list(row.fPhotos),scope==='factory'?[]:GC.photo.list(row.sPhotos)))];}
   window.setWaterLocation=function(scope){
     waterLocation=['all','factory','staff'].includes(scope)?scope:'all';
     document.querySelectorAll('[data-wdr-location]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.wdrLocation===waterLocation)));
@@ -2614,6 +2618,8 @@ function buildWaterTelegram(opt){
       telegramSlotFilter:function(r,slot){return !slot||slot==='all'||waterTelegramSlotMatch(r.fTime,slot)||waterTelegramSlotMatch(r.sTime,slot);},
       telegramLanguage:true,
       telegramModes:['summary','approval'],
+      telegramPeriodsByMode:{approval:['month']},
+      telegramRecordFilter:(r,scope,slot)=>waterReportEntries([r],scope,slot).length>0,
       telegramScopes:[{value:'all',zh:'全部地點',en:'All locations'},{value:'factory',zh:'工廠',en:'Factory'},{value:'staff',zh:'宿舍',en:'Staff House'}],
       telegramScopeLabel:{zh:'送水地點',en:'Delivery location'},
       telegramAutoUpload:true,telegramRequireData:true,

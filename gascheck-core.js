@@ -742,6 +742,7 @@ const CLOUD = GC.cloud = {
       }
     } catch (e) { /* 拉不到就直接送本地，不阻擋 */ }
 
+    if (tool === 'waterdrum') toSend = await SMART.preparePhotos(toSend, tool, opt);
     const extra = typeof opt.extra === 'function' ? (opt.extra() || {}) : (opt.extra || {});
     const res = await CLOUD.post(Object.assign({
       type: 'save', tool, updatedAt: U.now(), list: toSend
@@ -958,19 +959,27 @@ const SMART = GC.smartSync = (() => {
   }
   async function preparePhotos(records, tool, opt) {
     const field = opt.photoField || 'photos';
+    const fields = tool === 'waterdrum' ? Array.from(new Set([field,'fPhotos','sPhotos'])) : [field];
     /* Cleaning 等批次記錄可能共用同一張照片。一次同步內以 dataURL 為鍵共用
        上傳 Promise，避免同一張照片因多地點／多時段而重複寫入 Drive。 */
     const uploaded = new Map();
-    function one(photo, recId, idx) {
+    async function one(photo, recId, idx) {
       if (typeof photo !== 'string' || photo.indexOf('data:image/') !== 0) return Promise.resolve(photo);
       if (!uploaded.has(photo)) uploaded.set(photo, CLOUD.uploadPhoto(photo, tool, recId, idx));
-      return uploaded.get(photo);
+      const link = await uploaded.get(photo);
+      if (tool === 'waterdrum' && !/^https?:\/\//i.test(String(link || ''))) {
+        throw new Error('送水照片上傳失敗，原照片已保留 / Water photo upload failed; original retained (' + String(recId || '') + ')');
+      }
+      return link;
     }
     return Promise.all((records || []).map(async function (row) {
-      const photos = U.asArray(row && row[field]);
-      if (!photos.some(p => typeof p === 'string' && p.indexOf('data:image/') === 0)) return row;
-      const copy = Object.assign({}, row), recId = row && row[opt.idKey || 'id'];
-      copy[field] = await Promise.all(photos.map(function (photo, idx) { return one(photo, recId, idx); }));
+      let copy = row;
+      for (const photoField of fields) {
+        const photos = tool === 'waterdrum' ? PHOTO.list(row && row[photoField]) : U.asArray(row && row[photoField]);
+        if (!photos.some(p => typeof p === 'string' && p.indexOf('data:image/') === 0)) continue;
+        if (copy === row) copy = Object.assign({}, row);
+        copy[photoField] = await Promise.all(photos.map(function (photo, idx) { return one(photo, row && row[opt.idKey || 'id'], idx); }));
+      }
       return copy;
     }));
   }
@@ -1041,7 +1050,6 @@ const SMART = GC.smartSync = (() => {
     const toCloud = typeof opt.toCloud === 'function' ? opt.toCloud : (r => r);
     const fromCloud = typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r);
     let records = (localList || []).map(toCloud);
-    records = await preparePhotos(records, tool, opt);
     let remote = await manifest(tool), migrated = false;
     if (!remote.exists && remote.legacy) {
       const old = await legacyPull(tool, opt);
@@ -1049,10 +1057,11 @@ const SMART = GC.smartSync = (() => {
       if (typeof opt.onRemote === 'function') opt.onRemote(old.meta || {});
       migrated = true;
     }
+    records = await preparePhotos(records, tool, opt);
     let result = await pushPrepared(tool, records, opt, remote, migrated);
     if (result.needsPull) {
       const pulled = await download(tool, records, Object.assign({}, opt, { _cloudInput:true }));
-      const mergedCloud = (pulled.list || []).map(toCloud);
+      const mergedCloud = await preparePhotos((pulled.list || []).map(toCloud), tool, opt);
       remote = await manifest(tool);
       result = await pushPrepared(tool, mergedCloud, opt, remote, false);
       records = mergedCloud;
@@ -1104,7 +1113,7 @@ const SMART = GC.smartSync = (() => {
       response:Object.assign({smart:true}, remote.meta || {}, {data:Object.assign({list:merged}, remote.meta || {})}), downloaded:downloaded,
       unchanged:unchanged, pendingUpload:pending, removed:removed, conflicts:conflicts };
   }
-  return { version:VERSION, upload, download, buildBuckets, mergeRows, semanticKey, bucketKey, stable, hash, readState, retryNetwork };
+  return { version:VERSION, upload, download, buildBuckets, mergeRows, semanticKey, bucketKey, stable, hash, readState, retryNetwork, preparePhotos };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -2030,7 +2039,8 @@ GC.telegram = {
   },
   filter(list, cfg, period, ref, scope, slot) {
     cfg = cfg || {};
-    let view = PERIOD.filter(Array.isArray(list) ? list : [], period || 'month', cfg.dateField || 'date', ref);
+    let view = PERIOD.filter(Array.isArray(list) ? list : [], period || 'month', cfg.dateField || 'date', ref).filter(r => r && !r._deleted);
+    if (typeof cfg.telegramRecordFilter === 'function') view = view.filter(r => cfg.telegramRecordFilter(r, scope, slot));
     const scopes = (Array.isArray(scope) ? scope : [scope]).map(function (v) { return v == null ? '' : String(v); }).filter(Boolean);
     const slots = (Array.isArray(slot) ? slot : [slot]).map(function (v) { return v == null ? '' : String(v); }).filter(Boolean);
     if (typeof cfg.telegramScopeFilter === 'function') view=view.filter(r=>cfg.telegramScopeFilter(r,scope));
@@ -2120,7 +2130,56 @@ GC.telegram = {
     if(chunk.length||!chunks.length)chunks.push(chunk);
     return chunks.map((part,i)=>'['+(i+1)+'/'+chunks.length+']\n'+render(part));
   },
+  // Keep all text, Unicode characters, entities and HTML formatting when a
+  // legacy builder produces a message longer than Telegram accepts.
+  paginateHtml(value, limit) {
+    const source = String(value || ''), max = limit || 3500;
+    if (source.length <= max) return [source];
+    const pages = [], stack = [];
+    let page = '', hasText = false;
+    const closing = () => stack.slice().reverse().map(t => '</' + t.name + '>').join('');
+    const fits = s => page.length + s.length + closing().length <= max;
+    function flush() {
+      if (!hasText) return;
+      pages.push(page + closing());
+      page = stack.map(t => t.open).join('');
+      hasText = false;
+    }
+    function appendText(s) {
+      if (!fits(s)) flush();
+      if (fits(s)) { page += s; hasText = true; return; }
+      // Preserve an entity or surrogate pair even when a single line is huge.
+      const units = s.match(/&(?:#\d+|#x[\da-f]+|[a-z]+);|[\s\S]/giu) || [];
+      units.forEach(unit => {
+        if (!fits(unit)) flush();
+        if (!fits(unit)) throw new Error('Telegram formatting is too long');
+        page += unit; hasText = true;
+      });
+    }
+    const tokens = source.match(/<\/?[a-z][^>]*>|[^<]+|</gi) || [];
+    tokens.forEach(token => {
+      const tag = token.match(/^<(\/)?([a-z][\w-]*)(?:\s[^>]*)?>$/i);
+      if (!tag) {
+        (token.match(/[^\n]*\n|[^\n]+$/g) || []).forEach(appendText);
+        return;
+      }
+      const name = tag[2].toLowerCase();
+      if (tag[1]) {
+        if (!stack.length || stack[stack.length - 1].name !== name) throw new Error('Invalid Telegram report HTML');
+        page += token; stack.pop();
+      } else {
+        const cost = token + '</' + name + '>';
+        if (!fits(cost)) flush();
+        if (!fits(cost)) throw new Error('Telegram formatting is too long');
+        page += token; stack.push({ name, open: token });
+      }
+    });
+    if (stack.length) throw new Error('Invalid Telegram report HTML');
+    flush();
+    return pages.map((p, i) => '[' + (i + 1) + '/' + pages.length + ']\n' + p);
+  },
   async send(text, photos, buttons, chatId, tool, meta) {
+    if (!Array.isArray(text) && String(text || '').length > 3900) text = GC.telegram.paginateHtml(text);
     if(Array.isArray(text)){
       if(!text.length||text.some(page=>!String(page).trim()||String(page).length>3900))throw new Error('Invalid Telegram report pages');
       const base=Object.assign({},meta||{}),key=String(base.messageKey||[tool,base.reportPeriod,base.reportRef,base.reportMode,base.reportScope,base.reportSlot,base.reportLanguage].join('|'));
@@ -2266,7 +2325,8 @@ GC.attach = function (cfg) {
   }
 
   let period = 'month';
-  let periodRef = U.ymd(new Date());
+  let periodAnchor = U.ymd(new Date());
+  let periodRef = '';
   let mode = 'summary';
   let scope = C.telegramScopeMultiple ? ['all'] : 'all';
   let slot = C.telegramSlotMultiple ? [C.telegramDefaultSlot || 'all'] : (C.telegramDefaultSlot || 'all');
@@ -2513,15 +2573,19 @@ GC.attach = function (cfg) {
   }
   function renderPeriods() {
     const keys = { day: 'gc.day', week: 'gc.week', month: 'gc.month', year: 'gc.year', all: 'gc.all' };
-    periodSelect.innerHTML = ['day', 'week', 'month', 'year', 'all']
+    const allowed = C.telegramPeriodsByMode && C.telegramPeriodsByMode[mode] || ['day', 'week', 'month', 'year', 'all'];
+    if (!allowed.includes(period)) { period = allowed[0]; periodRef = ''; }
+    periodSelect.innerHTML = allowed
       .map(function (x) { return option(x, I18.t(keys[x])); }).join('');
     periodSelect.value = period;
   }
   function renderSlots() {
-    const dynamicSlots = typeof C.telegramSlots === 'function' ? C.telegramSlots() : C.telegramSlots;
-    const items = Array.isArray(dynamicSlots) && dynamicSlots.length
+    const dynamicSlots = typeof C.telegramSlots === 'function' ? C.telegramSlots({period, mode}) : C.telegramSlots;
+    const available = Array.isArray(dynamicSlots) && dynamicSlots.length
       ? dynamicSlots
       : [{ value: 'all', zh: '全部時段', en: 'All slots', km: 'គ្រប់ពេល' }];
+    const allowed = C.telegramSlotsByPeriod && C.telegramSlotsByPeriod[period];
+    const items = allowed ? available.filter(x => allowed.includes(itemValue(x))) : available;
     if (C.telegramSlotMultiple) {
       slotSelect.hidden = true;
       slotPicks.hidden = false;
@@ -2576,19 +2640,27 @@ GC.attach = function (cfg) {
     if (p === 'all') return I18.t('gc.all');
     return ref;
   }
-  function refreshPeriodOptions() {
+  function refreshPeriodOptions(choose) {
     const refs = new Set();
-    (C.read() || []).forEach(function (r) {
+    GC.telegram.filter(C.read() || [], C, 'all', null, scope, slot).forEach(function (r) {
       const d = dateFromRecord(r && r[C.dateField]);
       if (d) refs.add(periodReference(d, period));
     });
-    if (period === 'all') refs.add(U.ymd(new Date()));
-    if (!refs.size) refs.add(periodReference(new Date(), period));
+    const anchor = periodReference(dateFromRecord(periodAnchor) || new Date(), period);
+    if (!periodRef || choose === true) {
+      // Changing Month to Week keeps the real reference day, not the latest
+      // pre-created calendar row. Never automatically choose a future period.
+      const past = Array.from(refs).sort().reverse().find(x => x <= anchor);
+      periodRef = refs.has(anchor) ? anchor : (past || anchor);
+    }
+    // Explicit selections stay stable during sync or scope/slot changes.
+    // Empty selections remain visible with a validation message.
+    refs.add(periodRef);
+    if (period === 'all') { refs.clear(); refs.add(periodRef); }
     const values = Array.from(refs).sort().reverse();
-    if (!values.includes(periodRef)) periodRef = values[0];
     refSelect.innerHTML = values.map(function (x) { return option(x, refLabel(x, period)); }).join('');
     refSelect.value = periodRef;
-    refSelect.disabled = period === 'all';
+    refSelect.disabled = telegramSending || period === 'all';
   }
   function telegramSelectionContext() {
     return {
@@ -2658,6 +2730,7 @@ GC.attach = function (cfg) {
     if (token === previewToken) preview.classList.remove('busy');
   }
   function refreshModal() {
+    if (telegramSending) return;
     tgModal.querySelectorAll('[data-gc-mode]').forEach(b=>{b.hidden=Array.isArray(C.telegramModes)&&!C.telegramModes.includes(b.dataset.gcMode);b.style.display=b.hidden?'none':'';});
     renderScope();
     renderPeriods();
@@ -2680,6 +2753,7 @@ GC.attach = function (cfg) {
     document.body.classList.toggle('gc-modal-open', !!document.querySelector('.gc-common-modal.open'));
   }
   function openTelegram() {
+    if (telegramSending) { setModalOpen(tgModal, true); return; }
     refreshModal();
     sendState.textContent = '';
     setModalOpen(tgModal, true);
@@ -2707,9 +2781,12 @@ GC.attach = function (cfg) {
          訊息，Dashboard／History 就已能從雲端下載到同一批資料。 */
       if (cloudControl && C.telegramAutoUpload) {
         const uploaded = await cloudControl.upload({silent:true,auto:false,reason:'telegram_preflight'});
-        if (!uploaded || uploaded.ok === false) throw new Error(uploaded && uploaded.error && uploaded.error.message || I18.t('gc.upFail'));
+        if (!uploaded || uploaded.ok === false) throw new Error('雲端上傳未完成，尚未發送 / Cloud upload failed; report not sent: ' + (uploaded && uploaded.error && (uploaded.error.message || String(uploaded.error)) || I18.t('gc.upFail')));
       }
+      const afterUploadError = telegramValidationError();
+      if (afterUploadError) throw new Error(afterUploadError);
       const packet = await buildPacket();
+      sendState.textContent = GC.telegram.text('正在發送 Telegram…','Sending to Telegram…','កំពុងផ្ញើទៅ Telegram…',I18.lang);
       await GC.telegram.send(
         packet.pages || packet.text, packet.photos, packet.buttons,
         groupSelect.value || DEFAULT_CHAT_ID, C.tool, reportActivityMeta()
@@ -2730,7 +2807,7 @@ GC.attach = function (cfg) {
       sendState.textContent = '✕ ' + e.message;
       GC.toast('❌ ' + e.message, 'error');
     }
-    telegramSending=false;lockedControls.forEach(x=>x.el.disabled=x.disabled);sendButton.disabled = false;
+    telegramSending=false;lockedControls.forEach(x=>x.el.disabled=x.disabled);sendButton.disabled = !!telegramValidationError();
   }
 
   tgModal.querySelectorAll('[data-gc-close]').forEach(function (b) { b.onclick = function () { setModalOpen(tgModal, false); }; });
@@ -2739,24 +2816,25 @@ GC.attach = function (cfg) {
     b.onclick = function () {
       mode = b.dataset.gcMode || 'summary';
       tgModal.querySelectorAll('[data-gc-mode]').forEach(function (x) { x.classList.toggle('on', x === b); });
+      renderPeriods(); renderSlots(); refreshPeriodOptions();
       updatePreview();
     };
   });
-  scopeSelect.onchange = function () { scope = scopeSelect.value || 'all'; updatePreview(); };
+  scopeSelect.onchange = function () { scope = scopeSelect.value || 'all'; refreshPeriodOptions(); updatePreview(); };
   scopePicks.onclick = function (e) {
     const b = e.target.closest('button[data-value]');
     if (!b) return;
     scope = toggleSelection(scope, b.dataset.value);
-    renderScope(); updatePreview();
+    renderScope(); refreshPeriodOptions(); updatePreview();
   };
-  periodSelect.onchange = function () { period = periodSelect.value || 'month'; refreshPeriodOptions(); updatePreview(); };
-  refSelect.onchange = function () { periodRef = refSelect.value || U.ymd(new Date()); updatePreview(); };
-  slotSelect.onchange = function () { slot = slotSelect.value || 'all'; updatePreview(); };
+  periodSelect.onchange = function () { period = periodSelect.value || 'month'; renderSlots(); refreshPeriodOptions(true); updatePreview(); };
+  refSelect.onchange = function () { periodRef = refSelect.value || U.ymd(new Date()); periodAnchor = periodRef; updatePreview(); };
+  slotSelect.onchange = function () { slot = slotSelect.value || 'all'; refreshPeriodOptions(); updatePreview(); };
   slotPicks.onclick = function (e) {
     const b = e.target.closest('button[data-value]');
     if (!b) return;
     slot = toggleSelection(slot, b.dataset.value);
-    renderSlots(); updatePreview();
+    renderSlots(); refreshPeriodOptions(); updatePreview();
   };
   langSelect.onchange = function () { lang = langSelect.value || 'bi'; renderScope(); renderSlots(); updatePreview(); };
   if (senderInput) senderInput.oninput = function () { sender = senderInput.value.trim(); updatePreview(); };
@@ -3197,6 +3275,7 @@ const BAR_CSS = `
 
 /* ── 匯出 ── */
 GC.version = '3.16-key-water-daily-monthly';
+GC.release = '60-telegram-periods-delivery';
 global.GC = GC;
 global.GASCheckCore = GC;
 

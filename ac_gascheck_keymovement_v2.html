@@ -203,7 +203,7 @@ table tr:last-child td { border-bottom: none; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=56-key-water-monthly"></script>
+<script src="./gascheck-core.js?v=56-key-water-monthly&patch=60-telegram-periods"></script>
 </head>
 <body>
 
@@ -1592,7 +1592,13 @@ window.updateRecord = updateRecord;
   const TOMBSTONE_KEY='vrt_key_tombstones';
   const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
   function tombstones(){try{const a=JSON.parse(localStorage.getItem(TOMBSTONE_KEY)||'[]');return Array.isArray(a)?a:[];}catch(e){return[];}}
-  function saveTombstones(list){localStorage.setItem(TOMBSTONE_KEY,JSON.stringify(reconcileMasters(list||[])));}
+  function saveTombstones(list){
+    // These are deleted loan records, not key masters. Keep their record IDs;
+    // one key may have several independent historical loans/deletions.
+    const byId=new Map();
+    (list||[]).forEach(r=>{if(!r||r.id==null)return;const id=String(r.id),old=byId.get(id);if(!old||String(r.deletedAt||r.updatedAt||'')>=String(old.deletedAt||old.updatedAt||''))byId.set(id,r);});
+    localStorage.setItem(TOMBSTONE_KEY,JSON.stringify(Array.from(byId.values())));
+  }
   function keySnapshot(r){return{key_no:r.key_no||'',dept:r.dept||'',holder:r.recipient_name||'',holder_id:r.recipient_id||'',issue_date:r.issue_date||'',issue_time:r.issue_time||'',return_date:r.return_date||'',return_time:r.return_time||'',condition:r.return_condition||r.key_condition||'',remarks:r.remarks||''};}
   function addTombstones(items,reason){
     const map=new Map(tombstones().map(x=>[String(x.id),x]));
@@ -1980,7 +1986,7 @@ function buildKeyTelegram(opt){
       photo:true,
       periodRef:true,
       telegramLanguage:true,
-      telegramAutoUpload:true,telegramPhotoDedupe:true,
+      telegramAutoUpload:true,telegramPhotoDedupe:true,telegramRequireData:true,
       telegramBuilder:buildKeyTelegram,
       importSchema:{"key_no": ["鑰匙編號", "鑰匙號碼", "keyno", "key code", "code", "លេខសោ"], "dept": ["部門", "department", "dept", "នាយកដ្ឋាន"], "recipient_name": ["領用人", "收受人", "recipient", "holder", "អ្នកកាន់"], "issue_date": ["發出日期", "日期", "issue date", "date", "ថ្ងៃ"], "issue_time": ["發出時間", "issue time", "time", "ម៉ោងចេញ"], "checker": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remarks": ["備註", "備注", "remarks", "notes", "ចំណាំ"]},
     read(){ try{ const raw=localStorage.getItem('vrt_keys');let active=[];
