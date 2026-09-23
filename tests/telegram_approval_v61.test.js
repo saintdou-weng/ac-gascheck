@@ -47,12 +47,12 @@ function smart(s,tool='dormitory'){return s.g.readGcSmartAllRecords_(tool,s.g.re
  // Polling keeps failed updates for retry, preserves offsets across repair, and consumes terminal denied clicks.
  const q=server();initialize(q);let qr=submit(q,base).record;q.props.GC_TELEGRAM_OFFSET='40';q.props.tg_processed_uids='20';
  const beforeRepair=q.telegram.length;let health=q.g.repairGascheckTelegram();q.g.repairGascheckTelegram();
- assert.equal(health.version,'v61-callback-revisions');assert.equal(q.triggers.length,1);assert.equal(q.props.GC_TELEGRAM_OFFSET,'40');assert.equal(q.props.tg_processed_uids,'20');
+ assert.equal(health.version,'v62-single-decision-card');assert.equal(q.triggers.length,1);assert.equal(q.props.GC_TELEGRAM_OFFSET,'40');assert.equal(q.props.tg_processed_uids,'20');
  assert(q.telegram.slice(beforeRepair).every(t=>!['sendMessage','sendPhoto'].includes(t.method)));assert(q.telegram.filter(t=>t.method==='deleteWebhook').every(t=>t.payload.drop_pending_updates===false));
  q.updates.push({update_id:40,callback_query:cq(q,qr,'ok',{from:{id:'denied'}})},{update_id:41,callback_query:cq(q,qr)});
  q.setSmartFailure(true);result=q.g.pollGascheckTelegram();assert.equal(result.ok,false);assert.equal(q.props.GC_TELEGRAM_OFFSET,'41');assert(!q.props.tg_processed_uids.split(',').includes('41'));
  q.setSmartFailure(false);q.setAckFailure(true);result=q.g.pollGascheckTelegram();assert(result.ok,result.error);assert.equal(q.props.GC_TELEGRAM_OFFSET,'42');assert.equal(smart(q)[0].status,'已核可');
- assert(q.telegram.some(t=>t.method==='sendMessage'&&t.payload.reply_parameters),'expired popup produces visible reply to the application');
+ assert(q.telegram.some(t=>t.method==='editMessageText'&&t.payload.text.includes('已核可 / Approved')),'expired popup still leaves visible result on original card');
  const settledEdits=q.telegram.filter(t=>t.method==='editMessageText').length;q.g.processGascheckTelegramUpdate_(q.updates[1]);assert.equal(q.telegram.filter(t=>t.method==='editMessageText').length,settledEdits);
  // Decision saves despite a transient Telegram edit error and repairs the same message on retry.
  const e=server();initialize(e);const er=submit(e,base).record;e.setEditFailure(true);assert.throws(()=>click(e,er),/Saved; retry/);assert.equal(current(e).status,'已核可');e.setEditFailure(false);assert(click(e,er).ok);

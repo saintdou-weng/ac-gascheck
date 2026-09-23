@@ -210,7 +210,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=56-key-water-monthly&patch=61-approval-receiver"></script>
+<script src="./gascheck-core.js?v=56-key-water-monthly&patch=62-single-decision-card"></script>
 </head>
 <body>
 
@@ -1030,6 +1030,7 @@ var tgPost = async (body) => {
   }) : row).filter(Boolean);
   const hasPendingApproval=normalizedRows.some(row=>Array.isArray(row)&&row.some(btn=>/^dorm_(?:ok|rej)_/.test(String(btn&& (btn.callback_data||btn.data)||''))));
   normalizedRows.push([{text:hasPendingApproval?'⏳ Open Pending / 開啟待核':'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_dormitory_v2.html'+(hasPendingApproval?'?view=pending':'')}]);
+  if(!normalizedRows.some(row=>row.some(btn=>String(btn.url||'').includes('ac_gascheck_portal_v1.html'))))normalizedRows.push([{text:'🏠 Main Portal / 總平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_portal_v1.html'}]);
   payload.reply_markup = {inline_keyboard:normalizedRows};
   try {
     if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.send)
@@ -1435,6 +1436,7 @@ function showApvCard(record) {
     <div class="apv-meta" style="margin-top:4px">
       ${record.department?'🏢 '+record.department+' ':''} ${record.phone?'📞 '+record.phone:''}
     </div>
+    <div class="apv-meta">👤 審核人 / Reviewer：${esc(record.reviewer||'Phea')}</div>
     ${record.approvedBy?`<div class="apv-meta">✅ 核可人：${record.approvedBy}</div>`:''}
     ${record.approvedAt?`<div class="apv-meta">⏰ 核可時間：${record.approvedAt.substring(0,16)}</div>`:''}
     ${record.rejectReason?`<div class="apv-meta" style="color:var(--red)">❌ 退件原因：${record.rejectReason}</div>`:''}

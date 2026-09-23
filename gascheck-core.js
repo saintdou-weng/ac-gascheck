@@ -3288,7 +3288,7 @@ const BAR_CSS = `
 
 /* ── 匯出 ── */
 GC.version = '3.16-key-water-daily-monthly';
-GC.release = '61-approval-receiver-revisions';
+GC.release = '62-single-decision-card';
 global.GC = GC;
 global.GASCheckCore = GC;
 
