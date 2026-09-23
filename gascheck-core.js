@@ -648,6 +648,15 @@ GC.t = (k, f) => I18.t(k, f);
 /* ═══════════════════════════════════════════════════════════
    2. CLOUD — 安全合併，永不被少量資料覆蓋
    ═══════════════════════════════════════════════════════════ */
+GC.dormVersionWinner = function(a,b){
+  if(!a||!b||a._deleted||b._deleted||!(a.approvalGeneration||b.approvalGeneration))return null;
+  const approved=r=>r.status==='已核可'||/^approved$/i.test(String(r.status||''));
+  const settled=r=>approved(r)?2:(r.status==='已退件'||/^rejected$/i.test(String(r.status||''))?1:0);
+  const complete=r=>(r.approvalDeliveryPending===false||r.approvalDeliveryPending==='false'?2:0)+(r.approvalSyncPending===false||r.approvalSyncPending==='false'?1:0);
+  const delta=Number(approved(a))-Number(approved(b))||Number(a.approvalGeneration||0)-Number(b.approvalGeneration||0)||settled(a)-settled(b)||complete(a)-complete(b);
+  return delta>0?a:delta<0?b:null;
+};
+
 const CLOUD = GC.cloud = {
   gasUrl: DEFAULT_GAS_URL,
   setUrl(u) { CLOUD.gasUrl = u || DEFAULT_GAS_URL; },
@@ -681,6 +690,8 @@ const CLOUD = GC.cloud = {
       if (k == null) { map.set(U.uid('cld'), r); stat.added++; return; }
       if (!map.has(k)) { map.set(k, r); stat.added++; return; }
       const cur = map.get(k);
+      const preferred=GC.dormVersionWinner(cur,r);
+      if(preferred){map.set(k,preferred);if(preferred===r)stat.updated++;else stat.kept++;return;}
       const tL = cur && cur[tsKey] ? String(cur[tsKey]) : '';
       const tC = r[tsKey] ? String(r[tsKey]) : '';
       // 雲端較新才覆蓋；平手或無時間戳 → 保留本地
@@ -903,6 +914,8 @@ const SMART = GC.smartSync = (() => {
       const key = semanticKey(row, opt);
       if (!map.has(key)) { order.push(key); map.set(key, row); return; }
       const old = map.get(key), ta = stamp(old, opt), tb = stamp(row, opt);
+      const preferred=GC.dormVersionWinner(old,row);
+      if(preferred){map.set(key,preferred);return;}
       if (tb > ta || (tb === ta && stable(row).length > stable(old).length)) map.set(key, Object.assign({}, old, row));
       else map.set(key, Object.assign({}, row, old));
     });
@@ -3275,7 +3288,7 @@ const BAR_CSS = `
 
 /* ── 匯出 ── */
 GC.version = '3.16-key-water-daily-monthly';
-GC.release = '60-telegram-periods-delivery';
+GC.release = '61-approval-receiver-revisions';
 global.GC = GC;
 global.GASCheckCore = GC;
 

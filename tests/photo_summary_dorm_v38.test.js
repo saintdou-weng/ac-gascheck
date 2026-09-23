@@ -46,7 +46,8 @@ assert(dorm.includes('const edit = id => appForm.edit(id)'));
 assert(dorm.includes("mode:'replace'"));
 assert(core.includes('next.data = next.callback_data'));
 const gas = read('ac_gascheck_core_v3_fixed.gs');
-assert(gas.includes("if (/^dorm_(ok|rej)_/.test(data))"));
+// v61 routes both legacy and revision-bound callbacks; behavior is exercised in telegram_approval_v61.
+assert(gas.includes('wdr_(?:ok|rej)_|dorm_(?:ok|rej)_|dorm2:'));
 assert(gas.includes('function handleDormApprovalCallback_'));
 assert(gas.includes("case 'dormSubmit': return okResp(handleDormSubmitGet_(p));"));
 assert(gas.includes('function answerCallbackQuery_(queryId, text)'));
