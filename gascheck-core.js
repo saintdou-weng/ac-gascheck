@@ -181,7 +181,9 @@ GC.parseDate = parseDateValue;
 GC.parseTime = parseTimeValue;
 
 /* fetch 加逾時（預設 40 秒）；逾時會丟出 timeout 錯誤，讓同步狀態不會卡在「同步中」。 */
-const FETCH_TIMEOUT_MS = 40000;
+/* 讀取 90 秒；寫入等候伺服器完成（GAS 單次最長 6 分鐘，這裡 330 秒）。
+   寫入逾時後伺服器其實仍在處理，若立刻重送只會排隊搶鎖、越來越慢（2026-09-30 實際發生）。 */
+const FETCH_TIMEOUT_MS = 90000, WRITE_TIMEOUT_MS = 330000;
 function fetchWithTimeout(url, init, ms) {
   ms = Number(ms) > 0 ? Number(ms) : FETCH_TIMEOUT_MS;
   const f = global.fetch || (typeof fetch === 'function' ? fetch : null);
@@ -190,7 +192,7 @@ function fetchWithTimeout(url, init, ms) {
   try { if (typeof AbortController === 'function') ctrl = new AbortController(); } catch (e) { ctrl = null; }
   const opts = Object.assign({}, init || {});
   if (ctrl) opts.signal = ctrl.signal;
-  const timeoutError = () => { const e = new Error(GC.L ? GC.L('雲端回應逾時，請稍後再試', 'Cloud request timed out; please retry', 'Cloud មិនឆ្លើយតបទាន់ពេល សូមព្យាយាមម្ដងទៀត') : 'Cloud request timed out'); e.timeout = true; return e; };
+  const timeoutError = () => { const e = new Error(GC.L ? GC.L('雲端回應逾時，請稍後再試', 'Cloud request timed out; please retry', 'Cloud មិនឆ្លើយតបទាន់ពេល សូមព្យាយាមម្ដងទៀត') : 'Cloud request timed out'); e.timeout = true; e.code = 'TIMEOUT'; return e; };
   return new Promise(function (resolve, reject) {
     timer = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (e) {} reject(timeoutError()); }, ms);
     Promise.resolve().then(function () { return f.call(global, url, opts); }).then(function (r) { clearTimeout(timer); resolve(r); }, function (err) {
@@ -1133,7 +1135,7 @@ const CLOUD = GC.cloud = {
       cache: 'no-store',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
-    }, opt && opt.timeout);
+    }, (opt && opt.timeout) || WRITE_TIMEOUT_MS);
     const txt = await r.text();
     let data;
     try { data = JSON.parse(txt); } catch (e) { throw new Error(I18.t('gc.nonJson') + ': ' + String(txt || '').slice(0, 120)); }
@@ -1403,7 +1405,7 @@ const PHOTO_UPLOAD = GC.photoUpload = (() => {
       let last = null;
       for (let i = 0; i < ATTEMPTS; i++) {
         try {
-          const r = await CLOUD.post({ action: 'uploadPhoto', dataUrl, tool, recId, idx: idx || 0, photoKey: fp }, { timeout: 60000 });
+          const r = await CLOUD.post({ action: 'uploadPhoto', dataUrl, tool, recId, idx: idx || 0, photoKey: fp }, { timeout: WRITE_TIMEOUT_MS });
           const url = r && r.ok && (r.url || (r.data && r.data.url));
           if (/^https?:\/\//i.test(String(url || ''))) {
             load()[fp] = { u: String(url), t: Date.now() };
@@ -1411,8 +1413,8 @@ const PHOTO_UPLOAD = GC.photoUpload = (() => {
             return String(url);
           }
           last = new Error((r && r.error) || 'No Drive link returned');
-        } catch (e) { last = e; }
-        if (i + 1 < ATTEMPTS) await sleep(600 * Math.pow(2, i));
+        } catch (e) { last = e; if (e && e.timeout) break; }
+        if (i + 1 < ATTEMPTS) await sleep((/busy|鎖|忙/i.test(String(last && last.message || '')) ? 8000 : 600) * Math.pow(2, i));
       }
       throw last || new Error('Photo upload failed');
     });
@@ -1609,7 +1611,8 @@ const SMART = GC.smartSync = (() => {
       catch (e) {
         last = e;
         if (e && e.smartUnsupported) throw e;
-        if (i + 1 < total) await wait(300 * Math.pow(2, i));
+        if (e && e.timeout) throw e;   // 伺服器可能仍在處理：不重送，交給下一輪同步（有退避）
+        if (i + 1 < total) await wait((/busy|鎖|忙/i.test(String(e && e.message || '')) ? 8000 : 300) * Math.pow(2, i));
       }
     }
     throw last || new Error('Cloud sync failed');
@@ -1755,7 +1758,7 @@ const SMART = GC.smartSync = (() => {
       const b = local[changed[i]];
       localHashOf[b.key] = b.hash;
       const r = await retryNetwork(function () {
-        return CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records }, { timeout: 60000 });
+        return CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records }, { timeout: WRITE_TIMEOUT_MS });
       }, 3);
       if (!r || r.ok === false) throw new Error((r && r.error) || 'Smart bucket upload failed');
       const saved=dataOf(r)||{};
@@ -1783,7 +1786,7 @@ const SMART = GC.smartSync = (() => {
        已被別台改過 → 伺服器合併（mergedBuckets）或保留別台版本（keptBuckets），並回 needsPull。 */
     const baseHashes = Object.assign({}, realRemoteH);
     const commit = await retryNetwork(function () { return CLOUD.post({ action:'smartCommit', tool:tool, uploadId:uploadId, hashes:hashes, counts:counts, baseHashes:baseHashes,
-      recordCount:Object.keys(counts).reduce((n, k) => n + (Number(counts[k]) || 0), 0), meta:meta }, { timeout: 60000 }); }, 3);
+      recordCount:Object.keys(counts).reduce((n, k) => n + (Number(counts[k]) || 0), 0), meta:meta }, { timeout: WRITE_TIMEOUT_MS }); }, 3);
     if (!commit || commit.ok === false) throw new Error((commit && commit.error) || 'Smart commit failed');
     const cd = dataOf(commit) || {};
     const ts = (cd.timestamp || cd.updatedAt) || U.now();
@@ -2820,7 +2823,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
     if (typeof opt.onState === 'function') opt.onState(kind, typeof text === 'function' ? text() : text, typeof text === 'function' ? text : null);
   }
   const pendingKey = 'ac_gc_auto_sync_v1_' + String(opt.tool || 'tool');
-  let running = null, reconcileRunning = null, retryTimer = 0, reconcileTimer = 0, queued = false, retryCount = 0;
+  let running = null, reconcileRunning = null, retryTimer = 0, reconcileTimer = 0, queued = false, retryCount = 0, photoRetryCount = 0;
   function readPending() {
     try { return JSON.parse(localStorage.getItem(pendingKey) || 'null'); } catch (e) { return null; }
   }
@@ -2913,8 +2916,11 @@ GC.mountCloudButtons = function (mountEl, opt) {
           state('local', () => I18.f('gc.photoPending', { n: photoFailures.length }));
           GC.toast('⚠ ' + I18.f('gc.photoPending', { n: photoFailures.length }), 'warning');
           clearTimeout(retryTimer);
-          retryTimer = setTimeout(function () { if (hasPending()) runUpload({silent:true,auto:true,reason:'retry'}); }, 60000);
+          /* 照片重試逐步拉長（1、2、5、10、15 分鐘），避免每分鐘打一次雲端。 */
+          photoRetryCount += 1;
+          retryTimer = setTimeout(function () { if (hasPending()) runUpload({silent:true,auto:true,reason:'retry'}); }, [60000,120000,300000,600000,900000][Math.min(photoRetryCount - 1, 4)]);
         } else {
+          photoRetryCount = 0;
           state('ok', () => (checkedOnly ? I18.t('gc.cloudChecked') : I18.t('gc.cloudSynced')) + (at ? ' ' + at : ''));
         }
         if (!runOpt.silent) GC.toast('☁ ' + label, 'success');
@@ -2931,7 +2937,9 @@ GC.mountCloudButtons = function (mountEl, opt) {
           clearTimeout(retryTimer);
           retryTimer = setTimeout(function () {
             if (hasPending()) runUpload({silent:true,auto:true,reason:'retry'});
-          }, Math.min(60000, 5000 * Math.pow(2, Math.min(retryCount - 1, 3))));
+          }, (e && e.timeout) || /busy|鎖|忙/i.test(errMsg)
+            ? Math.min(600000, 120000 * Math.pow(2, Math.min(retryCount - 1, 2)))   // 雲端忙／逾時：2、4、8 分鐘
+            : Math.min(60000, 5000 * Math.pow(2, Math.min(retryCount - 1, 3))));
         }
         return {ok:false,error:e};
       } finally {

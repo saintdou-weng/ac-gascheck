@@ -164,7 +164,7 @@ select.bi{cursor:pointer}
 .rp-ok{border:0;background:#1A3E78;color:#fff;padding:8px 20px;border-radius:7px;
   font:600 13px/1 inherit;cursor:pointer}
 </style>
-<script src="./gascheck-core.js?v=20260929-fix"></script>
+<script src="./gascheck-core.js?v=20260930-busyfix"></script>
 </head>
 <body>
 <div class="topbar">
@@ -1208,6 +1208,8 @@ async function ehsFlushTombstones(opt){
     const res=await ehsCloudPost({action:'deleteBatch',tool:'ehs',ids:ids});
     if(!res||res.ok===false)throw new Error(res&&res.error||'batch delete failed');ids.forEach(function(id){done.add(id);});
   }catch(batchErr){
+    /* 逾時或雲端忙：伺服器可能仍在處理，不逐筆重送（會排隊搶鎖越來越慢），下一輪再確認。 */
+    if(batchErr&&(batchErr.timeout||/busy|retry|timed out|逾時/i.test(String(batchErr.message||''))))throw batchErr;
     for(const id of ids){try{const res=await ehsCloudPost({action:'delete',tool:'ehs',id:id});if(res&&res.ok!==false)done.add(id);}catch(e){}}
   }
   /* 雲端確認刪除後只標記 cloudDeletedAt，墓碑本身保留（同步給其他手機）。 */
@@ -1924,7 +1926,11 @@ function markEhsTelegramSent(ctx){
       importParser:parseEhsSmartImport,
       mergeImport:mergeEhsImport,
       importSchema:{"date": ["日期", "date", "កាលបរិច្ឆេទ", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "recycle weight", "ទម្ងន់"], "supplier": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "weight_kg": ["重量", "kg", "weight", "ទម្ងន់"], "checked_by": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
-      beforeCloudSync:function(){return ehsFlushTombstones({silent:true});},
+      beforeCloudSync:function(){
+        /* 刪除紀錄（墓碑）已隨智慧同步一起上雲；舊版刪除 API 只是讓 Sheet 同步，改成背景補做，
+           失敗不再擋住上傳與 Telegram 發送。 */
+        return ehsFlushTombstones({silent:true}).catch(function(e){try{console.warn('[EHS] legacy cloud delete deferred:',e&&e.message||e);}catch(_){}return {ok:false,deferred:true};});
+      },
       onSync:function(){setTimeout(refreshEhsAll,0);},
       onImport:function(){GC.sync.schedule('ehs','smart_import');setTimeout(refreshEhsAll,0);},
       exportHandler:function(){return ehsToolbarExport();},

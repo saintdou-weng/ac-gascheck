@@ -23,7 +23,7 @@ assert(core.includes('retryNetwork(function ()'), 'smart buckets/commit must ret
 assert(gas.includes("CORE_VERSION : 'v4.8-key-water-monthly-reports'"));
 assert(gas.includes("String(old.lastUploadId||'')===uploadId"), 'smart commit retry must be idempotent');
 assert(gas.includes('replaceRecords_(sheet,gcSmartSortRows_(kept.concat(changedRows)))'), 'Sheet compatibility index must remove stale rows from changed buckets');
-htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=20260929-fix'),name+' must load v55 core cache key'));
+htmls.forEach(name=>assert(fs.readFileSync(path.join(root,name),'utf8').includes('gascheck-core.js?v=20260930-busyfix'),name+' must load v55 core cache key'));
 
 const store={};
 const document={

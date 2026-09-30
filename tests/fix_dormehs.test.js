@@ -26,7 +26,7 @@ function file(w){return new w.File([new Uint8Array([1,2,3])],'x.xlsx');}
   for(const [name,html] of [['dorm',dormSrc],['ehs',ehsSrc]]){
     for(const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi))assert.doesNotThrow(()=>new Function(m[1]),name+' script parses');
     assert(!/MutationObserver/.test(html),name+': no page-wide substring translation observer (B2)');
-    assert(html.includes('gascheck-core.js?v=20260929-fix'),name+' keeps core cache key');
+    assert(html.includes('gascheck-core.js?v=20260930-busyfix'),name+' keeps core cache key');
   }
   assert(!/5026942575/.test(dormSrc)&&!/approverId/.test(dormSrc)&&!/dormDecision/.test(dormSrc),'dorm: no web approval / hardcoded approver (C1)');
   assert(!/mode:'replace'/.test(dormSrc),'dorm: no replace push (merge only)');
