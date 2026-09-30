@@ -18,7 +18,7 @@ assert(gas.includes("if (!ok) return tgSendText_(chatId, '♻️ AC GASCHECK Pla
   '/gc must report a successful plain-text fallback');
 
 for (const html of [cleaning, temp, dorm]) {
-  assert(html.includes('gascheck-core.js?v=56-key-water-monthly'));
+  assert(html.includes('gascheck-core.js?v=20260929-fix'));
 }
 
 assert(cleaning.includes('function applyCleaningCloudMeta'), 'Cleaning must restore shared staff/settings');
@@ -32,7 +32,8 @@ assert(cleaning.includes('onSync:function(list)'),
 assert(temp.includes('let _tempSelectedZones = new Set()'));
 assert(temp.includes('function selectTempZones(yes)'));
 assert(temp.includes('toggleTempZone'));
-assert(temp.includes('if(!_tempSelectedZones.has(String(z.id)))return;'));
+// FIX pass: save loop refactored (validation C10); still only saves the selected zones.
+assert(/zones\.filter\(z=>_tempSelectedZones\.has\(String\(z\.id\)\)\)/.test(temp),'Temperature saves only selected zones');
 assert(temp.includes('async function sendTemperatureTelegramPacket'));
 
 assert(dorm.includes('onclick="insp.allOk()"'));

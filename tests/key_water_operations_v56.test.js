@@ -28,11 +28,12 @@ const snapshot=v=>JSON.parse(JSON.stringify(v));
   assert.equal(w.document.querySelectorAll('#table-body tr').length,32,'month shows 31 editable days plus total');
   w.setWaterLocation('factory');assert.equal(w.document.getElementById('main-table').dataset.location,'factory');assert.equal(w.document.querySelector('[data-wdr-location=factory]').getAttribute('aria-pressed'),'true');
   w.updateRow(1,'fQty','4');assert.equal(w.document.getElementById('fttl-1').textContent,'12,000');
-  w.updateRow(1,'fPrice','0');assert.equal(w.document.getElementById('fttl-1').textContent,'0');w.updateRow(1,'fQty','5');assert.equal(JSON.parse(w.localStorage.getItem('wdr_2026_08'))[1].fPrice,'0','free delivery keeps zero price');
-  w.updateRow(1,'fPrice','3000');w.updateRow(1,'fQty','4');w.updateRow(1,'fQty','-3');assert.equal(JSON.parse(w.localStorage.getItem('wdr_2026_08'))[1].fQty,'4','invalid quantity rejected');
+  // FIX pass: blank never-entered days are no longer stored (they were stamped as newest and clobbered other phones), so look rows up by day.
+  w.updateRow(1,'fPrice','0');assert.equal(w.document.getElementById('fttl-1').textContent,'0');w.updateRow(1,'fQty','5');assert.equal(JSON.parse(w.localStorage.getItem('wdr_2026_08')).find(r=>+r.day===2).fPrice,'0','free delivery keeps zero price');
+  w.updateRow(1,'fPrice','3000');w.updateRow(1,'fQty','4');w.updateRow(1,'fQty','-3');assert.equal(JSON.parse(w.localStorage.getItem('wdr_2026_08')).find(r=>+r.day===2).fQty,'4','invalid quantity rejected');
   w.openWaterPhotos(1);assert(w.document.querySelector('#wdr-edit-fPhotos input[capture]'));assert(!w.document.querySelector('#wdr-edit-sPhotos'));assert.equal(w.document.querySelectorAll('#wdr-edit-photos img').length,3,'old photos are not truncated');
   const camera=w.document.querySelector('#wdr-edit-fPhotos input[capture]');w.GC.photo.compress=async()=>photo;Object.defineProperty(camera,'files',{configurable:true,value:[{type:'image/jpeg'}]});await camera.onchange();w.closeWaterPhotos();
-  let rows=JSON.parse(w.localStorage.getItem('wdr_2026_08'));assert.equal(rows[1].fPhotos.length,1);assert.equal(rows[1].photos.length,3);assert.equal(rows[1].sQty,2);
+  let rows=JSON.parse(w.localStorage.getItem('wdr_2026_08'));assert.equal(rows.find(r=>+r.day===2).fPhotos.length,1);assert.equal(rows.find(r=>+r.day===2).photos.length,3);assert.equal(rows.find(r=>+r.day===2).sQty,2);
   w.setWaterLocation('staff');w.openWaterPhotos(1);assert(w.document.querySelector('#wdr-edit-sPhotos input[capture]'));w.closeWaterPhotos();
   const cfg=w.__configs.waterdrum;const incoming=cfg.read();cfg.write(incoming.concat(incoming));assert.equal(cfg.read().filter(r=>r.date==='2026-08-02').length,1);assert.equal(cfg.read().find(r=>r.date==='2026-08-02').updatedAt,incoming.find(r=>r.date==='2026-08-02').updatedAt);
   const packet=w.buildWaterTelegram({cfg,period:'month',ref:'2026-08-01',scope:'all',slot:'all',mode:'summary',lang:'en'});assert.equal(packet.pages.length,3);assert(packet.text.includes('F 4 × 3000 = 12000'));assert(packet.text.includes('S 2 × 4000 = 8000'));assert(packet.text.includes('20,000 KHR / $5.00'));

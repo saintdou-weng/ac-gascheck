@@ -40,11 +40,11 @@ ctx.tgEditResult_=()=>({ok:false,error:'Too Many Requests'});result=ctx.sendTele
  const posted=[],messages=new Map();let fail=true;
  w.GC.cloud.post=async body=>{posted.push(clone(body));if(fail&&body.messageKey.endsWith('page2'))throw new Error('Simulated network interruption');if(!messages.has(body.messageKey))messages.set(body.messageKey,messages.size+1);return {ok:true,messageId:messages.get(body.messageKey)}};
  const meta={reportPeriod:'month',reportRef:'2026-08-01',reportMonth:'2026-08',reportMode:'summary',reportScope:'all',reportSlot:'all'};
- await assert.rejects(()=>w.GC.telegram.send(pages,['https://example.test/photo.jpg'],[],null,'temperature',meta),/Page 2\/3/);
+ await assert.rejects(()=>w.GC.telegram.send(pages,['https://example.test/photo.jpg'],[],null,'temperature',meta),/Page 2\/3|第 2\/3 頁/);
  assert(!posted.some(p=>p.reportMonth),'partial report cannot be marked complete');
  fail=false;const delivered=await w.GC.telegram.send(pages,['https://example.test/photo.jpg'],[],null,'temperature',meta);assert.equal(delivered.pagesSent,3);assert.equal(messages.size,3,'retry reuses page message keys');
  assert.equal(posted.at(-1).reportMonth,'2026-08');assert.equal(posted.at(-1).photos.length,1);assert(posted.slice(0,-1).every(p=>p.photos.length===0));
- w.GC.cloud.post=async()=>({ok:true});await assert.rejects(()=>w.GC.telegram.send('hello',[],[],null,'temperature'),/No delivery confirmation/);
+ w.GC.cloud.post=async()=>({ok:true});await assert.rejects(()=>w.GC.telegram.send('hello',[],[],null,'temperature'),/No delivery confirmation|未回傳送達確認/);
  const selected=w.GC.period.filter([{d:'2026-07-31'},{d:'2026-08-01'},{d:'2026-08-31'},{d:'2026-09-01'}],'month','d','2026-08-01');assert.deepStrictEqual(Array.from(selected,r=>r.d),['2026-08-01','2026-08-31']);
  dom.window.close();console.log('v56 approval authorization/stale report/replay, photo receipts, paginated retry and calendar boundaries PASS');
 })().catch(e=>{console.error(e);process.exit(1)});

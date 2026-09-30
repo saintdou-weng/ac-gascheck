@@ -45,7 +45,7 @@ sheets.keymovement= new Sheet('keymovement',table(['id','issue_date','updatedAt'
 sheets.ehs=         new Sheet('ehs',table(['id','date','sourceType','updatedAt'],[
   ['e-rec','2026-08-22','recycle','2026-08-22 08:00:00'],['e-waste','2026-08-22','waste','2026-08-22 08:00:00']
 ]));
-sheets.waterdrum=   new Sheet('waterdrum',table(['id','date','updatedAt'],[['w-aug','2026-08-21','2026-08-21 08:00:00']]));
+sheets.waterdrum=   new Sheet('waterdrum',table(['id','date','updatedAt','fQty'],[['w-aug','2026-08-21','2026-08-21 08:00:00',2]])); // blank rows don't count
 sheets.temperature= new Sheet('temperature',table(['id','d','updatedAt'],[['t-aug','2026-08-20','2026-08-20 08:00:00']]));
 
 const ah=['ts','event','tool','reportMonth','period','mode','scope','slot','language','ref','count','note','sender'];

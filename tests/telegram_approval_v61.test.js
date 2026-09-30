@@ -76,7 +76,15 @@ function smart(s,tool='dormitory'){return s.g.readGcSmartAllRecords_(tool,s.g.re
   await w.appForm.submit();assert.equal(posts[0].action,'dormSubmit');assert.equal(current(browserServer).reason,'Edited in actual form');
   assert.equal(w.state.db().records.length,1);assert.equal(w.state.db().records[0].approvalRevision,2);assert.equal(w.state.db().records[0].photos[0],br.photos[0],'editing preserves existing photos');
   await w.records.resend(br.id);const latest=copy(current(browserServer));assert.equal(w.state.db().records[0].approvalToken,latest.approvalToken);
-  await w.records.approve(br.id);assert.equal(w.state.db().records[0].status,'已核可');assert.equal(current(browserServer).status,'已核可');
+  // FIX pass (C1): the page has NO approve/reject (it used to post a hard-coded approver id).
+  // Paul approves with the genuine Telegram button; the page picks the result up via sync.
+  assert.equal(typeof w.records.approve,'undefined','no in-page approve');assert.equal(typeof w.records.reject,'undefined','no in-page reject');
+  assert(!posts.some(p=>p.action==='dormDecision'),'page never posts dormDecision');
+  assert.equal(browserServer.g.handleDormPlatformDecision_({id:br.id,decision:'approve',approver:'Paul',approverId:browserServer.config.approver,expectedRevision:latest.approvalRevision,expectedToken:latest.approvalToken}).ok,false,'HTTP decision refused');
+  assert(click(browserServer,latest).ok,'genuine Telegram press approves');assert.equal(current(browserServer).status,'已核可');
+  w.GC.cloud.get=async p=>browserServer.get(copy(p));w.GC.cloud.post=async p=>browserServer.post(copy(p));
+  await w.records.refreshStatus(true);
+  assert.equal(w.state.db().records.find(r=>r.id===br.id).status,'已核可','approval reaches the page through sync');
   assert.deepStrictEqual(browser.errors,[]);
  }finally{browser.dom.window.close();}
  console.log('v61 full approval: submit/edit/resend/photo retry, stale/group/user/revision guards, same-second and partial saves, expired popup, polling offset/idempotency, Water repair PASS');

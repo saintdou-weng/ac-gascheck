@@ -46,6 +46,9 @@ function validateHtml(text){
       w.document.querySelector('[data-gc-open-tg]').onclick();await pause();
       const modal=w.document.querySelector('.gc-common-modal[data-gc-tool='+tool+']'),get=k=>modal.querySelector('[data-gc-'+k+']');
       get('period').value='week';get('period').onchange();await pause();
+      // zh UI → report language defaults to single-language Chinese; user may still pick bilingual.
+      assert.equal(get('lang').value,'zh',tool+' report language defaults to UI language');
+      get('lang').value='bi';get('lang').onchange();await pause();
       assert.equal(get('ref').value,'2026-09-14',tool+' selects current week');
       assert(!get('send').disabled,tool+': '+get('send-state').textContent+' / '+get('preview').textContent);
       const count=cfg.read().length;
@@ -78,7 +81,7 @@ function validateHtml(text){
           const attempts=[];let rejectPage=true;
           w.GC.cloud.post=async p=>{attempts.push(copy(p));if(rejectPage&&attempts.length===2)throw new Error('Simulated page failure');return{ok:true,messageId:200+attempts.length};};
           const meta={reportPeriod:'month',reportRef:'2026-09-01',reportMode:'summary'};
-          await assert.rejects(()=>w.GC.telegram.send(long,[],[],'test-chat','keymovement',meta),/Page 2/);
+          await assert.rejects(()=>w.GC.telegram.send(long,[],[],'test-chat','keymovement',meta),/Page 2|第 2\/4 頁/);
           assert(!attempts.some(p=>p.reportMode),'Partial delivery cannot record completion');
           const firstKey=attempts[0].messageKey;rejectPage=false;attempts.length=0;
           await w.GC.telegram.send(long,[],[],'test-chat','keymovement',meta);
@@ -103,7 +106,7 @@ function validateHtml(text){
     const w=portal.w,notices=[];let calls=0,resolve;
     w.toast=s=>notices.push(s);w.gasPost=()=>{calls++;return new Promise(r=>resolve=r);};
     const first=w.sendTgMenu();w.sendTgMenu();assert.equal(calls,1,'Portal ignores duplicate clicks');
-    resolve({ok:true});await first;assert(notices.at(-1).includes('No delivery confirmation'),'Portal cannot claim success without a receipt');
+    resolve({ok:true});await first;assert(/No delivery confirmation|未回傳送達確認|送達確認/.test(notices.at(-1)),'Portal cannot claim success without a receipt');
     w.gasPost=async()=>({ok:true,messageId:123});await w.sendTgMenu();assert(notices.at(-1).startsWith('✅'));
     assert.deepStrictEqual(portal.errors,[]);
     console.log('v60 Portal: double-click, missing receipt, confirmed retry PASS');

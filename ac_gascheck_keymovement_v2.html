@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VRT-R-GA-07 鑰匙管理系統</title>
+<title>鑰匙管理 · VRT</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
@@ -60,8 +60,8 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .topbar-docno { font-family: 'Space Mono', monospace; font-size: 0.72rem; opacity: 0.6; }
 
 /* NAV */
-.nav { display: flex; gap: 2px; background: var(--bg3); padding: 8px 24px; border-bottom: 1px solid var(--border); overflow-x: auto; }
-.nav-btn { background: transparent; border: none; padding: 8px 18px; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-family: inherit; color: var(--text2); font-weight: 500; transition: all .2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
+.nav { display: flex; flex-wrap: wrap; gap: 4px; background: var(--bg3); padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.nav-btn { background: transparent; border: none; padding: 8px 12px; min-height: 44px; border-radius: 8px; cursor: pointer; font-size: 0.88rem; font-family: inherit; color: var(--text2); font-weight: 500; transition: all .2s; white-space: nowrap; display: flex; align-items: center; gap: 6px; }
 .nav-btn.active, .nav-btn:hover { background: var(--primary); color: #fff; }
 .nav-btn .icon { font-size: 1rem; }
 
@@ -99,7 +99,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .form-group textarea { resize: vertical; min-height: 60px; }
 
 /* BUTTONS */
-.btn { border: none; border-radius: 8px; padding: 9px 18px; font-family: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; }
+.btn { border: none; border-radius: 8px; padding: 9px 18px; min-height: 44px; font-family: inherit; font-size: 0.88rem; font-weight: 600; cursor: pointer; transition: all .2s; display: inline-flex; align-items: center; gap: 6px; }
 .btn-primary { background: var(--primary); color: #fff; }
 .btn-primary:hover { background: #224d79; }
 .btn-accent { background: var(--accent); color: #fff; }
@@ -110,7 +110,7 @@ body { font-family: 'Noto Sans TC', sans-serif; background: var(--bg); color: va
 .btn-danger:hover { background: #a93226; }
 .btn-outline { background: transparent; border: 1.5px solid var(--border); color: var(--text2); }
 .btn-outline:hover { border-color: var(--primary); color: var(--primary); }
-.btn-sm { padding: 5px 12px; font-size: 0.8rem; }
+.btn-sm { padding: 5px 12px; font-size: 0.8rem; min-height: 40px; }
 .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
 
 /* TABLE */
@@ -159,7 +159,7 @@ table tr:last-child td { border-bottom: none; }
 .chart-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 16px; }
 .chart-grid .card-body{position:relative;height:270px;min-height:270px;overflow:hidden}
 .chart-grid .card-body canvas{display:block!important;width:100%!important;height:230px!important;max-height:230px!important}
-@media(max-width:768px){ .chart-grid { grid-template-columns: 1fr; } .form-grid { grid-template-columns: 1fr; } }
+@media(max-width:768px){ .chart-grid { grid-template-columns: minmax(0,1fr); } .chart-grid>*{min-width:0} .chart-grid .card-header{flex-wrap:wrap;gap:8px} .chart-grid .period-tabs{flex-wrap:wrap} .form-grid { grid-template-columns: 1fr; } }
 
 /* IMPORT SECTION */
 .import-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all .2s; }
@@ -170,7 +170,7 @@ table tr:last-child td { border-bottom: none; }
 .tg-config { background: #f0f8ff; border: 1.5px solid #b3d4f0; border-radius: 10px; padding: 16px; }
 
 /* TOAST */
-.toast { position: fixed; bottom: 24px; right: 24px; background: var(--primary); color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 0.9rem; z-index: 9999; box-shadow: 0 4px 20px rgba(0,0,0,0.25); transform: translateY(100px); opacity: 0; transition: all .3s; max-width: 320px; }
+.toast { position: fixed; top: 12px; left: 50%; right: auto; margin-left: -160px; white-space: pre-line; background: var(--primary); color: #fff; padding: 12px 20px; border-radius: 10px; font-size: 0.9rem; z-index: 9999; box-shadow: 0 4px 20px rgba(0,0,0,0.25); transform: translateY(-120px); opacity: 0; transition: all .3s; width: 320px; max-width: 92vw; cursor: pointer; }
 .toast.show { transform: translateY(0); opacity: 1; }
 .toast.success { background: var(--accent2); }
 .toast.error { background: var(--danger); }
@@ -191,9 +191,15 @@ table tr:last-child td { border-bottom: none; }
 
 /* PERIOD TABS */
 .period-tabs { display: flex; gap: 4px; background: var(--bg3); border-radius: 8px; padding: 4px; }
-.period-tab { background: transparent; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem; font-weight: 500; transition: all .2s; }
+.period-tab { background: transparent; border: none; padding: 6px 14px; min-height: 40px; border-radius: 6px; cursor: pointer; font-family: inherit; font-size: 0.85rem; font-weight: 500; transition: all .2s; }
 .period-tab.active { background: var(--primary); color: #fff; }
 
+/* v63 fix: validation highlight, edit banner, phone layout */
+.gc-invalid{border-color:#c0392b!important;box-shadow:0 0 0 3px rgba(192,57,43,.22)!important;background:#fff5f5!important}
+.km-edit-banner{display:flex;align-items:center;gap:10px;flex-wrap:wrap;background:#fef3c7;border:1px solid #f59e0b;border-radius:10px;padding:10px 12px;margin-bottom:12px;color:#7c4a03;font-weight:700}
+.km-edit-banner button{min-height:40px}
+@media(max-width:480px){.topbar{height:auto;min-height:56px;padding:6px 12px;flex-wrap:wrap}.topbar-logo{font-size:1.1rem}.topbar-docno{display:none}.main{padding:12px 10px 60px}.nav-btn{padding:8px 10px;font-size:.84rem}.toast{left:4vw;margin-left:0}}
+.km-date-nav button,.km-period-bar>button{min-width:44px!important;min-height:44px!important}.modal-close{min-width:44px;min-height:44px}.km-icon-btn{min-width:44px!important;min-height:44px!important}.km-period-tabs button{min-height:44px}
 /* PRINT HIDE */
 @media print { .topbar, .nav, .btn, .filter-bar .btn { display: none !important; } }
 
@@ -203,7 +209,7 @@ table tr:last-child td { border-bottom: none; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=56-key-water-monthly&patch=62-single-decision-card"></script>
+<script src="./gascheck-core.js?v=20260929-fix"></script>
 </head>
 <body>
 
@@ -211,8 +217,8 @@ table tr:last-child td { border-bottom: none; }
 <div class="topbar">
   <div class="topbar-title">
     <div>
-      <div class="topbar-logo">🔑 VRT Key Management</div>
-      <div class="topbar-sub" id="topbar-sub">Vantage River Textiles | 鑰匙動態管理系統</div>
+      <div class="topbar-logo">🔑 <span data-i18n="app_title">鑰匙管理</span></div>
+      <div class="topbar-sub" id="topbar-sub">Vantage River Textiles · <span data-i18n="app_sub">鑰匙動態管理系統</span></div>
     </div>
   </div>
   <div class="topbar-right">
@@ -256,7 +262,7 @@ table tr:last-child td { border-bottom: none; }
 <div class="section active" id="section-dashboard">
   <div class="stat-grid" id="stat-grid"></div>
   
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px" class="chart-grid">
+  <div class="chart-grid">
     <div class="card">
       <div class="card-header">
         <span class="card-title">🏭 <span data-i18n="dept_distribution">各部門鑰匙使用</span></span>
@@ -427,26 +433,9 @@ table tr:last-child td { border-bottom: none; }
         <button class="period-tab" onclick="setListPeriod('year',this)" data-i18n="period_year">年</button>
       </div>
       <input type="month" id="filter-month" onchange="renderList()" style="display:none">
-      <input type="text" id="filter-search" placeholder="🔍 搜索..." oninput="renderList()" style="width:160px">
-      <select id="filter-dept" onchange="renderList()">
-        <option value="">全部部門</option>
-        <option value="倉庫">倉庫</option>
-        <option value="裁剪">裁剪</option>
-        <option value="車間">車間</option>
-        <option value="成品">成品</option>
-        <option value="馬克">馬克</option>
-        <option value="品管">品管</option>
-        <option value="外籍宿舍">外籍宿舍</option>
-        <option value="當地宿舍">當地宿舍</option>
-        <option value="辦公室">辦公室</option>
-        <option value="行政中心">行政中心</option>
-      </select>
-      <select id="filter-status" onchange="renderList()">
-        <option value="">全部狀態</option>
-        <option value="outstanding">未歸還</option>
-        <option value="returned">已歸還</option>
-        <option value="lost">遺失</option>
-      </select>
+      <input type="text" id="filter-search" placeholder="🔍" oninput="renderList()" style="width:160px">
+      <select id="filter-dept" onchange="renderList()"><option value=""></option></select>
+      <select id="filter-status" onchange="renderList()"><option value=""></option></select>
       <div class="btn-group" style="margin-left:auto">
         <button class="btn btn-outline btn-sm" onclick="exportExcel()">⬇️ <span data-i18n="export_excel">匯出 Excel</span></button>
         <button class="btn btn-success btn-sm" onclick="sendToTelegram()">✈️ <span data-i18n="send_tg">發送 Telegram</span></button>
@@ -512,7 +501,7 @@ table tr:last-child td { border-bottom: none; }
            ondrop="handleImportDrop(event)">
         <div class="import-icon">📁</div>
         <div style="font-weight:600;margin-bottom:6px" data-i18n="import_click">點擊或拖放 Excel/CSV 文件</div>
-        <div style="font-size:0.82rem;color:var(--text2)">VRT-R-GA-07 格式 | .xls .xlsx .csv</div>
+        <div style="font-size:0.82rem;color:var(--text2)">VRT-R-GA-07 · .xls .xlsx .csv</div>
       </div>
       <input type="file" id="import-file" accept=".xls,.xlsx,.csv" style="display:none" onchange="handleImportFile(event)">
 
@@ -573,9 +562,8 @@ table tr:last-child td { border-bottom: none; }
       <div class="divider"></div>
       <div class="section-title">🌐 <span data-i18n="system_info">系統資訊</span></div>
       <div style="font-size:0.85rem;color:var(--text2);line-height:1.8">
-        <div>系統: VRT Key Movement Management System</div>
-        <div>文件編號: VRT-R-GA-07</div>
-        <div>公司: Vantage River Textiles</div>
+        <div>VRT Key Movement · VRT-R-GA-07</div>
+        <div>Vantage River Textiles</div>
         <div id="record-count-info"></div>
       </div>
     </div>
@@ -606,139 +594,144 @@ function _mountPhotos(val){
 }
 document.addEventListener('DOMContentLoaded',function(){_mountPhotos([])});
 window._mountPhotos=_mountPhotos;
-// ==================== I18N ====================
+// ==================== I18N（單一語言；km 缺值退回英文，en/km 不出現中文）====================
 const I18N = {
   zh: {
-    nav_dashboard:'儀表板', nav_record:'新增記錄', nav_list:'記錄列表', nav_analytics:'數據分析', nav_import:'匯入歷史', nav_anomaly:'異常警報', nav_settings:'設置',
+    app_title:'鑰匙管理', app_sub:'鑰匙動態管理系統',
+    nav_dashboard:'儀表板', nav_record:'鑰匙清單', nav_list:'記錄列表', nav_analytics:'數據分析', nav_import:'匯入歷史', nav_anomaly:'異常警報', nav_settings:'設定',
     dept_distribution:'各部門鑰匙使用', trend:'鑰匙動態趨勢', recent_anomaly:'最新異常', outstanding_keys:'未歸還鑰匙',
-    new_record_title:'鑰匙動態記錄 / Key Movement Record',
-    issue_section:'鑰匙發出 / Key Issued', return_section:'鑰匙歸還 / Key Return (可稍後填寫)',
-    f_issue_date:'鑰匙發出日', f_issue_time:'發出時間', f_key_no:'鑰匙號碼', f_key_dept:'部門', f_checker:'檢查人', f_recipient_id:'收受人 ID', f_recipient_name:'收受人姓名', f_key_type:'鑰匙類型', f_key_condition:'鑰匙狀態',
-    f_return_date:'收回日期', f_return_time:'收回時間', f_receiver_name:'收受人姓名', f_receiver_id:'收受人 ID', f_return_condition:'歸還狀態', f_remarks:'備注', f_photos:'📷 照片',
+    new_record_title:'鑰匙動態記錄', issue_section:'鑰匙發出', return_section:'鑰匙歸還（可稍後填寫）',
+    f_issue_date:'發出日期', f_issue_time:'發出時間', f_key_no:'鑰匙號碼', f_key_dept:'部門', f_checker:'檢查人', f_recipient_id:'領用人 ID', f_recipient_name:'領用人姓名', f_key_type:'鑰匙類型', f_key_condition:'鑰匙狀況',
+    f_return_date:'歸還日期', f_return_time:'歸還時間', f_receiver_name:'收回人姓名', f_receiver_id:'收回人 ID', f_return_condition:'歸還狀況', f_remarks:'備註', f_photos:'📷 照片',
     save_record:'儲存記錄', clear_form:'清除', update_record:'更新記錄',
-    f_filter_period:'篩選:', all:'全部', period_day:'日', period_week:'週', period_month:'月', period_year:'年',
+    f_filter_period:'篩選：', all:'全部', period_day:'日', period_week:'週', period_month:'月', period_year:'年',
     export_excel:'匯出 Excel', send_tg:'發送 Telegram', delete_selected:'刪除所選',
-    import_title:'匯入歷史數據 (Excel/CSV)', import_desc:'支持匯入與本系統相同格式的 Excel (.xls/.xlsx) 或 CSV 檔案。', import_click:'點擊或拖放 Excel/CSV 文件', import_history:'已匯入月份記錄',
-    anomaly_title:'異常警報系統', refresh:'刷新', overdue_threshold:'超時未歸還閾值 (小時)',
-    settings_title:'系統設置', tg_config:'Telegram 群組設置', tg_token:'Bot Token', tg_chat:'Chat ID (群組)', save:'儲存', test_tg:'測試連接',
-    data_mgmt:'數據管理', export_all:'匯出全部數據', clear_all:'清除所有數據', system_info:'系統資訊',
+    import_title:'匯入歷史數據（Excel／CSV）', import_desc:'支援與本系統相同格式的 Excel（.xls／.xlsx）或 CSV 檔案。', import_click:'點擊或拖放 Excel／CSV 檔案', import_history:'已匯入月份記錄',
+    anomaly_title:'異常警報', refresh:'重新整理', overdue_threshold:'超時未歸還門檻（小時）',
+    settings_title:'系統設定', tg_config:'Telegram 群組設定', tg_token:'Bot Token', tg_chat:'Chat ID', save:'儲存', test_tg:'測試連接',
+    data_mgmt:'資料管理', export_all:'匯出全部資料', clear_all:'清除所有資料', system_info:'系統資訊',
     dept_chart:'部門分佈', keytype_chart:'鑰匙類型', monthly_trend:'月度趨勢', return_duration:'平均借用時長', dept_summary_table:'部門彙總表',
     send_report_tg:'發送報告到 Telegram', select:'選擇',
     stat_total:'總記錄數', stat_outstanding:'未歸還', stat_returned:'已歸還', stat_lost:'遺失', stat_depts:'使用部門', stat_overdue:'超時未歸還',
-    col_no:'#', col_issue_date:'發出日期', col_issue_time:'發出時間', col_key_no:'鑰匙號碼', col_dept:'部門', col_checker:'檢查人', col_type:'類型', col_recipient:'收受人', col_recipient_id:'員工ID', col_return_date:'歸還日期', col_return_time:'歸還時間', col_status:'狀態', col_remarks:'備注', col_photos:'📷', col_actions:'操作',
+    col_no:'#', col_issue_date:'發出日期', col_issue_time:'發出時間', col_key_no:'鑰匙號碼', col_key_name:'鑰匙名稱', col_dept:'部門', col_location:'地點', col_checker:'檢查人', col_type:'類型', col_recipient:'領用人', col_recipient_id:'員工 ID', col_condition:'發出狀況', col_return_date:'歸還日期', col_return_time:'歸還時間', col_receiver:'收回人', col_receiver_id:'收回人 ID', col_return_condition:'歸還狀況', col_status:'狀態', col_remarks:'備註', col_photos:'📷', col_actions:'操作', col_duration:'時長',
     status_outstanding:'未歸還', status_returned:'已歸還', status_lost:'遺失',
-    total_records:'總記錄', outstanding:'未歸還', returned:'已歸還',
+    total_records:'總記錄', outstanding:'未歸還', returned:'已歸還', issued:'發出', returned_chart:'歸還', avg_hours:'平均時長（小時）', total_row:'合計', issue_count:'發出次數', return_rate:'歸還率',
+    no_records:'📭 無記錄', no_anomaly:'✅ 暫無異常', all_returned:'✅ 全部鑰匙已歸還', return_btn:'↩️ 歸還',
+    all_depts:'全部部門', all_status:'全部狀態', search_ph:'🔍 搜尋…',
   },
   en: {
-    nav_dashboard:'Dashboard', nav_record:'New Record', nav_list:'Record List', nav_analytics:'Analytics', nav_import:'Import History', nav_anomaly:'Anomalies', nav_settings:'Settings',
-    dept_distribution:'Key Usage by Dept.', trend:'Key Movement Trend', recent_anomaly:'Recent Anomalies', outstanding_keys:'Outstanding Keys',
-    new_record_title:'Key Movement Record',
-    issue_section:'Key Issued', return_section:'Key Return (can fill later)',
-    f_issue_date:'Date of Key Issued', f_issue_time:'Time of Issued', f_key_no:'Key Number', f_key_dept:'Key Department', f_checker:'Inspector', f_recipient_id:'Recipient ID', f_recipient_name:'Recipient Name', f_key_type:'Key Type', f_key_condition:'Key Condition',
-    f_return_date:'Date of Return', f_return_time:'Time of Return', f_receiver_name:'Receiver Name', f_receiver_id:'Receiver ID', f_return_condition:'Return Condition', f_remarks:'Remarks', f_photos:'📷 Photos',
-    save_record:'Save Record', clear_form:'Clear', update_record:'Update Record',
+    app_title:'Key Management', app_sub:'Key movement management',
+    nav_dashboard:'Dashboard', nav_record:'Key List', nav_list:'Records', nav_analytics:'Analytics', nav_import:'Import History', nav_anomaly:'Alerts', nav_settings:'Settings',
+    dept_distribution:'Key usage by department', trend:'Key movement trend', recent_anomaly:'Recent alerts', outstanding_keys:'Keys not returned',
+    new_record_title:'Key movement record', issue_section:'Key issued', return_section:'Key return (can fill later)',
+    f_issue_date:'Issue date', f_issue_time:'Issue time', f_key_no:'Key number', f_key_dept:'Department', f_checker:'Inspector', f_recipient_id:'Recipient ID', f_recipient_name:'Recipient name', f_key_type:'Key type', f_key_condition:'Key condition',
+    f_return_date:'Return date', f_return_time:'Return time', f_receiver_name:'Received by', f_receiver_id:'Receiver ID', f_return_condition:'Return condition', f_remarks:'Remarks', f_photos:'📷 Photos',
+    save_record:'Save record', clear_form:'Clear', update_record:'Update record',
     f_filter_period:'Filter:', all:'All', period_day:'Day', period_week:'Week', period_month:'Month', period_year:'Year',
-    export_excel:'Export Excel', send_tg:'Send Telegram', delete_selected:'Delete Selected',
-    import_title:'Import Historical Data (Excel/CSV)', import_desc:'Import Excel (.xls/.xlsx) or CSV files in the same format.', import_click:'Click or drag & drop Excel/CSV file', import_history:'Imported Monthly Records',
-    anomaly_title:'Anomaly Alert System', refresh:'Refresh', overdue_threshold:'Overdue Threshold (hours)',
-    settings_title:'System Settings', tg_config:'Telegram Group Settings', tg_token:'Bot Token', tg_chat:'Chat ID (Group)', save:'Save', test_tg:'Test Connection',
-    data_mgmt:'Data Management', export_all:'Export All Data', clear_all:'Clear All Data', system_info:'System Info',
-    dept_chart:'Dept. Distribution', keytype_chart:'Key Types', monthly_trend:'Monthly Trend', return_duration:'Avg. Loan Duration', dept_summary_table:'Department Summary',
-    send_report_tg:'Send Report to Telegram', select:'Select',
-    stat_total:'Total Records', stat_outstanding:'Outstanding', stat_returned:'Returned', stat_lost:'Lost', stat_depts:'Depts. Active', stat_overdue:'Overdue',
-    col_no:'#', col_issue_date:'Issue Date', col_issue_time:'Issue Time', col_key_no:'Key No.', col_dept:'Dept.', col_checker:'Inspector', col_type:'Type', col_recipient:'Recipient', col_recipient_id:'Emp ID', col_return_date:'Return Date', col_return_time:'Return Time', col_status:'Status', col_remarks:'Remarks', col_photos:'📷', col_actions:'Actions',
-    status_outstanding:'Outstanding', status_returned:'Returned', status_lost:'Lost',
-    total_records:'Total Records', outstanding:'Outstanding', returned:'Returned',
+    export_excel:'Export Excel', send_tg:'Send Telegram', delete_selected:'Delete selected',
+    import_title:'Import history (Excel/CSV)', import_desc:'Import Excel (.xls/.xlsx) or CSV files in the same format.', import_click:'Tap or drop an Excel/CSV file', import_history:'Imported months',
+    anomaly_title:'Alerts', refresh:'Refresh', overdue_threshold:'Overdue threshold (hours)',
+    settings_title:'Settings', tg_config:'Telegram group', tg_token:'Bot Token', tg_chat:'Chat ID', save:'Save', test_tg:'Test connection',
+    data_mgmt:'Data management', export_all:'Export all data', clear_all:'Clear all data', system_info:'System info',
+    dept_chart:'By department', keytype_chart:'Key types', monthly_trend:'Monthly trend', return_duration:'Average loan time', dept_summary_table:'Department summary',
+    send_report_tg:'Send report to Telegram', select:'Select',
+    stat_total:'Total records', stat_outstanding:'Not returned', stat_returned:'Returned', stat_lost:'Lost', stat_depts:'Departments', stat_overdue:'Overdue',
+    col_no:'#', col_issue_date:'Issue date', col_issue_time:'Issue time', col_key_no:'Key no.', col_key_name:'Key name', col_dept:'Department', col_location:'Location', col_checker:'Inspector', col_type:'Type', col_recipient:'Recipient', col_recipient_id:'Employee ID', col_condition:'Issue condition', col_return_date:'Return date', col_return_time:'Return time', col_receiver:'Received by', col_receiver_id:'Receiver ID', col_return_condition:'Return condition', col_status:'Status', col_remarks:'Remarks', col_photos:'📷', col_actions:'Actions', col_duration:'Duration',
+    status_outstanding:'Not returned', status_returned:'Returned', status_lost:'Lost',
+    total_records:'Total records', outstanding:'Not returned', returned:'Returned', issued:'Issued', returned_chart:'Returned', avg_hours:'Average (hours)', total_row:'Total', issue_count:'Issued', return_rate:'Return rate',
+    no_records:'📭 No records', no_anomaly:'✅ No alerts', all_returned:'✅ All keys returned', return_btn:'↩️ Return',
+    all_depts:'All departments', all_status:'All status', search_ph:'🔍 Search…',
   },
   km: {
-    nav_dashboard:'ផ្ទាំងគ្រប់គ្រង', nav_record:'កត់ត្រាថ្មី', nav_list:'បញ្ជីកត់ត្រា', nav_analytics:'វិភាគ', nav_import:'នាំចូលប្រវត្តិ', nav_anomaly:'ការព្រមាន', nav_settings:'ការកំណត់',
-    dept_distribution:'ការប្រើប្រាស់គ្រាប់ចុច', trend:'និន្នាការចលនា', recent_anomaly:'ការព្រមានថ្មី', outstanding_keys:'គ្រាប់ចុចមិនទាន់ប្រគល់',
-    new_record_title:'កំណត់ត្រាចលនាគ្រាប់ចុច',
-    issue_section:'ចេញគ្រាប់ចុច', return_section:'ប្រគល់គ្រាប់ចុច',
-    f_issue_date:'ថ្ងៃចេញ', f_issue_time:'ម៉ោងចេញ', f_key_no:'លេខគ្រាប់ចុច', f_key_dept:'នាយកដ្ឋាន', f_checker:'អ្នកត្រួតពិនិត្យ', f_recipient_id:'លេខ ID', f_recipient_name:'ឈ្មោះអ្នកទទួល', f_key_type:'ប្រភេទ', f_key_condition:'ស្ថានភាព',
-    f_return_date:'ថ្ងៃប្រគល់', f_return_time:'ម៉ោងប្រគល់', f_receiver_name:'ឈ្មោះអ្នកទទួល', f_receiver_id:'លេខ ID', f_return_condition:'ស្ថានភាពប្រគល់', f_remarks:'ចំណាំ', f_photos:'📷 រូបថត',
-    save_record:'រក្សាទុក', clear_form:'លុប', update_record:'ធ្វើបច្ចុប្បន្នភាព',
-    f_filter_period:'ត្រង:', all:'ទាំងអស់', period_day:'ថ្ងៃ', period_week:'សប្តាហ៍', period_month:'ខែ', period_year:'ឆ្នាំ',
+    app_title:'គ្រប់គ្រងសោ', app_sub:'ប្រព័ន្ធគ្រប់គ្រងចលនាសោ',
+    nav_dashboard:'ផ្ទាំងគ្រប់គ្រង', nav_record:'បញ្ជីសោ', nav_list:'កំណត់ត្រា', nav_analytics:'វិភាគ', nav_import:'នាំចូលប្រវត្តិ', nav_anomaly:'ការព្រមាន', nav_settings:'ការកំណត់',
+    dept_distribution:'ការប្រើប្រាស់សោតាមផ្នែក', trend:'និន្នាការចលនាសោ', recent_anomaly:'ការព្រមានថ្មីៗ', outstanding_keys:'សោមិនទាន់ប្រគល់',
+    new_record_title:'កំណត់ត្រាចលនាសោ', issue_section:'ការចេញសោ', return_section:'ការប្រគល់សោ (អាចបំពេញពេលក្រោយ)',
+    f_issue_date:'កាលបរិច្ឆេទចេញ', f_issue_time:'ម៉ោងចេញ', f_key_no:'លេខសោ', f_key_dept:'ផ្នែក', f_checker:'អ្នកត្រួតពិនិត្យ', f_recipient_id:'លេខ ID អ្នកទទួល', f_recipient_name:'ឈ្មោះអ្នកទទួល', f_key_type:'ប្រភេទសោ', f_key_condition:'ស្ថានភាពសោ',
+    f_return_date:'កាលបរិច្ឆេទប្រគល់', f_return_time:'ម៉ោងប្រគល់', f_receiver_name:'អ្នកទទួលសោវិញ', f_receiver_id:'លេខ ID អ្នកទទួលវិញ', f_return_condition:'ស្ថានភាពពេលប្រគល់', f_remarks:'ចំណាំ', f_photos:'📷 រូបថត',
+    save_record:'រក្សាទុក', clear_form:'សម្អាត', update_record:'ធ្វើបច្ចុប្បន្នភាព',
+    f_filter_period:'ត្រង៖', all:'ទាំងអស់', period_day:'ថ្ងៃ', period_week:'សប្ដាហ៍', period_month:'ខែ', period_year:'ឆ្នាំ',
     export_excel:'នាំចេញ Excel', send_tg:'ផ្ញើ Telegram', delete_selected:'លុបដែលបានជ្រើស',
-    import_title:'នាំចូលទិន្នន័យប្រវត្តិ', import_desc:'គាំទ្រការនាំចូល Excel ឬ CSV', import_click:'ចុចឬអូស Excel/CSV', import_history:'កំណត់ត្រាខែដែលបាននាំចូល',
-    anomaly_title:'ប្រព័ន្ធព្រមានភាពមិនធម្មតា', refresh:'ធ្វើឱ្យស្រស់', overdue_threshold:'ដែនកំណត់យឺតយ៉ាវ (ម៉ោង)',
-    settings_title:'ការកំណត់ប្រព័ន្ធ', tg_config:'ការកំណត់ Telegram', tg_token:'Bot Token', tg_chat:'Chat ID', save:'រក្សាទុក', test_tg:'សាកល្បង',
+    import_title:'នាំចូលទិន្នន័យប្រវត្តិ', import_desc:'គាំទ្រការនាំចូល Excel ឬ CSV ទម្រង់ដូចគ្នា។', import_click:'ចុច ឬអូស Excel/CSV', import_history:'ខែដែលបាននាំចូល',
+    anomaly_title:'ការព្រមាន', refresh:'ផ្ទុកឡើងវិញ', overdue_threshold:'កម្រិតហួសម៉ោង (ម៉ោង)',
+    settings_title:'ការកំណត់', tg_config:'ក្រុម Telegram', tg_token:'Bot Token', tg_chat:'Chat ID', save:'រក្សាទុក', test_tg:'សាកល្បង',
     data_mgmt:'ការគ្រប់គ្រងទិន្នន័យ', export_all:'នាំចេញទិន្នន័យទាំងអស់', clear_all:'លុបទិន្នន័យទាំងអស់', system_info:'ព័ត៌មានប្រព័ន្ធ',
-    dept_chart:'ការចែកចាយនាយកដ្ឋាន', keytype_chart:'ប្រភេទគ្រាប់ចុច', monthly_trend:'និន្នាការប្រចាំខែ', return_duration:'រយៈពេលខ្ចីជាមធ្យម', dept_summary_table:'តារាងសង្ខេបនាយកដ្ឋាន',
+    dept_chart:'តាមផ្នែក', keytype_chart:'ប្រភេទសោ', monthly_trend:'និន្នាការប្រចាំខែ', return_duration:'រយៈពេលខ្ចីជាមធ្យម', dept_summary_table:'តារាងសង្ខេបតាមផ្នែក',
     send_report_tg:'ផ្ញើរបាយការណ៍ Telegram', select:'ជ្រើស',
-    stat_total:'កំណត់ត្រាសរុប', stat_outstanding:'មិនទាន់ប្រគល់', stat_returned:'ប្រគល់ហើយ', stat_lost:'បាត់', stat_depts:'នាយកដ្ឋាន', stat_overdue:'យឺតយ៉ាវ',
-    col_no:'#', col_issue_date:'ថ្ងៃចេញ', col_issue_time:'ម៉ោងចេញ', col_key_no:'លេខ', col_dept:'នាយកដ្ឋាន', col_checker:'អ្នកត្រួតពិនិត្យ', col_type:'ប្រភេទ', col_recipient:'អ្នកទទួល', col_recipient_id:'ID', col_return_date:'ថ្ងៃប្រគល់', col_return_time:'ម៉ោង', col_status:'ស្ថានភាព', col_remarks:'ចំណាំ', col_photos:'📷', col_actions:'សកម្មភាព',
-    status_outstanding:'មិនទាន់ប្រគល់', status_returned:'ប្រគល់ហើយ', status_lost:'បាត់',
-    total_records:'កំណត់ត្រាសរុប', outstanding:'មិនទាន់ប្រគល់', returned:'ប្រគល់ហើយ',
+    stat_total:'កំណត់ត្រាសរុប', stat_outstanding:'មិនទាន់ប្រគល់', stat_returned:'បានប្រគល់', stat_lost:'បាត់', stat_depts:'ផ្នែក', stat_overdue:'ហួសម៉ោង',
+    col_no:'#', col_issue_date:'កាលបរិច្ឆេទចេញ', col_issue_time:'ម៉ោងចេញ', col_key_no:'លេខសោ', col_key_name:'ឈ្មោះសោ', col_dept:'ផ្នែក', col_location:'ទីតាំង', col_checker:'អ្នកត្រួតពិនិត្យ', col_type:'ប្រភេទ', col_recipient:'អ្នកទទួល', col_recipient_id:'លេខ ID បុគ្គលិក', col_condition:'ស្ថានភាពពេលចេញ', col_return_date:'កាលបរិច្ឆេទប្រគល់', col_return_time:'ម៉ោងប្រគល់', col_receiver:'អ្នកទទួលវិញ', col_receiver_id:'លេខ ID អ្នកទទួលវិញ', col_return_condition:'ស្ថានភាពពេលប្រគល់', col_status:'ស្ថានភាព', col_remarks:'ចំណាំ', col_photos:'📷', col_actions:'សកម្មភាព', col_duration:'រយៈពេល',
+    status_outstanding:'មិនទាន់ប្រគល់', status_returned:'បានប្រគល់', status_lost:'បាត់',
+    total_records:'កំណត់ត្រាសរុប', outstanding:'មិនទាន់ប្រគល់', returned:'បានប្រគល់', issued:'ចេញ', returned_chart:'ប្រគល់', avg_hours:'មធ្យម (ម៉ោង)', total_row:'សរុប', issue_count:'ចំនួនចេញ', return_rate:'អត្រាប្រគល់',
+    no_records:'📭 គ្មានកំណត់ត្រា', no_anomaly:'✅ គ្មានការព្រមាន', all_returned:'✅ សោទាំងអស់បានប្រគល់', return_btn:'↩️ ប្រគល់',
+    all_depts:'គ្រប់ផ្នែក', all_status:'គ្រប់ស្ថានភាព', search_ph:'🔍 ស្វែងរក…',
   }
 };
-let lang = 'zh';
+let lang = (typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang)||(function(){try{return localStorage.getItem('gc_lang')||'zh';}catch(e){return 'zh';}})();
+function L(zh,en,km){
+  if(zh&&typeof zh==='object'){km=zh.km;en=zh.en;zh=zh.zh;}
+  if(typeof GC!=='undefined'&&typeof GC.L==='function')return GC.L(zh,en,km);
+  if(lang==='en')return String(en||km||'');if(lang==='km')return String(km||en||'');return String(zh||en||'');
+}
+function t(k){ const d=I18N[lang]||I18N.zh; if(d[k]!=null)return d[k]; if(lang!=='zh'&&I18N.en[k]!=null)return I18N.en[k]; return I18N.zh[k]!=null?I18N.zh[k]:k; }
+const kesc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+let _keySettingLang=false;
 function setLang(l) {
-  lang = l;
-  document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
-  document.querySelectorAll('.lang-btn').forEach(b => { if(b.textContent.trim() === (l==='zh'?'中文':l==='en'?'English':'ខ្មែរ')) b.classList.add('active'); });
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const k = el.getAttribute('data-i18n');
-    if(I18N[l][k]) el.textContent = I18N[l][k];
-  });
-  renderAll();
-  setTimeout(applyKeyStaticLanguage,0);
-}
-function t(k) { return I18N[lang][k] || I18N['zh'][k] || k; }
-
-const KEY_UI_WORDS={
-  '鑰匙動態管理系統':'Key Movement Management','暫無異常':'No anomalies','全部鑰匙已歸還':'All keys returned','無記錄':'No records',
-  '未歸還':'Outstanding','已歸還':'Returned','遺失':'Lost','全部部門':'All Departments','全部狀態':'All Status',
-  '一般鑰匙':'Standard Key','卡片鑰匙':'Card Key','摩托車鑰匙':'Motorcycle Key','汽車鑰匙':'Car Key','捲簾門':'Roller Shutter',
-  '掛鎖':'Padlock','密碼鎖':'Combination Lock','設備鑰匙':'Equipment Key','宿舍門':'Dorm Door','辦公室門':'Office Door',
-  '輕微損耗':'Minor Wear','損壞':'Damaged','良好':'Good','倉庫':'Warehouse','裁剪':'Cutting','車間':'Workshop','成品':'Finished Goods',
-  '馬克':'Marking','品管':'QC','外籍人員宿舍':'Foreign Staff Dorm','當地人員宿舍':'Local Staff Dorm','外籍宿舍':'Foreign Dorm',
-  '當地宿舍':'Local Dorm','辦公室':'Office','行政中心':'Admin Center','加照片':'Add Photo'
-};
-const KEY_UI_KM={
-  '鑰匙動態管理系統':'ប្រព័ន្ធគ្រប់គ្រងចលនាសោ','暫無異常':'គ្មានភាពមិនប្រក្រតី','全部鑰匙已歸還':'សោទាំងអស់បានប្រគល់','無記錄':'គ្មានកំណត់ត្រា',
-  '未歸還':'មិនទាន់ប្រគល់','已歸還':'បានប្រគល់','遺失':'បាត់','全部部門':'គ្រប់ផ្នែក','全部狀態':'គ្រប់ស្ថានភាព',
-  '倉庫':'ឃ្លាំង','裁剪':'កាត់','車間':'រោងជាង','辦公室':'ការិយាល័យ','行政中心':'មជ្ឈមណ្ឌលរដ្ឋបាល','加照片':'បន្ថែមរូបថត'
-};
-const KEY_ORIGINAL_TEXT=new WeakMap();let _keyApplying=false,_keyTimer=0;
-function applyKeyStaticLanguage(){
-  if(!document.body||_keyApplying)return;_keyApplying=true;
+  if(!['zh','en','km'].includes(l)||_keySettingLang) return;
+  _keySettingLang=true;
   try{
-    const walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);let node;
-    while(node=walker.nextNode()){
-      const p=node.parentElement;if(!p||['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(p.tagName)||p.closest('.gc-head-tools'))continue;
-      const base=KEY_ORIGINAL_TEXT.has(node)?KEY_ORIGINAL_TEXT.get(node):node.nodeValue;KEY_ORIGINAL_TEXT.set(node,base);
-      if(lang==='zh'){if(node.nodeValue!==base)node.nodeValue=base;continue;}
-      let out=base;
-      Object.keys(KEY_UI_WORDS).sort((a,b)=>b.length-a.length).forEach(function(k){if(out.indexOf(k)>=0)out=out.split(k).join(lang==='km'?(KEY_UI_KM[k]||KEY_UI_WORDS[k]):KEY_UI_WORDS[k]);});
-      if(/[A-Za-z]/.test(out)&&/[\u3400-\u9fff]/.test(out))out=out.replace(/[\u3400-\u9fff]+/g,' ').replace(/([–—-])\s*[\/／]+\s*/g,'$1 ').replace(/^\s*[\/／:：·]+\s*/,'').replace(/\s*[\/／]+\s*(?=[A-Za-z])/g,' ').replace(/\s{2,}/g,' ');
-      if(node.nodeValue!==out)node.nodeValue=out;
-    }
-  }finally{_keyApplying=false;}
+    lang = l;
+    if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==l) GC.i18n.set(l);
+    document.querySelectorAll('.lang-btn').forEach(b => b.classList.toggle('active', b.textContent.trim() === (l==='zh'?'中文':l==='en'?'English':'ខ្មែរ')));
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
+    applyKeyStaticLanguage();
+    renderAll();
+  }finally{_keySettingLang=false;}
 }
-if(typeof MutationObserver!=='undefined'){
-  const obs=new MutationObserver(function(){if(_keyApplying)return;clearTimeout(_keyTimer);_keyTimer=setTimeout(applyKeyStaticLanguage,40);});
-  const start=function(){if(document.body)obs.observe(document.body,{subtree:true,childList:true});};
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
+/* B2：不再用整頁 MutationObserver 子字串替換；只對固定元素做整句字典查詢，不碰輸入框、使用者資料與 Telegram 預覽。 */
+function applyKeyStaticLanguage(){
+  document.title = t('app_title') + ' · VRT';
+  const search=document.getElementById('filter-search'); if(search) search.placeholder=t('search_ph');
+  const fd=document.getElementById('filter-dept'); if(fd){const v=fd.value;fd.innerHTML='<option value="">'+kesc(t('all_depts'))+'</option>'+DEPTS.map(d=>'<option value="'+d+'">'+kesc(deptLabel(d))+'</option>').join('');fd.value=v;}
+  const fs=document.getElementById('filter-status'); if(fs){const v=fs.value;fs.innerHTML='<option value="">'+kesc(t('all_status'))+'</option>'+['outstanding','returned','lost'].map(k=>'<option value="'+k+'">'+kesc(t('status_'+k))+'</option>').join('');fs.value=v;}
 }
+if(typeof window!=='undefined'&&window.addEventListener) window.addEventListener('gc:langchange', e => { const l=e&&e.detail&&e.detail.lang; if(l&&l!==lang) setLang(l); });
+
+// ==================== CODES（資料存代碼；顯示／匯出再翻譯；舊中文值照樣讀）====================
+const DEPTS = ['warehouse','cutting','workshop','finished','marking','qc','dorm_foreign','dorm_local','office','admin'];
+const DEPT_LABEL = {warehouse:['倉庫','Warehouse','ឃ្លាំង'],cutting:['裁剪','Cutting','ផ្នែកកាត់'],workshop:['車間','Sewing workshop','រោងដេរ'],finished:['成品','Finished goods','ផលិតផលសម្រេច'],marking:['馬克','Marking','ផ្នែកគូសលំនាំ'],qc:['品管','QC','ត្រួតពិនិត្យគុណភាព'],dorm_foreign:['外籍宿舍','Foreign staff dorm','អន្តេវាសិកដ្ឋានបុគ្គលិកបរទេស'],dorm_local:['當地宿舍','Local staff dorm','អន្តេវាសិកដ្ឋានបុគ្គលិកក្នុងស្រុក'],office:['辦公室','Office','ការិយាល័យ'],admin:['行政中心','Admin Center','មជ្ឈមណ្ឌលរដ្ឋបាល']};
+const DEPT_ALIAS = {'倉庫':'warehouse','裁剪':'cutting','車間':'workshop','成品':'finished','馬克':'marking','品管':'qc','外籍宿舍':'dorm_foreign','外籍人員宿舍':'dorm_foreign','當地宿舍':'dorm_local','當地人員宿舍':'dorm_local','辦公室':'office','行政中心':'admin','warehouse':'warehouse','cutting':'cutting','workshop':'workshop','sewing workshop':'workshop','finished goods':'finished','marking':'marking','qc':'qc','foreign staff dorm':'dorm_foreign','foreign dorm':'dorm_foreign','local staff dorm':'dorm_local','local dorm':'dorm_local','office':'office','admin center':'admin','admin center (ac)':'admin'};
+function deptCode(v){ const s=String(v==null?'':v).trim(); if(!s) return ''; if(DEPT_LABEL[s]) return s; const hit=DEPT_ALIAS[s]||DEPT_ALIAS[s.toLowerCase()]; if(hit) return hit; const low=s.toLowerCase(); for(const k of DEPTS){ if(DEPT_LABEL[k].some(x=>x.toLowerCase()===low)) return k; } return s; }
+function deptLabelIn(v,l){ const c=deptCode(v), x=DEPT_LABEL[c]; if(!x) return String(v||''); return l ? (typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text ? GC.telegram.text(x[0],x[1],x[2],l) : x[1]) : L(x[0],x[1],x[2]); }
+function deptLabel(v){ return deptLabelIn(v); }
+const DEPT_COLORS = {warehouse:'#3498db',cutting:'#e67e22',workshop:'#9b59b6',finished:'#27ae60',marking:'#e91e63',qc:'#00bcd4',dorm_foreign:'#ff5722',dorm_local:'#795548',office:'#607d8b',admin:'#f44336'};
+function deptColor(v){ return DEPT_COLORS[deptCode(v)]||'#888'; }
+const KEY_TYPES = ['standard','card','motorcycle','car','shutter','padlock','combination','equipment','dorm_door','office_door'];
+const KEY_TYPE_LABEL = {standard:['一般鑰匙','Standard key','សោធម្មតា'],card:['卡片鑰匙','Access card','កាតចូល'],motorcycle:['摩托車鑰匙','Motorcycle key','សោម៉ូតូ'],car:['汽車鑰匙','Car key','សោឡាន'],shutter:['捲簾門鑰匙','Roller shutter key','សោទ្វាររមូរ'],padlock:['掛鎖鑰匙','Padlock key','សោម៉ាស៊ីនចាក់'],combination:['密碼鎖','Combination lock','សោលេខកូដ'],equipment:['設備鑰匙','Equipment key','សោឧបករណ៍'],dorm_door:['宿舍門鑰匙','Dormitory door key','សោទ្វារអន្តេវាសិកដ្ឋាន'],office_door:['辦公室門鑰匙','Office door key','សោទ្វារការិយាល័យ']};
+const KEY_ICONS = {standard:'🗝️',card:'💳',motorcycle:'🏍️',car:'🚗',shutter:'🔄',padlock:'🔒',combination:'🔢',equipment:'⚙️',dorm_door:'🚪',office_door:'🚪'};
+function keyTypeCode(v){ const s=String(v==null?'':v).trim(); if(!s) return 'standard'; if(KEY_TYPE_LABEL[s]) return s; const low=s.toLowerCase(); for(const k of KEY_TYPES){ const x=KEY_TYPE_LABEL[k]; if(x[0]===s||x[1].toLowerCase()===low||x[2]===s) return k; } const legacy={'general key':'standard','standard key':'standard','捲簾門':'shutter','roller shutter':'shutter','掛鎖':'padlock','padlock':'padlock','宿舍門':'dorm_door','dorm door':'dorm_door','辦公室門':'office_door','office door':'office_door','card key':'card','dormitory door key':'dorm_door'}; return legacy[s]||legacy[low]||s; }
+function keyTypeLabelIn(v,l){ const c=keyTypeCode(v), x=KEY_TYPE_LABEL[c]; if(!x) return String(v||''); return l ? (typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text ? GC.telegram.text(x[0],x[1],x[2],l) : x[1]) : L(x[0],x[1],x[2]); }
+const COND_LABEL = {good:['良好','Good','ល្អ'],minor:['輕微損耗','Minor wear','ខូចបន្តិច'],damaged:['損壞','Damaged','ខូច'],lost:['遺失','Lost','បាត់']};
+function condCode(v){ const s=String(v==null?'':v).trim(); if(!s) return ''; if(COND_LABEL[s]) return s; const m={'良好':'good','輕微損耗':'minor','損壞':'damaged','遺失':'lost','good':'good','minor wear':'minor','damaged':'damaged','lost':'lost','ល្អ':'good','ខូចបន្តិច':'minor','ខូច':'damaged','បាត់':'lost'}; return m[s]||m[s.toLowerCase()]||s; }
+function condLabel(v){ const c=condCode(v), x=COND_LABEL[c]; return x ? L(x[0],x[1],x[2]) : String(v||''); }
+function isLost(r){ return condCode(r&&r.return_condition)==='lost'; }
 
 // ==================== DATA ====================
 var records = [];
 window.records = records; // explicit global
 let listPeriod = 'all', dashPeriod = 'month', analyticsPeriod = 'month';
 let editId = null;
-const DEPTS = ['倉庫','裁剪','車間','成品','馬克','品管','外籍宿舍','當地宿舍','辦公室','行政中心'];
-const DEPT_COLORS = {'倉庫':'#3498db','裁剪':'#e67e22','車間':'#9b59b6','成品':'#27ae60','馬克':'#e91e63','品管':'#00bcd4','外籍宿舍':'#ff5722','當地宿舍':'#795548','辦公室':'#607d8b','行政中心':'#f44336'};
-const KEY_ICONS = {'一般鑰匙':'🗝️','卡片鑰匙':'💳','摩托車鑰匙':'🏍️','汽車鑰匙':'🚗','捲簾門鑰匙':'🔄','掛鎖鑰匙':'🔒','密碼鎖':'🔢','設備鑰匙':'⚙️','宿舍門鑰匙':'🚪','辦公室門鑰匙':'🚪'};
-
 function saveData() { localStorage.setItem('vrt_keys', JSON.stringify(records)); window.records = records; }
 
-// ==================== SECTION NAV ====================
+// ==================== SECTION NAV（記住上次分頁；預設每日作業＝鑰匙清單）====================
+const KEY_TAB_PREF='ac_key_tab_v1';
 function showSection(s) {
+  const sec=document.getElementById('section-' + s), nav=document.getElementById('nav-' + s);
+  if(!sec||!nav||nav.classList.contains('gc-legacy-hidden')) s='record';
   document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
   document.getElementById('section-' + s).classList.add('active');
   document.getElementById('nav-' + s).classList.add('active');
+  try{ localStorage.setItem(KEY_TAB_PREF,s); }catch(e){}
   if(s==='dashboard') renderDashboard();
   if(s==='list') renderList();
   if(s==='analytics') renderAnalytics();
@@ -747,215 +740,86 @@ function showSection(s) {
   if(s==='settings') renderSettings();
 }
 
-// ==================== FORM ====================
-function saveRecord() {
-  const r = collectForm();
-  if(!r) return;
-  r.id = Date.now().toString();
-  r.createdAt = _localTS();
-  r.updatedAt = _localTS();
-  records.unshift(r);
-  saveData();
-  clearForm();
-  showToast(t('save_record') + ' ✓', 'success');
-  renderAnomalyBadge();
-  showSection('list');
-}
-
-function collectForm() {
-  const issueDate = document.getElementById('f_issue_date').value;
-  const keyNo = document.getElementById('f_key_no').value;
-  const dept = document.getElementById('f_key_dept').value;
-  if(!issueDate || !keyNo || !dept) {
-    showToast('請填寫必填欄位 (發出日期, 鑰匙號碼, 部門)', 'error'); return null;
-  }
-  return {
-    issue_date: issueDate,
-    issue_time: document.getElementById('f_issue_time').value,
-    key_no: keyNo,
-    dept: dept,
-    checker: document.getElementById('f_checker').value.trim(),
-    recipient_id: document.getElementById('f_recipient_id').value,
-    recipient_name: document.getElementById('f_recipient_name').value,
-    key_type: document.getElementById('f_key_type').value,
-    key_condition: document.getElementById('f_key_condition').value,
-    return_date: document.getElementById('f_return_date').value,
-    return_time: document.getElementById('f_return_time').value,
-    receiver_name: document.getElementById('f_receiver_name').value,
-    receiver_id: document.getElementById('f_receiver_id').value,
-    return_condition: document.getElementById('f_return_condition').value,
-    remarks: document.getElementById('f_remarks').value,
-    photos: (window._phCtl ? window._phCtl.get() : []),
-    updatedAt: _localTS(),
-  };
-}
-
-function clearForm() {
-  ['f_issue_date','f_issue_time','f_key_no','f_checker','f_recipient_id','f_recipient_name','f_return_date','f_return_time','f_receiver_name','f_receiver_id','f_remarks'].forEach(id => document.getElementById(id).value = '');
-  document.getElementById('f_key_dept').value = '';
-  document.getElementById('f_key_type').value = '一般鑰匙';
-  document.getElementById('f_key_condition').value = '良好';
-  document.getElementById('f_return_condition').value = '';
-  if(window._phCtl) window._phCtl.clear();
-  document.getElementById('btn-edit-save').style.display = 'none';
-  editId = null;
-}
-
-function editRecord(id) {
-  const r = records.find(x => x.id === id); if(!r) return;
-  editId = id;
-  document.getElementById('f_issue_date').value = r.issue_date || '';
-  document.getElementById('f_issue_time').value = r.issue_time || '';
-  document.getElementById('f_key_no').value = r.key_no || '';
-  document.getElementById('f_key_dept').value = r.dept || '';
-  document.getElementById('f_checker').value = r.checker || r.checked_by || '';
-  document.getElementById('f_recipient_id').value = r.recipient_id || '';
-  document.getElementById('f_recipient_name').value = r.recipient_name || '';
-  document.getElementById('f_key_type').value = r.key_type || '一般鑰匙';
-  document.getElementById('f_key_condition').value = r.key_condition || '良好';
-  document.getElementById('f_return_date').value = r.return_date || '';
-  document.getElementById('f_return_time').value = r.return_time || '';
-  document.getElementById('f_receiver_name').value = r.receiver_name || '';
-  document.getElementById('f_receiver_id').value = r.receiver_id || '';
-  document.getElementById('f_return_condition').value = r.return_condition || '';
-  document.getElementById('f_remarks').value = r.remarks || '';
-  _mountPhotos(r.photos||[]);
-  document.getElementById('btn-edit-save').style.display = 'inline-flex';
-  showSection('record');
-}
-
-function updateRecord() {
-  if(!editId) return;
-  const r = collectForm(); if(!r) return;
-  const idx = records.findIndex(x => x.id === editId);
-  if(idx === -1) return;
-  records[idx] = { ...records[idx], ...r };
-  saveData(); clearForm();
-  showToast(t('update_record') + ' ✓', 'success');
-  renderAnomalyBadge();
-  showSection('list');
-}
-
-function setReturnNow(id) {
-  const r = records.find(x => x.id === id); if(!r) return;
-  const now = new Date();
-  r.return_date = _localYMD(now);
-  r.return_time = now.toTimeString().slice(0,5);
-  r.return_condition = '良好';
-  saveData(); renderList(); renderAnomalyBadge();
-  showToast('已記錄歸還 ✓', 'success');
-}
+// ==================== LEGACY SINGLE FORM（已由下方批次登記取代，保留函式名稱相容）====================
+function collectForm() { return null; }
+function clearForm() { editId = null; }
+function editRecord(id) { showSection('record'); }
+function saveRecord() {}
+function updateRecord() {}
+function setReturnNow(id) {}
 
 // ==================== LIST ====================
 function filterRecords() {
-  // Always read fresh from localStorage to guarantee post-delete accuracy
   var fresh = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
-  records = fresh;
-  window.records = fresh;
-  let rs = [...fresh];
-  const now = new Date();
+  if(!Array.isArray(fresh)) fresh=[];
+  records = fresh.filter(r => r && !r._deleted);
+  window.records = records;
+  let rs = records.slice();
+  const now = new Date(), todayStr=_localYMD(now);
   if(listPeriod !== 'all') {
     rs = rs.filter(r => {
-      const d = new Date(r.issue_date);
-      if(listPeriod === 'day') return d.toDateString() === now.toDateString();
-      if(listPeriod === 'week') { const w = new Date(now); w.setDate(now.getDate()-7); return d >= w; }
-      if(listPeriod === 'month') {
-        const fm = document.getElementById('filter-month').value;
-        if(fm) return r.issue_date && r.issue_date.startsWith(fm);
-        return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-      }
-      if(listPeriod === 'year') return d.getFullYear() === now.getFullYear();
+      const d = String(r.issue_date||'').slice(0,10); if(!d) return false;
+      if(listPeriod === 'day') return d === todayStr;
+      if(listPeriod === 'week') { const q=new Date(todayStr+'T00:00:00'), st=new Date(q); st.setDate(q.getDate()-((q.getDay()+6)%7)); const en=new Date(st); en.setDate(st.getDate()+6); const x=new Date(d+'T00:00:00'); return x>=st&&x<=en; }
+      if(listPeriod === 'month') { const fm = document.getElementById('filter-month').value; return d.slice(0,7) === (fm || todayStr.slice(0,7)); }
+      if(listPeriod === 'year') return d.slice(0,4) === todayStr.slice(0,4);
       return true;
     });
   }
   const dept = document.getElementById('filter-dept').value;
-  if(dept) rs = rs.filter(r => r.dept === dept);
+  if(dept) rs = rs.filter(r => deptCode(r.dept) === dept);
   const status = document.getElementById('filter-status').value;
-  if(status === 'outstanding') rs = rs.filter(r => !r.return_date && r.return_condition !== '遺失');
-  if(status === 'returned') rs = rs.filter(r => r.return_date && r.return_condition !== '遺失');
-  if(status === 'lost') rs = rs.filter(r => r.return_condition === '遺失');
+  if(status) rs = rs.filter(r => getStatus(r) === status);
   const q = document.getElementById('filter-search').value.toLowerCase();
-  if(q) rs = rs.filter(r => Object.values(r).join(' ').toLowerCase().includes(q));
+  if(q) rs = rs.filter(r => (Object.values(r).join(' ')+' '+deptLabel(r.dept)+' '+keyTypeLabelIn(r.key_type)).toLowerCase().includes(q));
   return rs;
 }
-
 function getStatus(r) {
-  if(r.return_condition === '遺失') return 'lost';
+  if(isLost(r)) return 'lost';
   if(r.return_date) return 'returned';
   return 'outstanding';
 }
-
+function statusBadge(st){ return st === 'returned' ? `<span class="badge badge-in">✓ ${kesc(t('status_returned'))}</span>` : st === 'lost' ? `<span class="badge badge-late">🚨 ${kesc(t('status_lost'))}</span>` : `<span class="badge badge-out">⏳ ${kesc(t('status_outstanding'))}</span>`; }
 function renderList() {
   const rs = filterRecords();
   const wrap = document.getElementById('record-table-wrap');
-  if(!rs.length) { wrap.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text2)">📭 無記錄</div>'; document.getElementById('list-summary').innerHTML = ''; return; }
-
-  let html = `<table>
-    <thead><tr>
-      <th><input type="checkbox" id="chk-all" onclick="toggleAllCheck()"></th>
-      <th>${t('col_issue_date')}</th>
-      <th>${t('col_issue_time')}</th>
-      <th>${t('col_key_no')}</th>
-      <th>${t('col_dept')}</th>
-      <th>${t('col_checker')}</th>
-      <th>${t('col_type')}</th>
-      <th>${t('col_recipient')}</th>
-      <th>${t('col_recipient_id')}</th>
-      <th>${t('col_return_date')}</th>
-      <th>${t('col_return_time')}</th>
-      <th>${t('col_status')}</th>
-      <th>${t('col_remarks')}</th>
-      <th>${t('col_photos')}</th>
-      <th>${t('col_actions')}</th>
-    </tr></thead><tbody>`;
-
-  rs.forEach((r, i) => {
-    const st = getStatus(r);
-    const stBadge = st === 'returned' ? `<span class="badge badge-in">✓ ${t('status_returned')}</span>`
-      : st === 'lost' ? `<span class="badge badge-late">🚨 ${t('status_lost')}</span>`
-      : `<span class="badge badge-out">⏳ ${t('status_outstanding')}</span>`;
-    const deptColor = DEPT_COLORS[r.dept] || '#888';
-    const icon = KEY_ICONS[r.key_type] || '🗝️';
+  if(!rs.length) { wrap.innerHTML = '<div style="padding:30px;text-align:center;color:var(--text2)">'+kesc(t('no_records'))+'</div>'; document.getElementById('list-summary').innerHTML = ''; return; }
+  let html = `<table><thead><tr><th><input type="checkbox" id="chk-all" onclick="toggleAllCheck()" aria-label="${kesc(t('select'))}"></th>`+
+    ['col_issue_date','col_issue_time','col_key_no','col_dept','col_checker','col_type','col_recipient','col_recipient_id','col_return_date','col_return_time','col_status','col_remarks','col_photos','col_actions'].map(k=>'<th>'+kesc(t(k))+'</th>').join('')+
+    '</tr></thead><tbody>';
+  rs.forEach(r => {
+    const st = getStatus(r), id=kesc(r.id);
     html += `<tr>
-      <td><input type="checkbox" class="row-chk" value="${r.id}"></td>
-            <td>${r.issue_date||''}</td>
-      <td>${r.issue_time||''}</td>
-      <td><b>${r.key_no||''}</b></td>
-      <td><span class="dept-badge dept-${r.dept}" style="background:${deptColor}">${r.dept||''}</span></td>
-      <td>${r.checker||r.checked_by||'—'}</td>
-      <td>${icon} ${r.key_type||''}</td>
-      <td>${r.recipient_name||''}</td>
-      <td>${r.recipient_id||''}</td>
-      <td>${r.return_date||''}</td>
-      <td>${r.return_time||''}</td>
-      <td>${stBadge}</td>
-      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${r.remarks||''}</td>
+      <td><input type="checkbox" class="row-chk" value="${id}"></td>
+      <td>${kesc(r.issue_date||'')}</td>
+      <td>${kesc(r.issue_time||'')}</td>
+      <td><b>${kesc(r.key_no||'')}</b></td>
+      <td><span class="dept-badge" style="background:${deptColor(r.dept)}">${kesc(deptLabel(r.dept)||'—')}</span></td>
+      <td>${kesc(r.checker||r.checked_by||'—')}</td>
+      <td>${KEY_ICONS[keyTypeCode(r.key_type)]||'🗝️'} ${kesc(keyTypeLabelIn(r.key_type))}</td>
+      <td>${kesc(r.recipient_name||'')}</td>
+      <td>${kesc(r.recipient_id||'')}</td>
+      <td>${kesc(r.return_date||'')}</td>
+      <td>${kesc(r.return_time||'')}</td>
+      <td>${statusBadge(st)}</td>
+      <td style="max-width:120px;overflow:hidden;text-overflow:ellipsis">${kesc(r.remarks||'')}</td>
       <td>${(typeof GC!=="undefined"&&GC.photo)?GC.photo.cell(r.photos):''}</td>
-      <td>
-        <div class="btn-group">
-          <button class="btn btn-outline btn-sm" onclick="editRecord('${r.id}')">✏️</button>
-          ${st === 'outstanding' ? `<button class="btn btn-success btn-sm" onclick="setReturnNow('${r.id}')">↩️</button>` : ''}
-          <button class="btn btn-danger btn-sm" onclick="promptDelete('${r.id}')">🗑️</button>
-        </div>
-      </td>
+      <td><div class="btn-group">
+          <button class="btn btn-outline btn-sm" onclick="editRecord('${id}')" aria-label="${kesc(L('編輯','Edit','កែ'))}">✏️</button>
+          ${st === 'outstanding' ? `<button class="btn btn-success btn-sm" onclick="setReturnNow('${id}')" aria-label="${kesc(t('return_btn'))}">↩️</button>` : ''}
+          <button class="btn btn-danger btn-sm" onclick="promptDelete('${id}')" aria-label="${kesc(L('刪除','Delete','លុប'))}">🗑️</button>
+      </div></td>
     </tr>`;
   });
   html += '</tbody></table>';
   wrap.innerHTML = html;
-
-  // Summary
-  const total = rs.length;
-  const outstanding = rs.filter(r => getStatus(r) === 'outstanding').length;
-  const returned = rs.filter(r => getStatus(r) === 'returned').length;
-  const lost = rs.filter(r => getStatus(r) === 'lost').length;
+  const count=st=>rs.filter(r => getStatus(r) === st).length;
   document.getElementById('list-summary').innerHTML = `
-    <span>📊 ${t('total_records')}: <b>${total}</b></span>
-    <span>⏳ ${t('outstanding')}: <b style="color:var(--warn)">${outstanding}</b></span>
-    <span>✅ ${t('returned')}: <b style="color:var(--accent2)">${returned}</b></span>
-    <span>🚨 ${t('status_lost')}: <b style="color:var(--danger)">${lost}</b></span>
-  `;
+    <span>📊 ${kesc(t('total_records'))}: <b>${rs.length}</b></span>
+    <span>⏳ ${kesc(t('outstanding'))}: <b style="color:var(--warn)">${count('outstanding')}</b></span>
+    <span>✅ ${kesc(t('returned'))}: <b style="color:var(--accent2)">${count('returned')}</b></span>
+    <span>🚨 ${kesc(t('status_lost'))}: <b style="color:var(--danger)">${count('lost')}</b></span>`;
 }
-
 function setListPeriod(p, btn) {
   listPeriod = p;
   document.querySelectorAll('#section-list .period-tab').forEach(b => b.classList.remove('active'));
@@ -963,573 +827,243 @@ function setListPeriod(p, btn) {
   document.getElementById('filter-month').style.display = p === 'month' ? 'block' : 'none';
   renderList();
 }
-
-function toggleAllCheck() {
-  const allChk = document.getElementById('chk-all');
-  document.querySelectorAll('.row-chk').forEach(c => c.checked = allChk.checked);
-}
-
-function deleteSelected() {
-  var selected = Array.from(document.querySelectorAll('.row-chk:checked')).map(function(c) { return c.value; });
-  if(!selected.length) { showToast('請選擇要刪除的記錄', 'warn'); return; }
-  if(!confirm('確認刪除 '+selected.length+' 筆記錄？')) return;
-  var data = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
-  data = data.filter(function(x) { return !selected.includes(String(x.id)); });
-  localStorage.setItem('vrt_keys', JSON.stringify(data));
-  records = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
-  window.records = records;
-  renderList();
-  renderDashboard();
-  if(typeof renderAnalytics==='function') renderAnalytics();
-  if(typeof renderAnomalies==='function') renderAnomalies();
-  renderAnomalyBadge();
-  showToast('已刪除 '+selected.length+' 筆', 'success');
-}
-
-function promptDelete(id) {
-  if(!confirm('確認刪除此記錄？')) return;
-  // 1. Read from localStorage
-  var data = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
-  // 2. Filter out the deleted record
-  data = data.filter(function(x) { return String(x.id) !== String(id); });
-  // 3. Write back to localStorage
-  localStorage.setItem('vrt_keys', JSON.stringify(data));
-  // 4. Reload fresh from localStorage (ensures no stale cache)
-  records = JSON.parse(localStorage.getItem('vrt_keys') || '[]');
-  window.records = records;
-  // 5. Render with updated data
-  renderList();
-  renderDashboard();
-  if(typeof renderAnalytics==='function') renderAnalytics();
-  if(typeof renderAnomalies==='function') renderAnomalies();
-  renderAnomalyBadge();
-  showToast('已刪除', 'success');
-}
+function toggleAllCheck() { const allChk = document.getElementById('chk-all'); document.querySelectorAll('.row-chk').forEach(c => c.checked = allChk.checked); }
+function deleteSelected() {}
+function promptDelete(id) {}
 
 // ==================== DASHBOARD ====================
 let deptChart = null, trendChart = null;
-
 function renderDashboard() {
-  const now = new Date();
-  const total = records.length;
-  const outstanding = records.filter(r => getStatus(r) === 'outstanding').length;
-  const returned = records.filter(r => getStatus(r) === 'returned').length;
-  const lost = records.filter(r => getStatus(r) === 'lost').length;
-  const depts = new Set(records.map(r => r.dept)).size;
+  const live = records.filter(r=>r&&!r._deleted);
+  const count=st=>live.filter(r => getStatus(r) === st).length;
+  const depts = new Set(live.map(r => deptCode(r.dept)).filter(Boolean)).size;
   const overdue = getOverdueRecords().length;
-
   document.getElementById('stat-grid').innerHTML = `
-    <div class="stat-card blue"><div class="stat-num">${total}</div><div class="stat-label">📊 ${t('stat_total')}</div></div>
-    <div class="stat-card warn"><div class="stat-num" style="color:var(--warn)">${outstanding}</div><div class="stat-label">⏳ ${t('stat_outstanding')}</div></div>
-    <div class="stat-card green"><div class="stat-num" style="color:var(--accent2)">${returned}</div><div class="stat-label">✅ ${t('stat_returned')}</div></div>
-    <div class="stat-card red"><div class="stat-num" style="color:var(--danger)">${lost}</div><div class="stat-label">🚨 ${t('stat_lost')}</div></div>
-    <div class="stat-card"><div class="stat-num">${depts}</div><div class="stat-label">🏭 ${t('stat_depts')}</div></div>
-    <div class="stat-card red"><div class="stat-num" style="color:var(--danger)">${overdue}</div><div class="stat-label">🔴 ${t('stat_overdue')}</div></div>
-  `;
-
-  renderDeptChart();
-  renderTrendChart();
-  renderDashAnomalies();
-  renderOutstandingTable();
+    <div class="stat-card blue"><div class="stat-num">${live.length}</div><div class="stat-label">📊 ${kesc(t('stat_total'))}</div></div>
+    <div class="stat-card warn"><div class="stat-num" style="color:var(--warn)">${count('outstanding')}</div><div class="stat-label">⏳ ${kesc(t('stat_outstanding'))}</div></div>
+    <div class="stat-card green"><div class="stat-num" style="color:var(--accent2)">${count('returned')}</div><div class="stat-label">✅ ${kesc(t('stat_returned'))}</div></div>
+    <div class="stat-card red"><div class="stat-num" style="color:var(--danger)">${count('lost')}</div><div class="stat-label">🚨 ${kesc(t('stat_lost'))}</div></div>
+    <div class="stat-card"><div class="stat-num">${depts}</div><div class="stat-label">🏭 ${kesc(t('stat_depts'))}</div></div>
+    <div class="stat-card red"><div class="stat-num" style="color:var(--danger)">${overdue}</div><div class="stat-label">🔴 ${kesc(t('stat_overdue'))}</div></div>`;
+  renderDeptChart(); renderTrendChart(); renderDashAnomalies(); renderOutstandingTable();
 }
-
 function filterByPeriod(rs, period) {
-  const now = new Date();
+  const todayStr=_localYMD();
   return rs.filter(r => {
-    const d = new Date(r.issue_date);
-    if(period === 'day') return d.toDateString() === now.toDateString();
-    if(period === 'week') { const w = new Date(now); w.setDate(now.getDate()-7); return d >= w; }
-    if(period === 'month') return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-    if(period === 'year') return d.getFullYear() === now.getFullYear();
+    const d = String(r.issue_date||'').slice(0,10); if(!d) return false;
+    if(period === 'day') return d === todayStr;
+    if(period === 'week') { const q=new Date(todayStr+'T00:00:00'), st=new Date(q); st.setDate(q.getDate()-((q.getDay()+6)%7)); const en=new Date(st); en.setDate(st.getDate()+6); const x=new Date(d+'T00:00:00'); return x>=st&&x<=en; }
+    if(period === 'month') return d.slice(0,7) === todayStr.slice(0,7);
+    if(period === 'year') return d.slice(0,4) === todayStr.slice(0,4);
     return true;
   });
 }
-
-function setDashPeriod(p, btn) {
-  dashPeriod = p;
-  document.querySelectorAll('#section-dashboard .period-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderDeptChart();
-}
-
+function setDashPeriod(p, btn) { dashPeriod = p; document.querySelectorAll('#section-dashboard .period-tab').forEach(b => b.classList.remove('active')); btn.classList.add('active'); renderDeptChart(); }
+function groupByDept(rs){ const counts=new Map(); rs.forEach(r=>{const c=deptCode(r.dept)||'—';counts.set(c,(counts.get(c)||0)+1);}); return counts; }
 function renderDeptChart() {
-  const rs = filterByPeriod(records, dashPeriod);
-  const counts = {};
-  DEPTS.forEach(d => counts[d] = 0);
-  rs.forEach(r => { if(counts[r.dept] !== undefined) counts[r.dept]++; });
-  const labels = DEPTS.filter(d => counts[d] > 0);
-  const data = labels.map(d => counts[d]);
-  const colors = labels.map(d => DEPT_COLORS[d]);
+  const counts = groupByDept(filterByPeriod(records, dashPeriod)), keys=[...counts.keys()];
   if(deptChart) deptChart.destroy();
-  const ctx = document.getElementById('deptChart').getContext('2d');
-  deptChart = new Chart(ctx, { type:'doughnut', data:{ labels, datasets:[{ data, backgroundColor:colors, borderWidth:2, borderColor:'#fff' }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{ size:11 } } } }, cutout:'60%' } });
+  const el=document.getElementById('deptChart'); if(!el||typeof Chart==='undefined') return;
+  deptChart = new Chart(el.getContext('2d'), { type:'doughnut', data:{ labels:keys.map(k=>deptLabel(k)||'—'), datasets:[{ data:keys.map(k=>counts.get(k)), backgroundColor:keys.map(deptColor), borderWidth:2, borderColor:'#fff' }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{ size:11 } } } }, cutout:'60%' } });
 }
-
+function sixMonths(){ const now=new Date(), out=[]; for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);out.push({label:`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}`,ym:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`});} return out; }
 function renderTrendChart() {
-  const months = [];
-  const now = new Date();
-  for(let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    months.push({ label: `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}`, year: d.getFullYear(), month: d.getMonth() });
-  }
-  const issued = months.map(m => records.filter(r => { const d = new Date(r.issue_date); return d.getFullYear()===m.year && d.getMonth()===m.month; }).length);
-  const ret = months.map(m => records.filter(r => r.return_date && (() => { const d = new Date(r.return_date); return d.getFullYear()===m.year && d.getMonth()===m.month; })()).length);
+  const months = sixMonths();
+  const issued = months.map(m => records.filter(r => String(r.issue_date||'').slice(0,7)===m.ym).length);
+  const ret = months.map(m => records.filter(r => String(r.return_date||'').slice(0,7)===m.ym).length);
   if(trendChart) trendChart.destroy();
-  const ctx = document.getElementById('trendChart').getContext('2d');
-  trendChart = new Chart(ctx, { type:'line', data:{ labels: months.map(m=>m.label), datasets:[
-    { label:'發出', data:issued, borderColor:'#e8640a', backgroundColor:'rgba(232,100,10,0.1)', tension:0.4, fill:true },
-    { label:'歸還', data:ret, borderColor:'#2e8b6e', backgroundColor:'rgba(46,139,110,0.1)', tension:0.4, fill:true }
+  const el=document.getElementById('trendChart'); if(!el||typeof Chart==='undefined') return;
+  trendChart = new Chart(el.getContext('2d'), { type:'line', data:{ labels: months.map(m=>m.label), datasets:[
+    { label:t('issued'), data:issued, borderColor:'#e8640a', backgroundColor:'rgba(232,100,10,0.1)', tension:0.4, fill:true },
+    { label:t('returned_chart'), data:ret, borderColor:'#2e8b6e', backgroundColor:'rgba(46,139,110,0.1)', tension:0.4, fill:true }
   ]}, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'top' } }, scales:{ y:{ beginAtZero:true, ticks:{ stepSize:1 } } } } });
 }
-
 function renderDashAnomalies() {
-  const anomalies = getAnomalies();
-  const el = document.getElementById('dash-anomaly-list');
-  if(!anomalies.length) { el.innerHTML = '<div style="color:var(--accent2)">✅ 暫無異常</div>'; return; }
-  el.innerHTML = '<div class="anomaly-list">' + anomalies.slice(0,5).map(a => `<div class="anomaly-item ${a.critical?'critical':''}">${a.icon} ${a.msg}</div>`).join('') + '</div>';
+  const anomalies = getAnomalies(), el = document.getElementById('dash-anomaly-list');
+  if(!anomalies.length) { el.innerHTML = '<div style="color:var(--accent2)">'+kesc(t('no_anomaly'))+'</div>'; return; }
+  el.innerHTML = '<div class="anomaly-list">' + anomalies.slice(0,5).map(a => `<div class="anomaly-item ${a.critical?'critical':''}">${a.icon} ${kesc(a.msg)}</div>`).join('') + '</div>';
 }
-
 function renderOutstandingTable() {
-  const rs = records.filter(r => getStatus(r) === 'outstanding');
-  const wrap = document.getElementById('outstanding-table-wrap');
-  if(!rs.length) { wrap.innerHTML = '<div style="padding:16px;color:var(--accent2)">✅ 全部鑰匙已歸還</div>'; return; }
-  wrap.innerHTML = `<table>
-    <thead><tr><th>${t('col_key_no')}</th><th>${t('col_dept')}</th><th>${t('col_recipient')}</th><th>${t('col_issue_date')}</th><th>時長</th><th>操作</th></tr></thead>
-    <tbody>${rs.slice(0,10).map(r => {
-      const hrs = getHoursOutstanding(r);
-      return `<tr>
-        <td><b>${r.key_no}</b></td>
-        <td><span class="dept-badge" style="background:${DEPT_COLORS[r.dept]||'#888'}">${r.dept}</span></td>
-        <td>${r.recipient_name||''}</td>
-        <td>${r.issue_date}</td>
+  const rs = records.filter(r => getStatus(r) === 'outstanding'), wrap = document.getElementById('outstanding-table-wrap');
+  if(!rs.length) { wrap.innerHTML = '<div style="padding:16px;color:var(--accent2)">'+kesc(t('all_returned'))+'</div>'; return; }
+  wrap.innerHTML = `<table><thead><tr>${['col_key_no','col_dept','col_recipient','col_issue_date','col_duration','col_actions'].map(k=>'<th>'+kesc(t(k))+'</th>').join('')}</tr></thead>
+    <tbody>${rs.slice(0,10).map(r => { const hrs = getHoursOutstanding(r); return `<tr>
+        <td><b>${kesc(r.key_no)}</b></td>
+        <td><span class="dept-badge" style="background:${deptColor(r.dept)}">${kesc(deptLabel(r.dept)||'—')}</span></td>
+        <td>${kesc(r.recipient_name||'')}</td>
+        <td>${kesc(r.issue_date)}</td>
         <td style="color:${hrs>8?'var(--danger)':hrs>4?'var(--warn)':'inherit'}">${hrs.toFixed(1)}h</td>
-        <td><button class="btn btn-success btn-sm" onclick="setReturnNow('${r.id}')">↩️ 歸還</button></td>
-      </tr>`;
-    }).join('')}</tbody>
-  </table>`;
+        <td><button class="btn btn-success btn-sm" onclick="setReturnNow('${kesc(r.id)}')">${kesc(t('return_btn'))}</button></td>
+      </tr>`; }).join('')}</tbody></table>`;
 }
-
-function getHoursOutstanding(r) {
-  const issued = new Date(r.issue_date + 'T' + (r.issue_time || '08:00'));
-  return (Date.now() - issued.getTime()) / 3600000;
-}
+function getHoursOutstanding(r) { const issued = new Date(String(r.issue_date||'') + 'T' + (r.issue_time || '08:00')); const h=(Date.now() - issued.getTime()) / 3600000; return isFinite(h)?h:0; }
 
 // ==================== ANALYTICS ====================
 let aCharts = {};
 function renderAnalytics() {
-  const now = new Date();
   const mVal = document.getElementById('analytics-month').value;
-  let rs = [...records];
-  if(analyticsPeriod === 'month' && mVal) {
-    rs = rs.filter(r => r.issue_date && r.issue_date.startsWith(mVal));
-  } else {
-    rs = filterByPeriod(rs, analyticsPeriod);
-  }
-
-  const total = rs.length;
-  const outstanding = rs.filter(r => getStatus(r) === 'outstanding').length;
-  const returned = rs.filter(r => getStatus(r) === 'returned').length;
-  const lost = rs.filter(r => getStatus(r) === 'lost').length;
+  let rs = records.filter(r=>r&&!r._deleted);
+  rs = (analyticsPeriod === 'month' && mVal) ? rs.filter(r => String(r.issue_date||'').startsWith(mVal)) : filterByPeriod(rs, analyticsPeriod);
+  const count=st=>rs.filter(r => getStatus(r) === st).length;
   document.getElementById('analytics-stats').innerHTML = `
-    <div class="stat-card blue"><div class="stat-num">${total}</div><div class="stat-label">${t('stat_total')}</div></div>
-    <div class="stat-card warn"><div class="stat-num" style="color:var(--warn)">${outstanding}</div><div class="stat-label">${t('stat_outstanding')}</div></div>
-    <div class="stat-card green"><div class="stat-num" style="color:var(--accent2)">${returned}</div><div class="stat-label">${t('stat_returned')}</div></div>
-    <div class="stat-card red"><div class="stat-num" style="color:var(--danger)">${lost}</div><div class="stat-label">${t('stat_lost')}</div></div>
-  `;
-
-  // Dept chart
-  const deptCounts = {}; DEPTS.forEach(d => deptCounts[d]=0);
-  rs.forEach(r => { if(deptCounts[r.dept]!==undefined) deptCounts[r.dept]++; });
-  const dLabels = DEPTS.filter(d => deptCounts[d]>0);
-  if(aCharts.dept) aCharts.dept.destroy();
-  aCharts.dept = new Chart(document.getElementById('analyticsDeptChart').getContext('2d'), {
-    type:'bar', data:{ labels:dLabels, datasets:[{ data:dLabels.map(d=>deptCounts[d]), backgroundColor:dLabels.map(d=>DEPT_COLORS[d]), borderRadius:6 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,ticks:{stepSize:1}} } }
-  });
-
-  // Key type chart
-  const typeCounts = {};
-  rs.forEach(r => { typeCounts[r.key_type] = (typeCounts[r.key_type]||0)+1; });
-  const tLabels = Object.keys(typeCounts);
-  if(aCharts.type) aCharts.type.destroy();
-  aCharts.type = new Chart(document.getElementById('analyticsTypeChart').getContext('2d'), {
-    type:'pie', data:{ labels:tLabels, datasets:[{ data:tLabels.map(k=>typeCounts[k]), backgroundColor:['#3498db','#e67e22','#9b59b6','#27ae60','#e91e63','#f39c12','#1abc9c','#e74c3c','#95a5a6','#2c3e50'], borderWidth:2, borderColor:'#fff' }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{size:10} } } } }
-  });
-
-  // Monthly trend
-  const months6 = [];
-  for(let i=5;i>=0;i--) { const d=new Date(now.getFullYear(),now.getMonth()-i,1); months6.push({label:`${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}`,year:d.getFullYear(),month:d.getMonth()}); }
-  const monthIssued = months6.map(m => records.filter(r=>{const d=new Date(r.issue_date);return d.getFullYear()===m.year&&d.getMonth()===m.month}).length);
-  if(aCharts.month) aCharts.month.destroy();
-  aCharts.month = new Chart(document.getElementById('analyticsMonthChart').getContext('2d'), {
-    type:'line', data:{ labels:months6.map(m=>m.label), datasets:[{ label:'發出', data:monthIssued, borderColor:'#1a3a5c', backgroundColor:'rgba(26,58,92,0.1)', fill:true, tension:0.4 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} }
-  });
-
-  // Duration chart
-  const deptDuration = {};
-  DEPTS.forEach(d => deptDuration[d] = []);
-  rs.filter(r => r.return_date && r.issue_date).forEach(r => {
-    const issued = new Date(r.issue_date+'T'+(r.issue_time||'08:00'));
-    const ret = new Date(r.return_date+'T'+(r.return_time||'17:00'));
-    const hrs = (ret-issued)/3600000;
-    if(hrs > 0 && hrs < 720) deptDuration[r.dept].push(hrs);
-  });
-  const durLabels = DEPTS.filter(d => deptDuration[d].length>0);
-  const durData = durLabels.map(d => { const a=deptDuration[d]; return a.reduce((s,v)=>s+v,0)/a.length; });
-  if(aCharts.duration) aCharts.duration.destroy();
-  aCharts.duration = new Chart(document.getElementById('analyticsDurationChart').getContext('2d'), {
-    type:'bar', data:{ labels:durLabels, datasets:[{ label:'平均時長(h)', data:durData.map(v=>+v.toFixed(1)), backgroundColor:'rgba(46,139,110,0.7)', borderRadius:6 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
-  });
-
-  // Dept summary table
-  let tbl = `<table><thead><tr><th>部門</th><th>發出次數</th><th>已歸還</th><th>未歸還</th><th>遺失</th><th>歸還率</th></tr></thead><tbody>`;
+    <div class="stat-card blue"><div class="stat-num">${rs.length}</div><div class="stat-label">${kesc(t('stat_total'))}</div></div>
+    <div class="stat-card warn"><div class="stat-num" style="color:var(--warn)">${count('outstanding')}</div><div class="stat-label">${kesc(t('stat_outstanding'))}</div></div>
+    <div class="stat-card green"><div class="stat-num" style="color:var(--accent2)">${count('returned')}</div><div class="stat-label">${kesc(t('stat_returned'))}</div></div>
+    <div class="stat-card red"><div class="stat-num" style="color:var(--danger)">${count('lost')}</div><div class="stat-label">${kesc(t('stat_lost'))}</div></div>`;
+  const byDept=groupByDept(rs), dKeys=[...byDept.keys()];
+  const typeCounts = new Map(); rs.forEach(r => { const k=keyTypeCode(r.key_type); typeCounts.set(k,(typeCounts.get(k)||0)+1); });
+  const tKeys=[...typeCounts.keys()], months6=sixMonths();
+  const dur=new Map(); rs.filter(r => r.return_date && r.issue_date).forEach(r => { const hrs=(new Date(r.return_date+'T'+(r.return_time||'17:00'))-new Date(r.issue_date+'T'+(r.issue_time||'08:00')))/3600000; if(hrs>0&&hrs<720){const k=deptCode(r.dept)||'—';if(!dur.has(k))dur.set(k,[]);dur.get(k).push(hrs);} });
+  const durKeys=[...dur.keys()];
+  if(typeof Chart!=='undefined'){
+    const mk=(id,cfg)=>{const el=document.getElementById(id);return el?new Chart(el.getContext('2d'),cfg):null;};
+    Object.values(aCharts).forEach(c=>c&&c.destroy&&c.destroy());
+    aCharts.dept = mk('analyticsDeptChart',{ type:'bar', data:{ labels:dKeys.map(k=>deptLabel(k)||'—'), datasets:[{ data:dKeys.map(k=>byDept.get(k)), backgroundColor:dKeys.map(deptColor), borderRadius:6 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,ticks:{stepSize:1}} } } });
+    aCharts.type = mk('analyticsTypeChart',{ type:'pie', data:{ labels:tKeys.map(k=>keyTypeLabelIn(k)), datasets:[{ data:tKeys.map(k=>typeCounts.get(k)), backgroundColor:['#3498db','#e67e22','#9b59b6','#27ae60','#e91e63','#f39c12','#1abc9c','#e74c3c','#95a5a6','#2c3e50'], borderWidth:2, borderColor:'#fff' }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{ position:'right', labels:{ font:{size:10} } } } } });
+    aCharts.month = mk('analyticsMonthChart',{ type:'line', data:{ labels:months6.map(m=>m.label), datasets:[{ label:t('issued'), data:months6.map(m=>records.filter(r=>String(r.issue_date||'').slice(0,7)===m.ym).length), borderColor:'#1a3a5c', backgroundColor:'rgba(26,58,92,0.1)', fill:true, tension:0.4 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true,ticks:{stepSize:1}}} } });
+    aCharts.duration = mk('analyticsDurationChart',{ type:'bar', data:{ labels:durKeys.map(k=>deptLabel(k)||'—'), datasets:[{ label:t('avg_hours'), data:durKeys.map(k=>{const a=dur.get(k);return +(a.reduce((s,v)=>s+v,0)/a.length).toFixed(1);}), backgroundColor:'rgba(46,139,110,0.7)', borderRadius:6 }] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} } });
+  }
+  let tbl = '<table><thead><tr>'+['col_dept','issue_count','returned','outstanding','status_lost','return_rate'].map(k=>'<th>'+kesc(t(k))+'</th>').join('')+'</tr></thead><tbody>';
   let totIssued=0,totRet=0,totOut=0,totLost=0;
-  DEPTS.forEach(dept => {
-    const drs = rs.filter(r => r.dept===dept);
-    if(!drs.length) return;
+  dKeys.forEach(dept => {
+    const drs = rs.filter(r => (deptCode(r.dept)||'—')===dept);
     const di=drs.length, dr=drs.filter(r=>getStatus(r)==='returned').length, do_=drs.filter(r=>getStatus(r)==='outstanding').length, dl=drs.filter(r=>getStatus(r)==='lost').length;
     totIssued+=di; totRet+=dr; totOut+=do_; totLost+=dl;
-    const rate = di>0 ? ((dr/di)*100).toFixed(0) : 0;
-    tbl += `<tr><td><span class="dept-badge" style="background:${DEPT_COLORS[dept]}">${dept}</span></td><td>${di}</td><td style="color:var(--accent2)">${dr}</td><td style="color:var(--warn)">${do_}</td><td style="color:var(--danger)">${dl}</td><td>${rate}%</td></tr>`;
+    tbl += `<tr><td><span class="dept-badge" style="background:${deptColor(dept)}">${kesc(deptLabel(dept)||'—')}</span></td><td>${di}</td><td style="color:var(--accent2)">${dr}</td><td style="color:var(--warn)">${do_}</td><td style="color:var(--danger)">${dl}</td><td>${di>0?((dr/di)*100).toFixed(0):0}%</td></tr>`;
   });
-  tbl += `<tr class="summary-row"><td>合計</td><td>${totIssued}</td><td>${totRet}</td><td>${totOut}</td><td>${totLost}</td><td>${totIssued>0?((totRet/totIssued)*100).toFixed(0):0}%</td></tr>`;
-  tbl += '</tbody></table>';
+  tbl += `<tr class="summary-row"><td>${kesc(t('total_row'))}</td><td>${totIssued}</td><td>${totRet}</td><td>${totOut}</td><td>${totLost}</td><td>${totIssued>0?((totRet/totIssued)*100).toFixed(0):0}%</td></tr></tbody></table>`;
   document.getElementById('analytics-dept-table').innerHTML = tbl;
 }
-
-function setAnalyticsPeriod(p, btn) {
-  analyticsPeriod = p;
-  document.querySelectorAll('#section-analytics .period-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  renderAnalytics();
-}
+function setAnalyticsPeriod(p, btn) { analyticsPeriod = p; document.querySelectorAll('#section-analytics .period-tab').forEach(b => b.classList.remove('active')); btn.classList.add('active'); renderAnalytics(); }
 
 // ==================== ANOMALY ====================
-function getOverdueRecords() {
-  const hours = parseInt(document.getElementById('overdue-hours')?.value || 8);
-  return records.filter(r => getStatus(r)==='outstanding' && getHoursOutstanding(r) > hours);
-}
-
+function overdueHours(){ return parseInt(document.getElementById('overdue-hours')?.value || 8, 10) || 8; }
+function getOverdueRecords() { const h=overdueHours(); return records.filter(r => getStatus(r)==='outstanding' && getHoursOutstanding(r) > h); }
 function getAnomalies() {
-  const anomalies = [];
-  const hours = parseInt(document.getElementById('overdue-hours')?.value || 8);
-  
-  // Overdue
-  records.filter(r => getStatus(r)==='outstanding' && getHoursOutstanding(r) > hours).forEach(r => {
-    anomalies.push({ icon:'🔴', critical:true, msg:`超時未歸還: 鑰匙 ${r.key_no} (${r.dept}) - ${r.recipient_name||r.recipient_id||'未知'} - 已借出 ${getHoursOutstanding(r).toFixed(1)} 小時` });
+  const anomalies = [], hours = overdueHours(), live=records.filter(r=>r&&!r._deleted);
+  const who=r=>r.recipient_name||r.recipient_id||L('未知','unknown','មិនស្គាល់');
+  live.filter(r => getStatus(r)==='outstanding' && getHoursOutstanding(r) > hours).forEach(r => {
+    anomalies.push({ icon:'🔴', critical:true, msg:L('超時未歸還','Overdue','ហួសម៉ោងមិនទាន់ប្រគល់')+': '+(r.key_no||'—')+' ('+(deptLabel(r.dept)||'—')+') · '+who(r)+' · '+getHoursOutstanding(r).toFixed(1)+'h' });
   });
-
-  // Missing ID
-  records.filter(r => !r.recipient_id && !r.return_date).forEach(r => {
-    anomalies.push({ icon:'⚠️', critical:false, msg:`記錄缺少員工ID: 鑰匙 ${r.key_no} (${r.dept}) 發出日期 ${r.issue_date}` });
+  live.filter(r => !r.recipient_id && !r.return_date).forEach(r => {
+    anomalies.push({ icon:'⚠️', critical:false, msg:L('缺少員工 ID','Missing employee ID','ខ្វះលេខ ID បុគ្គលិក')+': '+(r.key_no||'—')+' ('+(deptLabel(r.dept)||'—')+') · '+(r.issue_date||'') });
   });
-
-  // Lost keys
-  records.filter(r => r.return_condition==='遺失').forEach(r => {
-    anomalies.push({ icon:'🚨', critical:true, msg:`鑰匙遺失: ${r.key_no} (${r.dept}) - ${r.recipient_name||''} ${r.issue_date}` });
+  live.filter(r => isLost(r)).forEach(r => {
+    anomalies.push({ icon:'🚨', critical:true, msg:L('鑰匙遺失','Key lost','សោបាត់')+': '+(r.key_no||'—')+' ('+(deptLabel(r.dept)||'—')+') · '+(r.recipient_name||'')+' '+(r.issue_date||'') });
   });
-
-  // Damaged
-  records.filter(r => r.return_condition==='損壞').forEach(r => {
-    anomalies.push({ icon:'❌', critical:false, msg:`鑰匙損壞歸還: ${r.key_no} (${r.dept}) - ${r.issue_date}` });
+  live.filter(r => condCode(r.return_condition)==='damaged').forEach(r => {
+    anomalies.push({ icon:'❌', critical:false, msg:L('歸還時損壞','Returned damaged','ប្រគល់វិញខូច')+': '+(r.key_no||'—')+' ('+(deptLabel(r.dept)||'—')+') · '+(r.issue_date||'') });
   });
-
-  // Duplicate key outstanding
-  const outstanding = records.filter(r => getStatus(r)==='outstanding');
   const keyMap = {};
-  outstanding.forEach(r => { keyMap[r.key_no] = (keyMap[r.key_no]||0)+1; });
+  live.filter(r => getStatus(r)==='outstanding').forEach(r => { keyMap[r.key_no] = (keyMap[r.key_no]||0)+1; });
   Object.entries(keyMap).filter(([k,v]) => v>1).forEach(([k,v]) => {
-    anomalies.push({ icon:'⚠️', critical:true, msg:`重複借出: 鑰匙 ${k} 同時有 ${v} 筆未歸還記錄` });
+    anomalies.push({ icon:'⚠️', critical:true, msg:L('重複借出','Issued twice','ចេញស្ទួន')+': '+k+' · '+v+' '+L('筆未歸還','open loans','ការខ្ចីមិនទាន់ប្រគល់') });
   });
-
   return anomalies;
 }
-
 function renderAnomalies() {
-  const anomalies = getAnomalies();
-  const el = document.getElementById('anomaly-list-full');
-  if(!anomalies.length) { el.innerHTML = '<div style="color:var(--accent2);padding:20px">✅ 暫無異常警報</div>'; renderAnomalyBadge(); return; }
-  el.innerHTML = '<div class="anomaly-list">' + anomalies.map(a => `<div class="anomaly-item ${a.critical?'critical':''}">${a.icon} ${a.msg}</div>`).join('') + '</div>';
+  const anomalies = getAnomalies(), el = document.getElementById('anomaly-list-full');
+  if(!anomalies.length) { el.innerHTML = '<div style="color:var(--accent2);padding:20px">'+kesc(t('no_anomaly'))+'</div>'; renderAnomalyBadge(); return; }
+  el.innerHTML = '<div class="anomaly-list">' + anomalies.map(a => `<div class="anomaly-item ${a.critical?'critical':''}">${a.icon} ${kesc(a.msg)}</div>`).join('') + '</div>';
   renderAnomalyBadge();
 }
+function renderAnomalyBadge() { const n = getAnomalies().length, badge = document.getElementById('anomaly-badge'); if(!badge) return; badge.textContent = n; badge.style.display = n ? 'inline' : 'none'; }
 
-function renderAnomalyBadge() {
-  const n = getAnomalies().length;
-  const badge = document.getElementById('anomaly-badge');
-  badge.textContent = n;
-  badge.style.display = n ? 'inline' : 'none';
-}
-
-// ==================== IMPORT ====================
-function handleImportDrop(e) {
-  e.preventDefault();
-  document.getElementById('import-zone').classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if(file) processImportFile(file);
-}
+// ==================== IMPORT（舊分頁已由共用「智慧匯入」取代；保留函式）====================
+function handleImportDrop(e) { e.preventDefault(); const f=e.dataTransfer.files[0]; if(f) processImportFile(f); }
 function handleImportFile(e) { processImportFile(e.target.files[0]); e.target.value=''; }
-
-function processImportFile(file) {
-  if(!file) return;
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const wb = XLSX.read(e.target.result, { type:'binary' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const raw = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
-      // Find header row (row with 'Date' or '發出' or 'issued')
-      let headerRow = -1;
-      for(let i=0;i<Math.min(10,raw.length);i++) {
-        const r = raw[i].join(' ').toLowerCase();
-        if(r.includes('issued') || r.includes('發出') || r.includes('key')) { headerRow = i; break; }
-      }
-      const dataRows = raw.slice(headerRow+1).filter(r => r.some(c => c !== ''));
-      let imported = 0;
-      dataRows.forEach(row => {
-        const issue_date = parseDate(row[0]);
-        const key_no = String(row[2]||'').trim();
-        if(!issue_date && !key_no) return;
-        const rec = {
-          id: 'imp_' + Date.now() + '_' + Math.random().toString(36).slice(2),
-          createdAt: _localTS(),
-          issue_date: issue_date || '',
-          issue_time: String(row[1]||'').trim(),
-          key_no: key_no,
-          dept: String(row[3]||'').trim(),
-          recipient_id: String(row[4]||'').trim(),
-          recipient_name: String(row[6]||'').trim() || String(row[8]||'').trim(),
-          key_type: '一般鑰匙',
-          key_condition: '良好',
-          return_date: parseDate(row[6]),
-          return_time: String(row[7]||'').trim(),
-          receiver_name: String(row[8]||'').trim(),
-          receiver_id: String(row[9]||'').trim(),
-          remarks: String(row[11]||'').trim(),
-          imported: true,
-        };
-        records.push(rec);
-        imported++;
-      });
-      saveData();
-      renderImportHistory();
-      renderAnomalyBadge();
-      showToast(`匯入成功: ${imported} 筆記錄`, 'success');
-    } catch(err) {
-      showToast('匯入失敗: ' + err.message, 'error');
-    }
-  };
-  reader.readAsBinaryString(file);
-}
-
-function parseDate(v) {
-  if(!v) return '';
-  if(typeof v === 'number') {
-    const d = XLSX.SSF.parse_date_code(v);
-    if(d) return `${d.y}-${String(d.m).padStart(2,'0')}-${String(d.d).padStart(2,'0')}`;
-  }
-  const s = String(v).trim();
-  if(/^\d{4}[-/]\d{2}[-/]\d{2}/.test(s)) return s.replace(/\//g,'-').slice(0,10);
-  return '';
-}
-
+function processImportFile(file) { if(file&&typeof keyMasterImport==='function') keyMasterImport(file); }
+function parseDate(v) { if(typeof GC!=='undefined'&&typeof GC.parseDate==='function') return GC.parseDate(v)||''; if(typeof v==='number'&&window.XLSX&&XLSX.SSF){const d=XLSX.SSF.parse_date_code(v);if(d)return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');} const s=String(v==null?'':v).trim(); return /^\d{4}[-/]\d{1,2}[-/]\d{1,2}/.test(s)?s.replace(/\//g,'-').slice(0,10):''; }
 function renderImportHistory() {
   const months = {};
-  records.filter(r => r.imported).forEach(r => {
-    const m = (r.issue_date||'').slice(0,7) || '未知';
-    months[m] = (months[m]||0)+1;
-  });
-  const el = document.getElementById('import-month-list');
-  if(!Object.keys(months).length) { el.innerHTML = '<div style="color:var(--text2)">尚無匯入記錄</div>'; return; }
-  el.innerHTML = Object.entries(months).sort((a,b)=>b[0].localeCompare(a[0])).map(([m,c]) => `
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg2)">
-      <span>📅 <b>${m}</b> — ${c} 筆記錄</span>
-      <button class="btn btn-danger btn-sm" onclick="deleteImportMonth('${m}')">🗑️ 刪除此月</button>
-    </div>`).join('');
+  records.filter(r => r.imported).forEach(r => { const m = String(r.issue_date||'').slice(0,7) || '—'; months[m] = (months[m]||0)+1; });
+  const el = document.getElementById('import-month-list'); if(!el) return;
+  if(!Object.keys(months).length) { el.innerHTML = '<div style="color:var(--text2)">'+kesc(t('no_records'))+'</div>'; return; }
+  el.innerHTML = Object.entries(months).sort((a,b)=>b[0].localeCompare(a[0])).map(([m,c]) => `<div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--bg2)"><span>📅 <b>${kesc(m)}</b> — ${c}</span></div>`).join('');
 }
+function deleteImportMonth(m) {}
 
-function deleteImportMonth(m) {
-  openConfirm(`確認刪除 ${m} 的所有匯入記錄?`, () => {
-    records = records.filter(r => !(r.imported && (r.issue_date||'').startsWith(m)));
-    saveData(); renderImportHistory(); renderAnomalyBadge();
-    showToast('已刪除', 'success');
-  });
-}
-
-// ==================== EXPORT ====================
+// ==================== EXPORT（B4：標題與值依目前語言；只含有效記錄）====================
 function exportExcel() {
-  const rs = filterRecords();
-  const headers = ['#','發出日期','發出時間','鑰匙號碼','部門','檢查人','類型','收受人姓名','收受人ID','鑰匙狀態','歸還日期','歸還時間','收受人','收受人ID','歸還狀態','備注'];
-  const data = [headers, ...rs.map((r,i) => [i+1,r.issue_date,r.issue_time,r.key_no,r.dept,r.checker||r.checked_by||'',r.key_type,r.recipient_name,r.recipient_id,r.key_condition,r.return_date,r.return_time,r.receiver_name,r.receiver_id,r.return_condition,r.remarks])];
+  const rs = filterRecords().filter(r=>r&&!r._deleted);
+  if(!rs.length){ showToast(L('沒有資料可匯出','No data to export','គ្មានទិន្នន័យសម្រាប់នាំចេញ'),'warn'); return; }
+  const cols=['col_no','col_issue_date','col_issue_time','col_key_no','col_key_name','col_dept','col_location','col_checker','col_type','col_recipient','col_recipient_id','col_condition','col_return_date','col_return_time','col_receiver','col_receiver_id','col_return_condition','col_status','col_remarks'];
+  const data = [cols.map(k=>t(k)), ...rs.map((r,i) => [i+1,r.issue_date||'',r.issue_time||'',r.key_no||'',r.key_name||'',deptLabel(r.dept),r.location||'',r.checker||r.checked_by||'',keyTypeLabelIn(r.key_type),r.recipient_name||'',r.recipient_id||'',condLabel(r.key_condition),r.return_date||'',r.return_time||'',r.receiver_name||'',r.receiver_id||'',condLabel(r.return_condition),t('status_'+getStatus(r)),r.remarks||''])];
   const ws = XLSX.utils.aoa_to_sheet(data);
-  ws['!cols'] = headers.map((_,i) => ({ wch: i===0?4:i<4?15:20 }));
+  ws['!cols'] = cols.map((_,i) => ({ wch: i===0?4:i<4?14:18 }));
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, 'Key Movement');
-  XLSX.writeFile(wb, `VRT-R-GA-07_${_localTS().slice(0,10)}.xlsx`);
-  showToast('已匯出 Excel ✓', 'success');
+  XLSX.utils.book_append_sheet(wb, ws, t('app_title').slice(0,31));
+  XLSX.writeFile(wb, `VRT-R-GA-07_${_localYMD()}.xlsx`);
+  showToast('✅ '+L('已匯出 Excel','Excel exported','បាននាំចេញ Excel'), 'success');
 }
-
 function exportAllData() {
-  const data = JSON.stringify(records, null, 2);
+  const data = JSON.stringify({records:records.filter(r=>r&&!r._deleted),keyMaster:(window.KEY_V31&&KEY_V31.activeMaster?KEY_V31.activeMaster():[]),exportedAt:_localTS()}, null, 2);
   const a = document.createElement('a');
   a.href = 'data:application/json;charset=utf-8,' + encodeURIComponent(data);
-  a.download = `VRT-KeyData-${_localTS().slice(0,10)}.json`;
+  a.download = `VRT-KeyData-${_localYMD()}.json`;
   a.click();
-  showToast('已匯出全部數據 ✓', 'success');
+  showToast('✅ '+L('已匯出全部資料','Full backup exported','បាននាំចេញទិន្នន័យទាំងអស់'), 'success');
 }
 
-// ==================== TELEGRAM ====================
-function getTgSettings() {
-  return { token: 'server-managed', chat: '-5113064563' };
-}
-function saveTgSettings() {
-  localStorage.setItem('tg_token', document.getElementById('tg-token').value.trim());
-  localStorage.setItem('tg_chat', document.getElementById('tg-chat').value.trim());
-  showToast('Telegram 設置已儲存 ✓', 'success');
-}
-
-async function sendToTelegram() {
-  const { token, chat } = getTgSettings();
-  if(!token || !chat) { showToast('請先在設置中填寫 Telegram Bot Token 和 Chat ID', 'warn'); return; }
-  const rs = filterRecords().slice(0,20);
-  const outstanding = rs.filter(r => getStatus(r)==='outstanding').length;
-  let msg = `🔑 *VRT 鑰匙動態報告*\n📅 ${new Date().toLocaleString('zh-TW')}\n\n`;
-  msg += `📊 記錄數: ${rs.length} | ⏳ 未歸還: ${outstanding}\n\n`;
-  rs.slice(0,15).forEach(r => {
-    const st = getStatus(r);
-    const icon = st==='returned'?'✅':st==='lost'?'🚨':'⏳';
-    msg += `${icon} *${r.key_no}* [${r.dept}] ${r.recipient_name||''} ${r.issue_date}\n`;
-  });
-  if(rs.length > 15) msg += `...及 ${rs.length-15} 筆更多記錄\n`;
-  await sendTgMessage(token, chat, msg);
-}
-
-async function sendAnalyticsTelegram() {
-  const { token, chat } = getTgSettings();
-  if(!token || !chat) { showToast('請先設置 Telegram', 'warn'); return; }
-  const anomalies = getAnomalies();
-  let msg = `📈 *VRT 鑰匙管理分析報告*\n📅 ${new Date().toLocaleString('zh-TW')}\n\n`;
-  msg += `📊 總記錄: ${records.length}\n`;
-  msg += `⏳ 未歸還: ${records.filter(r=>getStatus(r)==='outstanding').length}\n`;
-  msg += `✅ 已歸還: ${records.filter(r=>getStatus(r)==='returned').length}\n`;
-  msg += `🚨 遺失: ${records.filter(r=>getStatus(r)==='lost').length}\n\n`;
-  if(anomalies.length) {
-    msg += `⚠️ *異常事項 (${anomalies.length})*\n`;
-    anomalies.slice(0,5).forEach(a => { msg += `${a.icon} ${a.msg}\n`; });
-  }
-  await sendTgMessage(token, chat, msg);
-}
-
-async function testTelegram() {
-  const token = document.getElementById('tg-token').value.trim();
-  const chat = document.getElementById('tg-chat').value.trim();
-  if(!token || !chat) { showToast('請填寫 Token 和 Chat ID', 'warn'); return; }
-  await sendTgMessage(token, chat, '✅ VRT 鑰匙管理系統 - 連接測試成功！');
-}
-
-async function sendTgMessage(token, chat, text) {
-  try {
-    const buttons=[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_keymovement_v2.html'}]];
-    const d = await GC.telegram.send(text,[],buttons,chat||'-5113064563','keymovement');
-    if(d.ok) showToast('Telegram 發送成功 ✓', 'success');
-    else showToast('發送失敗: ' + d.description, 'error');
-  } catch(e) {
-    showToast('網絡錯誤: ' + e.message, 'error');
-  }
-}
+// ==================== TELEGRAM（由共用 Telegram 視窗發送）====================
+function getTgSettings() { return { token: 'server-managed', chat: '-5113064563' }; }
+function saveTgSettings() {}
+function openCommonTelegram(){ const b=document.querySelector('[data-gc-open-tg]'); if(b) b.click(); else showToast(L('Telegram 功能尚未載入','Telegram is not ready yet','Telegram មិនទាន់រួចរាល់'),'warn'); }
+async function sendToTelegram() { openCommonTelegram(); }
+async function sendAnalyticsTelegram() { openCommonTelegram(); }
+async function testTelegram() { openCommonTelegram(); }
+async function sendTgMessage() { openCommonTelegram(); }
 
 // ==================== SETTINGS ====================
-function renderSettings() {
-  const { token, chat } = getTgSettings();
-  document.getElementById('tg-token').value = token;
-  document.getElementById('tg-chat').value = chat;
-  document.getElementById('record-count-info').textContent = `數據庫: ${records.length} 筆記錄`;
-}
-
-function clearAllData() {
-  if(!confirm('⚠️ 確認清除所有數據？此操作不可恢復！')) return;
-  records = [];
-  saveData();
-  renderList();
-  renderAnomalyBadge();
-  showToast('已清除所有數據', 'warn');
-}
+function renderSettings() {}
+function clearAllData() {}
 
 // ==================== MODAL ====================
 function closeModal(id){ var el=document.getElementById(id); if(el) el.classList.remove("open"); }
 
-// ==================== TOAST ====================
+// ==================== TOAST（頂端；錯誤需點一下才關閉）====================
 let toastTimer;
 function showToast(msg, type='') {
-  const el = document.getElementById('toast');
+  const el = document.getElementById('toast'); if(!el) return;
   el.textContent = msg;
   el.className = 'toast show' + (type ? ' '+type : '');
   clearTimeout(toastTimer);
+  el.onclick = () => el.classList.remove('show');
+  if(type==='error') return;
   toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
+function flagKeyField(el,msg){
+  if(typeof el==='string') el=document.getElementById(el);
+  if(el){ el.classList.add('gc-invalid'); el.setAttribute('aria-invalid','true'); const clear=()=>{el.classList.remove('gc-invalid');el.removeAttribute('aria-invalid');}; el.addEventListener('input',clear,{once:true}); el.addEventListener('change',clear,{once:true}); try{el.focus({preventScroll:true});}catch(e){} try{el.scrollIntoView&&el.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){} }
+  showToast('⚠️ '+msg,'error'); return false;
+}
+/* 按鈕防連點：處理中停用按鈕，避免重複儲存 */
+function keyGuardClick(btn,fn){ if(!btn||btn.disabled) return; btn.disabled=true; try{ fn(); } finally { setTimeout(()=>{btn.disabled=false;},700); } }
 
 // ==================== INIT ====================
 function renderAll() {
+  applyKeyStaticLanguage();
   renderDashboard();
   renderList();
   renderAnomalyBadge();
 }
-
-// Set today's date on form
 function initForm() {
-  const today = _localYMD();
-  const now = new Date().toTimeString().slice(0,5);
-  if(document.getElementById('f_issue_date'))document.getElementById('f_issue_date').value = today;
-  if(document.getElementById('f_issue_time'))document.getElementById('f_issue_time').value = now;
-  const ym = today.slice(0,7);
+  const ym = _localYMD().slice(0,7);
   document.getElementById('filter-month').value = ym;
   document.getElementById('analytics-month').value = ym;
 }
-
-// Load demo data if empty
-function loadDemoData() {
-  if(records.length > 0) return;
-  const depts = ['倉庫','裁剪','車間','成品','馬克','品管','外籍宿舍','辦公室','行政中心'];
-  const types = ['一般鑰匙','卡片鑰匙','掛鎖鑰匙','宿舍門鑰匙','設備鑰匙'];
-  const names = ['陳大明','Sok Vichea','Phal Dara','李小花','Thy Bunna','王建國','Rith Sothy','黃美麗'];
-  const now = new Date();
-  for(let i=0; i<20; i++) {
-    const d = new Date(now); d.setDate(d.getDate() - Math.floor(Math.random()*30));
-    const dept = depts[Math.floor(Math.random()*depts.length)];
-    const returned = Math.random() > 0.35;
-    const lost = !returned && Math.random() > 0.9;
-    const rd = returned ? new Date(d.getTime() + Math.random()*8*3600000) : null;
-    records.push({
-      id: 'demo_' + i,
-      createdAt: _localTS(),
-      issue_date: _localYMD(d),
-      issue_time: `0${7+Math.floor(Math.random()*10)}:${String(Math.floor(Math.random()*60)).padStart(2,'0')}`,
-      key_no: `K-${String(i+1).padStart(3,'0')}`,
-      dept,
-      recipient_id: `EMP${String(Math.floor(Math.random()*999)+1).padStart(3,'0')}`,
-      recipient_name: names[Math.floor(Math.random()*names.length)],
-      key_type: types[Math.floor(Math.random()*types.length)],
-      key_condition: '良好',
-      return_date: rd ? _localYMD(rd) : '',
-      return_time: rd ? rd.toTimeString().slice(0,5) : '',
-      receiver_name: returned ? '保安員' : '',
-      receiver_id: returned ? 'SEC001' : '',
-      return_condition: lost ? '遺失' : returned ? '良好' : '',
-      remarks: '',
-    });
-  }
-  saveData();
-}
+function loadDemoData() {}
 
 window.addEventListener('DOMContentLoaded', function() {
   const run=function(){
-    try{const raw=localStorage.getItem('vrt_keys');records=raw?JSON.parse(raw):[];if(!Array.isArray(records))records=[];window.records=records;}catch(e){records=[];window.records=records;}
+    try{const raw=localStorage.getItem('vrt_keys');records=raw?JSON.parse(raw):[];if(!Array.isArray(records))records=[];records=records.filter(r=>r&&!r._deleted);window.records=records;}catch(e){records=[];window.records=records;}
     loadDemoData();
     initForm();
+    document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.getAttribute('data-i18n')); });
     renderAll();
     renderAnomalyBadge();
+    let tab='record';try{tab=localStorage.getItem(KEY_TAB_PREF)||'record';}catch(e){}
+    setTimeout(()=>showSection(tab),0);
   };
   if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 });
@@ -1626,25 +1160,29 @@ window.updateRecord = updateRecord;
     if(!editId)return;const next=collectForm();if(!next)return;const idx=records.findIndex(x=>String(x.id)===String(editId));if(idx<0)return;const old=records[idx],now=_localTS(),actor=next.checker||next.checked_by||old.recordedBy||'—';next.id=old.id;next.createdAt=old.createdAt||now;next.recordedBy=old.recordedBy||actor;next.updatedAt=now;next.history=[...(old.history||[]),{type:'updated',date:now,actor,before:keySnapshot(old),after:keySnapshot(next)}];records[idx]=next;saveData();clearForm();showToast(t('update_record')+' ✓','success');renderAnomalyBadge();showSection('list');
   };
   window.setReturnNow = setReturnNow = function(id){
-    const r=records.find(x=>String(x.id)===String(id));if(!r)return;const before=keySnapshot(r),now=new Date();r.return_date=_localYMD(now);r.return_time=now.toTimeString().slice(0,5);r.return_condition='良好';r.updatedAt=_localTS();r.history=[...(r.history||[]),{type:'returned',date:r.updatedAt,actor:r.receiver_name||r.checker||'—',before,after:keySnapshot(r)}];saveData();renderList();renderAnomalyBadge();showToast(lang==='zh'?'已記錄歸還 ✓':'Returned ✓','success');
+    const r=records.find(x=>String(x.id)===String(id));if(!r)return;const before=keySnapshot(r),now=new Date();r.return_date=_localYMD(now);r.return_time=now.toTimeString().slice(0,5);r.return_condition='good';r.updatedAt=_localTS();r.history=[...(r.history||[]),{type:'returned',date:r.updatedAt,actor:r.receiver_name||r.checker||'—',before,after:keySnapshot(r)}];saveData();renderAll();renderAnomalyBadge();if(window.KEY_V31&&KEY_V31.refresh)KEY_V31.refresh();if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('keymovement','return');showToast('✅ '+L('已記錄歸還','Return recorded','បានកត់ត្រាការប្រគល់'),'success');
   };
   function deleteIds(ids){
     const set=new Set((ids||[]).map(String)),removed=records.filter(r=>set.has(String(r.id)));if(!removed.length)return;
     addTombstones(removed,'user_delete');records=records.filter(r=>!set.has(String(r.id)));window.records=records;saveData();renderAll();if(typeof renderAnalytics==='function')renderAnalytics();if(typeof renderAnomalies==='function')renderAnomalies();renderAnomalyBadge();syncDeletes();
   }
-  window.deleteSelected = deleteSelected = function(){const ids=Array.from(document.querySelectorAll('.row-chk:checked')).map(c=>c.value);if(!ids.length){showToast(lang==='zh'?'請選擇要刪除的記錄':'Select records','warn');return;}if(!confirm((lang==='zh'?'確認刪除 ':'Delete ')+ids.length+'?'))return;deleteIds(ids);showToast(lang==='zh'?'已永久刪除並同步雲端':'Deleted and cloud delete queued','success');};
-  window.promptDelete = promptDelete = function(id){if(!confirm(lang==='zh'?'確認刪除此記錄？':'Delete this record?'))return;deleteIds([id]);showToast(lang==='zh'?'已永久刪除並同步雲端':'Deleted and cloud delete queued','success');};
-  window.clearAllData = clearAllData = function(){if(!confirm(lang==='zh'?'⚠️ 確認清除所有鑰匙資料？':'Clear all key records?'))return;addTombstones(records,'clear_all');records=[];window.records=records;saveData();renderAll();renderAnomalyBadge();syncDeletes();showToast(lang==='zh'?'已清除並同步雲端':'Cleared and cloud delete queued','warn');};
+  window.deleteSelected = deleteSelected = function(){const ids=Array.from(document.querySelectorAll('.row-chk:checked')).map(c=>c.value);if(!ids.length){showToast(L('請先勾選要刪除的記錄','Tick the records to delete first','សូមធីកកំណត់ត្រាដែលត្រូវលុបជាមុន'),'warn');return;}if(!confirm(L('確認刪除 ','Delete ','លុប ')+ids.length+L(' 筆記錄？',' record(s)?',' កំណត់ត្រា?')))return;deleteIds(ids);showToast('✅ '+L('已刪除，背景同步雲端','Deleted; cloud sync queued','បានលុប កំពុងធ្វើសមកាលកម្ម'),'success');};
+  window.promptDelete = promptDelete = function(id){const r=records.find(x=>String(x.id)===String(id));if(!confirm(L('確認刪除此記錄？','Delete this record?','លុបកំណត់ត្រានេះ?')+(r?'\n'+(r.key_no||'')+' · '+(r.recipient_name||'')+' · '+(r.issue_date||''):'')))return;deleteIds([id]);showToast('✅ '+L('已刪除，背景同步雲端','Deleted; cloud sync queued','បានលុប កំពុងធ្វើសមកាលកម្ម'),'success');};
+  /* C14：清除全部會刪除雲端資料，必須輸入 CLEAR 才執行 */
+  window.clearAllData = clearAllData = function(){const live=records.filter(r=>r&&!r._deleted);if(!live.length){showToast(L('沒有異動記錄','No movement records','គ្មានកំណត់ត្រាចលនា'),'warn');return;}const typed=prompt(L('⚠️ 將刪除全部 '+live.length+' 筆鑰匙異動記錄（雲端也會刪除，無法復原）。\n請輸入 CLEAR 確認：','⚠️ This deletes all '+live.length+' key movement records (also in the cloud; cannot be undone).\nType CLEAR to confirm:','⚠️ នេះនឹងលុបកំណត់ត្រាចលនាសោទាំង '+live.length+' (ក្នុង Cloud ផងដែរ មិនអាចស្ដារវិញ)។\nវាយ CLEAR ដើម្បីបញ្ជាក់៖'));if(typed!=='CLEAR'){showToast(L('已取消','Cancelled','បានបោះបង់'),'warn');return;}addTombstones(live,'clear_all');records=[];window.records=records;saveData();renderAll();renderAnomalyBadge();syncDeletes();showToast('✅ '+L('已清除，背景同步雲端','Cleared; cloud sync queued','បានសម្អាត កំពុងធ្វើសមកាលកម្ម'),'warn');};
 
   function historyHtml(r){
-    const list=r.history||[];if(!list.length)return '<div class="empty">'+(lang==='zh'?'尚無異動歷史':'No change history')+'</div>';
-    return list.slice().reverse().map(h=>{const b=h.before||{},a=h.after||{};const keys=['holder','dept','issue_date','issue_time','return_date','return_time','condition','remarks'];const changes=keys.filter(k=>String(b[k]||'')!==String(a[k]||'')).map(k=>'<div><b>'+esc(k)+'</b>: '+esc(b[k]||'—')+' → '+esc(a[k]||'—')+'</div>').join('');return '<div class="key-h-item"><div><b>'+esc(h.type||'update')+'</b> · '+esc(h.date||'')+' · 👤 '+esc(h.actor||'—')+'</div>'+changes+'</div>';}).join('');
+    const list=r.history||[];if(!list.length)return '<div class="empty">'+esc(L('尚無異動歷史','No change history','គ្មានប្រវត្តិផ្លាស់ប្ដូរ'))+'</div>';
+    const fieldLabel={holder:t('col_recipient'),holder_id:t('col_recipient_id'),dept:t('col_dept'),issue_date:t('col_issue_date'),issue_time:t('col_issue_time'),return_date:t('col_return_date'),return_time:t('col_return_time'),condition:t('col_status'),remarks:t('col_remarks'),key_no:t('col_key_no')};
+    const typeLabel={created:L('建立','Created','បានបង្កើត'),updated:L('修改','Updated','បានកែ'),returned:L('歸還','Returned','បានប្រគល់')};
+    const val=(k,v)=>k==='dept'?deptLabel(v):k==='condition'?condLabel(v):v;
+    return list.slice().reverse().map(h=>{const b=h.before||{},a=h.after||{};const keys=['holder','dept','issue_date','issue_time','return_date','return_time','condition','remarks'];const changes=keys.filter(k=>String(b[k]||'')!==String(a[k]||'')).map(k=>'<div><b>'+esc(fieldLabel[k]||k)+'</b>: '+esc(val(k,b[k])||'—')+' → '+esc(val(k,a[k])||'—')+'</div>').join('');return '<div class="key-h-item"><div><b>'+esc(typeLabel[h.type]||h.type||'')+'</b> · '+esc(h.date||'')+' · 👤 '+esc(h.actor||'—')+'</div>'+changes+'</div>';}).join('');
   }
   window.showKeyHistory=function(id){const r=records.find(x=>String(x.id)===String(id));if(!r)return;document.getElementById('key-history-title').textContent=(r.key_no||'Key')+' · '+(r.recipient_name||'');document.getElementById('key-history-body').innerHTML=historyHtml(r);document.getElementById('key-history-modal').classList.add('open');};
   function ensureHistoryModal(){
     if(!document.getElementById('key-history-modal')){const m=document.createElement('div');m.id='key-history-modal';m.className='modal-overlay';m.innerHTML='<div class="modal"><div class="modal-header"><h3>🕘 <span id="key-history-title"></span></h3><button class="modal-close" onclick="document.getElementById(\'key-history-modal\').classList.remove(\'open\')">×</button></div><div class="modal-body" id="key-history-body"></div></div>';document.body.appendChild(m);const s=document.createElement('style');s.textContent='.key-h-item{padding:12px;border:1px solid #d8e0ea;border-radius:9px;margin:8px 0;background:#fff}.key-h-item>div+div{font-size:12px;color:#5a6478;margin-top:4px}';document.head.appendChild(s);}
   }
-  const oldRender=renderList;window.renderList=renderList=function(){oldRender();ensureHistoryModal();document.querySelectorAll('.row-chk').forEach(ch=>{const td=ch.closest('tr')&&ch.closest('tr').lastElementChild;if(td&&!td.querySelector('.key-history-btn')){const b=document.createElement('button');b.className='btn btn-outline btn-sm key-history-btn';b.textContent='🕘';b.onclick=()=>showKeyHistory(ch.value);const g=td.querySelector('.btn-group')||td;g.insertBefore(b,g.firstChild);}});};
+  const oldRender=renderList;window.renderList=renderList=function(){oldRender();ensureHistoryModal();document.querySelectorAll('.row-chk').forEach(ch=>{const td=ch.closest('tr')&&ch.closest('tr').lastElementChild;if(td&&!td.querySelector('.key-history-btn')){const b=document.createElement('button');b.className='btn btn-outline btn-sm key-history-btn';b.textContent='🕘';b.setAttribute('aria-label',L('異動歷史','Change history','ប្រវត្តិ'));b.onclick=()=>showKeyHistory(ch.value);const g=td.querySelector('.btn-group')||td;g.insertBefore(b,g.firstChild);}});};
   window.KEY_V29={tombstones,splitCloud,purgeDemo};
 })();
 </script>
@@ -1655,20 +1193,20 @@ window.updateRecord = updateRecord;
   const MASTER_KEY='vrt_key_master', PREF_KEY='vrt_key_prefs';
   let batchRows=[],batchPhotoControllers=[],masterDraftPhotos=[],editingMasterId='',keyPeriod='month',keyPeriodRef='';
   const ke=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-  const tx=(zh,en,km)=>lang==='en'?en:(lang==='km'?(km||en):zh);
+  const tx=(zh,en,km)=>L(zh,en,km);
   const uid=p=>window.GC&&GC.util?GC.util.uid(p):p+'_'+Date.now().toString(36)+Math.random().toString(36).slice(2,7);
   const now=()=>typeof _localTS==='function'?_localTS():new Date().toLocaleString();
   const today=()=>typeof _localYMD==='function'?_localYMD():new Date().toLocaleDateString('sv-SE');
-  const keyTypes=['一般鑰匙','卡片鑰匙','摩托車鑰匙','汽車鑰匙','捲簾門鑰匙','掛鎖鑰匙','密碼鎖','設備鑰匙','宿舍門鑰匙','辦公室門鑰匙'];
+  /* B12：鑰匙類型／部門／狀況一律存代碼，舊中文或英文值讀取時對應 */
+  const keyTypes=KEY_TYPES.slice();
 
   // One physical key has one master; loan history keeps its original record IDs.
   const keyNoToken=v=>String(v||'').normalize('NFKC').toUpperCase().replace(/[\s\u200b]+/g,'').replace(/[‐‑–—]/g,'-');
-  const typeEnglish=['General key','Access card','Motorcycle key','Car key','Roller shutter key','Padlock key','Combination lock','Equipment key','Dormitory door key','Office door key'];
-  function normalizeKeyType(v){const x=String(v||'').trim(),i=typeEnglish.findIndex(t=>t.toLowerCase()===x.toLowerCase());return i<0?(x||keyTypes[0]):keyTypes[i];}
-  function keyTypeLabel(v){const i=keyTypes.indexOf(normalizeKeyType(v));return i<0?v:tx(keyTypes[i],typeEnglish[i]);}
+  function normalizeKeyType(v){return keyTypeCode(v);}
+  function keyTypeLabel(v){return keyTypeLabelIn(v);}
   function keyTypeOptions(selected,all){
     const values=[...new Set(keyTypes.concat(rawMaster().map(m=>normalizeKeyType(m.key_type))).filter(Boolean))];
-    return (all?'<option value="">'+tx('全部類別','All categories')+'</option>':'')+values.map(v=>'<option value="'+ke(v)+'"'+(v===normalizeKeyType(selected)&&!all?' selected':'')+'>'+ke(keyTypeLabel(v))+'</option>').join('');
+    return (all?'<option value="">'+tx('全部類別','All categories','គ្រប់ប្រភេទ')+'</option>':'')+values.map(v=>'<option value="'+ke(v)+'"'+(v===normalizeKeyType(selected)&&!all?' selected':'')+'>'+ke(keyTypeLabel(v))+'</option>').join('');
   }
   function reconcileMasters(list){
     const groups=new Map();list.forEach(m=>{if(!m||m._deleted)return;m.key_type=normalizeKeyType(m.key_type);const k=keyNoToken(m.key_no);if(k){if(!groups.has(k))groups.set(k,[]);groups.get(k).push(m);}});
@@ -1682,7 +1220,7 @@ window.updateRecord = updateRecord;
     });return list;
   }
   function sameKey(r,m){return String(r.masterId||'')===String(m.id)||(m.aliasIds||[]).some(id=>String(id)===String(r.masterId))||keyNoToken(r.key_no)===keyNoToken(m.key_no);}
-  let batchDefaults=null;
+  let batchDefaults=null,pendingDefaults=null;
   function keyPhotoSrc(p){return window.GC&&GC.photo?GC.photo.src(p):String(p||'');}
   function keyIsoWeek(dateValue){const d=new Date((dateValue||today())+'T00:00:00'),x=new Date(d);x.setDate(d.getDate()+3-((d.getDay()+6)%7));const y=x.getFullYear(),w=1+Math.round((x-new Date(y,0,4))/(86400000*7));return y+'-W'+String(w).padStart(2,'0');}
   function keyWeekDate(value){const m=String(value||'').match(/^(\d{4})-W(\d{2})$/);if(!m)return keyPeriodRef||today();const y=+m[1],w=+m[2],jan4=new Date(y,0,4),mon=new Date(jan4);mon.setDate(jan4.getDate()-((jan4.getDay()+6)%7)+(w-1)*7);return _localYMD(mon);}
@@ -1690,7 +1228,7 @@ window.updateRecord = updateRecord;
   function keyCanonicalRef(value,p){value=String(value||'');if(p==='week')return keyWeekDate(value);if(p==='month')return /^\d{4}-\d{2}$/.test(value)?value+'-01':keyPeriodRef;if(p==='year')return /^\d{4}$/.test(value)?value+'-01-01':keyPeriodRef;return /^\d{4}-\d{2}-\d{2}$/.test(value)?value:keyPeriodRef;}
   function syncKeyPeriodInput(){const el=document.getElementById('km-period-ref');if(!el)return;el.type=keyPeriod==='year'?'number':(keyPeriod==='day'?'date':keyPeriod);el.min=keyPeriod==='year'?'2000':'';el.max=keyPeriod==='year'?'2100':'';el.step=keyPeriod==='year'?'1':'';el.value=keyPeriodValue(keyPeriod,keyPeriodRef);el.setAttribute('aria-label',keyPeriod+' period');}
   function keyPeriodMatch(r){const d=String(r&&r.issue_date||'').slice(0,10),ref=keyPeriodRef||today();if(!d)return false;if(keyPeriod==='day')return d===ref;if(keyPeriod==='month')return d.slice(0,7)===ref.slice(0,7);if(keyPeriod==='year')return d.slice(0,4)===ref.slice(0,4);const x=new Date(d+'T00:00:00'),q=new Date(ref+'T00:00:00'),s=new Date(q);s.setDate(q.getDate()-((q.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+6);return x>=s&&x<=e;}
-  function renderKeyPeriodSummary(){const box=document.getElementById('km-period-summary');if(!box)return;const rows=(records||[]).filter(r=>!r._deleted&&keyPeriodMatch(r)),returned=rows.filter(r=>r.return_date).length,lost=rows.filter(r=>r.return_condition==='遺失').length;box.innerHTML='<span>🧾 <b>'+rows.length+'</b> '+tx('筆異動','movements','ចលនា')+'</span><span>⏳ <b>'+(rows.length-returned-lost)+'</b> '+tx('未歸還','outstanding','មិនទាន់ប្រគល់')+'</span><span>✅ <b>'+returned+'</b> '+tx('已歸還','returned','បានប្រគល់')+'</span><span>🚨 <b>'+lost+'</b> '+tx('遺失','lost','បាត់')+'</span>';}
+  function renderKeyPeriodSummary(){const box=document.getElementById('km-period-summary');if(!box)return;const rows=(records||[]).filter(r=>!r._deleted&&keyPeriodMatch(r)),lost=rows.filter(r=>isLost(r)).length,returned=rows.filter(r=>r.return_date&&!isLost(r)).length;box.innerHTML='<span>🧾 <b>'+rows.length+'</b> '+tx('筆異動','movements','ចលនា')+'</span><span>⏳ <b>'+(rows.length-returned-lost)+'</b> '+tx('未歸還','outstanding','មិនទាន់ប្រគល់')+'</span><span>✅ <b>'+returned+'</b> '+tx('已歸還','returned','បានប្រគល់')+'</span><span>🚨 <b>'+lost+'</b> '+tx('遺失','lost','បាត់')+'</span>';}
   function keySetPeriod(p){keyPeriod=p;document.querySelectorAll('[data-km-period]').forEach(b=>b.classList.toggle('on',b.dataset.kmPeriod===p));syncKeyPeriodInput();renderKeyPeriodSummary();}
   function keySetPeriodRef(value){keyPeriodRef=keyCanonicalRef(value,keyPeriod)||today();syncKeyPeriodInput();renderKeyPeriodSummary();}
   function keyShiftPeriod(delta){const d=new Date((keyPeriodRef||today())+'T00:00:00');if(keyPeriod==='year')d.setFullYear(d.getFullYear()+delta);else if(keyPeriod==='month')d.setMonth(d.getMonth()+delta);else d.setDate(d.getDate()+delta*(keyPeriod==='week'?7:1));keyPeriodRef=_localYMD(d);syncKeyPeriodInput();renderKeyPeriodSummary();}
@@ -1704,9 +1242,9 @@ window.updateRecord = updateRecord;
     if(reason&&window.GC&&GC.sync)GC.sync.schedule('keymovement',reason);
   }
   function masters(){return rawMaster().filter(x=>x&&!x._deleted);}
-  function prefs(){try{return JSON.parse(localStorage.getItem(PREF_KEY)||'{}')||{};}catch(e){return{};}}
+  function prefs(){try{const p=JSON.parse(localStorage.getItem(PREF_KEY)||'{}')||{};p.keyType=keyTypeCode(p.keyType||'standard');p.condition=condCode(p.condition||'good')||'good';return p;}catch(e){return{keyType:'standard',condition:'good'};}}
   function savePrefs(){
-    const data={inspector:(document.getElementById('km-pref-inspector')||{}).value||'',keyType:(document.getElementById('km-pref-type')||{}).value||'一般鑰匙',condition:(document.getElementById('km-pref-condition')||{}).value||'良好'};
+    const data={inspector:((document.getElementById('km-pref-inspector')||{}).value||'').trim(),keyType:(document.getElementById('km-pref-type')||{}).value||'standard',condition:(document.getElementById('km-pref-condition')||{}).value||'good'};
     localStorage.setItem(PREF_KEY,JSON.stringify(data));showToast(tx('設定已儲存','Settings saved','បានរក្សាទុកការកំណត់'),'success');
   }
   function movementMaster(r){return masters().find(m=>sameKey(r,m));}
@@ -1715,7 +1253,7 @@ window.updateRecord = updateRecord;
     const map=new Map();
     (records||[]).filter(r=>!r._deleted&&!/^demo_/i.test(String(r.id||''))&&r.key_no).forEach(r=>{
       const k=keyNoToken(r.key_no);if(map.has(k))return;
-      map.set(k,{id:uid('km'),key_no:r.key_no,key_name:r.key_name||r.remarks||r.key_no,dept:r.dept||'',location:r.location||'',key_type:r.key_type||'一般鑰匙',status:'active',remarks:'',photos:Array.isArray(r.photos)?r.photos:[],createdAt:r.createdAt||now(),updatedAt:r.updatedAt||now()});
+      map.set(k,{id:uid('km'),key_no:r.key_no,key_name:r.key_name||r.remarks||r.key_no,dept:r.dept||'',location:r.location||'',key_type:keyTypeCode(r.key_type),status:'active',remarks:'',photos:Array.isArray(r.photos)?r.photos:[],createdAt:r.createdAt||now(),updatedAt:r.updatedAt||now()});
     });
     if(map.size)localStorage.setItem(MASTER_KEY,JSON.stringify(Array.from(map.values())));
   }
@@ -1725,8 +1263,8 @@ window.updateRecord = updateRecord;
   function masterState(master){
     if(master.status==='inactive')return {key:'inactive',label:tx('停用','Inactive','ផ្អាក')};
     const r=currentMovement(master);
-    if(r&&!r.return_date&&r.return_condition!=='遺失')return {key:'issued',label:tx('已借出','Issued','បានចេញ')};
-    if(r&&r.return_condition==='遺失')return {key:'lost',label:tx('遺失','Lost','បាត់')};
+    if(r&&!r.return_date&&!isLost(r))return {key:'issued',label:tx('已借出','Issued','បានខ្ចីចេញ')};
+    if(r&&isLost(r))return {key:'lost',label:tx('遺失','Lost','បាត់')};
     return {key:'available',label:tx('可用','Available','អាចប្រើបាន')};
   }
   function masterOptions(selected){
@@ -1739,15 +1277,16 @@ window.updateRecord = updateRecord;
   function newBatchRow(source){
     source=source||{};let m=movementMaster(source);
     if(source.key_no&&!m){
-      m={id:uid('km'),key_no:source.key_no,key_name:source.key_name||source.key_no,dept:source.dept||'',location:source.location||'',key_type:source.key_type||'一般鑰匙',status:'active',remarks:'',photos:Array.isArray(source.photos)?source.photos:[],createdAt:now(),updatedAt:now()};
+      m={id:uid('km'),key_no:source.key_no,key_name:source.key_name||source.key_no,dept:source.dept||'',location:source.location||'',key_type:keyTypeCode(source.key_type),status:'active',remarks:'',photos:Array.isArray(source.photos)?source.photos:[],createdAt:now(),updatedAt:now()};
       const list=rawMaster();list.push(m);localStorage.setItem(MASTER_KEY,JSON.stringify(list));
     }
-    return {rowId:uid('row'),sourceId:source.id||'',masterId:m?m.id:'',recipient_id:source.recipient_id||'',recipient_name:source.recipient_name||'',key_condition:source.key_condition||prefs().condition||'良好',remarks:source.remarks||'',photos:Array.isArray(source.photos)?source.photos.slice():[]};
+    return {rowId:uid('row'),sourceId:source.id||'',masterId:m?m.id:'',recipient_id:source.recipient_id||'',recipient_name:source.recipient_name||'',key_condition:condCode(source.key_condition)||prefs().condition||'good',remarks:source.remarks||'',photos:Array.isArray(source.photos)?source.photos.slice():[]};
   }
   function mountBatch(){
     const section=document.getElementById('section-record');if(!section)return;
-    if(document.getElementById('km-batch-date'))batchDefaults={date:document.getElementById('km-batch-date').value,time:document.getElementById('km-batch-time').value,inspector:document.getElementById('km-batch-inspector').value};
-    section.innerHTML='<div class="card"><div class="card-header"><span class="card-title">🔑 '+tx('鑰匙清單','Key List','បញ្ជីសោ')+'</span><div class="btn-group"><button class="btn btn-primary btn-sm" onclick="keyMasterOpen()">＋ '+tx('新增鑰匙','Add Key','បន្ថែមសោ')+'</button><label class="btn btn-outline btn-sm" style="cursor:pointer">📥 '+tx('智慧匯入（含內嵌照片）','Smart Import (embedded photos)','នាំចូលឆ្លាតវៃ')+'<input type="file" accept=".xlsx,.xls" onchange="keyMasterImport(this.files[0]);this.value=\'\'" hidden></label><button class="btn btn-outline btn-sm" onclick="keyMasterExport()">📤 '+tx('匯出名單','Export List','នាំចេញបញ្ជី')+'</button></div></div><div class="card-body"><div class="km-period-bar"><div class="km-period-tabs"><button data-km-period="day" onclick="keySetPeriod(\'day\')">Day</button><button data-km-period="week" onclick="keySetPeriod(\'week\')">Week</button><button class="on" data-km-period="month" onclick="keySetPeriod(\'month\')">Month</button><button data-km-period="year" onclick="keySetPeriod(\'year\')">Year</button></div><button onclick="keyShiftPeriod(-1)">◀</button><input id="km-period-ref" type="date" onchange="keySetPeriodRef(this.value)"><button onclick="keyShiftPeriod(1)">▶</button><div id="km-period-summary"></div></div><div class="filter-bar"><input id="km-master-search" placeholder="🔍 '+tx('搜尋編號／名稱／地點','Search no./name/location','ស្វែងរកលេខ/ឈ្មោះ/ទីតាំង')+'" oninput="keyMasterRender()"><select id="km-master-dept" onchange="keyMasterRender()"><option value="">'+tx('全部部門','All departments','គ្រប់ផ្នែក')+'</option>'+DEPTS.map(x=>'<option value="'+ke(x)+'">'+ke(x)+'</option>').join('')+'</select><select id="km-master-type" onchange="keyMasterRender()"><option value="">'+tx('全部類型','All types','គ្រប់ប្រភេទ')+'</option>'+keyTypes.map(x=>'<option value="'+ke(x)+'">'+ke(x)+'</option>').join('')+'</select><select id="km-master-status" onchange="keyMasterRender()"><option value="">'+tx('全部狀態','All status','គ្រប់ស្ថានភាព')+'</option><option value="available">'+tx('可用','Available','អាចប្រើបាន')+'</option><option value="issued">'+tx('已借出','Issued','បានចេញ')+'</option><option value="lost">'+tx('遺失','Lost','បាត់')+'</option><option value="inactive">'+tx('停用','Inactive','ផ្អាក')+'</option></select><span id="km-master-count"></span></div><div class="table-wrap"><table class="key-master-table"><thead><tr><th>📷</th><th>'+tx('鑰匙編號','Key No.','លេខសោ')+'</th><th>'+tx('名稱','Name','ឈ្មោះ')+'</th><th>'+tx('部門','Department','ផ្នែក')+'</th><th>'+tx('地點','Location','ទីតាំង')+'</th><th>'+tx('類型','Type','ប្រភេទ')+'</th><th>'+tx('目前狀態','Current State','ស្ថានភាព')+'</th><th>'+tx('目前領用人','Current Holder','អ្នកកាន់បច្ចុប្បន្ន')+'</th><th>'+tx('最近異動','Last Movement','ចលនាចុងក្រោយ')+'</th><th>'+tx('操作','Action','សកម្មភាព')+'</th></tr></thead><tbody id="km-master-body"></tbody></table></div></div></div><div class="card"><div class="card-header"><span class="card-title">📋 '+tx('鑰匙批次登記','Batch Key Movement','កត់ត្រាសោជាបញ្ជី')+'</span><button class="btn btn-outline btn-sm" onclick="keyBatchAddRow()">＋ '+tx('新增一列','Add Row','បន្ថែមជួរ')+'</button></div><div class="card-body"><div class="key-batch-defaults"><div class="form-group"><label>'+tx('發出日期','Issue date','ថ្ងៃចេញ')+'</label><div class="km-date-nav"><button onclick="keyShiftBatchDate(-1)">◀</button><input type="date" id="km-batch-date"><button onclick="keyShiftBatchDate(1)">▶</button></div></div><div class="form-group"><label>'+tx('發出時間','Issue time','ម៉ោងចេញ')+'</label><input type="time" id="km-batch-time"></div><div class="form-group"><label>'+tx('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')+'</label><input id="km-batch-inspector" placeholder="Inspector"></div></div><div class="table-wrap"><table class="key-batch-table"><thead><tr><th>#</th><th>'+tx('鑰匙名單','Key','សោ')+' *</th><th>'+tx('部門／地點','Department / Location','ផ្នែក / ទីតាំង')+'</th><th>'+tx('領用人 ID','Recipient ID','ID អ្នកទទួល')+'</th><th>'+tx('領用人','Recipient','អ្នកទទួល')+' *</th><th>'+tx('狀態','Condition','ស្ថានភាព')+'</th><th>'+tx('備註','Remarks','ចំណាំ')+'</th><th></th></tr></thead><tbody id="km-batch-body"></tbody></table></div><div class="btn-group" style="margin-top:14px"><button class="btn btn-primary" onclick="keyBatchSaveAll()">💾 '+tx('批次儲存','Save All','រក្សាទុកទាំងអស់')+'</button><button class="btn btn-outline" onclick="keyBatchClear()">🗑️ '+tx('清除','Clear','លុប')+'</button></div></div></div>';
+    if(pendingDefaults){batchDefaults=pendingDefaults;pendingDefaults=null;}
+    else if(document.getElementById('km-batch-date'))batchDefaults={date:document.getElementById('km-batch-date').value,time:document.getElementById('km-batch-time').value,inspector:document.getElementById('km-batch-inspector').value};
+    section.innerHTML='<div class="card"><div class="card-header"><span class="card-title">🔑 '+tx('鑰匙清單','Key List','បញ្ជីសោ')+'</span><div class="btn-group"><button class="btn btn-primary btn-sm" onclick="keyMasterOpen()">＋ '+tx('新增鑰匙','Add Key','បន្ថែមសោ')+'</button><label class="btn btn-outline btn-sm" style="cursor:pointer">📥 '+tx('智慧匯入（含內嵌照片）','Smart Import (embedded photos)','នាំចូលឆ្លាតវៃ')+'<input type="file" accept=".xlsx,.xls" onchange="keyMasterImport(this.files[0]);this.value=\'\'" hidden></label><button class="btn btn-outline btn-sm" onclick="keyMasterExport()">📤 '+tx('匯出名單','Export List','នាំចេញបញ្ជី')+'</button></div></div><div class="card-body"><div class="km-period-bar"><div class="km-period-tabs"><button data-km-period="day" onclick="keySetPeriod(\'day\')">'+tx('日','Day','ថ្ងៃ')+'</button><button data-km-period="week" onclick="keySetPeriod(\'week\')">'+tx('週','Week','សប្ដាហ៍')+'</button><button class="on" data-km-period="month" onclick="keySetPeriod(\'month\')">'+tx('月','Month','ខែ')+'</button><button data-km-period="year" onclick="keySetPeriod(\'year\')">'+tx('年','Year','ឆ្នាំ')+'</button></div><button onclick="keyShiftPeriod(-1)" aria-label="◀">◀</button><input id="km-period-ref" type="date" onchange="keySetPeriodRef(this.value)"><button onclick="keyShiftPeriod(1)" aria-label="▶">▶</button><div id="km-period-summary"></div></div><div class="filter-bar"><input id="km-master-search" placeholder="🔍 '+tx('搜尋編號／名稱／地點','Search no./name/location','ស្វែងរកលេខ/ឈ្មោះ/ទីតាំង')+'" oninput="keyMasterRender()"><select id="km-master-dept" onchange="keyMasterRender()"><option value="">'+tx('全部部門','All departments','គ្រប់ផ្នែក')+'</option>'+DEPTS.map(x=>'<option value="'+ke(x)+'">'+ke(deptLabel(x))+'</option>').join('')+'</select><select id="km-master-type" onchange="keyMasterRender()"><option value="">'+tx('全部類型','All types','គ្រប់ប្រភេទ')+'</option>'+keyTypes.map(x=>'<option value="'+ke(x)+'">'+ke(keyTypeLabel(x))+'</option>').join('')+'</select><select id="km-master-status" onchange="keyMasterRender()"><option value="">'+tx('全部狀態','All status','គ្រប់ស្ថានភាព')+'</option><option value="available">'+tx('可用','Available','អាចប្រើបាន')+'</option><option value="issued">'+tx('已借出','Issued','បានចេញ')+'</option><option value="lost">'+tx('遺失','Lost','បាត់')+'</option><option value="inactive">'+tx('停用','Inactive','ផ្អាក')+'</option></select><span id="km-master-count"></span></div><div class="table-wrap"><table class="key-master-table"><thead><tr><th>📷</th><th>'+tx('鑰匙編號','Key No.','លេខសោ')+'</th><th>'+tx('名稱','Name','ឈ្មោះ')+'</th><th>'+tx('部門','Department','ផ្នែក')+'</th><th>'+tx('地點','Location','ទីតាំង')+'</th><th>'+tx('類型','Type','ប្រភេទ')+'</th><th>'+tx('目前狀態','Current State','ស្ថានភាព')+'</th><th>'+tx('目前領用人','Current Holder','អ្នកកាន់បច្ចុប្បន្ន')+'</th><th>'+tx('最近異動','Last Movement','ចលនាចុងក្រោយ')+'</th><th>'+tx('操作','Action','សកម្មភាព')+'</th></tr></thead><tbody id="km-master-body"></tbody></table></div></div></div><div class="card"><div class="card-header"><span class="card-title">📋 '+tx('鑰匙批次登記','Batch Key Movement','កត់ត្រាសោជាបញ្ជី')+'</span><button class="btn btn-outline btn-sm" onclick="keyBatchAddRow()">＋ '+tx('新增一列','Add Row','បន្ថែមជួរ')+'</button></div><div class="card-body"><div id="km-edit-banner"></div><div class="key-batch-defaults"><div class="form-group"><label>'+tx('發出日期','Issue date','កាលបរិច្ឆេទចេញ')+'</label><div class="km-date-nav"><button onclick="keyShiftBatchDate(-1)" aria-label="◀">◀</button><input type="date" id="km-batch-date"><button onclick="keyShiftBatchDate(1)" aria-label="▶">▶</button></div></div><div class="form-group"><label>'+tx('發出時間','Issue time','ម៉ោងចេញ')+'</label><input type="time" id="km-batch-time"></div><div class="form-group"><label>'+tx('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')+' *</label><input id="km-batch-inspector" autocomplete="name" placeholder="'+ke(tx('檢查人姓名','Inspector name','ឈ្មោះអ្នកត្រួតពិនិត្យ'))+'"></div></div><div class="table-wrap"><table class="key-batch-table"><thead><tr><th>#</th><th>'+tx('鑰匙名單','Key','សោ')+' *</th><th>'+tx('部門／地點','Department / Location','ផ្នែក / ទីតាំង')+'</th><th>'+tx('領用人 ID','Recipient ID','ID អ្នកទទួល')+'</th><th>'+tx('領用人','Recipient','អ្នកទទួល')+' *</th><th>'+tx('狀態','Condition','ស្ថានភាព')+'</th><th>'+tx('備註','Remarks','ចំណាំ')+'</th><th></th></tr></thead><tbody id="km-batch-body"></tbody></table></div><div class="btn-group" style="margin-top:14px"><button class="btn btn-primary" id="km-batch-save" onclick="keyGuardClick(this,keyBatchSaveAll)">💾 '+tx('批次儲存','Save All','រក្សាទុកទាំងអស់')+'</button><button class="btn btn-outline" onclick="keyBatchClear()">🧹 '+tx('清除','Clear','សម្អាត')+'</button></div></div></div>';
     const p=prefs(),d=document.getElementById('km-batch-date'),tm=document.getElementById('km-batch-time'),ins=document.getElementById('km-batch-inspector');
     if(d)d.value=batchDefaults?batchDefaults.date:today();if(tm)tm.value=batchDefaults?batchDefaults.time:new Date().toTimeString().slice(0,5);if(ins)ins.value=batchDefaults?batchDefaults.inspector:(p.inspector||'');
     const typeFilter=document.getElementById('km-master-type');if(typeFilter)typeFilter.innerHTML=keyTypeOptions('',true);
@@ -1755,7 +1294,21 @@ window.updateRecord = updateRecord;
     const table=document.querySelector('.key-batch-table');if(table)table.outerHTML='<div class="key-batch-table km-batch-cards" id="km-batch-body"></div>';
     if(!document.getElementById('key-v56-css')){const style=document.createElement('style');style.id='key-v56-css';style.textContent=`.km-batch-cards{min-width:0!important;display:grid;gap:14px}.km-entry-row{border:1px solid #ccdce7;border-radius:14px;background:#f8fbfe;padding:16px}.km-entry-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.km-entry-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.km-entry-grid label{display:grid;gap:6px;font-size:13px;font-weight:650;color:#334155}.km-entry-grid input,.km-entry-grid select{width:100%;min-height:42px;border:1px solid #b8cad8;border-radius:8px;padding:8px;background:#fff}.km-entry-photos{margin-top:12px;padding:12px;background:#fff;border:1px solid #d7e3ed;border-radius:10px}.km-entry-photos>strong{display:block;margin-bottom:8px}.km-entry-card>.card-header{background:#edf6fc}.km-entry-hint{color:#526779;font-size:12px;margin:6px 0 12px}.km-category{background:#edf4fb;border-radius:6px;padding:4px 8px;white-space:nowrap}.km-entry-head button{min-width:40px;min-height:36px}@media(max-width:720px){.km-entry-grid{grid-template-columns:1fr 1fr}.km-entry-grid label:first-child{grid-column:1/-1}.km-entry-row{padding:12px}.km-entry-card .card-body{padding:12px}.key-batch-defaults{grid-template-columns:1fr 1fr}.key-master-table{min-width:900px}}`;document.head.appendChild(style);}
     if(!keyPeriodRef)keyPeriodRef=today();syncKeyPeriodInput();
-    if(!batchRows.length)batchRows=[newBatchRow()];renderMasterList();renderKeyPeriodSummary();renderBatchRows();
+    if(!batchRows.length)batchRows=[newBatchRow()];renderMasterList();renderKeyPeriodSummary();renderBatchRows();renderEditBanner();
+  }
+  /* 編輯中橫幅＋取消；切到其他分頁會自動取消編輯（C4 同類問題） */
+  function editingRow(){return batchRows.find(r=>r.sourceId)||null;}
+  function renderEditBanner(){
+    const box=document.getElementById('km-edit-banner');if(!box)return;const r=editingRow();
+    if(!r){box.innerHTML='';box.className='';return;}
+    const old=(records||[]).find(x=>String(x.id)===String(r.sourceId))||{};
+    box.className='km-edit-banner';box.innerHTML='✏️ '+ke(tx('編輯中','Editing','កំពុងកែ'))+'：'+ke([old.key_no,old.recipient_name,old.issue_date].filter(Boolean).join(' · '))+' <button type="button" class="btn btn-outline btn-sm" onclick="keyCancelEdit()">'+ke(tx('取消編輯','Cancel edit','បោះបង់ការកែ'))+'</button>';
+  }
+  function freshDefaults(){const ins=document.getElementById('km-batch-inspector');return {date:today(),time:new Date().toTimeString().slice(0,5),inspector:ins?ins.value:(prefs().inspector||'')};}
+  function cancelEdit(silent){
+    if(!editingRow())return false;
+    batchRows=[newBatchRow()];pendingDefaults=freshDefaults();mountBatch();
+    if(!silent)showToast(tx('已取消編輯','Edit cancelled','បានបោះបង់ការកែ'),'warn');return true;
   }
   function renderBatchRows(){
     const body=document.getElementById('km-batch-body');if(!body)return;
@@ -1763,59 +1316,70 @@ window.updateRecord = updateRecord;
 
     batchPhotoControllers.forEach(c=>c.destroy());batchPhotoControllers=[];
     body.innerHTML=batchRows.map((r,i)=>{
-      const m=masters().find(x=>String(x.id)===String(r.masterId));
-      const change=key=>'keyBatchSet(\''+ke(r.rowId)+'\',\''+key+'\',this.value)';
-      const input=(label,key)=>'<label>'+ke(label)+'<input value="'+ke(r[key])+'" oninput="'+change(key)+'"></label>';
-      return '<article class="km-entry-row"><div class="km-entry-head"><strong>🔑 '+tx('登記','Entry')+' '+(i+1)+(r.sourceId?' · '+tx('編輯記錄','Editing record'):'')+'</strong><button class="km-icon-btn" aria-label="Remove entry" onclick="keyBatchRemove(\''+ke(r.rowId)+'\')">✕</button></div><div class="km-entry-grid"><label>'+tx('選擇鑰匙 *','Choose key *')+'<select onchange="'+change('masterId')+'">'+masterOptions(r.masterId)+'</select></label>'+input(tx('領用人 *','Recipient *'),'recipient_name')+input(tx('領用人 ID','Recipient ID'),'recipient_id')+'<label>'+tx('狀況','Condition')+'<select onchange="'+change('key_condition')+'">'+['良好','輕微損耗','損壞'].map((v,j)=>'<option value="'+v+'"'+(r.key_condition===v?' selected':'')+'>'+tx(v,['Good','Minor wear','Damaged'][j])+'</option>').join('')+'</select></label>'+input(tx('備註','Remarks'),'remarks')+'</div><p class="km-entry-hint">'+(m?ke([keyTypeLabel(m.key_type),m.dept,m.location].filter(Boolean).join(' · ')):tx('先選鑰匙，再填領用人；同一把鑰匙不能重複借出。','Choose a key and recipient. A key can only have one outstanding loan.'))+'</p><div class="km-entry-photos"><strong>📷 '+tx('本次領用照片','Photos for this movement')+'</strong><div id="km-batch-photos-'+ke(r.rowId)+'"></div>'+(m&&(m.photos||[]).length?'<button class="btn btn-outline btn-sm" onclick="keyBatchUseMasterPhotos(\''+ke(r.rowId)+'\')">'+tx('加入鑰匙清單照片','Add key reference photos')+'</button>':'')+'</div></article>';
+      const m=masters().find(x=>String(x.id)===String(r.masterId)),rid=ke(r.rowId);
+      const change=key=>'keyBatchSet(\''+rid+'\',\''+key+'\',this.value)';
+      const input=(label,key,id)=>'<label>'+ke(label)+'<input id="'+id+'" value="'+ke(r[key])+'" oninput="'+change(key)+'"></label>';
+      const cond=condCode(r.key_condition)||'good';
+      return '<article class="km-entry-row"><div class="km-entry-head"><strong>🔑 '+ke(tx('登記','Entry','ការកត់ត្រា'))+' '+(i+1)+(r.sourceId?' · '+ke(tx('編輯記錄','Editing record','កំពុងកែកំណត់ត្រា')):'')+'</strong><button class="km-icon-btn" aria-label="'+ke(tx('移除這一列','Remove entry','ដកជួរនេះចេញ'))+'" onclick="keyBatchRemove(\''+rid+'\')">✕</button></div><div class="km-entry-grid"><label>'+ke(tx('選擇鑰匙','Choose key','ជ្រើសសោ'))+' *<select id="km-row-key-'+rid+'" onchange="'+change('masterId')+'">'+masterOptions(r.masterId)+'</select></label>'+input(tx('領用人','Recipient','អ្នកទទួល')+' *','recipient_name','km-row-rec-'+rid)+input(tx('領用人 ID','Recipient ID','លេខ ID អ្នកទទួល'),'recipient_id','km-row-rid-'+rid)+'<label>'+ke(tx('狀況','Condition','ស្ថានភាព'))+'<select onchange="'+change('key_condition')+'">'+['good','minor','damaged'].map(v=>'<option value="'+v+'"'+(cond===v?' selected':'')+'>'+ke(condLabel(v))+'</option>').join('')+'</select></label>'+input(tx('備註','Remarks','ចំណាំ'),'remarks','km-row-rm-'+rid)+'</div><p class="km-entry-hint">'+(m?ke([keyTypeLabel(m.key_type),deptLabel(m.dept),m.location].filter(Boolean).join(' · ')):ke(tx('先選鑰匙，再填領用人；同一把鑰匙不能重複借出。','Choose a key and recipient. A key can only have one outstanding loan.','ជ្រើសសោ រួចបំពេញអ្នកទទួល។ សោមួយអាចខ្ចីបានតែម្ដងក្នុងពេលតែមួយ។')))+'</p><div class="km-entry-photos"><strong>📷 '+ke(tx('本次領用照片','Photos for this movement','រូបថតសម្រាប់ចលនានេះ'))+'</strong><div id="km-batch-photos-'+rid+'"></div>'+(m&&(m.photos||[]).length?'<button class="btn btn-outline btn-sm" onclick="keyBatchUseMasterPhotos(\''+rid+'\')">'+ke(tx('加入鑰匙清單照片','Add key reference photos','បន្ថែមរូបថតសោ'))+'</button>':'')+'</div></article>';
     }).join('');
     batchRows.forEach(r=>{if(window.GC&&GC.photo)batchPhotoControllers.push(GC.photo.mount(document.getElementById('km-batch-photos-'+r.rowId),{photos:r.photos,max:4,onBusy:busy=>{r.photoBusy=busy;},onChange:photos=>{r.photos=photos;}}));});
   }
   function batchSet(id,key,value){const r=batchRows.find(x=>x.rowId===id);if(!r||!['masterId','recipient_name','recipient_id','key_condition','remarks'].includes(key))return;r[key]=value;if(key==='masterId')renderBatchRows();}
   window.keyBatchUseMasterPhotos=id=>{const r=batchRows.find(x=>x.rowId===id),m=r&&masters().find(x=>String(x.id)===String(r.masterId));if(r&&m){r.photos=[...new Set((r.photos||[]).concat(m.photos||[]))];renderBatchRows();}};
   function batchSave(){
-    if(batchRows.some(r=>r.photoBusy)){showToast(tx('照片處理中，請稍候','Please wait while photos are processed'),'warning');return;}
+    if(batchRows.some(r=>r.photoBusy)){showToast(tx('照片處理中，請稍候','Please wait while photos are processed','សូមរង់ចាំ កំពុងដំណើរការរូបថត'),'warn');return;}
     const date=(document.getElementById('km-batch-date')||{}).value||'',time=(document.getElementById('km-batch-time')||{}).value||'',inspector=((document.getElementById('km-batch-inspector')||{}).value||'').trim();
     const valid=batchRows.filter(r=>r.masterId||r.recipient_name||r.recipient_id);
-    if(!date||!valid.length){showToast(tx('請選日期並至少填一列','Choose a date and enter at least one row','សូមជ្រើសថ្ងៃ និងបញ្ចូលយ៉ាងហោចណាស់មួយជួរ'),'error');return;}
-    const incomplete=valid.find(r=>!r.masterId||!r.recipient_name);if(incomplete){showToast(tx('每列都要選鑰匙及填領用人','Each row needs a key and recipient','គ្រប់ជួរត្រូវមានសោ និងអ្នកទទួល'),'error');return;}
+    if(!date)return flagKeyField('km-batch-date',tx('請選擇發出日期','Please choose the issue date','សូមជ្រើសកាលបរិច្ឆេទចេញ'));
+    if(!valid.length)return flagKeyField(document.getElementById('km-row-key-'+(batchRows[0]&&batchRows[0].rowId)),tx('請至少選一把鑰匙並填領用人','Choose at least one key and its recipient','សូមជ្រើសសោយ៉ាងហោចណាស់មួយ និងអ្នកទទួល'));
+    if(!inspector)return flagKeyField('km-batch-inspector',tx('請填寫檢查人','Please enter the inspector','សូមបញ្ចូលអ្នកត្រួតពិនិត្យ'));
+    for(const r of valid){
+      if(!r.masterId)return flagKeyField('km-row-key-'+r.rowId,tx('這一列還沒選鑰匙','This row has no key selected','ជួរនេះមិនទាន់ជ្រើសសោ'));
+      if(!String(r.recipient_name||'').trim())return flagKeyField('km-row-rec-'+r.rowId,tx('這一列還沒填領用人','This row has no recipient','ជួរនេះមិនទាន់មានអ្នកទទួល'));
+    }
     const seen=new Set();
     for(const r of valid){
       const m=masters().find(x=>String(x.id)===String(r.masterId)),token=m&&keyNoToken(m.key_no);
-      if(!m||seen.has(token)){showToast(tx('同一把鑰匙不能在批次中重複，請重新選擇','Duplicate or unavailable key in this batch'),'error');return;}
+      if(!m||seen.has(token))return flagKeyField('km-row-key-'+r.rowId,tx('同一把鑰匙不能在批次中重複，請重新選擇','Duplicate or unavailable key in this batch','សោស្ទួន ឬមិនអាចប្រើបានក្នុងបញ្ជីនេះ'));
       seen.add(token);
       const old=r.sourceId&&(records||[]).find(x=>String(x.id)===String(r.sourceId));
       const conflict=(records||[]).find(x=>!x._deleted&&String(x.id)!==String(r.sourceId)&&sameKey(x,m)&&!x.return_date);
-      if((!old||!old.return_date)&&(conflict||m.status==='inactive')){showToast(m.key_no+' · '+tx('已借出、遺失或停用，請先處理原記錄','Already issued, lost or inactive; resolve the existing record first'),'error');return;}
+      if((!old||!old.return_date)&&(conflict||m.status==='inactive'))return flagKeyField('km-row-key-'+r.rowId,m.key_no+' · '+tx('已借出、遺失或停用，請先處理原記錄','Already issued, lost or inactive; resolve the existing record first','បានខ្ចីចេញ បាត់ ឬផ្អាក សូមដោះស្រាយកំណត់ត្រាចាស់ជាមុន'));
     }
     let changed=0;
     valid.forEach(r=>{
       const m=masters().find(x=>String(x.id)===String(r.masterId));if(!m)return;
       const old=r.sourceId?(records||[]).find(x=>String(x.id)===String(r.sourceId)):null, ts=now();
-      const next=Object.assign({},old||{},{id:old?old.id:uid('key'),masterId:m.id,issue_date:date,issue_time:time,key_no:m.key_no,key_name:m.key_name||'',dept:m.dept||'',location:m.location||'',checker:inspector,recipient_id:r.recipient_id,recipient_name:r.recipient_name,key_type:m.key_type||prefs().keyType||'一般鑰匙',key_condition:r.key_condition||prefs().condition||'良好',remarks:r.remarks||'',photos:Array.isArray(r.photos)?r.photos.slice():[],createdAt:old&&old.createdAt||ts,updatedAt:ts,recordedBy:old&&old.recordedBy||inspector});
+      const next=Object.assign({},old||{},{id:old?old.id:uid('key'),masterId:m.id,issue_date:date,issue_time:time,key_no:m.key_no,key_name:m.key_name||'',dept:m.dept||'',location:m.location||'',checker:inspector,recipient_id:String(r.recipient_id||'').trim(),recipient_name:String(r.recipient_name||'').trim(),key_type:keyTypeCode(m.key_type||prefs().keyType),key_condition:condCode(r.key_condition)||prefs().condition||'good',remarks:r.remarks||'',photos:Array.isArray(r.photos)?r.photos.slice():[],createdAt:old&&old.createdAt||ts,updatedAt:ts,recordedBy:old&&old.recordedBy||inspector});
       const snap=x=>({key_no:x.key_no||'',dept:x.dept||'',holder:x.recipient_name||'',holder_id:x.recipient_id||'',issue_date:x.issue_date||'',issue_time:x.issue_time||'',return_date:x.return_date||'',return_time:x.return_time||'',condition:x.return_condition||x.key_condition||'',remarks:x.remarks||''});
       next.history=[...(old&&old.history||[]),{type:old?'updated':'created',date:ts,actor:inspector||'—',before:old?snap(old):undefined,after:snap(next)}];
       if(old){const idx=records.findIndex(x=>String(x.id)===String(old.id));records[idx]=next;}else records.unshift(next);changed++;
     });
-    saveData();window.records=records;batchRows=[newBatchRow()];renderBatchRows();renderAll();renderAnomalyBadge();
+    saveData();window.records=records;batchRows=[newBatchRow()];
+    /* C9：存檔後下一筆的日期／時間回到今天／現在（保留檢查人） */
+    batchDefaults={date:today(),time:new Date().toTimeString().slice(0,5),inspector};
+    const d=document.getElementById('km-batch-date'),tm=document.getElementById('km-batch-time');if(d)d.value=batchDefaults.date;if(tm)tm.value=batchDefaults.time;
+    renderBatchRows();renderEditBanner();renderAll();renderAnomalyBadge();renderMasterList();renderKeyPeriodSummary();
     if(window.GC&&GC.sync)GC.sync.schedule('keymovement','batch_save');
-    showToast('✅ '+changed+' '+tx('筆鑰匙記錄已儲存','key record(s) saved','កំណត់ត្រាសោបានរក្សាទុក'),'success');showSection('list');
+    showToast('✅ '+changed+' '+tx('筆鑰匙記錄已儲存','key record(s) saved','កំណត់ត្រាសោបានរក្សាទុក'),'success');
+    return true;
   }
   function shiftBatchDate(delta){const el=document.getElementById('km-batch-date');if(!el)return;const d=new Date((el.value||today())+'T00:00:00');d.setDate(d.getDate()+delta);el.value=_localYMD(d);}
 
   function mountSettings(){
     const section=document.getElementById('section-settings');if(!section)return;
-    section.innerHTML='<div class="card"><div class="card-header"><span class="card-title">⚙️ '+tx('鑰匙設定','Key Settings','ការកំណត់សោ')+'</span></div><div class="card-body"><div class="km-settings-grid"><div class="form-group"><label>'+tx('預設檢查人','Default inspector','អ្នកត្រួតពិនិត្យលំនាំដើម')+'</label><input id="km-pref-inspector"></div><div class="form-group"><label>'+tx('預設鑰匙類型','Default key type','ប្រភេទសោលំនាំដើម')+'</label><select id="km-pref-type">'+keyTypes.map(x=>'<option value="'+ke(x)+'">'+ke(x)+'</option>').join('')+'</select></div><div class="form-group"><label>'+tx('預設狀態','Default condition','ស្ថានភាពលំនាំដើម')+'</label><select id="km-pref-condition"><option value="良好">'+tx('良好','Good','ល្អ')+'</option><option value="輕微損耗">'+tx('輕微損耗','Minor wear','ខូចបន្តិច')+'</option></select></div><button class="btn btn-primary" onclick="keyPrefsSave()">💾 '+tx('儲存設定','Save Settings','រក្សាទុកការកំណត់')+'</button></div><div class="km-data-tools"><div><b>'+tx('資料管理','Data Management','ការគ្រប់គ្រងទិន្នន័យ')+'</b><div id="record-count-info"></div></div><button class="btn btn-outline" onclick="exportAllData()">⬇️ '+tx('匯出全部備份','Export Full Backup','នាំចេញទិន្នន័យបម្រុង')+'</button><button class="btn btn-danger" onclick="clearAllData()">🗑️ '+tx('清除異動記錄','Clear Movements','លុបកំណត់ត្រាចលនា')+'</button></div></div></div>';
-    const p=prefs();document.getElementById('km-pref-inspector').value=p.inspector||'';document.getElementById('km-pref-type').value=p.keyType||'一般鑰匙';document.getElementById('km-pref-condition').value=p.condition||'良好';
+    section.innerHTML='<div class="card"><div class="card-header"><span class="card-title">⚙️ '+tx('鑰匙設定','Key Settings','ការកំណត់សោ')+'</span></div><div class="card-body"><div class="km-settings-grid"><div class="form-group"><label>'+tx('預設檢查人','Default inspector','អ្នកត្រួតពិនិត្យលំនាំដើម')+'</label><input id="km-pref-inspector"></div><div class="form-group"><label>'+tx('預設鑰匙類型','Default key type','ប្រភេទសោលំនាំដើម')+'</label><select id="km-pref-type">'+keyTypes.map(x=>'<option value="'+ke(x)+'">'+ke(keyTypeLabel(x))+'</option>').join('')+'</select></div><div class="form-group"><label>'+tx('預設狀態','Default condition','ស្ថានភាពលំនាំដើម')+'</label><select id="km-pref-condition"><option value="good">'+ke(condLabel('good'))+'</option><option value="minor">'+ke(condLabel('minor'))+'</option></select></div><button class="btn btn-primary" onclick="keyPrefsSave()">💾 '+tx('儲存設定','Save Settings','រក្សាទុកការកំណត់')+'</button></div><div class="km-data-tools"><div><b>'+tx('資料管理','Data Management','ការគ្រប់គ្រងទិន្នន័យ')+'</b><div id="record-count-info"></div></div><button class="btn btn-outline" onclick="exportAllData()">⬇️ '+tx('匯出全部備份','Export Full Backup','នាំចេញទិន្នន័យបម្រុង')+'</button><button class="btn btn-danger" onclick="clearAllData()">🗑️ '+tx('清除異動記錄','Clear Movements','លុបកំណត់ត្រាចលនា')+'</button></div></div></div>';
+    const p=prefs();document.getElementById('km-pref-inspector').value=p.inspector||'';document.getElementById('km-pref-type').value=p.keyType||'standard';document.getElementById('km-pref-condition').value=p.condition||'good';
     ensureMasterModal();
   }
   function renderMasterList(){
     const body=document.getElementById('km-master-body');if(!body)return;
     const q=((document.getElementById('km-master-search')||{}).value||'').toLowerCase(), dept=(document.getElementById('km-master-dept')||{}).value||'',type=(document.getElementById('km-master-type')||{}).value||'',status=(document.getElementById('km-master-status')||{}).value||'';
-    const list=masters().filter(m=>{const s=masterState(m).key;return(!q||JSON.stringify(m).toLowerCase().includes(q))&&(!dept||m.dept===dept)&&(!type||m.key_type===type)&&(!status||s===status);}).sort((a,b)=>String(a.key_no||'').localeCompare(String(b.key_no||''),undefined,{numeric:true}));
+    const list=masters().filter(m=>{const s=masterState(m).key;return(!q||(JSON.stringify(m)+' '+deptLabel(m.dept)+' '+keyTypeLabel(m.key_type)).toLowerCase().includes(q))&&(!dept||deptCode(m.dept)===dept)&&(!type||keyTypeCode(m.key_type)===type)&&(!status||s===status);}).sort((a,b)=>String(a.key_no||'').localeCompare(String(b.key_no||''),undefined,{numeric:true}));
     const count=document.getElementById('km-master-count');if(count)count.textContent=list.length+' '+tx('把鑰匙','keys','សោ');
     const info=document.getElementById('record-count-info');if(info)info.textContent=tx('鑰匙名單','Key master','បញ្ជីសោ')+': '+masters().length+' · '+tx('異動記錄','Movement records','កំណត់ត្រាចលនា')+': '+(records||[]).length;
     if(!list.length){body.innerHTML='<tr><td colspan="10" class="empty">'+tx('尚無鑰匙名單，可按新增或匯入 Excel','No keys yet. Add one or import Excel.','មិនទាន់មានបញ្ជីសោ។ បន្ថែម ឬនាំចូល Excel។')+'</td></tr>';return;}
-    body.innerHTML=list.map(m=>{const s=masterState(m),cur=currentMovement(m),photos=Array.isArray(m.photos)?m.photos.filter(Boolean):[],photo=photos.length?'<button class="km-photo-btn" onclick="keyMasterViewPhotos(\''+ke(m.id)+'\')"><img class="km-thumb" src="'+ke(keyPhotoSrc(photos[0]))+'"><span>'+photos.length+'</span></button>':'<button class="km-photo-empty" onclick="keyMasterOpen(\''+ke(m.id)+'\')">📷＋</button>',last=cur?((cur.issue_date||'')+(cur.issue_time?' '+cur.issue_time:'')):'—';return '<tr><td>'+photo+'</td><td><b>'+ke(m.key_no||'—')+'</b></td><td>'+ke(m.key_name||'—')+'</td><td>'+ke(m.dept||'—')+'</td><td>'+ke(m.location||'—')+'</td><td>'+ke(keyTypeLabel(m.key_type||'—'))+'</td><td><span class="km-state '+s.key+'">'+ke(s.label)+'</span></td><td>'+ke(cur&&!cur.return_date?(cur.recipient_name||'—'):'—')+'</td><td>'+ke(last)+'</td><td><div class="btn-group"><button class="btn btn-outline btn-sm" onclick="keyMasterOpen(\''+ke(m.id)+'\')">✏️</button><button class="btn btn-danger btn-sm" onclick="keyMasterDelete(\''+ke(m.id)+'\')">🗑️</button></div></td></tr>';}).join('');
+    body.innerHTML=list.map(m=>{const s=masterState(m),cur=currentMovement(m),photos=Array.isArray(m.photos)?m.photos.filter(Boolean):[],photo=photos.length?'<button class="km-photo-btn" onclick="keyMasterViewPhotos(\''+ke(m.id)+'\')"><img class="km-thumb" src="'+ke(keyPhotoSrc(photos[0]))+'"><span>'+photos.length+'</span></button>':'<button class="km-photo-empty" onclick="keyMasterOpen(\''+ke(m.id)+'\')">📷＋</button>',last=cur?((cur.issue_date||'')+(cur.issue_time?' '+cur.issue_time:'')):'—';return '<tr><td>'+photo+'</td><td><b>'+ke(m.key_no||'—')+'</b></td><td>'+ke(m.key_name||'—')+'</td><td>'+ke(deptLabel(m.dept)||'—')+'</td><td>'+ke(m.location||'—')+'</td><td>'+ke(keyTypeLabel(m.key_type||'—'))+'</td><td><span class="km-state '+s.key+'">'+ke(s.label)+'</span></td><td>'+ke(cur&&!cur.return_date?(cur.recipient_name||'—'):'—')+'</td><td>'+ke(last)+'</td><td><div class="btn-group"><button class="btn btn-outline btn-sm" aria-label="'+ke(tx('編輯','Edit','កែ'))+'" onclick="keyMasterOpen(\''+ke(m.id)+'\')">✏️</button><button class="btn btn-danger btn-sm" aria-label="'+ke(tx('刪除','Delete','លុប'))+'" onclick="keyMasterDelete(\''+ke(m.id)+'\')">🗑️</button></div></td></tr>';}).join('');
   }
   function viewMasterPhotos(id){const m=masters().find(x=>String(x.id)===String(id));const photos=m&&Array.isArray(m.photos)?m.photos.filter(Boolean):[];if(photos.length&&window.GC&&GC.photo)GC.photo.lightbox(photos,0);}
   function renderMasterDraftPhotos(){
@@ -1840,18 +1404,21 @@ window.updateRecord = updateRecord;
   }
   function ensureMasterModal(){
     if(document.getElementById('km-master-modal'))return;
-    const modal=document.createElement('div');modal.id='km-master-modal';modal.className='modal-overlay';modal.innerHTML='<div class="modal"><div class="modal-header"><h3 id="km-master-title">🔑</h3><button class="modal-close" onclick="closeModal(\'km-master-modal\')">×</button></div><div class="modal-body"><div class="form-grid"><div class="form-group"><label>'+tx('鑰匙編號','Key No.','លេខសោ')+' *</label><input id="km-m-no"></div><div class="form-group"><label>'+tx('鑰匙名稱','Key Name','ឈ្មោះសោ')+' *</label><input id="km-m-name"></div><div class="form-group"><label>'+tx('部門','Department','ផ្នែក')+'</label><select id="km-m-dept"><option value="">—</option>'+DEPTS.map(x=>'<option value="'+ke(x)+'">'+ke(x)+'</option>').join('')+'</select></div><div class="form-group"><label>'+tx('地點','Location','ទីតាំង')+'</label><input id="km-m-location"></div><div class="form-group"><label>'+tx('類型','Type','ប្រភេទ')+'</label><select id="km-m-type">'+keyTypes.map(x=>'<option value="'+ke(x)+'">'+ke(x)+'</option>').join('')+'</select></div><div class="form-group"><label>'+tx('啟用狀態','Active Status','ស្ថានភាពប្រើប្រាស់')+'</label><select id="km-m-status"><option value="active">'+tx('啟用','Active','សកម្ម')+'</option><option value="inactive">'+tx('停用','Inactive','ផ្អាក')+'</option></select></div><div class="form-group full"><label>'+tx('備註','Remarks','ចំណាំ')+'</label><textarea id="km-m-remarks"></textarea></div><div class="form-group full"><label>📷 '+tx('照片','Photos','រូបថត')+'</label><div id="km-master-photos"></div></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal(\'km-master-modal\')">'+tx('取消','Cancel','បោះបង់')+'</button><button class="btn btn-primary" onclick="keyMasterSave()">💾 '+tx('儲存','Save','រក្សាទុក')+'</button></div></div>';document.body.appendChild(modal);
+    const modal=document.createElement('div');modal.id='km-master-modal';modal.className='modal-overlay';modal.innerHTML='<div class="modal"><div class="modal-header"><h3 id="km-master-title">🔑</h3><button class="modal-close" onclick="closeModal(\'km-master-modal\')">×</button></div><div class="modal-body"><div class="form-grid"><div class="form-group"><label>'+tx('鑰匙編號','Key No.','លេខសោ')+' *</label><input id="km-m-no"></div><div class="form-group"><label>'+tx('鑰匙名稱','Key Name','ឈ្មោះសោ')+' *</label><input id="km-m-name"></div><div class="form-group"><label>'+tx('部門','Department','ផ្នែក')+'</label><select id="km-m-dept"><option value="">—</option>'+DEPTS.map(x=>'<option value="'+ke(x)+'">'+ke(deptLabel(x))+'</option>').join('')+'</select></div><div class="form-group"><label>'+tx('地點','Location','ទីតាំង')+'</label><input id="km-m-location"></div><div class="form-group"><label>'+tx('類型','Type','ប្រភេទ')+'</label><select id="km-m-type">'+keyTypes.map(x=>'<option value="'+ke(x)+'">'+ke(keyTypeLabel(x))+'</option>').join('')+'</select></div><div class="form-group"><label>'+tx('啟用狀態','Active Status','ស្ថានភាពប្រើប្រាស់')+'</label><select id="km-m-status"><option value="active">'+tx('啟用','Active','សកម្ម')+'</option><option value="inactive">'+tx('停用','Inactive','ផ្អាក')+'</option></select></div><div class="form-group full"><label>'+tx('備註','Remarks','ចំណាំ')+'</label><textarea id="km-m-remarks"></textarea></div><div class="form-group full"><label>📷 '+tx('照片','Photos','រូបថត')+'</label><div id="km-master-photos"></div></div></div></div><div class="modal-footer"><button class="btn btn-outline" onclick="closeModal(\'km-master-modal\')">'+tx('取消','Cancel','បោះបង់')+'</button><button class="btn btn-primary" onclick="keyMasterSave()">💾 '+tx('儲存','Save','រក្សាទុក')+'</button></div></div>';document.body.appendChild(modal);
   }
   function openMaster(id){
     ensureMasterModal();editingMasterId=id||'';const m=masters().find(x=>String(x.id)===String(id))||{};
     document.getElementById('km-master-title').textContent='🔑 '+(id?tx('編輯鑰匙','Edit Key','កែសោ'):tx('新增鑰匙','Add Key','បន្ថែមសោ'));
     document.getElementById('km-m-type').innerHTML=keyTypeOptions(m.key_type||prefs().keyType);
-    [['km-m-no',m.key_no],['km-m-name',m.key_name],['km-m-dept',m.dept],['km-m-location',m.location],['km-m-type',m.key_type||prefs().keyType||'一般鑰匙'],['km-m-status',m.status||'active'],['km-m-remarks',m.remarks]].forEach(x=>{const el=document.getElementById(x[0]);if(el)el.value=x[1]||'';});
+    const deptSel=document.getElementById('km-m-dept'),dc=deptCode(m.dept);if(deptSel){deptSel.querySelectorAll('option[data-custom]').forEach(o=>o.remove());if(dc&&!DEPTS.includes(dc)){const o=document.createElement('option');o.value=dc;o.textContent=dc;o.dataset.custom='1';deptSel.appendChild(o);}}
+    [['km-m-no',m.key_no],['km-m-name',m.key_name],['km-m-dept',dc],['km-m-location',m.location],['km-m-type',keyTypeCode(m.key_type||prefs().keyType)],['km-m-status',m.status||'active'],['km-m-remarks',m.remarks]].forEach(x=>{const el=document.getElementById(x[0]);if(el)el.value=x[1]||'';});
     masterDraftPhotos=window.GC&&GC.photo?GC.photo.list(m.photos):Array.isArray(m.photos)?m.photos.filter(Boolean):[];positionMasterPhotoSection();renderMasterDraftPhotos();document.getElementById('km-master-modal').classList.add('open');
   }
   function saveMasterItem(){
-    const no=document.getElementById('km-m-no').value.trim(),name=document.getElementById('km-m-name').value.trim();if(!no||!name){showToast(tx('請填鑰匙編號及名稱','Enter key no. and name','សូមបញ្ចូលលេខ និងឈ្មោះសោ'),'error');return;}
-    const list=rawMaster(),dup=list.find(x=>!x._deleted&&keyNoToken(x.key_no)===keyNoToken(no)&&String(x.id)!==String(editingMasterId));if(dup){showToast(tx('鑰匙編號重複','Duplicate key number','លេខសោស្ទួន'),'error');return;}
+    const no=document.getElementById('km-m-no').value.trim(),name=document.getElementById('km-m-name').value.trim();
+    if(!no)return flagKeyField('km-m-no',tx('請填鑰匙編號','Please enter the key number','សូមបញ្ចូលលេខសោ'));
+    if(!name)return flagKeyField('km-m-name',tx('請填鑰匙名稱','Please enter the key name','សូមបញ្ចូលឈ្មោះសោ'));
+    const list=rawMaster(),dup=list.find(x=>!x._deleted&&keyNoToken(x.key_no)===keyNoToken(no)&&String(x.id)!==String(editingMasterId));if(dup)return flagKeyField('km-m-no',tx('鑰匙編號重複','Duplicate key number','លេខសោស្ទួន')+': '+dup.key_no);
     let item=list.find(x=>String(x.id)===String(editingMasterId));const ts=now();if(!item){item={id:uid('km'),createdAt:ts};list.push(item);}Object.assign(item,{key_no:no,key_name:name,dept:document.getElementById('km-m-dept').value,location:document.getElementById('km-m-location').value.trim(),key_type:document.getElementById('km-m-type').value,status:document.getElementById('km-m-status').value,remarks:document.getElementById('km-m-remarks').value.trim(),photos:masterDraftPhotos.slice(),updatedAt:ts,_deleted:false});
     saveMaster(list,'key_master_save');closeModal('km-master-modal');showToast(tx('鑰匙名單已儲存','Key saved','បានរក្សាទុកសោ'),'success');
   }
@@ -1896,20 +1463,29 @@ window.updateRecord = updateRecord;
     let best=null;wb.SheetNames.forEach(name=>{const ws=wb.Sheets[name];if(!ws||!ws['!ref'])return;const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});for(let i=0;i<Math.min(aoa.length,35);i++){const cells=(aoa[i]||[]).map(keyImportNorm),joined=cells.join('|');let score=0;if(joined.includes('keyno')||joined.includes('鑰匙編號')||joined.includes('លេខសោ'))score+=8;if(joined.includes('keylockname')||joined.includes('鑰匙名稱'))score+=4;if(joined.includes('photo')||joined.includes('照片'))score+=3;if(joined.includes('department')||joined.includes('部門'))score+=2;if(joined.includes('location')||joined.includes('地點'))score+=2;if(/photo.*key.*register/i.test(name))score+=4;if(!best||score>best.score)best={name,ws,aoa,headerRow:i,score};}});return best&&best.score>=8?best:null;
   }
   function keyImportPick(headers,row,aliases){for(const alias of aliases){const n=keyImportNorm(alias),idx=headers.findIndex(h=>{const x=keyImportNorm(h);return !!x&&!!n&&(x===n||x.includes(n)||n.includes(x));});if(idx>=0&&String(row[idx]==null?'':row[idx]).trim()!=='')return String(row[idx]).trim();}return'';}
-  function keyImportDate(v){if(typeof v==='number'&&window.XLSX&&XLSX.SSF){const d=XLSX.SSF.parse_date_code(v);if(d)return d.y+'-'+String(d.m).padStart(2,'0')+'-'+String(d.d).padStart(2,'0');}return String(v==null?'':v).trim();}
+  /* A19：更新日期取原始儲存格（Excel 序號），用 GC.parseDate 轉換，不再把序號變成 "46268" 字串 */
+  function keyImportPickRaw(headers,row,aliases){for(const alias of aliases){const n=keyImportNorm(alias),idx=headers.findIndex(h=>{const x=keyImportNorm(h);return !!x&&!!n&&(x===n||x.includes(n)||n.includes(x));});if(idx>=0&&String(row[idx]==null?'':row[idx]).trim()!=='')return row[idx];}return'';}
+  function keyImportDate(v){if(v==null||v==='')return'';const d=typeof parseDate==='function'?parseDate(v):'';return d||String(v).trim();}
   function importMaster(file){
     if(!file)return;if(!window.XLSX){showToast('XLSX not ready','error');return;}const rd=new FileReader();rd.onload=e=>{try{const wb=XLSX.read(e.target.result,{type:'array',cellDates:false,raw:true,bookFiles:true}),best=keyBestImportSheet(wb);if(!best)throw new Error(tx('找不到鑰匙名單標題列','Key register header was not found','រកមិនឃើញក្បាលបញ្ជីសោ'));
       const headers=best.aoa[best.headerRow]||[],embedded=keyEmbeddedPhotos(wb,best.name),list=rawMaster(),active=list.filter(x=>!x._deleted),map=new Map(active.map(x=>[keyNoToken(x.key_no),x]));let added=0,updated=0,photoCount=0,accepted=0;
-      for(let rowIndex=best.headerRow+1;rowIndex<best.aoa.length;rowIndex++){const r=best.aoa[rowIndex]||[],no=keyImportPick(headers,r,['鑰匙編號','key no','key number','key code','លេខសោ']);if(!no)continue;const name=keyImportPick(headers,r,['鑰匙／門鎖名稱','鑰匙門鎖名稱','key / lock','key lock','key/lock name','鑰匙名稱','key name','name']);if(!name&&/^\d+$/.test(no))continue;let m=map.get(keyNoToken(no));if(!m){m={id:uid('km'),createdAt:now()};list.push(m);map.set(keyNoToken(no),m);added++;}else updated++;accepted++;
-        const photoText=keyImportPick(headers,r,['照片','photo','photos','image','photo url','image url']),urlPhotos=photoText?photoText.split(/[\n,;|]+/).map(x=>x.trim()).filter(x=>/^(data:image\/|https?:\/\/)/i.test(x)):[],embeddedPhotos=embedded[rowIndex]||[],importedPhotos=embeddedPhotos.concat(urlPhotos).slice(0,2);photoCount+=importedPhotos.length;
-        Object.assign(m,{key_no:no,key_name:name||m.key_name||no,dept:keyImportPick(headers,r,['部門','department','dept'])||m.dept||'',location:keyImportPick(headers,r,['地點','位置','location','place'])||m.location||'',key_type:keyImportPick(headers,r,['類型','key type','type'])||m.key_type||prefs().keyType||'一般鑰匙',status:/停用|inactive/i.test(keyImportPick(headers,r,['狀態','status']))?'inactive':'active',tagColor:keyImportPick(headers,r,['tag color','標籤顏色'])||m.tagColor||'',quantity:+keyImportPick(headers,r,['qty','quantity','數量'])||m.quantity||1,custodian:keyImportPick(headers,r,['custodian','保管人'])||m.custodian||'',verification:keyImportPick(headers,r,['verification','核對'])||m.verification||'',originalCopy:keyImportPick(headers,r,['original/copy','original copy','正本副本'])||m.originalCopy||'',updatedDate:keyImportDate(keyImportPick(headers,r,['updated','更新日期']))||m.updatedDate||'',remarks:keyImportPick(headers,r,['備註','remarks','note'])||m.remarks||'',photos:importedPhotos.length?importedPhotos:(m.photos||[]),updatedAt:now(),_deleted:false});
+      for(let rowIndex=best.headerRow+1;rowIndex<best.aoa.length;rowIndex++){const r=best.aoa[rowIndex]||[],no=keyImportPick(headers,r,['鑰匙編號','key no','key number','key code','លេខសោ']);if(!no)continue;const name=keyImportPick(headers,r,['鑰匙／門鎖名稱','鑰匙門鎖名稱','key / lock','key lock','key/lock name','鑰匙名稱','key name','ឈ្មោះសោ','name']);if(!name&&/^\d+$/.test(no))continue;let m=map.get(keyNoToken(no));if(!m){m={id:uid('km'),createdAt:now()};list.push(m);map.set(keyNoToken(no),m);added++;}else updated++;accepted++;
+        const photoText=keyImportPick(headers,r,['Photo / 照片','照片','photo','photos','image','photo url','image url']),urlPhotos=photoText?photoText.split(/[\n,;|]+/).map(x=>x.trim()).filter(x=>/^(data:image\/|https?:\/\/)/i.test(x)):[],embeddedPhotos=embedded[rowIndex]||[],importedPhotos=embeddedPhotos.concat(urlPhotos).slice(0,2);photoCount+=importedPhotos.length;
+        Object.assign(m,{key_no:no,key_name:name||m.key_name||no,dept:deptCode(keyImportPick(headers,r,['部門','department','dept','ផ្នែក']))||m.dept||'',location:keyImportPick(headers,r,['地點','位置','location','place','ទីតាំង'])||m.location||'',key_type:keyTypeCode(keyImportPick(headers,r,['類型','key type','type','ប្រភេទសោ'])||m.key_type||prefs().keyType),status:/停用|inactive|ផ្អាក/i.test(keyImportPick(headers,r,['狀態','status','ស្ថានភាព']))?'inactive':'active',tagColor:keyImportPick(headers,r,['tag color','標籤顏色'])||m.tagColor||'',quantity:+keyImportPick(headers,r,['qty','quantity','數量'])||m.quantity||1,custodian:keyImportPick(headers,r,['custodian','保管人'])||m.custodian||'',verification:keyImportPick(headers,r,['verification','核對'])||m.verification||'',originalCopy:keyImportPick(headers,r,['original/copy','original copy','正本副本'])||m.originalCopy||'',updatedDate:keyImportDate(keyImportPickRaw(headers,r,['updated','更新日期']))||m.updatedDate||'',remarks:keyImportPick(headers,r,['備註','remarks','note'])||m.remarks||'',photos:importedPhotos.length?importedPhotos:(m.photos||[]),updatedAt:now(),_deleted:false});
       }
       if(!accepted)throw new Error(tx('找到標題但沒有鑰匙資料','Header found but no key rows were detected','រកឃើញក្បាលតែគ្មានទិន្នន័យសោ'));
       saveMaster(list,'key_master_import');showSection('record');showToast('✅ '+tx('匯入完成','Import complete','នាំចូលរួច')+': +'+added+' / ↻'+updated+' / 📷 '+photoCount+' · '+best.name,'success');
     }catch(err){showToast(tx('匯入失敗','Import failed','នាំចូលបរាជ័យ')+': '+err.message,'error');}};rd.readAsArrayBuffer(file);
   }
   function exportMaster(){
-    const rows=masters().map(m=>({'Key No':m.key_no,'Key Name':m.key_name,'Department':m.dept,'Location':m.location,'Tag Color':m.tagColor||'','Qty':m.quantity||1,'Custodian':m.custodian||'','Verification':m.verification||'','Original / Copy':m.originalCopy||'','Updated':m.updatedDate||'','Key Type':m.key_type,'Status':m.status||'active','Photo / 照片':(m.photos||[]).filter(p=>/^https?:\/\//i.test(String(p))).join(' | '),'Remarks':m.remarks||''}));if(!rows.length){showToast(tx('沒有鑰匙名單','No key master data','គ្មានបញ្ជីសោ'),'warn');return;}if(window.XLSX){const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Key Master');XLSX.writeFile(wb,'VRT_Key_Master_'+today()+'.xlsx');}
+    const list=masters();if(!list.length){showToast(tx('沒有鑰匙名單','No key master data','គ្មានបញ្ជីសោ'),'warn');return;}
+    const cols=[['key_no',tx('鑰匙編號','Key No.','លេខសោ')],['key_name',tx('鑰匙名稱','Key name','ឈ្មោះសោ')],['dept',tx('部門','Department','ផ្នែក')],['location',tx('地點','Location','ទីតាំង')],['tagColor',tx('標籤顏色','Tag color','ពណ៌ស្លាក')],['quantity',tx('數量','Qty','បរិមាណ')],['custodian',tx('保管人','Custodian','អ្នករក្សា')],['verification',tx('核對','Verification','ការផ្ទៀងផ្ទាត់')],['originalCopy',tx('正本／副本','Original / Copy','ច្បាប់ដើម / ច្បាប់ចម្លង')],['updatedDate',tx('更新日期','Updated','កាលបរិច្ឆេទធ្វើបច្ចុប្បន្នភាព')],['key_type',tx('鑰匙類型','Key type','ប្រភេទសោ')],['status',tx('狀態','Status','ស្ថានភាព')],['photos',tx('照片網址','Photo URL','តំណរូបថត')],['remarks',tx('備註','Remarks','ចំណាំ')]];
+    const val=(m,k)=>{const v=m[k];if(k==='dept')return deptLabel(v)||'';if(k==='key_type')return keyTypeLabel(v)||'';if(k==='status')return m.status==='inactive'?tx('停用','Inactive','ផ្អាក'):tx('啟用','Active','សកម្ម');if(k==='quantity')return +v||1;if(k==='photos')return (Array.isArray(v)?v:[]).filter(p=>/^https?:\/\//i.test(String(p))).join(' | ');return v==null?'':String(v);};
+    if(!window.XLSX){showToast('XLSX','error');return;}
+    const aoa=[cols.map(c=>c[1])].concat(list.map(m=>cols.map(c=>val(m,c[0]))));
+    const wb=XLSX.utils.book_new(),ws=XLSX.utils.aoa_to_sheet(aoa);ws['!cols']=cols.map(()=>({wch:16}));
+    XLSX.utils.book_append_sheet(wb,ws,tx('鑰匙名單','Key Master','បញ្ជីសោ'));XLSX.writeFile(wb,'VRT_Key_Master_'+today()+'.xlsx');
+    showToast('✅ '+tx('已匯出鑰匙名單','Key list exported','បាននាំចេញបញ្ជីសោ'),'success');
   }
   function cloudRead(){
     const moves=(records||[]).concat(window.KEY_V29&&KEY_V29.tombstones?KEY_V29.tombstones():[]);
@@ -1922,7 +1498,7 @@ window.updateRecord = updateRecord;
     if(window.KEY_V29&&KEY_V29.splitCloud)KEY_V29.splitCloud(moves);else{records=moves.filter(x=>!x._deleted);window.records=records;saveData();}
     renderAll();renderMasterList();renderBatchRows();
   }
-  function addStyles(){if(document.getElementById('key-v31-css'))return;const s=document.createElement('style');s.id='key-v31-css';s.textContent='.key-batch-defaults,.km-settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end;margin-bottom:14px}.km-date-nav{display:flex;gap:5px}.km-date-nav input{flex:1;min-width:0;width:100%}.km-date-nav button,.km-icon-btn{border:1px solid var(--border);background:#fff;border-radius:7px;cursor:pointer}.km-period-bar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:14px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)}.km-period-tabs{display:flex}.km-period-tabs button,.km-period-bar>button{border:1px solid var(--border);background:#fff;padding:8px 12px;cursor:pointer}.km-period-tabs button:first-child{border-radius:8px 0 0 8px}.km-period-tabs button:last-child{border-radius:0 8px 8px 0}.km-period-tabs button.on{background:var(--primary);color:#fff}.km-period-bar input{padding:7px;border:1px solid var(--border);border-radius:8px}.km-period-bar #km-period-summary{display:flex;gap:12px;flex-wrap:wrap;margin-left:auto}.key-batch-table,.key-master-table{width:100%;min-width:1100px;border-collapse:collapse;font-size:12px}.key-batch-table th,.key-master-table th{background:var(--bg3);padding:9px;text-align:left;border-bottom:2px solid var(--border)}.key-batch-table td,.key-master-table td{padding:7px;border-bottom:1px solid var(--border)}.key-batch-table input,.key-batch-table select{width:100%;min-width:105px;border:1px solid var(--border);border-radius:7px;padding:7px;background:#fff}.km-master-meta{min-width:125px;color:var(--text2)}.km-state{display:inline-block;padding:3px 8px;border-radius:999px;font-weight:700}.km-state.available{background:#e9f8ef;color:#16733d}.km-state.issued{background:#fff1d8;color:#9a5b00}.km-state.inactive{background:#eef0f4;color:#657080}.km-state.lost{background:#ffe7e7;color:#b62424}.km-thumb{width:46px;height:46px;object-fit:cover;border-radius:7px}.km-photo-btn,.km-photo-empty{position:relative;border:1px dashed var(--border);background:#fff;border-radius:8px;cursor:pointer;min-width:48px;min-height:46px}.km-photo-btn span{position:absolute;right:-5px;top:-6px;background:var(--primary);color:#fff;border-radius:999px;padding:1px 5px;font-size:10px}.km-data-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding:12px;border:1px solid var(--border);border-radius:10px}.km-data-tools>div{margin-right:auto}.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:13px 18px;border-top:1px solid var(--border)}@media(max-width:700px){.key-batch-defaults>.form-group:first-child{grid-column:1/-1}.key-batch-defaults,.km-settings-grid{grid-template-columns:1fr 1fr}.key-batch-table,.key-master-table{font-size:11px}.km-period-bar #km-period-summary{width:100%;margin-left:0}}';document.head.appendChild(s);}
+  function addStyles(){if(document.getElementById('key-v31-css'))return;const s=document.createElement('style');s.id='key-v31-css';s.textContent='.key-batch-defaults,.km-settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;align-items:end;margin-bottom:14px}.km-date-nav{display:flex;gap:5px}.km-date-nav input{flex:1;min-width:0;width:100%}.km-date-nav button,.km-icon-btn{border:1px solid var(--border);background:#fff;border-radius:7px;cursor:pointer}.km-period-bar{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:14px;padding:10px;border:1px solid var(--border);border-radius:10px;background:var(--bg3)}.km-period-tabs{display:flex}.km-period-tabs button,.km-period-bar>button{border:1px solid var(--border);background:#fff;padding:8px 12px;cursor:pointer}.km-period-tabs button:first-child{border-radius:8px 0 0 8px}.km-period-tabs button:last-child{border-radius:0 8px 8px 0}.km-period-tabs button.on{background:var(--primary);color:#fff}.km-period-bar input{padding:7px;border:1px solid var(--border);border-radius:8px}.km-period-bar #km-period-summary{display:flex;gap:12px;flex-wrap:wrap;margin-left:auto}.key-batch-table,.key-master-table{width:100%;min-width:1100px;border-collapse:collapse;font-size:12px}.key-batch-table th,.key-master-table th{background:var(--bg3);padding:9px;text-align:left;border-bottom:2px solid var(--border)}.key-batch-table td,.key-master-table td{padding:7px;border-bottom:1px solid var(--border)}.key-batch-table input,.key-batch-table select{width:100%;min-width:105px;border:1px solid var(--border);border-radius:7px;padding:7px;background:#fff}.km-master-meta{min-width:125px;color:var(--text2)}.km-state{display:inline-block;padding:3px 8px;border-radius:999px;font-weight:700}.km-state.available{background:#e9f8ef;color:#16733d}.km-state.issued{background:#fff1d8;color:#9a5b00}.km-state.inactive{background:#eef0f4;color:#657080}.km-state.lost{background:#ffe7e7;color:#b62424}.km-thumb{width:46px;height:46px;object-fit:cover;border-radius:7px}.km-photo-btn,.km-photo-empty{position:relative;border:1px dashed var(--border);background:#fff;border-radius:8px;cursor:pointer;min-width:48px;min-height:46px}.km-photo-btn span{position:absolute;right:-5px;top:-6px;background:var(--primary);color:#fff;border-radius:999px;padding:1px 5px;font-size:10px}.km-data-tools{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:18px;padding:12px;border:1px solid var(--border);border-radius:10px}.km-data-tools>div{margin-right:auto}.modal-footer{display:flex;justify-content:flex-end;gap:8px;padding:13px 18px;border-top:1px solid var(--border)}@media(max-width:480px){.km-settings-grid{grid-template-columns:minmax(0,1fr)!important}.km-settings-grid select,.km-settings-grid input{max-width:100%;min-width:0}}@media(max-width:700px){.key-batch-defaults>.form-group:first-child{grid-column:1/-1}.key-batch-defaults,.km-settings-grid{grid-template-columns:1fr 1fr}.key-batch-table,.key-master-table{font-size:11px}.km-period-bar #km-period-summary{width:100%;margin-left:0}}';document.head.appendChild(s);}
   function addV34Styles(){if(document.getElementById('key-v34-css'))return;const s=document.createElement('style');s.id='key-v34-css';s.textContent='.km-period-bar{background:#f3f5f8!important;border-color:#b9c3cf!important;color:#243447!important}.km-period-tabs button,.km-period-bar>button{color:#243447!important;background:#fff!important;border-color:#aeb9c6!important;font-weight:700!important}.km-period-tabs button.on{background:#1a3a5c!important;border-color:#1a3a5c!important;color:#fff!important}.km-period-bar input{color:#172536!important;background:#fff!important;border-color:#9eabb9!important;font-weight:700!important;min-width:145px}.km-period-bar #km-period-summary{color:#34495e!important;font-weight:600}.km-period-bar #km-period-summary b{color:#173f6b!important}.key-master-table th,.key-batch-table th{background:#1a3a5c!important;color:#fff!important;font-weight:800!important}.key-master-table td,.key-batch-table td{color:#243447!important;background:#fff}.key-master-table tbody tr:hover td,.key-batch-table tbody tr:hover td{background:#edf3f8!important}.km-master-meta,#km-master-count,#record-count-info{color:#3d4f61!important;font-weight:600}.filter-bar input,.filter-bar select,.key-batch-table input,.key-batch-table select{color:#172536!important;background:#fff!important;border-color:#aeb9c6!important}.km-master-photo-list{display:flex;align-items:center;gap:10px;flex-wrap:wrap;min-height:88px;padding:10px;border:1px solid #b8c2ce;border-radius:9px;background:#f7f9fb}.km-photo-picker{width:132px;min-height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:2px dashed #315e8c;border-radius:9px;background:#edf5fc;color:#153e68;cursor:pointer;text-align:center;padding:8px}.km-photo-picker:hover{background:#dcecf9}.km-photo-picker small{color:#48647e}.km-photo-picker input{display:none}.km-draft-photo{position:relative;width:78px;height:78px;border:1px solid #9daab8;border-radius:9px;overflow:hidden;background:#fff}.km-draft-photo img{width:100%;height:100%;object-fit:cover;cursor:zoom-in}.km-draft-photo button{position:absolute;right:3px;top:3px;width:23px;height:23px;border:0;border-radius:50%;background:#a61b1b;color:#fff;font-weight:800;cursor:pointer}.card-title,.form-group label{color:#28394c!important}.btn-outline{color:#354a5f!important;border-color:#9eabb9!important}';document.head.appendChild(s);}
   function addV35Styles(){if(document.getElementById('key-v35-css'))return;const s=document.createElement('style');s.id='key-v35-css';s.textContent='.km-photo-field{grid-column:1/-1!important;border:2px solid #315e8c!important;border-radius:12px!important;padding:12px!important;background:#f5f9fd!important}.km-photo-field>label{font-size:15px!important;color:#163d66!important}.km-photo-add{display:grid;gap:8px;min-width:min(100%,320px);color:#1f344b}.km-photo-actions{display:flex;gap:8px;flex-wrap:wrap}.km-file-picker,.km-camera-picker{display:flex!important;align-items:center;justify-content:center;min-height:44px;border:1px solid #315e8c;border-radius:8px;background:#e8f2fb;color:#153e68!important;font-size:13px!important;font-weight:800;cursor:pointer;padding:6px 12px}.km-file-picker:hover,.km-camera-picker:hover{background:#dcecf9}.km-native-photo-input{position:absolute!important;width:1px!important;height:1px!important;opacity:.01!important}.km-native-photo-input::file-selector-button{min-height:34px;margin-right:10px;border:0;border-radius:6px;background:#1a3a5c;color:#fff;padding:7px 11px;font-weight:700}.km-camera-picker input{position:absolute!important;width:1px!important;height:1px!important;opacity:.01!important}.km-photo-add small{color:#435a70!important;line-height:1.45}.modal-overlay .modal{max-height:calc(100dvh - 24px);display:flex;flex-direction:column}.modal-overlay .modal-body{overflow:auto;-webkit-overflow-scrolling:touch}.modal-overlay .modal-footer{position:sticky;bottom:0;background:#fff;z-index:3}@media(max-width:700px){.km-master-photo-list{align-items:stretch}.km-photo-add{width:100%}.km-photo-actions{width:100%}.km-file-picker,.km-camera-picker{flex:1}}';document.head.appendChild(s);}
   function addV36Styles(){if(document.getElementById('key-v36-css'))return;const s=document.createElement('style');s.id='key-v36-css';s.textContent='.km-dashboard-import{border:2px solid #315e8c!important;background:linear-gradient(135deg,#edf6ff,#f5fbf7)!important}.km-dashboard-import .card-body{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.km-dashboard-import p{margin:4px 0;color:#31465b;line-height:1.5}.km-dashboard-import .btn{min-height:44px}.km-master-photo-list{display:flex!important;visibility:visible!important;min-height:100px!important}.km-photo-field{display:block!important}.km-photo-field label{display:block!important}.key-master-table td,.key-master-table td *{opacity:1}.key-master-table td{color:#172536!important}@media(max-width:700px){.km-dashboard-import .btn{width:100%;justify-content:center}}';document.head.appendChild(s);}
@@ -1936,13 +1512,15 @@ window.updateRecord = updateRecord;
   window.keyBatchAddRow=()=>{batchRows.push(newBatchRow());renderBatchRows();};
   window.keyBatchRemove=id=>{batchRows=batchRows.filter(x=>x.rowId!==id);renderBatchRows();};
   window.keyBatchSet=batchSet;window.keyBatchSaveAll=batchSave;window.keyShiftBatchDate=shiftBatchDate;
-  window.keyBatchClear=()=>{batchRows=[newBatchRow()];mountBatch();};
+  window.keyBatchClear=()=>{batchRows=[newBatchRow()];pendingDefaults=freshDefaults();mountBatch();};
   window.keyMasterRender=renderMasterList;window.keyMasterOpen=openMaster;window.keyMasterSave=saveMasterItem;window.keyMasterDelete=deleteMaster;window.keyMasterImport=importMaster;window.keyMasterExport=exportMaster;window.keyMasterViewPhotos=viewMasterPhotos;window.keyMasterPickPhotos=pickMasterPhotos;window.keyMasterRemoveDraftPhoto=removeMasterDraftPhoto;window.keyMasterViewDraftPhoto=viewMasterDraftPhoto;window.keyPrefsSave=savePrefs;
   window.keySetPeriod=keySetPeriod;window.keySetPeriodRef=keySetPeriodRef;window.keyShiftPeriod=keyShiftPeriod;window.renderKeyPeriodSummary=renderKeyPeriodSummary;
-  const oldEdit=window.editRecord||editRecord;window.editRecord=editRecord=function(id){const r=(records||[]).find(x=>String(x.id)===String(id));if(!r)return;batchRows=[newBatchRow(r)];mountBatch();batchDefaults={date:r.issue_date||today(),time:r.issue_time||'',inspector:r.checker||''};document.getElementById('km-batch-date').value=batchDefaults.date;document.getElementById('km-batch-time').value=batchDefaults.time;document.getElementById('km-batch-inspector').value=batchDefaults.inspector;showSection('record');};
+  const oldEdit=window.editRecord||editRecord;window.editRecord=editRecord=function(id){const r=(records||[]).find(x=>String(x.id)===String(id));if(!r)return;batchRows=[newBatchRow(r)];mountBatch();batchDefaults={date:r.issue_date||today(),time:r.issue_time||'',inspector:r.checker||''};document.getElementById('km-batch-date').value=batchDefaults.date;document.getElementById('km-batch-time').value=batchDefaults.time;document.getElementById('km-batch-inspector').value=batchDefaults.inspector;renderEditBanner();showSection('record');const top=document.getElementById('km-edit-banner');try{top&&top.scrollIntoView&&top.scrollIntoView({block:'start'});}catch(e){}};
+  const baseShowSection=window.showSection||showSection;window.showSection=showSection=function(s){if(s!=='record'&&editingRow())cancelEdit(false);return baseShowSection(s);};
+  window.keyCancelEdit=function(){cancelEdit(false);};
   const oldSet=window.setLang||setLang;window.setLang=setLang=function(l){oldSet(l);mount();renderMasterList();renderBatchRows();};
   window.renderSettings=renderSettings=function(){renderMasterList();};
-  window.KEY_V31={normalizeKeyNo:keyNoToken,normalizeKeyType,reconcileMasters,currentMovement,newBatchRow,readMaster:rawMaster,activeMaster:masters,cloudRead:cloudRead,cloudWrite:cloudWrite,mount:mount};
+  window.KEY_V31={refresh:function(){renderMasterList();renderKeyPeriodSummary();renderBatchRows();},normalizeKeyNo:keyNoToken,normalizeKeyType,reconcileMasters,currentMovement,newBatchRow,readMaster:rawMaster,activeMaster:masters,cloudRead:cloudRead,cloudWrite:cloudWrite,mount:mount};
   const start=()=>{const run=()=>mount();if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
@@ -1956,27 +1534,47 @@ function keyTelegramText(zh,en,km,lang){
   return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
 }
 function buildKeyTelegram(opt){
-  opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode=opt.mode||'summary',lang=opt.lang||'bi';
-  const all=typeof cfg.read==='function'?(cfg.read()||[]):[];
+  /* 鑰匙模組沒有真正的 Telegram 核可：只發摘要；報告語言預設為目前介面語言 */
+  opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode='summary',lang=opt.lang||(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang)||'en';
+  const all=(typeof cfg.read==='function'?(cfg.read()||[]):[]).filter(r=>r&&!r._deleted);
   const rows=typeof GC!=='undefined'&&GC.telegram?GC.telegram.filter(all,cfg,period,opt.ref,opt.scope||'all',opt.slot||'all'):(typeof GC!=='undefined'&&GC.period?GC.period.filter(all,period,'issue_date',opt.ref):all.slice());
   const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   const periodLabel={day:keyTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:keyTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:keyTelegramText('本月','This Month','ខែនេះ',lang),year:keyTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:keyTelegramText('全部','All','ទាំងអស់',lang)}[period]||period;
   const modeLabel={summary:keyTelegramText('摘要','Summary','សង្ខេប',lang),review:keyTelegramText('審查','Review','ពិនិត្យ',lang),approval:keyTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
   const checkers=[...new Set(rows.map(r=>String(r.checker||r.checked_by||r.checkBy||'').trim()).filter(Boolean))];
-  const returned=rows.filter(r=>r.return_date).length,lost=rows.filter(r=>r.return_condition==='遺失'||String(r.return_condition||'').toLowerCase()==='lost').length,outstanding=Math.max(0,rows.length-returned-lost);
-  const lines=['🔑 <b>'+keyTelegramText('VRT 鑰匙管理','VRT Key Management','VRT គ្រប់គ្រងសោ',lang)+'</b>','📅 '+periodLabel,'🧾 '+keyTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeLabel,'━━━━━━━━━━━━━━━━','📊 <b>'+keyTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+keyTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+rows.length+'</b> | '+keyTelegramText('未歸還','Outstanding','មិនទាន់ប្រគល់',lang)+': '+outstanding,'• '+keyTelegramText('已歸還','Returned','បានប្រគល់',lang)+': '+returned+' | '+keyTelegramText('遺失','Lost','បាត់',lang)+': '+lost,'• '+keyTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+esc(checkers.join(', ')||'—')];
+  const lostOf=r=>typeof isLost==='function'?isLost(r):(r.return_condition==='遺失'||String(r.return_condition||'').toLowerCase()==='lost');
+  const lost=rows.filter(lostOf).length,returned=rows.filter(r=>r.return_date&&!lostOf(r)).length,outstanding=Math.max(0,rows.length-returned-lost);
+  const dept=v=>typeof deptLabelIn==='function'?deptLabelIn(v,lang):String(v||'');
+  const lines=['🔑 <b>'+keyTelegramText('VRT 鑰匙管理','VRT Key Management','VRT គ្រប់គ្រងសោ',lang)+'</b>','📅 '+periodLabel+(opt.ref?' · '+esc(opt.ref):''),'🧾 '+keyTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeLabel,'━━━━━━━━━━━━━━━━','📊 <b>'+keyTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+keyTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+rows.length+'</b> | '+keyTelegramText('未歸還','Outstanding','មិនទាន់ប្រគល់',lang)+': '+outstanding,'• '+keyTelegramText('已歸還','Returned','បានប្រគល់',lang)+': '+returned+' | '+keyTelegramText('遺失','Lost','បាត់',lang)+': '+lost,'• '+keyTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+esc(checkers.join(', ')||'—')];
   const photos=[];
-  if(rows.length){lines.push('━━━━━━━━━━━━━━━━');rows.slice(0,60).forEach(r=>{const isLost=r.return_condition==='遺失'||String(r.return_condition||'').toLowerCase()==='lost';const status=isLost?keyTelegramText('遺失','Lost','បាត់',lang):(r.return_date?keyTelegramText('已歸還','Returned','បានប្រគល់',lang):keyTelegramText('未歸還','Outstanding','មិនទាន់ប្រគល់',lang));lines.push('🗝️ '+esc(r.issue_date||'—')+' '+esc(r.issue_time||'')+' | '+esc(r.key_no||'—')+' | '+esc(r.dept||'—')+' | '+esc(r.recipient_name||'—')+' | '+status+(r.checker||r.checked_by?' | 👤 '+esc(r.checker||r.checked_by):''));(Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});if(rows.length>60)lines.push('… '+(rows.length-60)+' more');}
+  if(rows.length){lines.push('━━━━━━━━━━━━━━━━');rows.slice(0,60).forEach(r=>{const lostRow=lostOf(r);const status=lostRow?keyTelegramText('遺失','Lost','បាត់',lang):(r.return_date?keyTelegramText('已歸還','Returned','បានប្រគល់',lang):keyTelegramText('未歸還','Outstanding','មិនទាន់ប្រគល់',lang));lines.push('🗝️ '+esc(r.issue_date||'—')+' '+esc(r.issue_time||'')+' | '+esc(r.key_no||'—')+' | '+esc(dept(r.dept)||'—')+' | '+esc(r.recipient_name||'—')+' | '+status+(r.checker||r.checked_by?' | 👤 '+esc(r.checker||r.checked_by):''));(Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});if(rows.length>60)lines.push('… +'+(rows.length-60)+' '+keyTelegramText('筆','more','ទៀត',lang));}
   else lines.push('━━━━━━━━━━━━━━━━',keyTelegramText('暫無記錄','No records','គ្មានកំណត់ត្រា',lang));
-  lines.push('━━━━━━━━━━━━━━━━','⏰ '+new Date().toLocaleString());
+  lines.push('━━━━━━━━━━━━━━━━','⏰ '+(typeof _localTS==='function'?_localTS():new Date().toLocaleString('sv-SE')));
   return {text:lines.join('\n'),photos};
+}
+/* A8：共用智慧匯入的列在頁面端轉換 Excel 序號日期／時間，並以 鑰匙編號＋日期＋時間 去重（重複匯入不再重複新增） */
+function keyMergeImport(cur,rows){
+  const pd=v=>typeof GC!=='undefined'&&GC.parseDate?(GC.parseDate(v)||''):(typeof parseDate==='function'?parseDate(v):String(v||''));
+  const pt=v=>{if(typeof GC!=='undefined'&&GC.parseTime){const x=GC.parseTime(v);if(x)return x;}if(typeof v==='number'&&isFinite(v)){const m=Math.round((v%1)*1440);return String(Math.floor(m/60)%24).padStart(2,'0')+':'+String(m%60).padStart(2,'0');}const m=String(v==null?'':v).trim().match(/^(\d{1,2}):(\d{2})/);return m?String(+m[1]).padStart(2,'0')+':'+m[2]:'';};
+  const tok=v=>window.KEY_V31&&KEY_V31.normalizeKeyNo?KEY_V31.normalizeKeyNo(v):String(v||'').trim().toUpperCase();
+  const sig=r=>tok(r.key_no)+'|'+String(r.issue_date||'').slice(0,10)+'|'+String(r.issue_time||'').slice(0,5);
+  const out=(cur||[]).slice(),seen=new Set(out.filter(r=>r&&!r._deleted).map(sig));let added=0,skipped=0;
+  (rows||[]).forEach(r=>{
+    const n=Object.assign({},r,{key_no:String(r.key_no==null?'':r.key_no).trim(),issue_date:pd(r.issue_date),issue_time:pt(r.issue_time),dept:typeof deptCode==='function'?deptCode(r.dept):r.dept,recipient_name:String(r.recipient_name==null?'':r.recipient_name).trim(),checker:String(r.checker==null?'':r.checker).trim(),imported:true});
+    if(!n.key_no&&!n.issue_date){skipped++;return;}
+    const k=sig(n);if(seen.has(k)){skipped++;return;}
+    seen.add(k);n.createdAt=n.createdAt||(typeof _localTS==='function'?_localTS():'');out.push(n);added++;
+  });
+  if(skipped)setTimeout(()=>{if(typeof showToast==='function')showToast(L('已略過重複或空白列：','Skipped duplicate or blank rows: ','បានរំលងជួរស្ទួន ឬទទេ៖ ')+skipped,'warn');},400);
+  return out;
 }
 (function(){
   function boot(){
     if(typeof GC==='undefined'||!GC.attach){ setTimeout(boot,150); return; }
     GC.attach({
       tool:'keymovement',
-      title:'Key 鑰匙管理',
+      exportHandler:function(){return exportExcel();},
+      title:'Key',
       gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'issue_date',
       idField:'id',
@@ -1988,6 +1586,8 @@ function buildKeyTelegram(opt){
       telegramLanguage:true,
       telegramAutoUpload:true,telegramPhotoDedupe:true,telegramRequireData:true,
       telegramBuilder:buildKeyTelegram,
+      telegramModes:['summary'],
+      mergeImport:keyMergeImport,
       importSchema:{"key_no": ["鑰匙編號", "鑰匙號碼", "keyno", "key code", "code", "លេខសោ"], "dept": ["部門", "department", "dept", "នាយកដ្ឋាន"], "recipient_name": ["領用人", "收受人", "recipient", "holder", "អ្នកកាន់"], "issue_date": ["發出日期", "日期", "issue date", "date", "ថ្ងៃ"], "issue_time": ["發出時間", "issue time", "time", "ម៉ោងចេញ"], "checker": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remarks": ["備註", "備注", "remarks", "notes", "ចំណាំ"]},
     read(){ try{ const raw=localStorage.getItem('vrt_keys');let active=[];
         if(raw){const d=JSON.parse(raw);active=Array.isArray(d)?d:(['records','list','items','data','rows'].map(k=>Array.isArray(d[k])?d[k]:null).find(Boolean)||[]);}

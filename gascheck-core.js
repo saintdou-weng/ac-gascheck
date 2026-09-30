@@ -83,6 +83,124 @@ const U = GC.util = {
   }
 };
 
+/* ── 日期／時間解析（SheetJS raw:true 序號、Date、各種文字格式）──
+   GC.parseDate(v) → 'YYYY-MM-DD'（無效回 ''）
+   GC.parseTime(v) → 'HH:MM'（無效回 ''）
+   D/M/YYYY 預設「日在前」；只有第二段 >12 時才視為 M/D/YYYY。 */
+const DATE_MONTHS = {jan:1,feb:2,mar:3,apr:4,may:5,jun:6,jul:7,aug:8,sep:9,sept:9,oct:10,nov:11,dec:12,
+  january:1,february:2,march:3,april:4,june:6,july:7,august:8,september:9,october:10,november:11,december:12};
+function pad2(n) { return String(n).padStart(2, '0'); }
+function validYmd(y, m, d, minYear) {
+  y = Number(y); m = Number(m); d = Number(d);
+  if (!(y >= (minYear || 1900) && y <= 2999 && m >= 1 && m <= 12 && d >= 1)) return '';
+  if (d > new Date(y, m, 0).getDate()) return '';
+  return y + '-' + pad2(m) + '-' + pad2(d);
+}
+function excelSerialDate(n) {
+  n = Number(n);
+  if (!isFinite(n) || n < 1 || n > 2958465) return '';
+  const days = Math.floor(n + 1e-7);
+  // Excel 1900 系統：以本地 1899-12-30 為第 0 天，避免 UTC 位移造成「早一天」。
+  const d = new Date(1899, 11, 30 + days);
+  return validYmd(d.getFullYear(), d.getMonth() + 1, d.getDate(), 1950);
+}
+function isDateObj(v) { return v instanceof Date || Object.prototype.toString.call(v) === '[object Date]'; }
+function parseDateValue(v) {
+  if (v == null || v === '' || typeof v === 'boolean') return '';
+  if (isDateObj(v)) return isNaN(v.getTime()) ? '' : U.ymd(v);
+  if (typeof v === 'number') {
+    if (!isFinite(v)) return '';
+    if (Number.isInteger(v) && v >= 19000101 && v <= 29991231) return validYmd(Math.floor(v / 10000), Math.floor(v / 100) % 100, v % 100);
+    return excelSerialDate(v);
+  }
+  let s = String(v).trim();
+  if (!s) return '';
+  if (/^\d+(\.\d+)?$/.test(s)) return parseDateValue(Number(s));
+  // ISO 含時區（例如 JSON 化的 Date）→ 轉本地日期
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/i.test(s)) {
+    const d = new Date(s); return isNaN(d) ? '' : U.ymd(d);
+  }
+  s = s.replace(/[\u200b\u00a0]/g, ' ');
+  let m = s.match(/^(\d{4})\s*[-\/.年]\s*(\d{1,2})\s*[-\/.月]\s*(\d{1,2})\s*日?(?:$|[T\s,])/);
+  if (m) return validYmd(m[1], m[2], m[3]);
+  m = s.match(/^(\d{1,2})\s*[-\/.]\s*(\d{1,2})\s*[-\/.]\s*(\d{4}|\d{2})(?:$|[T\s,])/);
+  if (m) {
+    const a = +m[1], b = +m[2], y = m[3].length === 2 ? 2000 + +m[3] : +m[3];
+    if (a > 12 && b <= 12) return validYmd(y, b, a);      // D/M/YYYY
+    if (b > 12 && a <= 12) return validYmd(y, a, b);      // M/D/YYYY（只有日 >12 才能判定）
+    if (a <= 12 && b <= 12) return validYmd(y, b, a);     // 預設日在前
+    return '';
+  }
+  m = s.match(/^(\d{1,2})[\s\-\/.]*([A-Za-z]{3,9})\.?[\s\-\/.,]*(\d{4}|\d{2})\b/);
+  if (m && DATE_MONTHS[m[2].toLowerCase()]) return validYmd(m[3].length === 2 ? 2000 + +m[3] : m[3], DATE_MONTHS[m[2].toLowerCase()], m[1]);
+  m = s.match(/^([A-Za-z]{3,9})\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+(\d{4})\b/);
+  if (m && DATE_MONTHS[m[1].toLowerCase()]) return validYmd(m[3], DATE_MONTHS[m[1].toLowerCase()], m[2]);
+  return '';
+}
+function parseTimeValue(v) {
+  if (v == null || v === '' || typeof v === 'boolean') return '';
+  if (isDateObj(v)) return isNaN(v.getTime()) ? '' : pad2(v.getHours()) + ':' + pad2(v.getMinutes());
+  if (typeof v === 'number') {
+    if (!isFinite(v) || v < 0) return '';
+    if (Number.isInteger(v)) {
+      if (v === 0) return '00:00';
+      if (v >= 100 && v <= 2359 && v % 100 < 60) return pad2(Math.floor(v / 100)) + ':' + pad2(v % 100); // 0830 → 08:30
+      return ''; // 純日期序號沒有時間
+    }
+    const frac = v - Math.floor(v);
+    const mins = Math.round(frac * 1440) % 1440;
+    return pad2(Math.floor(mins / 60)) + ':' + pad2(mins % 60);
+  }
+  let s = String(v).trim();
+  if (!s) return '';
+  if (/^\d+\.\d+$/.test(s) || /^0$/.test(s)) return parseTimeValue(Number(s));
+  if (/^\d{3,4}$/.test(s)) return parseTimeValue(Number(s));
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})$/i.test(s)) {
+    const d = new Date(s); return isNaN(d) ? '' : pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+  }
+  s = s.replace(/^\d{4}\s*[-\/.年]\s*\d{1,2}\s*[-\/.月]\s*\d{1,2}\s*日?[T\s,]*/, '')
+       .replace(/^\d{1,2}[-\/.]\d{1,2}[-\/.]\d{2,4}[T\s,]*/, '').trim();
+  const m = s.match(/^(上午|下午|晚上|中午|早上|凌晨)?\s*(\d{1,2})(?:\s*[:：h]\s*(\d{2})|\.(\d{2})(?!\d))?(?:\s*:\s*(\d{2}))?(?:\.\d+)?\s*(a\.?m\.?|p\.?m\.?)?/i);
+  if (!m) return '';
+  const minutes = m[3] != null ? m[3] : m[4];
+  const ap = m[6] ? m[6].toLowerCase().replace(/\./g, '') : '';
+  const zhAp = m[1] || '';
+  if (minutes == null && !ap && !zhAp) return '';
+  let h = Number(m[2]), mi = Number(minutes || 0);
+  if (ap || /下午|晚上/.test(zhAp)) {
+    if (h > 12) return '';
+    if ((ap === 'pm' || /下午|晚上/.test(zhAp)) && h < 12) h += 12;
+    if ((ap === 'am' || /凌晨|上午|早上/.test(zhAp)) && h === 12) h = 0;
+  }
+  if (h > 23 || mi > 59) return '';
+  return pad2(h) + ':' + pad2(mi);
+}
+U.parseDate = parseDateValue;
+U.parseTime = parseTimeValue;
+GC.parseDate = parseDateValue;
+GC.parseTime = parseTimeValue;
+
+/* fetch 加逾時（預設 40 秒）；逾時會丟出 timeout 錯誤，讓同步狀態不會卡在「同步中」。 */
+const FETCH_TIMEOUT_MS = 40000;
+function fetchWithTimeout(url, init, ms) {
+  ms = Number(ms) > 0 ? Number(ms) : FETCH_TIMEOUT_MS;
+  const f = global.fetch || (typeof fetch === 'function' ? fetch : null);
+  if (!f) return Promise.reject(new Error('fetch unavailable'));
+  let ctrl = null, timer = 0;
+  try { if (typeof AbortController === 'function') ctrl = new AbortController(); } catch (e) { ctrl = null; }
+  const opts = Object.assign({}, init || {});
+  if (ctrl) opts.signal = ctrl.signal;
+  const timeoutError = () => { const e = new Error(GC.L ? GC.L('雲端回應逾時，請稍後再試', 'Cloud request timed out; please retry', 'Cloud មិនឆ្លើយតបទាន់ពេល សូមព្យាយាមម្ដងទៀត') : 'Cloud request timed out'); e.timeout = true; return e; };
+  return new Promise(function (resolve, reject) {
+    timer = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (e) {} reject(timeoutError()); }, ms);
+    Promise.resolve().then(function () { return f.call(global, url, opts); }).then(function (r) { clearTimeout(timer); resolve(r); }, function (err) {
+      clearTimeout(timer);
+      reject(err && err.name === 'AbortError' ? timeoutError() : err);
+    });
+  });
+}
+GC.fetch = fetchWithTimeout;
+
 /* ═══════════════════════════════════════════════════════════
    0.5 STORAGE — 業務資料放 IndexedDB；localStorage 只留小設定
    IndexedDB 是瀏覽器內建資料庫，容量通常遠大於 localStorage。
@@ -91,7 +209,14 @@ const U = GC.util = {
    ═══════════════════════════════════════════════════════════ */
 const STORAGE = GC.storage = (() => {
   const DB_NAME = 'ac_gascheck_data_v1', STORE = 'kv';
-  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_asset_tombstones|vrt_asset_audit|vrt_asset_authority_v1|vrt_th_z|vrt_th_r|vrt_keys|vrt_key_master|vrt_key_tombstones|vrt_waste_v3|vrt_ehs_cfg_v1|vrt_dorm_hub_v2|vrt_dorm_cfg_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_cfg_\d{4}_\d{2}|wdr_headcount_\d{4}_\d{2}|wdr_default_cfg|wdr_default_fac_price|wdr_default_sta_price|wdr_default_inspector|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token)$/;
+  const DATA_KEY_RE = /^(?:vrt_a7|vrt_c7|vrt_p7|vrt_photos|vrt_asset_tombstones|vrt_asset_audit|vrt_asset_authority_v1|vrt_th_z|vrt_th_r|vrt_keys|vrt_key_master|vrt_key_tombstones|vrt_waste_v3|vrt_ehs_cfg_v1|vrt_dorm_hub_v2|vrt_dorm_cfg_v2|vrt_clean_hub_v2|vrt_dorm_draft|wdr_data|wdr_\d{4}_\d{2}|wdr_cfg_\d{4}_\d{2}|wdr_headcount_\d{4}_\d{2}|wdr_default_cfg|wdr_default_fac_price|wdr_default_sta_price|wdr_default_inspector|wdr_exchange_rate|wdr_last_saved|wdr_tg_config|ac_waterdrum_backup|ac_gascheck_tg_chat|ac_gascheck_tg_token|tg_chat|tg_token|ac_gc_photo_links_v1)$/;
+  const FALLBACK_LIST_KEY = 'ac_gc_idb_fallback_keys_v1';
+  const PING_KEY = 'ac_gc_storage_ping_v1';
+  const SYNC_STATE_PREFIX = 'ac_gc_smart_sync_v1_';
+  /* 主要業務 key → 模組；整包清除時一併清掉該模組的雲端同步基準（A2）。 */
+  const KEY_TOOL = {vrt_a7:'asset',vrt_keys:'keymovement',vrt_waste_v3:'ehs',vrt_dorm_hub_v2:'dormitory',vrt_clean_hub_v2:'cleaning',vrt_th_r:'temperature'};
+  const TAB_ID = 'tab_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const LOAD_AT = Date.now();
   const storageProto = typeof Storage !== 'undefined' ? Storage.prototype : null;
   const native = storageProto ? {
     get: storageProto.getItem,
@@ -103,20 +228,65 @@ const STORAGE = GC.storage = (() => {
   const cache = new Map();
   const enabled = !!storageProto && typeof indexedDB !== 'undefined' && !!global.localStorage;
   let db = null;
+  const pendingByKey = new Map();   // key → 尚未寫完的次數
+  const inflight = new Set();
+  let remoteSeq = 0, refreshedSeq = 0, lastError = null, fallbackMode = false, channel = null;
 
   const isDataKey = key => DATA_KEY_RE.test(String(key || ''));
+  function nativeGet(key) {
+    try {
+      if (native && native.get && global.localStorage) return native.get.call(global.localStorage, key);
+      return global.localStorage ? global.localStorage.getItem(key) : null;
+    } catch (e) { return null; }
+  }
+  function nativeSetStrict(key, value) {
+    if (native && native.set && global.localStorage) return native.set.call(global.localStorage, key, value);
+    if (global.localStorage) return global.localStorage.setItem(key, value);
+    throw new Error('localStorage unavailable');
+  }
+  function nativeSet(key, value) { try { nativeSetStrict(key, value); return true; } catch (e) { return false; } }
+  function nativeRemove(key) {
+    try {
+      if (native && native.remove && global.localStorage) native.remove.call(global.localStorage, key);
+      else if (global.localStorage) global.localStorage.removeItem(key);
+    } catch (e) {}
+  }
   const localKeys = () => {
     const out = [];
-    if (!native || !global.localStorage) return out;
+    if (!global.localStorage) return out;
     try {
       const n = native && native.length && native.length.get ? native.length.get.call(global.localStorage) : global.localStorage.length;
       for (let i = 0; i < n; i++) {
-        const k = native.key.call(global.localStorage, i);
+        const k = native ? native.key.call(global.localStorage, i) : global.localStorage.key(i);
         if (k) out.push(k);
       }
     } catch (e) {}
     return out;
   };
+  function emit(name, detail) {
+    try {
+      if (typeof global.dispatchEvent === 'function' && typeof CustomEvent === 'function') global.dispatchEvent(new CustomEvent(name, { detail: detail }));
+    } catch (e) {}
+  }
+  function notify(msg, type) {
+    try {
+      const show = function () { if (GC.toast) GC.toast(msg, type || 'error', { persist: true }); };
+      if (global.document && global.document.body) show();
+      else if (global.document && global.document.addEventListener) global.document.addEventListener('DOMContentLoaded', show);
+    } catch (e) {}
+  }
+  function tx(zh, en, km) { return GC.L ? GC.L(zh, en, km) : en; }
+  function fallbackKeys() { try { const a = JSON.parse(nativeGet(FALLBACK_LIST_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function markFallbackKey(key, yes) {
+    const list = fallbackKeys().filter(k => k !== key);
+    if (yes) list.push(key);
+    if (list.length) nativeSet(FALLBACK_LIST_KEY, JSON.stringify(list)); else nativeRemove(FALLBACK_LIST_KEY);
+  }
+  /** 清除雲端同步基準；tool 省略 = 全部模組。 */
+  function clearSyncState(tool) {
+    if (tool) { nativeRemove(SYNC_STATE_PREFIX + tool); return; }
+    localKeys().filter(k => k.indexOf(SYNC_STATE_PREFIX) === 0).forEach(nativeRemove);
+  }
   const request = req => new Promise((resolve, reject) => {
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error || new Error('IndexedDB request failed'));
@@ -129,79 +299,242 @@ const STORAGE = GC.storage = (() => {
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error || new Error('IndexedDB unavailable'));
+    req.onblocked = () => reject(new Error('IndexedDB blocked'));
   });
   const readAll = async () => {
-    const tx = db.transaction(STORE, 'readonly');
-    return request(tx.objectStore(STORE).getAll());
+    const t = db.transaction(STORE, 'readonly');
+    return request(t.objectStore(STORE).getAll());
+  };
+  const getOne = key => {
+    if (!db) return Promise.resolve(null);
+    const t = db.transaction(STORE, 'readonly');
+    return request(t.objectStore(STORE).get(String(key)));
   };
   const put = (key, value) => {
     if (!db) return Promise.reject(new Error('IndexedDB not ready'));
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).put({ key: String(key), value: String(value) });
     return new Promise((resolve, reject) => {
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error || new Error('IndexedDB write failed'));
-      tx.onabort = () => reject(tx.error || new Error('IndexedDB write aborted'));
+      let t;
+      try {
+        t = db.transaction(STORE, 'readwrite');
+        t.objectStore(STORE).put({ key: String(key), value: String(value) });
+      } catch (e) { reject(e); return; }
+      t.oncomplete = () => resolve(true);
+      t.onerror = () => reject(t.error || new Error('IndexedDB write failed'));
+      t.onabort = () => reject(t.error || new Error('IndexedDB write aborted'));
     });
   };
   const remove = key => {
     if (!db) return Promise.resolve(true);
-    const tx = db.transaction(STORE, 'readwrite');
-    tx.objectStore(STORE).delete(String(key));
     return new Promise((resolve, reject) => {
-      tx.oncomplete = () => resolve(true);
-      tx.onerror = () => reject(tx.error || new Error('IndexedDB delete failed'));
-      tx.onabort = () => reject(tx.error || new Error('IndexedDB delete aborted'));
+      let t;
+      try {
+        t = db.transaction(STORE, 'readwrite');
+        t.objectStore(STORE).delete(String(key));
+      } catch (e) { reject(e); return; }
+      t.oncomplete = () => resolve(true);
+      t.onerror = () => reject(t.error || new Error('IndexedDB delete failed'));
+      t.onabort = () => reject(t.error || new Error('IndexedDB delete aborted'));
     });
   };
+
+  /* 多分頁：寫入完成後廣播 key；其他分頁從 IndexedDB 重讀，避免舊分頁用過期
+     記憶體快取把別人剛存的資料蓋掉（A1）。沒有 BroadcastChannel 時改用 storage 事件。 */
+  function announce(key) {
+    const msg = { tab: TAB_ID, key: String(key), at: Date.now() };
+    if (channel) { try { channel.postMessage(msg); return; } catch (e) {} }
+    nativeSet(PING_KEY, JSON.stringify(msg));
+  }
+  async function reloadKey(key) {
+    let ok = false;
+    try { ok = await ready; } catch (e) { ok = false; }
+    if (!ok || !db || pendingByKey.get(key)) return;
+    let row = null;
+    try { row = await getOne(key); } catch (e) { return; }
+    if (pendingByKey.get(key)) return;   // 本分頁較新的寫入稍後會覆蓋並廣播
+    const before = cache.get(key);
+    if (row && row.value != null) cache.set(key, String(row.value)); else cache.delete(key);
+    if (before !== cache.get(key)) emit('gc:storagechange', { key: key, keys: [key], remote: true });
+  }
+  function onRemoteMessage(msg) {
+    if (!msg || msg.tab === TAB_ID || !isDataKey(msg.key)) return;
+    remoteSeq++;
+    reloadKey(String(msg.key));
+  }
+  try {
+    if (enabled && typeof BroadcastChannel === 'function') {
+      channel = new BroadcastChannel('ac_gascheck_storage_v1');
+      channel.onmessage = e => onRemoteMessage(e && e.data);
+    }
+  } catch (e) { channel = null; }
+  try {
+    if (enabled && typeof global.addEventListener === 'function') {
+      global.addEventListener('storage', function (e) {
+        if (!e || !e.key) return;
+        if (e.key === PING_KEY && e.newValue) { try { onRemoteMessage(JSON.parse(e.newValue)); } catch (err) {} return; }
+        // IndexedDB 無法使用時資料直接在 localStorage：同步其他分頁的變更到快取。
+        if (fallbackMode && isDataKey(e.key)) {
+          remoteSeq++;
+          if (e.newValue == null) cache.delete(e.key); else cache.set(e.key, e.newValue);
+          emit('gc:storagechange', { key: e.key, keys: [e.key], remote: true });
+        }
+      });
+    }
+  } catch (e) {}
+
+  function requestPersist() {
+    try {
+      const s = global.navigator && global.navigator.storage;
+      if (!s || typeof s.persist !== 'function') return Promise.resolve(false);
+      return Promise.resolve(typeof s.persisted === 'function' ? s.persisted() : false)
+        .then(p => p || s.persist()).catch(() => false);
+    } catch (e) { return Promise.resolve(false); }
+  }
+  function estimate() {
+    try {
+      const s = global.navigator && global.navigator.storage;
+      if (!s || typeof s.estimate !== 'function') return Promise.resolve(null);
+      return s.estimate().then(r => {
+        const usage = Number(r && r.usage) || 0, quota = Number(r && r.quota) || 0;
+        return { usage, quota, ratio: quota ? usage / quota : 0 };
+      }).catch(() => null);
+    } catch (e) { return Promise.resolve(null); }
+  }
 
   const ready = (async () => {
     if (!enabled) return false;
     db = await openDb();
+    try { db.onversionchange = () => { try { db.close(); } catch (e) {} }; } catch (e) {}
     const rows = await readAll();
     (rows || []).forEach(row => {
       if (row && row.key != null) cache.set(String(row.key), String(row.value == null ? '' : row.value));
     });
     // 舊版本資料只有在成功寫入 IndexedDB 後才移除，避免搬移中斷造成遺失。
+    // 上次 IndexedDB 寫入失敗而改存 localStorage 的 key（較新）優先搬回。
+    const newer = new Set(fallbackKeys());
     for (const key of localKeys()) {
       if (!isDataKey(key)) continue;
-      const raw = native && native.get ? native.get.call(global.localStorage, key) : null;
-      if (!cache.has(key) && raw != null) {
+      const raw = nativeGet(key);
+      if (raw != null && (!cache.has(key) || newer.has(key))) {
         await put(key, raw);
         cache.set(key, raw);
       }
-      if (cache.has(key)) {
-        try { if (native && native.remove) native.remove.call(global.localStorage, key); } catch (e) {}
-      }
+      if (cache.has(key)) nativeRemove(key);
     }
+    if (newer.size) nativeRemove(FALLBACK_LIST_KEY);
+    requestPersist();
+    estimate().then(r => {
+      if (r && r.quota && r.ratio > 0.85) notify(tx('⚠ 手機儲存空間快滿（' + Math.round(r.ratio * 100) + '%），請匯出備份並清出空間',
+        '⚠ Phone storage is almost full (' + Math.round(r.ratio * 100) + '%); export a backup and free up space',
+        '⚠ ទំហំផ្ទុកទូរស័ព្ទជិតពេញ (' + Math.round(r.ratio * 100) + '%) សូមនាំចេញការបម្រុងទុក ហើយសម្អាតទំហំ'), 'warning');
+    });
     return true;
   })().catch(err => {
-    console.warn('[AC GASCHECK] IndexedDB unavailable; localStorage fallback:', err.message);
+    console.warn('[AC GASCHECK] IndexedDB unavailable; localStorage fallback:', err && err.message);
     db = null;
+    fallbackMode = true;
+    /* 本機資料庫讀不到時，手機上的資料看起來是空的；舊同步基準若保留，
+       會被誤判成「本機刪除」而清空雲端（A2）。因此一律清除同步基準。 */
+    clearSyncState();
+    if (enabled) notify(tx('⚠ 手機資料庫無法開啟，目前只使用暫存空間。請勿清除瀏覽器資料，重新開啟瀏覽器後再試。',
+      '⚠ The phone database could not be opened; using temporary storage only. Do not clear browser data; reopen the browser and try again.',
+      '⚠ មិនអាចបើកមូលដ្ឋានទិន្នន័យទូរស័ព្ទបាន កំពុងប្រើកន្លែងផ្ទុកបណ្ដោះអាសន្ន។ កុំលុបទិន្នន័យកម្មវិធីរុករក ហើយបើកម្ដងទៀត។'), 'error');
     return false;
   });
+
+  function track(key, p) {
+    pendingByKey.set(key, (pendingByKey.get(key) || 0) + 1);
+    const done = p.then(v => v, () => false).then(v => {
+      const n = (pendingByKey.get(key) || 1) - 1;
+      if (n > 0) pendingByKey.set(key, n); else pendingByKey.delete(key);
+      inflight.delete(done);
+      return v;
+    });
+    inflight.add(done);
+    return done;
+  }
+  function writeFailed(key, value, err, op) {
+    let kept = false;
+    if (op === 'set' && db) {
+      kept = nativeSet(key, value);
+      if (kept) markFallbackKey(key, true);
+    }
+    lastError = { key: key, op: op, error: err, message: String(err && err.message || err || ''), at: Date.now(), keptInLocalStorage: kept };
+    console.error('[AC GASCHECK] storage write failed:', key, err);
+    emit('gc:storageerror', lastError);
+    notify(kept
+      ? tx('❌ 手機資料庫寫入失敗，只暫存到備用空間。請立刻匯出備份並清出手機空間。', '❌ Phone database write failed; only a temporary backup copy was kept. Export a backup and free up space now.', '❌ ការសរសេរទៅមូលដ្ឋានទិន្នន័យទូរស័ព្ទបរាជ័យ បានរក្សាទុកតែច្បាប់បម្រុងបណ្ដោះអាសន្ន។ សូមនាំចេញការបម្រុងទុក ហើយសម្អាតទំហំឥឡូវនេះ។')
+      : tx('❌ 手機儲存失敗，剛才的資料沒有保存！請先匯出備份、清出空間後再存一次。', '❌ Saving on this phone failed; the last change was NOT kept! Export a backup, free up space and save again.', '❌ ការរក្សាទុកលើទូរស័ព្ទបរាជ័យ ការផ្លាស់ប្ដូរចុងក្រោយមិនត្រូវបានរក្សាទុកទេ! សូមនាំចេញការបម្រុងទុក សម្អាតទំហំ ហើយរក្សាទុកម្ដងទៀត។'),
+      'error');
+    // 主資料庫沒有寫入成功一律回 false（即使暫存副本成功），讓模組不要顯示「已儲存」。
+    return false;
+  }
 
   function getSync(key) {
     key = String(key || '');
     if (cache.has(key)) return cache.get(key);
-    try { return native && native.get ? native.get.call(global.localStorage, key) : null; } catch (e) { return null; }
+    return nativeGet(key);
   }
+  /** 寫入業務資料；回傳 Promise<boolean>（false = 沒有存成功，已顯示紅色常駐提示）。 */
   function setSync(key, value) {
     key = String(key || ''); value = String(value == null ? '' : value);
-    if (!isDataKey(key) || !enabled) { if (native && native.set) native.set.call(global.localStorage, key, value); return; }
+    if (!isDataKey(key) || !enabled) {
+      try { nativeSetStrict(key, value); return Promise.resolve(true); }
+      catch (e) { if (isDataKey(key)) return Promise.resolve(writeFailed(key, value, e, 'set-native')); throw e; }
+    }
     cache.set(key, value);
-    ready.then(ok => ok ? put(key, value) : (native && native.set ? native.set.call(global.localStorage, key, value) : null)).catch(() => {});
+    const p = ready.then(ok => {
+      if (ok && db) return put(key, value).then(() => { markFallbackIfNeeded(key); announce(key); return true; });
+      nativeSetStrict(key, value); announce(key); return true;
+    }).catch(err => writeFailed(key, value, err, 'set'));
+    return track(key, p);
+  }
+  function markFallbackIfNeeded(key) {
+    // 先前失敗改存 localStorage 的 key 現在成功寫回 IndexedDB → 移除暫存副本
+    if (fallbackKeys().indexOf(key) >= 0) { markFallbackKey(key, false); nativeRemove(key); }
   }
   function removeSync(key) {
     key = String(key || '');
-    if (!isDataKey(key) || !enabled) { if (native && native.remove) native.remove.call(global.localStorage, key); return; }
+    if (KEY_TOOL[key]) clearSyncState(KEY_TOOL[key]);
+    if (!isDataKey(key) || !enabled) { nativeRemove(key); return Promise.resolve(true); }
     cache.delete(key);
-    ready.then(ok => ok ? remove(key) : (native && native.remove ? native.remove.call(global.localStorage, key) : null)).catch(() => {});
+    const p = ready.then(ok => {
+      if (ok && db) return remove(key).then(() => { nativeRemove(key); announce(key); return true; });
+      nativeRemove(key); announce(key); return true;
+    }).catch(err => writeFailed(key, null, err, 'remove'));
+    return track(key, p);
   }
   function keys(prefix) {
     const out = new Set(cache.keys());
     localKeys().forEach(k => { if (isDataKey(k)) out.add(k); });
     return Array.from(out).filter(k => !prefix || k.indexOf(prefix) === 0).sort();
+  }
+  /** 等待所有尚未完成的寫入；全部成功回 true（清除資料後 reload 前請先 await）。 */
+  function flush() {
+    return Promise.all(Array.from(inflight)).then(list => list.every(v => v !== false));
+  }
+  /** 從 IndexedDB 重新讀取快取（其他分頁寫入後）；opt.ifStale 時只在收到變更通知後才讀。 */
+  async function refresh(opt) {
+    let ok = false;
+    try { ok = await ready; } catch (e) { ok = false; }
+    if (!ok || !db) return false;
+    if (opt && opt.ifStale && refreshedSeq === remoteSeq) return false;
+    const seqAt = remoteSeq;
+    let rows;
+    try { rows = await readAll(); } catch (e) { return false; }
+    const seen = new Set(), changed = [];
+    (rows || []).forEach(row => {
+      if (!row || row.key == null) return;
+      const k = String(row.key), v = String(row.value == null ? '' : row.value);
+      seen.add(k);
+      if (pendingByKey.get(k)) return;
+      if (cache.get(k) !== v) { cache.set(k, v); changed.push(k); }
+    });
+    Array.from(cache.keys()).forEach(k => {
+      if (!seen.has(k) && !pendingByKey.get(k) && isDataKey(k)) { cache.delete(k); changed.push(k); }
+    });
+    refreshedSeq = seqAt;
+    if (changed.length) emit('gc:storagechange', { key: changed[0], keys: changed, remote: true });
+    return changed.length > 0;
   }
 
   // 讓舊模組不必全部改成 async/await；只有業務資料 key 走 IndexedDB。
@@ -216,7 +549,15 @@ const STORAGE = GC.storage = (() => {
       return this === global.localStorage && isDataKey(key) ? removeSync(key) : native.remove.call(this, key);
     };
   }
-  return { ready, isDataKey, getSync, setSync, removeSync, keys };
+  return {
+    ready, isDataKey, getSync, setSync, removeSync, keys,
+    get: getSync, set: setSync, remove: removeSync,
+    flush, refresh, estimate, persist: requestPersist, clearSyncState,
+    tabId: TAB_ID, loadedAt: LOAD_AT,
+    get lastError() { return lastError; },
+    get fallback() { return fallbackMode; },
+    get remoteChanges() { return remoteSeq; }
+  };
 })();
 
 /* ═══════════════════════════════════════════════════════════
@@ -439,7 +780,7 @@ GC.attendance = (() => {
     ];
     for (const params of attempts) {
       try {
-        const res = await fetch(url + '?' + new URLSearchParams(Object.assign({_t:Date.now()}, params)));
+        const res = await fetchWithTimeout(url + '?' + new URLSearchParams(Object.assign({_t:Date.now()}, params)), {}, 20000);
         const json = await res.json();
         if (json && json.daily && typeof json.daily === 'object') return [{__daily:json.daily}];
         const rows = json && (json.records || json.rows || json.data || json.list);
@@ -494,7 +835,7 @@ const BASE_DICT = {
     'gc.confirm':'確認','gc.cancel':'取消','gc.save':'儲存','gc.delete':'刪除','gc.close':'關閉',
     'gc.cloudTools':'雲端工具','gc.indexedDb':'資料庫：IndexedDB',
     'gc.telegram':'Telegram','gc.sendTelegram':'發送 Telegram','gc.period':'摘要期間','gc.slot':'發送時段','gc.allSlots':'全部時段','gc.reportLanguage':'摘要語言','gc.bilingual':'中英雙語','gc.chinese':'中文','gc.english':'English','gc.khmer':'ខ្មែរ',
-    'gc.summary':'摘要','gc.review':'審查','gc.approval':'Approval','gc.quickActions':'快速操作',
+    'gc.summary':'摘要','gc.review':'審查','gc.approval':'核可','gc.quickActions':'快速操作',
     'gc.directHint':'上方按鈕可直接同步、匯入與發送，不需填網址／Token／Chat ID',
     'gc.sentTelegram':'Telegram 已發送','gc.noApproval':'沒有待審查／待核可資料',
     'gc.pendingApproval':'待審查／待核可','gc.mode':'訊息類型','gc.dataType':'資料類型','gc.refDate':'基準日期',
@@ -503,7 +844,16 @@ const BASE_DICT = {
     'gc.telegramTitle':'發送到 Telegram','gc.importTitle':'智慧匯入資料','gc.noPeriodData':'此期間沒有資料',
     'gc.sender':'發送人','gc.senderPlaceholder':'請輸入發送人姓名','gc.senderRequired':'請先確認發送人姓名',
     'gc.confirmSender':'確認由 {name} 發送這份摘要？',
-    'gc.bilingualKm':'中／英／柬三語','gc.selectScope':'選擇資料','gc.menuLanguage':'介面語言'
+    'gc.bilingualKm':'中／英／柬三語','gc.selectScope':'選擇資料','gc.menuLanguage':'介面語言',
+    'gc.stLocal':'📱 只存手機','gc.stCloud':'☁ 已上雲','gc.stOffline':'⚠ 離線','gc.stSyncing':'⏳ 同步中','gc.stError':'⚠ 未上雲','gc.stChecking':'☁ 檢查中',
+    'gc.photoPending':'{n} 張照片暫未上傳，已保留在手機，稍後自動重試','gc.photoReadFail':'照片讀取失敗',
+    'gc.shrinkConfirm':'這次上傳會讓雲端少掉 {n} 筆記錄（雲端共 {total} 筆）。\n確定要刪除雲端上的這些資料嗎？\n按「取消」會保留雲端資料並下載回手機。',
+    'gc.shrinkKept':'偵測到大量刪除（{n} 筆），已保留雲端資料並還原到手機',
+    'gc.dupSkipped':'筆重複已略過','gc.badDate':'筆日期無法辨識','gc.filesFailed':'個檔案失敗','gc.files':'個檔案',
+    'gc.tapToClose':'點一下關閉','gc.openDashboard':'開啟平台','gc.mainPortal':'總平台',
+    'gc.sendingTelegram':'正在發送 Telegram…','gc.noDelivery':'Telegram 未回傳送達確認','gc.nonJson':'雲端回傳格式錯誤',
+    'gc.dayTooLong':'單日內容過長，請選擇較少區域','gc.pageFailed':'第 {i}/{n} 頁未完成','gc.uploadBeforeSendFail':'雲端上傳未完成，尚未發送',
+    'gc.guardBusy':'處理中，請稍候…'
   },
   en: {
     'gc.upload':'Upload','gc.download':'Download','gc.sync':'Syncing…',
@@ -524,7 +874,7 @@ const BASE_DICT = {
     'gc.heavyRain':'Heavy Rain','gc.storm':'Storm','gc.hot':'Hot','gc.humid':'Humid',
     'gc.confirm':'Confirm','gc.cancel':'Cancel','gc.save':'Save','gc.delete':'Delete','gc.close':'Close',
     'gc.cloudTools':'Cloud Tools','gc.indexedDb':'Storage: IndexedDB',
-    'gc.telegram':'Telegram','gc.sendTelegram':'Send to Telegram','gc.period':'Summary period','gc.slot':'Send time slot','gc.allSlots':'All slots','gc.reportLanguage':'Report language','gc.bilingual':'Chinese + English','gc.chinese':'中文','gc.english':'English','gc.khmer':'ខ្មែរ',
+    'gc.telegram':'Telegram','gc.sendTelegram':'Send to Telegram','gc.period':'Summary period','gc.slot':'Send time slot','gc.allSlots':'All slots','gc.reportLanguage':'Report language','gc.bilingual':'Chinese + English','gc.chinese':'Chinese','gc.english':'English','gc.khmer':'Khmer',
     'gc.summary':'Summary','gc.review':'Review','gc.approval':'Approval','gc.quickActions':'Quick actions',
     'gc.directHint':'Use the buttons above to sync, import and send; no URL/token/chat ID entry is needed',
     'gc.sentTelegram':'Telegram sent','gc.noApproval':'No pending review/approval records',
@@ -534,7 +884,16 @@ const BASE_DICT = {
     'gc.telegramTitle':'Send to Telegram','gc.importTitle':'Smart Import Data','gc.noPeriodData':'No data in this period',
     'gc.sender':'Sent by','gc.senderPlaceholder':'Enter sender name','gc.senderRequired':'Confirm the sender name first',
     'gc.confirmSender':'Send this report as {name}?',
-    'gc.bilingualKm':'Chinese / English / Khmer','gc.selectScope':'Select data','gc.menuLanguage':'Interface language'
+    'gc.bilingualKm':'Chinese / English / Khmer','gc.selectScope':'Select data','gc.menuLanguage':'Interface language',
+    'gc.stLocal':'📱 Phone only','gc.stCloud':'☁ In cloud','gc.stOffline':'⚠ Offline','gc.stSyncing':'⏳ Syncing','gc.stError':'⚠ Not in cloud','gc.stChecking':'☁ Checking',
+    'gc.photoPending':'{n} photo(s) not uploaded yet; kept on this phone and will retry automatically','gc.photoReadFail':'Photo could not be read',
+    'gc.shrinkConfirm':'This upload would remove {n} of {total} records from the cloud.\nDelete them from the cloud?\nCancel keeps the cloud data and restores it to this phone.',
+    'gc.shrinkKept':'Large deletion detected ({n} records); cloud data kept and restored to this phone',
+    'gc.dupSkipped':'duplicates skipped','gc.badDate':'rows with unreadable dates','gc.filesFailed':'file(s) failed','gc.files':'files',
+    'gc.tapToClose':'Tap to close','gc.openDashboard':'Open Dashboard','gc.mainPortal':'Main Portal',
+    'gc.sendingTelegram':'Sending to Telegram…','gc.noDelivery':'No delivery confirmation from Telegram','gc.nonJson':'Cloud returned an invalid response',
+    'gc.dayTooLong':'One day is too long for a message; select fewer zones','gc.pageFailed':'Page {i}/{n} not sent','gc.uploadBeforeSendFail':'Cloud upload failed; report not sent',
+    'gc.guardBusy':'Working, please wait…'
   },
   km: {
     'gc.upload':'ផ្ទុកឡើង','gc.download':'ទាញយក','gc.sync':'កំពុងធ្វើសមកាលកម្ម…',
@@ -555,8 +914,8 @@ const BASE_DICT = {
     'gc.heavyRain':'ភ្លៀងខ្លាំង','gc.storm':'ព្យុះ','gc.hot':'ក្ដៅ','gc.humid':'សើម',
     'gc.confirm':'បញ្ជាក់','gc.cancel':'បោះបង់','gc.save':'រក្សាទុក','gc.delete':'លុប','gc.close':'បិទ',
     'gc.cloudTools':'ឧបករណ៍ Cloud','gc.indexedDb':'ការផ្ទុក៖ IndexedDB',
-    'gc.telegram':'Telegram','gc.sendTelegram':'ផ្ញើទៅ Telegram','gc.period':'រយៈពេលសង្ខេប','gc.slot':'ពេលវេលាផ្ញើ','gc.allSlots':'គ្រប់ពេល','gc.reportLanguage':'ភាសាសង្ខេប','gc.bilingual':'ចិន + អង់គ្លេស','gc.chinese':'中文','gc.english':'English','gc.khmer':'ខ្មែរ',
-    'gc.summary':'សង្ខេប','gc.review':'ពិនិត្យ','gc.approval':'Approval','gc.quickActions':'សកម្មភាពរហ័ស',
+    'gc.telegram':'Telegram','gc.sendTelegram':'ផ្ញើទៅ Telegram','gc.period':'រយៈពេលសង្ខេប','gc.slot':'ពេលវេលាផ្ញើ','gc.allSlots':'គ្រប់ពេល','gc.reportLanguage':'ភាសាសង្ខេប','gc.bilingual':'ចិន + អង់គ្លេស','gc.chinese':'ភាសាចិន','gc.english':'អង់គ្លេស','gc.khmer':'ខ្មែរ',
+    'gc.summary':'សង្ខេប','gc.review':'ពិនិត្យ','gc.approval':'អនុម័ត','gc.quickActions':'សកម្មភាពរហ័ស',
     'gc.directHint':'ប្រើប៊ូតុងខាងលើដើម្បីធ្វើសមកាលកម្ម នាំចូល និងផ្ញើ ដោយមិនចាំបាច់បញ្ចូល URL/token/chat ID',
     'gc.sentTelegram':'បានផ្ញើ Telegram','gc.noApproval':'គ្មានទិន្នន័យកំពុងរង់ចាំពិនិត្យ/អនុម័ត',
     'gc.pendingApproval':'កំពុងរង់ចាំពិនិត្យ/អនុម័ត','gc.mode':'ប្រភេទសារ','gc.dataType':'ប្រភេទទិន្នន័យ','gc.refDate':'កាលបរិច្ឆេទយោង',
@@ -565,12 +924,21 @@ const BASE_DICT = {
     'gc.telegramTitle':'ផ្ញើទៅ Telegram','gc.importTitle':'នាំចូលទិន្នន័យឆ្លាតវៃ','gc.noPeriodData':'គ្មានទិន្នន័យក្នុងរយៈពេលនេះ',
     'gc.sender':'អ្នកផ្ញើ','gc.senderPlaceholder':'បញ្ចូលឈ្មោះអ្នកផ្ញើ','gc.senderRequired':'សូមបញ្ជាក់ឈ្មោះអ្នកផ្ញើជាមុន',
     'gc.confirmSender':'បញ្ជាក់ថាផ្ញើរបាយការណ៍នេះដោយ {name}?',
-    'gc.bilingualKm':'ចិន / អង់គ្លេស / ខ្មែរ','gc.selectScope':'ជ្រើសទិន្នន័យ','gc.menuLanguage':'ភាសាចំណុចប្រទាក់'
+    'gc.bilingualKm':'ចិន / អង់គ្លេស / ខ្មែរ','gc.selectScope':'ជ្រើសទិន្នន័យ','gc.menuLanguage':'ភាសាចំណុចប្រទាក់',
+    'gc.stLocal':'📱 នៅលើទូរស័ព្ទប៉ុណ្ណោះ','gc.stCloud':'☁ នៅលើ Cloud','gc.stOffline':'⚠ គ្មានអ៊ីនធឺណិត','gc.stSyncing':'⏳ កំពុងធ្វើសមកាលកម្ម','gc.stError':'⚠ មិនទាន់នៅលើ Cloud','gc.stChecking':'☁ កំពុងពិនិត្យ',
+    'gc.photoPending':'រូបថត {n} មិនទាន់ផ្ទុកឡើង បានរក្សាទុកលើទូរស័ព្ទ ហើយនឹងព្យាយាមម្ដងទៀតដោយស្វ័យប្រវត្តិ','gc.photoReadFail':'មិនអាចអានរូបថតបាន',
+    'gc.shrinkConfirm':'ការផ្ទុកឡើងនេះនឹងលុបកំណត់ត្រា {n} ក្នុងចំណោម {total} ពី Cloud។\nតើចង់លុបពី Cloud មែនទេ?\nចុច «បោះបង់» ដើម្បីរក្សាទិន្នន័យ Cloud និងស្ដារមកទូរស័ព្ទវិញ។',
+    'gc.shrinkKept':'រកឃើញការលុបច្រើន ({n} កំណត់ត្រា) បានរក្សាទិន្នន័យ Cloud ហើយស្ដារមកទូរស័ព្ទវិញ',
+    'gc.dupSkipped':'ស្ទួនត្រូវបានរំលង','gc.badDate':'ជួរដែលកាលបរិច្ឆេទមិនអាចអានបាន','gc.filesFailed':'ឯកសារបរាជ័យ','gc.files':'ឯកសារ',
+    'gc.tapToClose':'ចុចដើម្បីបិទ','gc.openDashboard':'បើកផ្ទាំងគ្រប់គ្រង','gc.mainPortal':'វិបផតថលមេ',
+    'gc.sendingTelegram':'កំពុងផ្ញើទៅ Telegram…','gc.noDelivery':'Telegram មិនបានបញ្ជាក់ការផ្ញើ','gc.nonJson':'Cloud ឆ្លើយតបមិនត្រឹមត្រូវ',
+    'gc.dayTooLong':'ទិន្នន័យមួយថ្ងៃវែងពេក សូមជ្រើសតំបន់តិចជាងនេះ','gc.pageFailed':'ទំព័រ {i}/{n} មិនទាន់ផ្ញើ','gc.uploadBeforeSendFail':'ការផ្ទុកឡើង Cloud បរាជ័យ មិនទាន់ផ្ញើរបាយការណ៍',
+    'gc.guardBusy':'កំពុងដំណើរការ សូមរង់ចាំ…'
   }
 };
 
 const I18 = GC.i18n = {
-  lang: localStorage.getItem('gc_lang') || 'zh',
+  lang: (function () { try { const l = localStorage.getItem('gc_lang'); return l === 'en' || l === 'km' || l === 'zh' ? l : 'zh'; } catch (e) { return 'zh'; } })(),
   dict: JSON.parse(JSON.stringify(BASE_DICT)),
 
   /** 模組自行擴充字典：GC.i18n.extend({zh:{...},en:{...},km:{...}}) */
@@ -580,11 +948,36 @@ const I18 = GC.i18n = {
     });
     return I18;
   },
+  /** 退回順序：km→en→fallback→key；en→fallback→key；zh→en→fallback→key。
+      en/km 模式絕不退回中文。 */
   t(key, fallback) {
-    const d = I18.dict[I18.lang] || I18.dict.zh;
-    if (d[key] != null) return d[key];
-    if (I18.dict.zh[key] != null) return I18.dict.zh[key];
+    const lang = I18.dict[I18.lang] ? I18.lang : 'zh';
+    const own = I18.dict[lang] || {};
+    if (own[key] != null) return own[key];
+    if (lang !== 'en' && I18.dict.en && I18.dict.en[key] != null) return I18.dict.en[key];
     return fallback != null ? fallback : key;
+  },
+  /** 取字串並替換 {name} 參數 */
+  f(key, params, fallback) {
+    let out = String(I18.t(key, fallback));
+    Object.keys(params || {}).forEach(k => { out = out.split('{' + k + '}').join(String(params[k])); });
+    return out;
+  },
+  /** 英文／高棉文介面：把後端回傳的「中文 / English」雙語訊息只留非中文部分（單一段落或全中文則原樣）。 */
+  mono(msg) {
+    const text = String(msg == null ? '' : msg);
+    if (I18.lang === 'zh') return text;
+    const CJK = /[\u3400-\u9fff\uf900-\ufaff]/;
+    if (!CJK.test(text)) return text;
+    const parts = text.split(/\s+\/\s+/);
+    if (parts.length < 2) return text;
+    const kept = [];
+    parts.forEach(function (p) {
+      if (!CJK.test(p)) { kept.push(p); return; }
+      const i = p.search(CJK), head = p.slice(0, i).replace(/[\s:：，,;-]+$/, '');
+      if (head && /[A-Za-z\u1780-\u17ff]{2,}/.test(head)) kept.push(head);
+    });
+    return kept.length ? kept.join(' — ') : text;
   },
   set(lang) {
     if (!I18.dict[lang]) return;
@@ -629,6 +1022,15 @@ const I18 = GC.i18n = {
   }
 };
 GC.t = (k, f) => I18.t(k, f);
+GC.tf = (k, params, f) => I18.f(k, params, f);
+/* 單一語言輸出：GC.L('中文','English','ខ្មែរ') 或 GC.L({zh,en,km})；km 缺值退回英文，en/km 模式絕不回中文。 */
+GC.L = function (zh, en, km) {
+  if (zh && typeof zh === 'object') { km = zh.km; en = zh.en; zh = zh.zh; }
+  const l = I18.lang;
+  if (l === 'en') return en != null && en !== '' ? String(en) : String(km || zh || '');
+  if (l === 'km') return km != null && km !== '' ? String(km) : String(en != null && en !== '' ? en : (zh || ''));
+  return String(zh != null && zh !== '' ? zh : (en || km || ''));
+};
 
 /* 各舊模組本來都有自己的語言按鈕。共用列不再重複建立第二組按鈕，
    但會在使用者點擊舊模組按鈕時同步核心的三語文字。 */
@@ -655,6 +1057,21 @@ GC.dormVersionWinner = function(a,b){
   const complete=r=>(r.approvalDeliveryPending===false||r.approvalDeliveryPending==='false'?2:0)+(r.approvalSyncPending===false||r.approvalSyncPending==='false'?1:0);
   const delta=Number(approved(a))-Number(approved(b))||Number(a.approvalGeneration||0)-Number(b.approvalGeneration||0)||settled(a)-settled(b)||complete(a)-complete(b);
   return delta>0?a:delta<0?b:null;
+};
+
+/** 每個送往 GAS 的請求都帶 lang（介面語言），後端錯誤訊息才會是單一語言。
+ *  dormSubmit 的 data（JSON 字串或物件）內也放一份。 */
+GC.withLang = function (payload) {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+  const lang = (typeof I18 !== 'undefined' && I18.lang) || 'zh';
+  const out = Object.assign({}, payload);
+  if (out.lang == null || out.lang === '') out.lang = lang;
+  if (out.action === 'dormSubmit' || out.type === 'dormSubmit') {
+    if (typeof out.data === 'string') {
+      try { const d = JSON.parse(out.data); if (d && typeof d === 'object' && !d.lang) { d.lang = out.lang; out.data = JSON.stringify(d); } } catch (e) {}
+    } else if (out.data && typeof out.data === 'object' && !out.data.lang) out.data = Object.assign({}, out.data, { lang: out.lang });
+  }
+  return out;
 };
 
 const CLOUD = GC.cloud = {
@@ -694,8 +1111,10 @@ const CLOUD = GC.cloud = {
       if(preferred){map.set(k,preferred);if(preferred===r)stat.updated++;else stat.kept++;return;}
       const tL = cur && cur[tsKey] ? String(cur[tsKey]) : '';
       const tC = r[tsKey] ? String(r[tsKey]) : '';
-      // 雲端較新才覆蓋；平手或無時間戳 → 保留本地
-      if (tC && (!tL || tC > tL)) { map.set(k, r); stat.updated++; }
+      // 雲端較新才覆蓋；平手或無時間戳 → 保留本地。
+      // 刪除記號（_deleted 墓碑）與一般記錄同時間時，刪除優先，避免被復活。
+      const tieDelete = tC && tC === tL && !!r._deleted && !(cur && cur._deleted);
+      if (tC && (!tL || tC > tL || tieDelete)) { map.set(k, r); stat.updated++; }
       else stat.kept++;
     });
 
@@ -704,30 +1123,32 @@ const CLOUD = GC.cloud = {
     return { list, stat };
   },
 
-  /** POST 到 GAS（依慣例用 text/plain） */
-  async post(payload) {
+  /** POST 到 GAS（依慣例用 text/plain）；opt.timeout 毫秒，預設 40 秒。 */
+  async post(payload, opt) {
     if (!CLOUD.gasUrl) throw new Error('GAS URL not set');
-    const r = await fetch(CLOUD.gasUrl, {
+    // 後端回傳的錯誤／提示訊息依介面語言（單一語言）；呼叫端已指定 lang 則沿用。
+    payload = GC.withLang(payload);
+    const r = await fetchWithTimeout(CLOUD.gasUrl, {
       method: 'POST',
       cache: 'no-store',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
-    });
+    }, opt && opt.timeout);
     const txt = await r.text();
     let data;
-    try { data = JSON.parse(txt); } catch (e) { throw new Error('Cloud returned non-JSON: ' + txt.slice(0, 120)); }
+    try { data = JSON.parse(txt); } catch (e) { throw new Error(I18.t('gc.nonJson') + ': ' + String(txt || '').slice(0, 120)); }
     if (!r.ok || (data && data.ok === false)) throw new Error((data && data.error) || ('HTTP ' + r.status));
     return data;
   },
 
-  async get(params) {
+  async get(params, opt) {
     if (!CLOUD.gasUrl) throw new Error('GAS URL not set');
-    const query = Object.assign({}, params || {}, { _t:Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8) });
+    const query = Object.assign({}, GC.withLang(params || {}), { _t:Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8) });
     const qs = new URLSearchParams(query).toString();
-    const r = await fetch(CLOUD.gasUrl + (qs ? '?' + qs : ''), { cache:'no-store' });
+    const r = await fetchWithTimeout(CLOUD.gasUrl + (qs ? '?' + qs : ''), { cache:'no-store' }, opt && opt.timeout);
     const txt = await r.text();
     let data;
-    try { data = JSON.parse(txt); } catch (e) { throw new Error('Cloud returned non-JSON: ' + txt.slice(0, 120)); }
+    try { data = JSON.parse(txt); } catch (e) { throw new Error(I18.t('gc.nonJson') + ': ' + String(txt || '').slice(0, 120)); }
     if (!r.ok || (data && data.ok === false)) throw new Error((data && data.error) || ('HTTP ' + r.status));
     return data;
   },
@@ -753,12 +1174,16 @@ const CLOUD = GC.cloud = {
       }
     } catch (e) { /* 拉不到就直接送本地，不阻擋 */ }
 
-    if (tool === 'waterdrum') toSend = await SMART.preparePhotos(toSend, tool, opt);
+    /* 照片一律先轉 Drive 連結；上傳失敗的照片不放進雲端資料（不送 base64），
+       手機上保留原照片，下次同步再重試。 */
+    toSend = SMART.pruneTombstones(toSend, opt);
+    const prepared = await SMART.preparePhotosDetailed(toSend, tool, opt);
+    toSend = prepared.records;
     const extra = typeof opt.extra === 'function' ? (opt.extra() || {}) : (opt.extra || {});
     const res = await CLOUD.post(Object.assign({
       type: 'save', tool, updatedAt: U.now(), list: toSend
     }, extra));
-    return { res, list: toSend.map(fromCloud) };
+    return { res, list: toSend.map(r => prepared.localMap.get(r) || r).map(fromCloud), photoFailures: prepared.failures };
   },
 
   /** 下載 + 安全合併（回傳合併後清單，不直接覆蓋） */
@@ -793,15 +1218,18 @@ const CLOUD = GC.cloud = {
   },
 
   /**
-   * 即時上傳單張照片到 Drive，回傳連結（可選用：存檔前先轉換大照片）
-   * @returns {Promise<string>} Drive 連結，失敗回原 dataUrl
+   * 上傳單張照片到 Drive（最多同時 3 張、失敗自動重試 3 次、同一張照片記住連結不重傳）。
+   * 成功回 Drive 連結；失敗丟出錯誤。
    */
+  async uploadPhotoStrict(dataUrl, tool, recId, idx) {
+    if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:image') !== 0) return dataUrl;
+    return PHOTO_UPLOAD.upload(dataUrl, tool, recId, idx);
+  },
+  /** 相容舊呼叫：成功回 Drive 連結，失敗回原 dataUrl（呼叫端不可把 dataUrl 送進雲端資料）。 */
   async uploadPhoto(dataUrl, tool, recId, idx) {
     if (typeof dataUrl !== 'string' || dataUrl.indexOf('data:image') !== 0) return dataUrl;
-    try {
-      const r = await CLOUD.post({ action: 'uploadPhoto', dataUrl, tool, recId, idx: idx || 0 });
-      return (r && r.ok && (r.url || (r.data && r.data.url))) || dataUrl;
-    } catch (e) { return dataUrl; }
+    try { return await CLOUD.uploadPhotoStrict(dataUrl, tool, recId, idx); }
+    catch (e) { return dataUrl; }
   },
 
   /** 批次：把一組照片裡的 base64 換成 Drive 連結 */
@@ -817,6 +1245,180 @@ const CLOUD = GC.cloud = {
     return CLOUD.post({ type: 'notify', parse_mode: 'HTML', text });
   }
 };
+
+/* ═══════════════════════════════════════════════════════════
+   2.35 SYNC KEYS — 模組同步的業務鍵（cloudKey）唯一來源
+   模組（cleaning / dormitory / temperature）與 Portal「Push All」共用同一組函式，
+   同一筆資料在兩邊算出相同的鍵 → 不會重複上傳或合併出兩筆。
+   ═══════════════════════════════════════════════════════════ */
+GC.syncKeys = (function () {
+  function arr(v) {
+    if (Array.isArray(v)) return v.slice();
+    if (v === undefined || v === null || v === '') return [];
+    if (typeof v === 'string') {
+      const s = v.trim(); if (!s) return [];
+      if (/^(?:data:image\/|https?:\/\/)/i.test(s)) return [s];
+      if (s.charAt(0) === '[') { try { const a = JSON.parse(s); if (Array.isArray(a)) return a; } catch (e) {} }
+      return s.split(/[|,;，；\s]+/).map(x => x.trim()).filter(Boolean);
+    }
+    return [v];
+  }
+  function cleanDate(v) { const m = String(v || '').match(/(20\d{2})[-/.](\d{1,2})[-/.](\d{1,2})/); return m ? m[1] + '-' + String(+m[2]).padStart(2, '0') + '-' + String(+m[3]).padStart(2, '0') : String(v || '').slice(0, 10); }
+  function cleanSlots(v) { return Array.from(new Set(arr(v).map(x => String(x || '').trim()).filter(Boolean))).sort(); }
+  function cleaning(r) {
+    if (!r || typeof r !== 'object') return '';
+    const date = cleanDate(r.date), loc = String(r.locId || r.locationId || r.location || '').trim(), slots = cleanSlots(r.slots || r.slot || r.checkTime);
+    if (date && loc && slots.length) return 'clean:' + date + '|' + loc + '|' + slots.join(',');
+    return r.id ? 'id:' + String(r.id) : '';
+  }
+  function dormitory(record) {
+    record = record || {};
+    const key = [record.type, record.idNo, record.roomNo, record.date].map(v => String(v == null ? '' : v).trim().toLowerCase().replace(/\s+/g, ' ')).join('|');
+    // 沒有任何業務欄位（例如去重留下的墓碑）→ 用 id，避免彼此被合併成一筆。
+    if (key === '|||') return record.id ? 'id:' + String(record.id) : '';
+    return key;
+  }
+  function tempZoneId(value, definitions) {
+    const token = v => String(v || '').normalize('NFKC').toLowerCase().replace(/inside|area/g, '').replace(/factory/g, 'building').replace(/[\s_\-\/().（）]+/g, '');
+    const aliases = {za:'za',buildinga:'za',buildingaworkshop:'za',aworkshop:'za','a廠車間':'za','a厂车间':'za',zb:'zb',buildingb:'zb',buildingbworkshop:'zb',bworkshop:'zb','b廠車間':'zb','b厂车间':'zb',zc:'zc',buildingbwh:'zc',buildingbwarehouse:'zc',bwarehouse:'zc','b廠倉庫':'zc','b厂仓库':'zc',zbuildingafinishingwh:'z_buildingafinishingwh',zbuildingafinishingwarehouse:'z_buildingafinishingwh',buildingafinishingwh:'z_buildingafinishingwh',buildingafinishingwarehouse:'z_buildingafinishingwh',afinishingwh:'z_buildingafinishingwh',oldfinishing:'z_buildingafinishingwh','a廠後整倉':'z_buildingafinishingwh','a廠成品倉':'z_buildingafinishingwh'};
+    Object.assign(aliases, {zd:'z_buildingafinishingwh',finishingwarehouse:'z_buildingafinishingwh',finishingwh:'z_buildingafinishingwh',zfinishingwarehouse:'z_buildingafinishingwh',zfinishingwh:'z_buildingafinishingwh','a廠倉庫':'z_buildingafinishingwh','a厂仓库':'z_buildingafinishingwh'});
+    const direct = v => { const k = token(v); return aliases[k] || (/^z?buildingafinishing(?:wh|warehouse)\d+$/.test(k) ? 'z_buildingafinishingwh' : ''); };
+    const def = (Array.isArray(definitions) ? definitions : []).find(z => z && (String(z.id) === String(value) || (Array.isArray(z.aliasIds) && z.aliasIds.map(String).includes(String(value)))));
+    return (def && [def.en, def.zh, def.id].map(direct).find(Boolean)) || direct(value) || '';
+  }
+  function tempZones() { try { const raw = global.localStorage && global.localStorage.getItem('vrt_th_z'); const d = raw ? JSON.parse(raw) : null; return Array.isArray(d) ? d : []; } catch (e) { return []; } }
+  function temperature(r, definitions) {
+    if (!r || typeof r !== 'object') return '';
+    const d = String(r.d !== undefined ? r.d : (r.date || '')).slice(0, 10);
+    const p = String(r.p !== undefined ? r.p : (r.period || '')).toLowerCase();
+    const rawZone = String(r.z !== undefined ? r.z : (r.zoneId || r.zone || ''));
+    const z = tempZoneId(rawZone, definitions || tempZones()) || rawZone;
+    if (d && p && z) return 'slot:' + d + '|' + p + '|' + z;
+    return r.id ? 'id:' + String(r.id) : '';
+  }
+  return { cleaning: cleaning, dormitory: dormitory, temperature: temperature, tempZoneId: tempZoneId, cleaningDate: cleanDate, cleaningSlots: cleanSlots, array: arr };
+})();
+
+/* ═══════════════════════════════════════════════════════════
+   2.4 CAPABILITIES — 後端能力偵測（GET ?action=ping 的 capabilities）
+   每個瀏覽器分頁工作階段只問一次（sessionStorage 快取）；問不到 → 維持「未啟用」，
+   頁面照舊只發通知，不會顯示假的核可狀態。結果：GC.approvalTools={ehs,asset}，
+   並觸發 window 'gc:capabilities' 事件讓頁面重畫。
+   ═══════════════════════════════════════════════════════════ */
+GC.approvalTools = { ehs: false, asset: false };
+GC.capabilities = (function () {
+  const KEY = 'gc_caps_v1';
+  let list = null, promise = null;
+  function apply(caps, source) {
+    list = Array.isArray(caps) ? caps.map(String) : [];
+    GC.approvalTools = { ehs: list.indexOf('ehs-approval') >= 0, asset: list.indexOf('asset-approval') >= 0 };
+    try { global.dispatchEvent(new CustomEvent('gc:capabilities', { detail: { capabilities: list.slice(), approvalTools: Object.assign({}, GC.approvalTools), source: source || '' } })); } catch (e) {}
+    return list.slice();
+  }
+  function cached() {
+    try {
+      const raw = global.sessionStorage && global.sessionStorage.getItem(KEY);
+      const d = raw ? JSON.parse(raw) : null;
+      if (d && d.url === CLOUD.gasUrl && Array.isArray(d.caps)) return d.caps;
+    } catch (e) {}
+    return null;
+  }
+  function load(force) {
+    if (!force && promise) return promise;
+    if (!force) { const c = cached(); if (c) { promise = Promise.resolve(apply(c, 'cache')); return promise; } }
+    promise = CLOUD.get({ action: 'ping' }, { timeout: 20000 }).then(function (d) {
+      const caps = d && (Array.isArray(d.capabilities) ? d.capabilities : (d.data && Array.isArray(d.data.capabilities) ? d.data.capabilities : null));
+      if (!caps) throw new Error('No capabilities');
+      try { global.sessionStorage && global.sessionStorage.setItem(KEY, JSON.stringify({ url: CLOUD.gasUrl, caps: caps, at: Date.now() })); } catch (e) {}
+      return apply(caps, 'ping');
+    }).catch(function () {
+      // 離線或舊後端：保持未啟用；下次呼叫 load() 會再試。
+      promise = null;
+      return list ? list.slice() : [];
+    });
+    return promise;
+  }
+  return {
+    load: load,
+    ready: function () { return promise || load(); },
+    list: function () { return list ? list.slice() : []; },
+    has: function (name) { return !!list && list.indexOf(String(name)) >= 0; },
+    set: function (caps) { return apply(caps, 'manual'); },
+    clear: function () { list = null; promise = null; try { global.sessionStorage && global.sessionStorage.removeItem(KEY); } catch (e) {} GC.approvalTools = { ehs: false, asset: false }; }
+  };
+})();
+(function () {
+  const c = (function () { try { const raw = global.sessionStorage && global.sessionStorage.getItem('gc_caps_v1'); const d = raw ? JSON.parse(raw) : null; return d && d.url === CLOUD.gasUrl && Array.isArray(d.caps) ? d.caps : null; } catch (e) { return null; } })();
+  if (c) GC.capabilities.load(); // 同步套用快取（頁面腳本載入時即可讀到 GC.approvalTools）
+  if (typeof global.fetch === 'function') setTimeout(function () { GC.capabilities.load(); }, 0);
+})();
+
+/* 照片上傳佇列：同時最多 3 張、每張最多試 3 次；成功的連結依照片指紋記在
+   IndexedDB（ac_gc_photo_links_v1），同步中途失敗、下次重試時不會重複上傳到 Drive。 */
+const PHOTO_UPLOAD = GC.photoUpload = (() => {
+  const LINKS_KEY = 'ac_gc_photo_links_v1';
+  const MAX_PARALLEL = 3, ATTEMPTS = 3, KEEP_DAYS = 180, MAX_LINKS = 4000;
+  let active = 0, links = null, saveTimer = 0, maxSeen = 0;
+  const queue = [];
+  function load() {
+    if (links) return links;
+    try { links = JSON.parse(STORAGE.getSync(LINKS_KEY) || '{}') || {}; } catch (e) { links = {}; }
+    if (typeof links !== 'object' || Array.isArray(links)) links = {};
+    return links;
+  }
+  function save() {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () {
+      try {
+        const cutoff = Date.now() - KEEP_DAYS * 86400000;
+        const entries = Object.keys(links || {}).map(k => [k, links[k]]).filter(e => e[1] && e[1].u && (e[1].t || 0) >= cutoff)
+          .sort((a, b) => (b[1].t || 0) - (a[1].t || 0)).slice(0, MAX_LINKS);
+        links = {}; entries.forEach(e => { links[e[0]] = e[1]; });
+        STORAGE.setSync(LINKS_KEY, JSON.stringify(links));
+      } catch (e) {}
+    }, 250);
+  }
+  try {
+    if (typeof global.addEventListener === 'function') global.addEventListener('gc:storagechange', function (e) {
+      const keys = (e && e.detail && e.detail.keys) || [];
+      if (keys.indexOf(LINKS_KEY) >= 0) links = null;
+    });
+  } catch (e) {}
+  function pump() {
+    while (active < MAX_PARALLEL && queue.length) {
+      const job = queue.shift();
+      active++; maxSeen = Math.max(maxSeen, active);
+      Promise.resolve().then(job.run).then(job.resolve, job.reject).then(function () { active--; pump(); });
+    }
+  }
+  function enqueue(run) { return new Promise(function (resolve, reject) { queue.push({ run, resolve, reject }); pump(); }); }
+  function sleep(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+  async function upload(dataUrl, tool, recId, idx) {
+    const fp = await SMART.hash(dataUrl);
+    const known = load()[fp];
+    if (known && /^https?:\/\//i.test(String(known.u || ''))) return known.u;
+    return enqueue(async function () {
+      const again = load()[fp];
+      if (again && /^https?:\/\//i.test(String(again.u || ''))) return again.u;
+      let last = null;
+      for (let i = 0; i < ATTEMPTS; i++) {
+        try {
+          const r = await CLOUD.post({ action: 'uploadPhoto', dataUrl, tool, recId, idx: idx || 0, photoKey: fp }, { timeout: 60000 });
+          const url = r && r.ok && (r.url || (r.data && r.data.url));
+          if (/^https?:\/\//i.test(String(url || ''))) {
+            load()[fp] = { u: String(url), t: Date.now() };
+            save();
+            return String(url);
+          }
+          last = new Error((r && r.error) || 'No Drive link returned');
+        } catch (e) { last = e; }
+        if (i + 1 < ATTEMPTS) await sleep(600 * Math.pow(2, i));
+      }
+      throw last || new Error('Photo upload failed');
+    });
+  }
+  return { upload, get active() { return active; }, get maxParallelSeen() { return maxSeen; }, MAX_PARALLEL };
+})();
 
 /* ═══════════════════════════════════════════════════════════
    2.5 SMART SYNC — HRA Portal AutoSync manifest / month bucket model
@@ -908,6 +1510,9 @@ const SMART = GC.smartSync = (() => {
     }
     return 0;
   }
+  function isDeleted(r) { return !!(r && (r._deleted === true || r._deleted === 'true' || r._deleted === 1)); }
+  /* 合併同一筆（同 semanticKey）：updatedAt 新的贏；同時間時「刪除記號」優先，
+     避免已刪除的記錄被另一台手機的舊資料復活（A3）。 */
   function mergeRows(a, b, opt) {
     const map = new Map(), order = [];
     (a || []).concat(b || []).forEach(function (row) {
@@ -916,11 +1521,34 @@ const SMART = GC.smartSync = (() => {
       const old = map.get(key), ta = stamp(old, opt), tb = stamp(row, opt);
       const preferred=GC.dormVersionWinner(old,row);
       if(preferred){map.set(key,preferred);return;}
-      if (tb > ta || (tb === ta && stable(row).length > stable(old).length)) map.set(key, Object.assign({}, old, row));
-      else map.set(key, Object.assign({}, row, old));
+      let winner;
+      if (tb > ta) winner = row;
+      else if (tb < ta) winner = old;
+      else if (isDeleted(row) !== isDeleted(old)) winner = isDeleted(row) ? row : old;
+      else winner = stable(row).length > stable(old).length ? row : old;
+      const loser = winner === row ? old : row;
+      const merged = Object.assign({}, loser, winner);
+      if (!isDeleted(winner)) { delete merged._deleted; delete merged.deletedAt; }
+      map.set(key, merged);
     });
     return order.map(k => map.get(k));
   }
+  /* 墓碑保留天數：預設 90 天，之後才從同步資料中移除。 */
+  function tombTime(r, opt) {
+    const d = r && r.deletedAt ? new Date(r.deletedAt).getTime() : NaN;
+    return isNaN(d) ? stamp(r, opt) : d;
+  }
+  function pruneTombstonesDetailed(records, opt) {
+    const days = Math.max(90, Number(opt && opt.tombstoneDays) || 90);
+    const cutoff = Date.now() - days * 86400000;
+    const kept = [], pruned = [];
+    (records || []).forEach(function (r) {
+      if (isDeleted(r)) { const t = tombTime(r, opt); if (t && t < cutoff) { pruned.push(r); return; } }
+      kept.push(r);
+    });
+    return { records: kept, pruned: pruned };
+  }
+  function pruneTombstones(records, opt) { return pruneTombstonesDetailed(records, opt).records; }
   function sortRows(rows, opt) {
     return (rows || []).slice().sort(function (a, b) {
       const ka = semanticKey(a, opt), kb = semanticKey(b, opt);
@@ -930,14 +1558,43 @@ const SMART = GC.smartSync = (() => {
   async function buildBuckets(records, opt) {
     const groups = {}, out = {};
     (records || []).forEach(function (r) { const k = bucketKey(r, opt); (groups[k] || (groups[k] = [])).push(r); });
-    await Promise.all(Object.keys(groups).sort().map(async function (k) {
+    const keys = Object.keys(groups).sort();
+    const built = await Promise.all(keys.map(async function (k) {
       const rows = sortRows(groups[k], opt);
-      out[k] = { key:k, records:rows, count:rows.length, hash:await hash(stable(rows)) };
+      return { key:k, records:rows, count:rows.length, hash:await hash(stable(rows)) };
     }));
+    built.forEach(function (b) { out[b.key] = b; }); // 固定順序（不受非同步完成先後影響）
     return out;
   }
+  /* 同步基準（上次同步後的 bucket hash）存在 localStorage，所有分頁共用。
+     只有「本分頁寫的」或「本分頁開啟前就存在」的基準才可信；其他分頁在本分頁
+     開啟後才寫入的基準，代表本分頁的資料可能是舊的 → 不使用基準，改走安全合併（A1）。
+     本機完全沒有資料時也不使用基準，絕不把雲端當成要刪除（A2）。 */
+  const TAB_ID = (STORAGE && STORAGE.tabId) || ('tab_' + Date.now().toString(36));
+  const LOADED_AT = (STORAGE && STORAGE.loadedAt) || Date.now();
   function readState(tool) { try { return JSON.parse(localStorage.getItem(STATE_PREFIX + tool) || 'null'); } catch (e) { return null; } }
-  function writeState(tool, value) { try { localStorage.setItem(STATE_PREFIX + tool, JSON.stringify(value)); } catch (e) {} }
+  function writeState(tool, value) {
+    try { localStorage.setItem(STATE_PREFIX + tool, JSON.stringify(Object.assign({}, value, { tab: TAB_ID, at: Date.now() }))); } catch (e) {}
+  }
+  function clearState(tool) {
+    try {
+      if (tool) localStorage.removeItem(STATE_PREFIX + tool);
+      else if (STORAGE && STORAGE.clearSyncState) STORAGE.clearSyncState();
+    } catch (e) {}
+  }
+  function baseState(tool, records) {
+    if (!records || !records.length) return {};
+    const s = readState(tool);
+    if (!s || typeof s !== 'object') return {};
+    if (s.tab === TAB_ID) return s;
+    if (!s.at || Number(s.at) <= LOADED_AT) return s;
+    return {};
+  }
+  /* 伺服器與前端 hash 演算法不同時（伺服器改過內容、合併過），下載後記下「雲端 hash ↔ 手機 hash」
+     對照（state.alias）；比較時把雲端 hash 換成手機的等值 hash，避免下一次同步又重傳（churn）。 */
+  function aliasOf(state) { return (state && state.alias && typeof state.alias === 'object') ? state.alias : {}; }
+  function toLocalSpace(h, k, alias) { const a = alias[k]; return a && h && a.r === h ? a.l : h; }
+  function translateHashes(map, alias) { const out = {}; Object.keys(map || {}).forEach(function (k) { out[k] = toLocalSpace(map[k], k, alias); }); return out; }
   function dataOf(j) { return j && j.data !== undefined ? j.data : j; }
   function unsupported(message) { const e = new Error(message || 'Smart sync endpoint unavailable'); e.smartUnsupported = true; return e; }
   function isUnsupportedMessage(message) {
@@ -970,41 +1627,82 @@ const SMART = GC.smartSync = (() => {
     (records || []).forEach(function (r) { const d = recordDate(r, opt); if (d) m.add(d.slice(0, 7)); });
     return Array.from(m).sort();
   }
-  async function preparePhotos(records, tool, opt) {
-    const field = opt.photoField || 'photos';
-    const fields = tool === 'waterdrum' ? Array.from(new Set([field,'fPhotos','sPhotos'])) : [field];
+  function photoFieldsOf(tool, opt) {
+    const base = [(opt && opt.photoField) || 'photos'].concat(Array.isArray(opt && opt.photoFields) ? opt.photoFields : []);
+    if (tool === 'waterdrum') base.push('fPhotos', 'sPhotos');
+    return Array.from(new Set(base.filter(Boolean)));
+  }
+  /* 照片先轉 Drive 連結（同時最多 3 張、自動重試、記住已上傳連結）。
+     單張失敗：雲端資料不放這張（絕不送 base64 進 bucket），手機保留原照片，
+     其他照片與整個模組照常同步；下次同步自動重試（A5/A14）。 */
+  async function preparePhotosDetailed(records, tool, opt) {
+    opt = opt || {};
+    const fields = photoFieldsOf(tool, opt);
     /* Cleaning 等批次記錄可能共用同一張照片。一次同步內以 dataURL 為鍵共用
        上傳 Promise，避免同一張照片因多地點／多時段而重複寫入 Drive。 */
     const uploaded = new Map();
-    async function one(photo, recId, idx) {
-      if (typeof photo !== 'string' || photo.indexOf('data:image/') !== 0) return Promise.resolve(photo);
-      if (!uploaded.has(photo)) uploaded.set(photo, CLOUD.uploadPhoto(photo, tool, recId, idx));
-      const link = await uploaded.get(photo);
-      if (tool === 'waterdrum' && !/^https?:\/\//i.test(String(link || ''))) {
-        throw new Error('送水照片上傳失敗，原照片已保留 / Water photo upload failed; original retained (' + String(recId || '') + ')');
+    const failures = [], localMap = new Map();
+    function isData(p) { return typeof p === 'string' && p.indexOf('data:image/') === 0; }
+    function one(photo, recId, idx) {
+      if (!uploaded.has(photo)) {
+        uploaded.set(photo, CLOUD.uploadPhotoStrict(photo, tool, recId, idx).then(
+          function (url) { return /^https?:\/\//i.test(String(url || '')) ? { url: String(url) } : { error: new Error('No Drive link') }; },
+          function (err) { return { error: err }; }));
       }
-      return link;
+      return uploaded.get(photo);
     }
-    return Promise.all((records || []).map(async function (row) {
-      let copy = row;
+    const out = await Promise.all((records || []).map(async function (row) {
+      let cloud = row, local = row, failed = false;
       for (const photoField of fields) {
-        const photos = tool === 'waterdrum' ? PHOTO.list(row && row[photoField]) : U.asArray(row && row[photoField]);
-        if (!photos.some(p => typeof p === 'string' && p.indexOf('data:image/') === 0)) continue;
-        if (copy === row) copy = Object.assign({}, row);
-        copy[photoField] = await Promise.all(photos.map(function (photo, idx) { return one(photo, row && row[opt.idKey || 'id'], idx); }));
+        const raw = row && row[photoField];
+        if (raw == null || raw === '') continue;
+        const photos = tool === 'waterdrum' ? PHOTO.list(raw) : U.asArray(raw);
+        if (!photos.some(isData)) continue;
+        const recId = row && row[opt.idKey || 'id'];
+        const results = await Promise.all(photos.map(function (photo, idx) { return isData(photo) ? one(photo, recId, idx) : Promise.resolve({ value: photo }); }));
+        if (cloud === row) cloud = Object.assign({}, row);
+        if (local === row) local = Object.assign({}, row);
+        cloud[photoField] = []; local[photoField] = [];
+        results.forEach(function (r, idx) {
+          if (r.url) { cloud[photoField].push(r.url); local[photoField].push(r.url); }
+          else if (r.error) { failed = true; local[photoField].push(photos[idx]); failures.push({ id: recId, field: photoField, index: idx, error: String(r.error && r.error.message || r.error) }); }
+          else { cloud[photoField].push(r.value); local[photoField].push(r.value); }
+        });
       }
-      return copy;
+      if (failed) localMap.set(cloud, local);
+      return cloud;
     }));
+    return { records: out, localMap: localMap, failures: failures };
+  }
+  /** 相容舊 API：回傳可上雲的記錄（失敗照片不含 base64）。 */
+  async function preparePhotos(records, tool, opt) {
+    return (await preparePhotosDetailed(records, tool, opt || {})).records;
   }
   async function legacyPull(tool, opt) {
     const d = await CLOUD.get({ action:'pull', tool:tool });
     const raw = (d && d.data && d.data.list) || (d && d.list) || [];
     return { records:Array.isArray(raw) ? raw : [], meta:dataOf(d) || {} };
   }
+  /* 同步 meta 只放模組的業務設定（清潔人員、地點、區域…），不放報表期間／發送
+     選項；否則每次切換期間都會多一次 commit，Portal 與模組互相覆蓋（A17）。 */
+  function businessMeta(opt) {
+    const raw = typeof opt.extra === 'function' ? (opt.extra() || {}) : (opt.extra || {});
+    const out = {};
+    Object.keys(raw || {}).forEach(function (k) {
+      if (/^report[A-Z_]/.test(k) || /^(messageKey|updateExisting|dedupePhotos|photoDedupeKey)$/.test(k)) return;
+      out[k] = raw[k];
+    });
+    return out;
+  }
+  function isBigShrink(removed, total) {
+    return removed >= 3 && (removed >= 20 || removed >= Math.max(1, total) * 0.2);
+  }
   async function pushPrepared(tool, records, opt, remote, migrated) {
     const local = await buildBuckets(records, opt);
-    const last = readState(tool) || {}, lastH = migrated ? {} : (last.hashes || {});
-    const remoteH = migrated ? {} : (remote.hashes || {}), changed = [], deleted = [], remoteChanged = [], conflicts = [];
+    const last = migrated ? {} : baseState(tool, records), alias = migrated ? {} : aliasOf(last), lastH = translateHashes(last.hashes || {}, alias);
+    const realRemoteH = migrated ? {} : (remote.hashes || {}), remoteH = translateHashes(realRemoteH, alias), remoteC = migrated ? {} : (remote.counts || {});
+    const changed = [], deleted = [], remoteChanged = [], conflicts = [];
+    const localEmpty = !(records || []).length;
     const keys = new Set(Object.keys(local).concat(Object.keys(remoteH)));
     keys.forEach(function (k) {
       const lh = local[k] && local[k].hash || '', rh = remoteH[k] || '', base = lastH[k] || '';
@@ -1015,6 +1713,7 @@ const SMART = GC.smartSync = (() => {
         else if (lh && rh && lh !== rh) conflicts.push(k);
         return;
       }
+      // localEmpty 時 baseState() 已回傳空基準，不會走到這裡（空手機絕不刪雲端）。
       if (opt.allowDeletes && !lh && rh && base && rh === base) { deleted.push(k); return; }
       const lc = lh !== base, rc = rh !== base;
       if (lc && !rc && lh) changed.push(k);
@@ -1024,45 +1723,101 @@ const SMART = GC.smartSync = (() => {
     if (!migrated && (remoteChanged.length || conflicts.length)) {
       return { ok:false, needsPull:true, remoteChanged:remoteChanged, conflicts:conflicts };
     }
+    /* 大量減少保護：這次上傳會讓雲端少很多筆（例如清空手機後又新增 1 筆），
+       必須使用者確認；不確認 → 保留雲端並合併回手機（A2）。 */
+    if (!migrated && !opt._shrinkApproved) {
+      const pruned = opt._prunedByBucket || {};
+      const shrinkBuckets = [];
+      let removed = 0;
+      deleted.forEach(function (k) { const n = Math.max(0, (Number(remoteC[k]) || 0) - (pruned[k] || 0)); if (n) { removed += n; shrinkBuckets.push(k); } });
+      changed.forEach(function (k) {
+        if (!remoteH[k]) return;
+        const n = (Number(remoteC[k]) || 0) - local[k].count - (pruned[k] || 0);
+        if (n > 0) { removed += n; shrinkBuckets.push(k); }
+      });
+      const total = Object.keys(remoteC).reduce(function (n, k) { return n + (Number(remoteC[k]) || 0); }, 0);
+      if (shrinkBuckets.length && isBigShrink(removed, total)) {
+        let approved = false;
+        if (typeof opt.confirmShrink === 'function') {
+          try { approved = !!(await opt.confirmShrink({ tool: tool, removed: removed, total: total, buckets: shrinkBuckets.slice() })); } catch (e) { approved = false; }
+        }
+        if (!approved) {
+          return { ok:false, needsPull:true, remoteChanged:[], conflicts:[], forceMerge:shrinkBuckets, shrinkBlocked:{ removed: removed, total: total, buckets: shrinkBuckets } };
+        }
+      }
+    }
     const uploadId = 'gc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
     let uploaded = 0;
+    /* 伺服器改動過內容（去重、還原核可欄位…）的 bucket：commit 後立刻重新下載，
+       手機才會與雲端一致，下次同步不會把舊內容再傳上去（altered:true）。 */
+    const altered = [], localHashOf = {};
     for (let i = 0; i < changed.length; i++) {
       const b = local[changed[i]];
+      localHashOf[b.key] = b.hash;
       const r = await retryNetwork(function () {
-        return CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records });
+        return CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records }, { timeout: 60000 });
       }, 3);
       if (!r || r.ok === false) throw new Error((r && r.error) || 'Smart bucket upload failed');
       const saved=dataOf(r)||{};
+      if (saved.altered === true) altered.push(b.key);
       if (saved.hash) b.hash=String(saved.hash);
       if (saved.count!==undefined) b.count=Math.max(0,Number(saved.count)||0);
       uploaded += b.count;
     }
     const hashes = {}, counts = {};
-    Object.keys(local).forEach(function (k) { hashes[k] = local[k].hash; counts[k] = local[k].count; });
-    Object.keys(remoteH).forEach(function (k) { if (!hashes[k] && deleted.indexOf(k) < 0) { hashes[k] = remoteH[k]; counts[k] = Number((remote.counts || {})[k]) || 0; } });
-    const meta = Object.assign({}, typeof opt.extra === 'function' ? (opt.extra() || {}) : (opt.extra || {}), {
-      periods: monthsOf(records, opt), _smartMetaHash: await hash(stable(typeof opt.extra === 'function' ? (opt.extra() || {}) : (opt.extra || {})))
+    // 沒上傳的 bucket 送「雲端原本的 hash」（伺服器以此判斷未變動）；上傳的送這次的 hash。
+    Object.keys(local).forEach(function (k) { hashes[k] = changed.indexOf(k) < 0 && realRemoteH[k] ? realRemoteH[k] : local[k].hash; counts[k] = changed.indexOf(k) < 0 && realRemoteH[k] ? (Number(remoteC[k]) || local[k].count) : local[k].count; });
+    Object.keys(realRemoteH).forEach(function (k) { if (!hashes[k] && deleted.indexOf(k) < 0) { hashes[k] = realRemoteH[k]; counts[k] = Number((remote.counts || {})[k]) || 0; } });
+    const nextAlias = {};
+    Object.keys(alias).forEach(function (k) { if (changed.indexOf(k) < 0 && deleted.indexOf(k) < 0 && realRemoteH[k] && alias[k].r === realRemoteH[k]) nextAlias[k] = alias[k]; });
+    const business = businessMeta(opt);
+    const meta = Object.assign({}, business, {
+      periods: monthsOf(records, opt), _smartMetaHash: await hash(stable(business))
     });
     const metaChanged = migrated || changed.length || deleted.length || meta._smartMetaHash !== (remote.metaHash || '');
     if (!metaChanged) {
-      writeState(tool, { hashes:remoteH, counts:remote.counts || {}, metaHash:remote.metaHash || '', updatedAt:U.now() });
+      writeState(tool, { hashes:realRemoteH, counts:remote.counts || {}, metaHash:remote.metaHash || '', alias:nextAlias, updatedAt:U.now() });
       return { ok:true, skipped:true, uploaded:0, unchanged:records.length, changedBuckets:0, records:records };
     }
-    const commit = await retryNetwork(function () { return CLOUD.post({ action:'smartCommit', tool:tool, uploadId:uploadId, hashes:hashes, counts:counts,
-      recordCount:Object.keys(counts).reduce((n, k) => n + (Number(counts[k]) || 0), 0), meta:meta,
-      reportPeriod:meta.reportPeriod, reportRef:meta.reportRef, reportMonth:meta.reportMonth,
-      reportScope:meta.reportScope, reportSlot:meta.reportSlot, reportLanguage:meta.reportLanguage,
-      reportSender:meta.reportSender }); }, 3);
+    /* compare-and-swap：baseHashes＝規劃這次上傳時讀到的雲端 hash。commit 時雲端 bucket
+       已被別台改過 → 伺服器合併（mergedBuckets）或保留別台版本（keptBuckets），並回 needsPull。 */
+    const baseHashes = Object.assign({}, realRemoteH);
+    const commit = await retryNetwork(function () { return CLOUD.post({ action:'smartCommit', tool:tool, uploadId:uploadId, hashes:hashes, counts:counts, baseHashes:baseHashes,
+      recordCount:Object.keys(counts).reduce((n, k) => n + (Number(counts[k]) || 0), 0), meta:meta }, { timeout: 60000 }); }, 3);
     if (!commit || commit.ok === false) throw new Error((commit && commit.error) || 'Smart commit failed');
-    const ts = (dataOf(commit) && (dataOf(commit).timestamp || dataOf(commit).updatedAt)) || U.now();
-    writeState(tool, { hashes:hashes, counts:counts, metaHash:meta._smartMetaHash, updatedAt:ts });
-    return { ok:true, uploaded:uploaded, unchanged:Math.max(0, records.length - uploaded), changedBuckets:changed.length, removedBuckets:deleted.length, migrated:!!migrated, records:records, response:commit };
+    const cd = dataOf(commit) || {};
+    const ts = (cd.timestamp || cd.updatedAt) || U.now();
+    const refetch = [];
+    const addRefetch = function (k) { if (k && refetch.indexOf(k) < 0) refetch.push(k); };
+    altered.forEach(addRefetch);
+    if (cd.needsPull === true || cd.conflict === true) {
+      (Array.isArray(cd.mergedBuckets) ? cd.mergedBuckets : []).forEach(addRefetch);
+      (Array.isArray(cd.keptBuckets) ? cd.keptBuckets : []).forEach(addRefetch);
+    }
+    /* 需要重新下載的 bucket：基準設成「手機這份」的 hash（或移除），
+       下載時會看成「只有雲端變了」→ 直接採用雲端（已含本機的修改），不會回滾別台。 */
+    const stateHashes = Object.assign({}, hashes), stateCounts = Object.assign({}, counts);
+    refetch.forEach(function (k) {
+      delete nextAlias[k];
+      if (local[k]) stateHashes[k] = localHashOf[k] || local[k].hash || stateHashes[k];
+      else { delete stateHashes[k]; delete stateCounts[k]; }
+    });
+    writeState(tool, { hashes:stateHashes, counts:stateCounts, metaHash:meta._smartMetaHash, alias:nextAlias, updatedAt:ts });
+    return { ok:true, uploaded:uploaded, unchanged:Math.max(0, records.length - uploaded), changedBuckets:changed.length, removedBuckets:deleted.length, migrated:!!migrated, records:records, response:commit,
+      refetch:refetch, alteredBuckets:altered, conflict:!!(cd.needsPull || cd.conflict) };
+  }
+  function prunedByBucket(rows, opt) {
+    const out = {};
+    (rows || []).forEach(function (r) { const k = bucketKey(r, opt); out[k] = (out[k] || 0) + 1; });
+    return out;
   }
   async function upload(tool, localList, opt) {
     opt = opt || {};
     const toCloud = typeof opt.toCloud === 'function' ? opt.toCloud : (r => r);
     const fromCloud = typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r);
-    let records = (localList || []).map(toCloud);
+    const pr = pruneTombstonesDetailed((localList || []).map(toCloud), opt);
+    let records = pr.records;
+    const pushOpt = Object.assign({}, opt, { _prunedByBucket: prunedByBucket(pr.pruned, opt) });
     let remote = await manifest(tool), migrated = false;
     if (!remote.exists && remote.legacy) {
       const old = await legacyPull(tool, opt);
@@ -1070,16 +1825,40 @@ const SMART = GC.smartSync = (() => {
       if (typeof opt.onRemote === 'function') opt.onRemote(old.meta || {});
       migrated = true;
     }
-    records = await preparePhotos(records, tool, opt);
-    let result = await pushPrepared(tool, records, opt, remote, migrated);
+    const localMap = new Map();
+    let photoFailures = [];
+    let prepared = await preparePhotosDetailed(records, tool, opt);
+    prepared.localMap.forEach(function (v, k) { localMap.set(k, v); });
+    photoFailures = prepared.failures;
+    records = prepared.records;
+    let result = await pushPrepared(tool, records, pushOpt, remote, migrated);
+    let shrinkBlocked = null;
     if (result.needsPull) {
-      const pulled = await download(tool, records, Object.assign({}, opt, { _cloudInput:true }));
-      const mergedCloud = await preparePhotos((pulled.list || []).map(toCloud), tool, opt);
+      shrinkBlocked = result.shrinkBlocked || null;
+      const pulled = await download(tool, records, Object.assign({}, opt, { _cloudInput:true, _forceMerge:result.forceMerge || [] }));
+      prepared = await preparePhotosDetailed(pruneTombstones((pulled.list || []).map(toCloud), opt), tool, opt);
+      prepared.localMap.forEach(function (v, k) { localMap.set(k, v); });
+      photoFailures = prepared.failures;
+      const mergedCloud = prepared.records;
       remote = await manifest(tool);
-      result = await pushPrepared(tool, mergedCloud, opt, remote, false);
+      /* 已與雲端合併（雲端資料都在）→ 不再做大量減少檢查，避免卡住。 */
+      result = await pushPrepared(tool, mergedCloud, Object.assign({}, pushOpt, { _shrinkApproved: !!shrinkBlocked }), remote, false);
       records = mergedCloud;
     }
-    result.list = records.map(fromCloud);
+    if (result.ok && Array.isArray(result.refetch) && result.refetch.length) {
+      /* commit 後雲端與手機不同（別台同時提交、或伺服器改過內容）→ 立刻下載那些 bucket。 */
+      const localRows = records.map(function (r) { return localMap.get(r) || r; });
+      const pulled = await download(tool, localRows, Object.assign({}, opt, { _cloudInput:true }));
+      result.list = pulled.list;
+      result.refetched = result.refetch.slice();
+      result.photoFailures = photoFailures;
+      if (shrinkBlocked) result.shrinkBlocked = shrinkBlocked;
+      result.res = Object.assign({ ok:true, smart:true }, dataOf(result.response) || {}, result);
+      return result;
+    }
+    result.list = records.map(function (r) { return localMap.get(r) || r; }).map(fromCloud);
+    result.photoFailures = photoFailures;
+    if (shrinkBlocked) result.shrinkBlocked = shrinkBlocked;
     result.res = Object.assign({ ok:true, smart:true }, dataOf(result.response) || {}, result);
     return result;
   }
@@ -1087,7 +1866,7 @@ const SMART = GC.smartSync = (() => {
     opt = opt || {};
     const toCloud = typeof opt.toCloud === 'function' ? opt.toCloud : (r => r);
     const fromCloud = typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r);
-    let localRows = opt._cloudInput ? (localList || []) : (localList || []).map(toCloud);
+    let localRows = pruneTombstones(opt._cloudInput ? (localList || []) : (localList || []).map(toCloud), opt);
     const remote = await manifest(tool);
     if (!remote.exists && remote.legacy) {
       const old = await legacyPull(tool, opt);
@@ -1097,7 +1876,10 @@ const SMART = GC.smartSync = (() => {
         response:Object.assign({smart:true,migrated:true},old.meta||{}), downloaded:old.records.length, uploaded:migrated.uploaded || 0 };
     }
     if (!remote.exists) return { list:(localRows || []).map(fromCloud), stat:null, empty:true, response:remote, downloaded:0 };
-    const local = await buildBuckets(localRows, opt), out = {}, remoteH = remote.hashes || {}, last = readState(tool) || {}, lastH = last.hashes || {};
+    const force = new Set(Array.isArray(opt._forceMerge) ? opt._forceMerge : []);
+    const local = await buildBuckets(localRows, opt), out = {}, realRemoteH = remote.hashes || {}, last = baseState(tool, localRows), alias = aliasOf(last);
+    const remoteH = translateHashes(realRemoteH, alias), lastH = translateHashes(last.hashes || {}, alias), nextAlias = {};
+    Object.keys(alias).forEach(function (k) { if (realRemoteH[k] && alias[k].r === realRemoteH[k]) nextAlias[k] = alias[k]; });
     let downloaded = 0, unchanged = 0, pending = 0, removed = 0;
     const conflicts = [];
     const keys = Array.from(new Set(Object.keys(remoteH).concat(Object.keys(local)))).sort();
@@ -1113,28 +1895,90 @@ const SMART = GC.smartSync = (() => {
       const localChanged = !!(lb && base && lb.hash !== base);
       const remoteChanged = !!(rh && base && rh !== base);
       if (firstDivergence) conflicts.push(k);
-      if (lb && localChanged && !remoteChanged) { out[k] = lb.records; pending += lb.count; continue; }
+      if (lb && localChanged && !remoteChanged && !force.has(k)) { out[k] = lb.records; pending += lb.count; continue; }
       if (lb && localChanged && remoteChanged && lb.hash !== rh) conflicts.push(k);
       const bd = dataOf(await retryNetwork(function () { return CLOUD.get({ action:'smartBucket', tool:tool, bucket:k }); }, 3)) || {};
       const rows = Array.isArray(bd.records) ? bd.records : [];
       downloaded += rows.length;
-      out[k] = lb && (firstDivergence || (localChanged && remoteChanged && lb.hash !== rh)) ? mergeRows(lb.records, rows, opt) : rows;
+      const mergedHere = lb && (firstDivergence || force.has(k) || (localChanged && remoteChanged && lb.hash !== rh));
+      out[k] = mergedHere ? mergeRows(lb.records, rows, opt) : rows;
+      delete nextAlias[k];
+      if (!mergedHere) {
+        // 整包採用雲端版本：記下「雲端 hash ↔ 手機計算的 hash」
+        const lh = await hash(stable(sortRows(rows, opt)));
+        if (lh && lh !== realRemoteH[k]) nextAlias[k] = { r: realRemoteH[k], l: lh };
+      }
     }
     const merged = sortRows(Object.keys(out).reduce((a, k) => a.concat(out[k] || []), []), opt);
-    writeState(tool, { hashes:remoteH, counts:remote.counts || {}, metaHash:remote.metaHash || '', updatedAt:U.now() });
+    writeState(tool, { hashes:realRemoteH, counts:remote.counts || {}, metaHash:remote.metaHash || '', alias:nextAlias, updatedAt:U.now() });
     return { list:merged.map(fromCloud), stat:{added:downloaded,updated:0,kept:unchanged,total:merged.length}, empty:false,
       response:Object.assign({smart:true}, remote.meta || {}, {data:Object.assign({list:merged}, remote.meta || {})}), downloaded:downloaded,
       unchanged:unchanged, pendingUpload:pending, removed:removed, conflicts:conflicts };
   }
-  return { version:VERSION, upload, download, buildBuckets, mergeRows, semanticKey, bucketKey, stable, hash, readState, retryNetwork, preparePhotos };
+  return { version:VERSION, upload, download, buildBuckets, mergeRows, semanticKey, bucketKey, stable, hash, readState, retryNetwork, preparePhotos,
+    preparePhotosDetailed, pruneTombstones, isDeleted, clearState, baseState };
 })();
+
+/* ═══════════════════════════════════════════════════════════
+   2.6 DATA — 刪除墓碑（tombstone）共用工具
+   刪除一筆 = 保留 {id, _deleted:true, updatedAt, deletedAt, 關鍵欄位}，
+   一起存檔並同步；畫面、統計、匯出、Telegram 一律用 GC.data.live(rows)。
+   墓碑至少保留 90 天，之後同步時自動清除。
+   ═══════════════════════════════════════════════════════════ */
+GC.data = {
+  TOMBSTONE_DAYS: 90,
+  isDeleted(r) { return SMART.isDeleted(r); },
+  /** 只留有效記錄（去掉 _deleted 墓碑） */
+  live(rows) { return (Array.isArray(rows) ? rows : []).filter(r => r && !SMART.isDeleted(r)); },
+  /** 只取墓碑 */
+  tombstones(rows) { return (Array.isArray(rows) ? rows : []).filter(r => SMART.isDeleted(r)); },
+  /**
+   * 由一筆記錄產生墓碑。保留 id 與所有「小」欄位（日期、地點、時段…，讓各模組的
+   * 同步鍵仍然對得上），去掉照片、base64、大型物件。opt: {idKey, reason, by, keep:[欄位]}
+   */
+  tomb(row, opt) {
+    opt = opt || {};
+    const idKey = opt.idKey || 'id';
+    const now = U.now();
+    const out = {};
+    const keep = Array.isArray(opt.keep) ? opt.keep : null;
+    Object.keys(row || {}).forEach(k => {
+      const v = row[k];
+      if (keep && keep.indexOf(k) < 0 && k !== idKey) return;
+      if (/photo|image|img|attachment|base64/i.test(k)) return;
+      if (typeof v === 'string') { if (v.length > 300 || v.indexOf('data:') === 0) return; out[k] = v; return; }
+      if (typeof v === 'number' || typeof v === 'boolean' || v == null) { out[k] = v; return; }
+      if (Array.isArray(v) && v.length <= 20 && v.every(x => x == null || typeof x === 'number' || (typeof x === 'string' && x.length <= 60 && x.indexOf('data:') !== 0))) out[k] = v.slice();
+    });
+    if (row && row[idKey] != null) out[idKey] = row[idKey];
+    out._deleted = true;
+    out.deletedAt = now;
+    out.updatedAt = now;
+    if (opt.reason) out.deleteReason = String(opt.reason);
+    if (opt.by) out.deletedBy = String(opt.by);
+    return out;
+  },
+  /** 在清單中把符合的記錄換成墓碑；match 可為 id 或 function(row)。回傳新清單。 */
+  remove(list, match, opt) {
+    opt = opt || {};
+    const idKey = opt.idKey || 'id';
+    const test = typeof match === 'function' ? match : (r => r && String(r[idKey]) === String(match));
+    return (Array.isArray(list) ? list : []).map(r => (r && !SMART.isDeleted(r) && test(r)) ? GC.data.tomb(r, opt) : r);
+  },
+  /** 移除超過保留天數（預設 90 天）的墓碑 */
+  prune(rows, days) { return SMART.pruneTombstones(rows, { tombstoneDays: days }); },
+  /** 兩份清單合併：同一筆 updatedAt 新的贏；同時間刪除優先。opt 同同步設定 {idKey, keyFn, dateField} */
+  merge(a, b, opt) { return SMART.mergeRows(a, b, Object.assign({ idKey: 'id', tsKey: 'updatedAt' }, opt || {})); }
+};
 
 /* ═══════════════════════════════════════════════════════════
    3. PHOTO — 拍照 / 選檔 / 壓縮 / 縮圖
    ═══════════════════════════════════════════════════════════ */
 const PHOTO = GC.photo = {
+  /* 全平台統一：長邊最多 1024px、JPEG 品質 0.7（約 150–400KB）。 */
   MAX_W: 1024,
-  QUALITY: 0.72,
+  MAX_EDGE: 1024,
+  QUALITY: 0.7,
   _cells: new Map(),
 
   value(photo) {
@@ -1157,27 +2001,42 @@ const PHOTO = GC.photo = {
     return U.asArray(photos).map(PHOTO.value).filter(Boolean);
   },
 
-  /** File → 壓縮後 base64 dataURL */
+  /**
+   * 壓縮照片 → JPEG dataURL（長邊 ≤ 1024px、品質 0.7）。
+   * input 可為 File / Blob / 'data:image/...' 字串；第二參數可為最大長邊數字或 {maxEdge, quality}。
+   */
   compress(file, maxW, quality) {
-    maxW = maxW || PHOTO.MAX_W;
-    quality = quality || PHOTO.QUALITY;
-    return new Promise((resolve, reject) => {
-      if (!file || !/^image\//.test(file.type)) return reject(new Error('not an image'));
-      const fr = new FileReader();
-      fr.onerror = () => reject(new Error('read fail'));
-      fr.onload = () => {
-        const img = new Image();
-        img.onerror = () => reject(new Error('decode fail'));
-        img.onload = () => {
-          let w = img.width, h = img.height;
-          if (w > maxW) { h = Math.round(h * maxW / w); w = maxW; }
+    if (maxW && typeof maxW === 'object') { quality = maxW.quality; maxW = maxW.maxEdge || maxW.maxW; }
+    const maxEdge = Number(maxW) > 0 ? Number(maxW) : PHOTO.MAX_EDGE;
+    quality = Number(quality) > 0 && Number(quality) <= 1 ? Number(quality) : PHOTO.QUALITY;
+    function draw(src, resolve, reject) {
+      const img = new Image();
+      img.onerror = () => reject(new Error('decode fail'));
+      img.onload = () => {
+        try {
+          let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+          if (!w || !h) return reject(new Error('decode fail'));
+          const scale = Math.min(1, maxEdge / Math.max(w, h));
+          w = Math.max(1, Math.round(w * scale)); h = Math.max(1, Math.round(h * scale));
           const cv = document.createElement('canvas');
           cv.width = w; cv.height = h;
-          cv.getContext('2d').drawImage(img, 0, 0, w, h);
+          const ctx = cv.getContext('2d');
+          ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, w, h);   // PNG 透明底轉 JPEG 不變黑
+          ctx.drawImage(img, 0, 0, w, h);
           resolve(cv.toDataURL('image/jpeg', quality));
-        };
-        img.src = fr.result;
+        } catch (e) { reject(e); }
       };
+      img.src = src;
+    }
+    return new Promise((resolve, reject) => {
+      if (typeof file === 'string') {
+        if (file.indexOf('data:image/') !== 0) return reject(new Error('not an image'));
+        return draw(file, resolve, reject);
+      }
+      if (!file || !/^image\//.test(file.type || '')) return reject(new Error('not an image'));
+      const fr = new FileReader();
+      fr.onerror = () => reject(new Error('read fail'));
+      fr.onload = () => draw(fr.result, resolve, reject);
       fr.readAsDataURL(file);
     });
   },
@@ -1231,7 +2090,7 @@ const PHOTO = GC.photo = {
         for (const f of files) {
           if (photos.length >= max) break;
           try { photos.push(await PHOTO.compress(f)); changed = true; }
-          catch (err) { console.warn('photo', err);GC.toast('照片讀取失敗 / Photo could not be read','error'); }
+          catch (err) { console.warn('photo', err);GC.toast('⚠ ' + I18.t('gc.photoReadFail'),'error'); }
         }
         input.value = '';
         render();
@@ -1378,11 +2237,12 @@ const PERIOD = GC.period = {
   /** 篩選陣列 */
   filter(list, mode, dateField, ref) {
     if (!Array.isArray(list)) return [];
-    if (!mode || mode === 'all') return list.slice();
+    if (!mode || mode === 'all') return list.filter(x => !(x && x._deleted));
     const r = PERIOD.range(mode, ref);
     if (!r) return list.slice();
     const f = dateField || 'date';
     return list.filter(x => {
+      if (x && x._deleted) return false;
       const raw = x && x[f];
       if (!raw) return false;
       const t = new Date(/^\d{4}-\d{2}-\d{2}$/.test(String(raw)) ? String(raw)+'T00:00:00' : raw);
@@ -1451,6 +2311,44 @@ const IMPORT = GC.import = {
       out[field] = idx;
     });
     return out;
+  },
+
+  /** 依欄位名稱判斷日期／時間欄（schema 欄位名）。 */
+  dateTimeFields(schema, opt) {
+    opt = opt || {};
+    const fields = Object.keys(schema || {});
+    const dates = new Set((opt.dateFields || []).filter(Boolean));
+    const times = new Set((opt.timeFields || []).filter(Boolean));
+    fields.forEach(f => {
+      if (opt.dateFields || opt.timeFields) return;
+      if (/(^|_)(date|day|d)$|date|日期/i.test(f) && !/update|created/i.test(f)) dates.add(f);
+      else if (/(^|_)time$|time(_in|_out)?$|時間/i.test(f)) times.add(f);
+    });
+    return { dates: Array.from(dates), times: Array.from(times) };
+  },
+  /**
+   * SheetJS raw:true 讀到的 Excel 序號（46268 / 0.354）轉成 'YYYY-MM-DD' / 'HH:MM'（A8）。
+   * 無法辨識的日期保留原值並回報 badDates 數。
+   */
+  convertRows(objects, schema, opt) {
+    const ft = IMPORT.dateTimeFields(schema, opt);
+    let badDates = 0;
+    (objects || []).forEach(o => {
+      if (!o) return;
+      ft.dates.forEach(f => {
+        const v = o[f];
+        if (v == null || v === '') return;
+        const d = parseDateValue(v);
+        if (d) o[f] = d; else { badDates++; o[f] = String(v).trim(); }
+      });
+      ft.times.forEach(f => {
+        const v = o[f];
+        if (v == null || v === '') return;
+        const t = parseTimeValue(v);
+        o[f] = t || String(v).trim();
+      });
+    });
+    return { badDates, dateFields: ft.dates, timeFields: ft.times };
   },
 
   /** 解析檔案 → {headers, rows}；有 schema 時會跨工作表找最佳標題列。 */
@@ -1532,6 +2430,7 @@ const IMPORT = GC.import = {
       const allObjects = [];
       const metas = [];
       const errors = [];
+      let badDateTotal = 0;
       for (let i = 0; i < list.length; i++) {
         const file = list[i];
         try {
@@ -1548,8 +2447,12 @@ const IMPORT = GC.import = {
             o._raw = r;
             return o;
           }).filter(o => Object.keys(schema).some(f => String(o[f]).trim() !== ''));
+          /* 沒有自訂解析器的模組（宿舍、鑰匙）由核心統一把 Excel 日期／時間序號轉好。 */
+          const conv = (!Array.isArray(parsed.objects) && opt.convertDates !== false && typeof opt.parse !== 'function')
+            ? IMPORT.convertRows(objects, schema, { dateFields: opt.dateFields, timeFields: opt.timeFields }) : { badDates: 0 };
+          badDateTotal += conv.badDates || 0;
           allObjects.push(...objects);
-          metas.push(Object.assign({}, parsed, { headers, map, sheetName, fileName: file.name, objectCount: objects.length }));
+          metas.push(Object.assign({}, parsed, { headers, map, sheetName, fileName: file.name, objectCount: objects.length, badDates: conv.badDates || 0 }));
           status(I18.t('gc.importing') + ' ' + (i + 1) + '/' + list.length + ' · ' + file.name, 'busy');
         } catch (err) {
           errors.push(file.name + ': ' + (err && err.message ? err.message : err));
@@ -1566,18 +2469,31 @@ const IMPORT = GC.import = {
         const list = m && m.summary && Array.isArray(m.summary.warnings) ? m.summary.warnings : [];
         list.forEach(function (w) { if (w && !warnings.includes(String(w))) warnings.push(String(w)); });
       });
-      status('✅ ' + allObjects.length + ' ' + I18.t('gc.imported') +
-        (metas.length > 1 ? ' · ' + metas.length + ' files' : '') +
-        (errors.length ? ' · ' + errors.length + ' failed' : '') +
-        (warnings.length ? ' · ⚠️ ' + warnings.join(' | ') : ''), (errors.length || warnings.length) ? 'warning' : 'ok');
+      if (badDateTotal) warnings.push(badDateTotal + ' ' + I18.t('gc.badDate'));
+      const statusText = () => '✅ ' + allObjects.length + ' ' + I18.t('gc.imported') +
+        (metas.length > 1 ? ' · ' + metas.length + ' ' + I18.t('gc.files') : '') +
+        (errors.length ? ' · ' + errors.length + ' ' + I18.t('gc.filesFailed') : '') +
+        (warnings.length ? ' · ⚠️ ' + warnings.join(' | ') : '');
+      status(statusText(), (errors.length || warnings.length) ? 'warning' : 'ok');
       if (opt.onData) {
         const first = metas[0] || {};
-        opt.onData(allObjects, Object.assign({}, first, {
-          fileName: fileNames,
-          files: metas,
-          fileCount: metas.length,
-          errors: errors
-        }));
+        let extra = null;
+        try {
+          extra = opt.onData(allObjects, Object.assign({}, first, {
+            fileName: fileNames,
+            files: metas,
+            fileCount: metas.length,
+            errors: errors,
+            badDates: badDateTotal
+          }));
+        } catch (err) {
+          status('❌ ' + I18.t('gc.importFail') + ': ' + (err && err.message ? err.message : err), 'err');
+          return;
+        }
+        if (extra && typeof extra === 'object' && extra.skipped) {
+          warnings.push(extra.skipped + ' ' + I18.t('gc.dupSkipped'));
+          status(statusText(), 'warning');
+        }
       }
     }
 
@@ -1643,6 +2559,7 @@ GC.dash = {
   groupBy(list, keyFn, valFn) {
     const m = new Map();
     (list || []).forEach(r => {
+      if (r && r._deleted) return;
       const k = keyFn(r); if (k == null || k === '') return;
       m.set(k, (m.get(k) || 0) + (valFn ? (Number(valFn(r)) || 0) : 1));
     });
@@ -1654,26 +2571,101 @@ GC.dash = {
 /* ═══════════════════════════════════════════════════════════
    8. TOAST
    ═══════════════════════════════════════════════════════════ */
-GC.toast = function (msg, type) {
-  let box = document.getElementById('gc-toast-box');
-  if (!box) {
-    box = document.createElement('div');
-    box.id = 'gc-toast-box'; box.className = 'gc-toast-box';
-    document.body.appendChild(box);
-  }
-  const t = document.createElement('div');
-  t.className = 'gc-toast' + (type ? ' ' + type : '');
-  t.textContent = msg;
-  box.appendChild(t);
-  setTimeout(() => { t.classList.add('out'); setTimeout(() => t.remove(), 300); }, 2800);
+/* GC.toast(msg, type, opt)
+   · 顯示在畫面頂端，不擋住底部儲存按鈕
+   · type='error' 預設常駐，點一下才關閉；其他類型自動消失
+   · opt = {persist, ms, action:{label, fn}}，也可直接傳 {label, fn} 當作動作按鈕 */
+GC.toast = function (msg, type, opt) {
+  try {
+    if (!global.document || !document.body) { console.log('[toast]', msg); return null; }
+    if (opt && typeof opt.fn === 'function' && !opt.action) opt = { action: opt };
+    opt = opt || {};
+    const persist = opt.persist != null ? !!opt.persist : type === 'error';
+    let box = document.getElementById('gc-toast-box');
+    if (!box) {
+      box = document.createElement('div');
+      box.id = 'gc-toast-box'; box.className = 'gc-toast-box';
+      box.setAttribute('aria-live', 'polite');
+      document.body.appendChild(box);
+    }
+    const text = I18.mono(msg);
+    // 同一則常駐訊息不重複堆疊
+    const same = Array.from(box.children).find(el => el.__gcText === text && el.__gcPersist);
+    if (same) { same.classList.remove('gc-flash'); void same.offsetWidth; same.classList.add('gc-flash'); return { el: same, close: same.__gcClose }; }
+    const t = document.createElement('div');
+    t.className = 'gc-toast' + (type ? ' ' + type : '') + (persist ? ' persist' : '');
+    t.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    t.__gcText = text; t.__gcPersist = persist;
+    const body = document.createElement('span');
+    body.className = 'gc-toast-msg';
+    body.textContent = text;
+    t.appendChild(body);
+    let closed = false;
+    const close = function () {
+      if (closed) return; closed = true;
+      t.classList.add('out');
+      setTimeout(() => { if (t.parentNode) t.parentNode.removeChild(t); }, 300);
+    };
+    t.__gcClose = close;
+    if (opt.action && typeof opt.action.fn === 'function') {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'gc-toast-act';
+      b.textContent = String(opt.action.label || I18.t('gc.confirm'));
+      b.onclick = function (e) { e.stopPropagation(); close(); try { opt.action.fn(); } catch (err) { console.error(err); } };
+      t.appendChild(b);
+    }
+    if (persist) {
+      const x = document.createElement('span');
+      x.className = 'gc-toast-x'; x.textContent = '✕';
+      x.setAttribute('aria-label', I18.t('gc.tapToClose'));
+      t.title = I18.t('gc.tapToClose');
+      t.appendChild(x);
+    }
+    t.onclick = close;
+    box.appendChild(t);
+    // 最多同時 5 則；先移除會自動消失的舊訊息
+    const items = Array.from(box.children);
+    if (items.length > 5) {
+      const victim = items.find(el => !el.__gcPersist) || items[0];
+      if (victim && victim.__gcClose) victim.__gcClose(); else if (victim && victim.parentNode) victim.parentNode.removeChild(victim);
+    }
+    if (!persist) setTimeout(close, Number(opt.ms) > 0 ? Number(opt.ms) : (type === 'warning' ? 5000 : 2800));
+    return { el: t, close: close };
+  } catch (e) { try { console.warn('[toast]', msg); } catch (x) {} return null; }
 };
+
+/* GC.guard(key, asyncFn) — 同一個 key（字串或按鈕元素）執行中時，再按不會重跑，
+   直接回傳同一個 Promise；key 是按鈕時自動 disabled，完成後恢復。 */
+const GUARD_RUNS = new Map();
+GC.guard = function (key, fn, opt) {
+  if (typeof key === 'function' && typeof fn !== 'function') { opt = fn; fn = key; }
+  opt = opt || {};
+  if (GUARD_RUNS.has(key)) { const cur = GUARD_RUNS.get(key); return cur.promise || Promise.resolve(); }
+  const entry = { promise: null };
+  GUARD_RUNS.set(key, entry);   // 先佔位：fn 內同步再次觸發也會被擋下
+  const btn = key && key.nodeType === 1 ? key : (opt.button && opt.button.nodeType === 1 ? opt.button : null);
+  let prev = false;
+  if (btn) { prev = !!btn.disabled; btn.disabled = true; btn.setAttribute('aria-busy', 'true'); if (btn.classList) btn.classList.add('gc-busy'); }
+  entry.promise = new Promise(function (resolve, reject) {
+    let result;
+    try { result = fn(); } catch (e) { reject(e); return; }
+    Promise.resolve(result).then(resolve, reject);
+  }).finally(function () {
+    GUARD_RUNS.delete(key);
+    if (btn) { btn.disabled = prev; btn.removeAttribute('aria-busy'); if (btn.classList) btn.classList.remove('gc-busy'); }
+  });
+  return entry.promise;
+};
+GC.guard.busy = function (key) { return GUARD_RUNS.has(key); };
+/** 包成 onclick 用：GC.guard.wrap('save', saveFn) */
+GC.guard.wrap = function (key, fn) { return function () { const a = arguments, c = this; return GC.guard(key, function () { return fn.apply(c, a); }); }; };
 
 /* ═══════════════════════════════════════════════════════════
    9. STYLES — 自動注入（淺色背景，符合現有視覺）
    ═══════════════════════════════════════════════════════════ */
 const CSS = `
 .gc-lang{display:inline-flex;gap:2px;background:#EEF1F6;border-radius:8px;padding:3px}
-.gc-lang-btn{border:0;background:transparent;padding:5px 11px;border-radius:6px;font:600 12px/1 inherit;color:#5A6478;cursor:pointer;transition:.15s}
+.gc-lang-btn{border:0;background:transparent;min-height:44px;min-width:44px;padding:5px 11px;border-radius:6px;font:600 13px/1 inherit;color:#5A6478;cursor:pointer;transition:.15s}
 .gc-lang-btn.on{background:#fff;color:#1A3E78;box-shadow:0 1px 3px rgba(0,0,0,.1)}
 .gc-lang-btn:hover:not(.on){color:#1A3E78}
 
@@ -1741,14 +2733,21 @@ const CSS = `
 .gc-bar-v{font-size:11px;font-weight:700;color:#1A2035;text-align:right;font-variant-numeric:tabular-nums}
 .gc-empty{text-align:center;padding:26px;color:#8892A8;font-size:13px}
 
-.gc-toast-box{position:fixed;bottom:22px;left:50%;transform:translateX(-50%);z-index:10000;display:flex;flex-direction:column;gap:7px;align-items:center;pointer-events:none}
-.gc-toast{background:#1A2035;color:#fff;padding:10px 19px;border-radius:8px;font-size:13px;box-shadow:0 4px 18px rgba(0,0,0,.24);animation:gcIn .25s ease;max-width:88vw}
+.gc-toast-box{position:fixed;top:calc(env(safe-area-inset-top,0px) + 10px);left:50%;transform:translateX(-50%);z-index:2147483600;display:flex;flex-direction:column;gap:7px;align-items:stretch;width:min(560px,calc(100vw - 24px));pointer-events:none}
+.gc-toast{display:flex;align-items:center;gap:10px;background:#1A2035;color:#fff;padding:11px 14px;border-radius:10px;font-size:14px;line-height:1.4;box-shadow:0 6px 22px rgba(0,0,0,.28);animation:gcIn .25s ease;pointer-events:auto;cursor:pointer;word-break:break-word}
+.gc-toast-msg{flex:1;min-width:0;white-space:pre-line}
 .gc-toast.success{background:#16653A}.gc-toast.error{background:#B91C1C}.gc-toast.warning{background:#7D4E00}
-.gc-toast.out{opacity:0;transform:translateY(8px);transition:.3s}
-@keyframes gcIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.gc-toast.persist{border:2px solid rgba(255,255,255,.55)}
+.gc-toast-x{flex:0 0 auto;font-size:16px;opacity:.85;padding:0 2px}
+.gc-toast-act{flex:0 0 auto;min-height:36px;padding:0 12px;border:1px solid rgba(255,255,255,.7);border-radius:8px;background:rgba(255,255,255,.14);color:#fff;font:700 13px/1 inherit;cursor:pointer}
+.gc-toast.gc-flash{animation:gcFlash .5s ease}
+.gc-toast.out{opacity:0;transform:translateY(-8px);transition:.3s}
+@keyframes gcIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
+@keyframes gcFlash{50%{transform:scale(1.03)}}
+.gc-busy{opacity:.6;cursor:progress!important}
 
 .gc-cloud-btns{display:inline-flex;gap:7px}
-.gc-cloud-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 13px;border:1px solid #D8DCE6;background:#fff;border-radius:7px;font:600 12px/1 inherit;color:#1A3E78;cursor:pointer;transition:.15s}
+.gc-cloud-btn{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:7px 13px;border:1px solid #D8DCE6;background:#fff;border-radius:7px;font:600 13px/1 inherit;color:#1A3E78;cursor:pointer;transition:.15s}
 .gc-cloud-btn:hover{background:#EBF0FA;border-color:#1A3E78}
 .gc-cloud-btn:disabled{opacity:.45;cursor:not-allowed}
 
@@ -1760,7 +2759,7 @@ const CSS = `
 .gc-scope-select,.gc-ref-date{height:34px;padding:0 8px;border:1px solid #C9D3E3;border-radius:8px;background:#fff;color:#1A3E78;font:700 11px/1 inherit;flex:0 0 auto}
 .gc-slot-select,.gc-lang-select{height:34px;padding:0 8px;border:1px solid #C9D3E3;border-radius:8px;background:#fff;color:#1A3E78;font:700 11px/1 inherit;flex:0 0 auto;max-width:150px}
 .gc-ref-nav{height:34px;min-width:30px;padding:0 7px;border:1px solid #C9D3E3;border-radius:8px;background:#fff;color:#1A3E78;font:700 12px/1 inherit;cursor:pointer;flex:0 0 auto}
-.gc-action-btn{display:inline-flex;align-items:center;gap:5px;padding:7px 12px;border:1px solid #C9D3E3;background:#fff;border-radius:8px;font:700 12px/1 inherit;color:#1A3E78;cursor:pointer;white-space:nowrap;transition:.15s}
+.gc-action-btn{display:inline-flex;align-items:center;gap:5px;min-height:44px;padding:7px 12px;border:1px solid #C9D3E3;background:#fff;border-radius:8px;font:700 12px/1 inherit;color:#1A3E78;cursor:pointer;white-space:nowrap;transition:.15s}
 .gc-action-btn:hover{background:#EBF0FA;border-color:#1A3E78}
 .gc-action-btn:disabled{opacity:.5;cursor:not-allowed}
 .gc-tg-btn{color:#0876A8;border-color:#B8DDEC}
@@ -1816,8 +2815,9 @@ GC.mountCloudButtons = function (mountEl, opt) {
     down.disabled = !!yes;
     el.setAttribute('aria-busy', yes ? 'true' : 'false');
   }
+  /* text 可為字串或函式（切換語言時重新產生）。 */
   function state(kind, text) {
-    if (typeof opt.onState === 'function') opt.onState(kind, text);
+    if (typeof opt.onState === 'function') opt.onState(kind, typeof text === 'function' ? text() : text, typeof text === 'function' ? text : null);
   }
   const pendingKey = 'ac_gc_auto_sync_v1_' + String(opt.tool || 'tool');
   let running = null, reconcileRunning = null, retryTimer = 0, reconcileTimer = 0, queued = false, retryCount = 0;
@@ -1847,21 +2847,31 @@ GC.mountCloudButtons = function (mountEl, opt) {
     return d;
   }
 
+  /* 大量減少雲端資料：手動上傳時跳出確認；自動同步一律不刪、改為保留雲端並合併回手機。 */
+  function confirmShrinkFor(runOpt) {
+    return function (info) {
+      if (runOpt.confirmShrink === true) return true;
+      if (runOpt.auto || runOpt.silent || typeof global.confirm !== 'function') return false;
+      try { return !!global.confirm(I18.f('gc.shrinkConfirm', { n: info.removed, total: info.total })); } catch (e) { return false; }
+    };
+  }
   async function runUpload(runOpt) {
     runOpt = runOpt || {};
     if (running) return running;
     busy(true);
-    state('busy', I18.t('gc.autoSyncing'));
+    state('busy', () => I18.t('gc.autoSyncing'));
     const startMarker = readPending();
     queued = false;
     running = (async function () {
       try {
+        // 其他分頁剛寫入時，先從 IndexedDB 重讀，避免用過期快取上傳（A1）。
+        if (STORAGE && STORAGE.refresh) { try { await STORAGE.refresh({ ifStale: true }); } catch (e) {} }
         if (typeof opt.beforeSync === 'function') await opt.beforeSync({direction:'upload',reason:runOpt.reason||''});
         const local = opt.getList ? opt.getList() : [];
         const result = await CLOUD.upload(opt.tool, local, {
-          idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField, keyFn:opt.keyFn,
+          idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField, photoFields:opt.photoFields, keyFn:opt.keyFn,
           extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote,
-          allowDeletes:opt.allowDeletes !== false
+          allowDeletes:opt.allowDeletes !== false, confirmShrink:confirmShrinkFor(runOpt), tombstoneDays:opt.tombstoneDays
         });
         const res = result && result.res, uploadedList = result && result.list || local;
         if (res && res.ok === false) throw new Error(res.error || I18.t('gc.upFail'));
@@ -1891,19 +2901,32 @@ GC.mountCloudButtons = function (mountEl, opt) {
         const uploaded = Number(result && result.uploaded) || 0;
         const label = result && result.skipped ? I18.t('gc.cloudCurrent') : I18.t('gc.uploaded') + ' · ' + uploaded + ' ' + I18.t('gc.changedRows');
         const passive=/^(startup|startup_reconcile|pending_resume|reconcile|resume|pageshow|network_restored)$/i.test(String(runOpt.reason||''));
-        const statusText=(passive && !startMarker && result && result.skipped && !(local||[]).length)
-          ? I18.t('gc.cloudChecked') + (hhmm()?' '+hhmm():'')
-          : I18.t('gc.cloudSynced') + (hhmm()?' '+hhmm():'');
-        state('ok', statusText);
+        const at = hhmm();
+        const checkedOnly = passive && !startMarker && result && result.skipped && !(local||[]).length;
+        const photoFailures = (result && result.photoFailures) || [];
+        if (result && result.shrinkBlocked) {
+          GC.toast('⚠ ' + I18.f('gc.shrinkKept', { n: result.shrinkBlocked.removed }), 'warning', { persist: true });
+        }
+        if (photoFailures.length) {
+          /* 照片沒上傳成功：記錄與其他照片已上雲，這幾張留在手機，稍後自動重試。 */
+          markPending('photo_retry');
+          state('local', () => I18.f('gc.photoPending', { n: photoFailures.length }));
+          GC.toast('⚠ ' + I18.f('gc.photoPending', { n: photoFailures.length }), 'warning');
+          clearTimeout(retryTimer);
+          retryTimer = setTimeout(function () { if (hasPending()) runUpload({silent:true,auto:true,reason:'retry'}); }, 60000);
+        } else {
+          state('ok', () => (checkedOnly ? I18.t('gc.cloudChecked') : I18.t('gc.cloudSynced')) + (at ? ' ' + at : ''));
+        }
         if (!runOpt.silent) GC.toast('☁ ' + label, 'success');
         if (opt.onDone) opt.onDone(list, result);
         return Object.assign({ok:true}, result || {});
       } catch (e) {
         markPending(runOpt.reason || 'retry');
         retryCount += 1;
-        const msg = runOpt.auto ? (isOnline()?I18.t('gc.cloudRetry'):I18.t('gc.cloudOffline')) : I18.t('gc.upFail') + ': ' + e.message;
-        state(runOpt.auto ? 'warning' : 'error', msg);
-        if (!runOpt.silent) GC.toast('❌ ' + msg, 'error');
+        const errMsg = String(e && e.message || e || '');
+        const msgFn = () => runOpt.auto ? (isOnline()?I18.t('gc.cloudRetry'):I18.t('gc.cloudOffline')) : I18.t('gc.upFail') + ': ' + errMsg;
+        state(runOpt.auto ? (isOnline() ? 'local' : 'offline') : 'error', msgFn);
+        if (!runOpt.silent) GC.toast('❌ ' + msgFn(), 'error');
         if (runOpt.auto && global.navigator && global.navigator.onLine !== false) {
           clearTimeout(retryTimer);
           retryTimer = setTimeout(function () {
@@ -1927,18 +2950,19 @@ GC.mountCloudButtons = function (mountEl, opt) {
   async function runDownload(runOpt) {
     runOpt = runOpt || {};
     busy(true);
-    state('busy', I18.t('gc.sync'));
+    state('busy', () => I18.t('gc.sync'));
     try {
+      if (STORAGE && STORAGE.refresh) { try { await STORAGE.refresh({ ifStale: true }); } catch (e) {} }
       if (typeof opt.beforeSync === 'function') await opt.beforeSync({direction:'download',reason:runOpt.reason||''});
       const local = opt.getList ? opt.getList() : [];
       const r = await CLOUD.download(opt.tool, local, {
         idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField,
         extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote, keyFn:opt.keyFn,
-        allowDeletes:opt.allowDeletes !== false
+        allowDeletes:opt.allowDeletes !== false, tombstoneDays:opt.tombstoneDays
       });
       if (r.empty) {
         if (!runOpt.silent) GC.toast('⚠ ' + I18.t('gc.noCloud'), 'warning');
-        state('warning', I18.t('gc.noCloud'));
+        state(hasPending() || (local || []).length ? 'local' : 'warning', () => I18.t('gc.noCloud'));
       }
       else {
         if (opt.onRemote) opt.onRemote(r.response || {});
@@ -1964,14 +2988,17 @@ GC.mountCloudButtons = function (mountEl, opt) {
         if (opt.setList) opt.setList(safeList);
         const changed = Number(r.downloaded != null ? r.downloaded : (r.stat && r.stat.added)) || 0;
         if (!runOpt.silent) GC.toast('⬇ ' + I18.t('gc.downloaded') + ' · ' + changed + ' ' + I18.t('gc.changedRows'), 'success');
-        state('ok', I18.t('gc.downloaded') + ' · ' + changed + ' ' + I18.t('gc.changedRows'));
+        const pendingLocal = Number(r.pendingUpload) > 0 || hasPending();
+        state(pendingLocal ? 'local' : 'ok', () => I18.t('gc.downloaded') + ' · ' + changed + ' ' + I18.t('gc.changedRows'));
         if (opt.onDone) opt.onDone(r.list, r);
       }
       return Object.assign({ok:true}, r || {});
     } catch (e) {
-      const msg = I18.t('gc.downFail') + ': ' + e.message;
-      if (!runOpt.silent) GC.toast('❌ ' + msg, 'error');
-      state('error', msg);
+      const errMsg = String(e && e.message || e || '');
+      const msgFn = () => I18.t('gc.downFail') + ': ' + errMsg;
+      if (!runOpt.silent) GC.toast('❌ ' + msgFn(), 'error');
+      // 背景自動檢查失敗：資料仍安全在手機上 → 顯示「只存手機」，手動操作失敗才顯示紅色。
+      state(!isOnline() ? 'offline' : (runOpt.auto ? 'local' : 'error'), msgFn);
       return {ok:false,error:e};
     } finally {
       busy(false);
@@ -1981,8 +3008,8 @@ GC.mountCloudButtons = function (mountEl, opt) {
   function scheduleAuto(reason, delay) {
     reason=reason || 'record_change';
     markPending(reason);
-    if (!isOnline()) { state('warning', I18.t('gc.cloudOffline')); return null; }
-    state('warning', I18.t('gc.cloudPending'));
+    if (!isOnline()) { state('offline', () => I18.t('gc.cloudOffline')); return null; }
+    state('local', () => I18.t('gc.cloudPending'));
     if (running) { queued = true; return running; }
     clearTimeout(retryTimer);
     const wait=reasonDelay(reason,delay);
@@ -1992,7 +3019,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
   function runReconcile(reason) {
     if (reconcileRunning) return reconcileRunning;
     if (global.navigator && global.navigator.onLine === false) {
-      if (hasPending()) state('warning', I18.t('gc.cloudOffline'));
+      if (hasPending()) state('offline', () => I18.t('gc.cloudOffline'));
       return Promise.resolve({ok:false,offline:true});
     }
     reconcileRunning = (async function () {
@@ -2007,6 +3034,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
     reconcileTimer=setTimeout(function(){ runReconcile(reason || 'resume'); }, Math.max(0, Number(delay) || 0));
   }
   up.onclick = function () { runUpload({silent:false,auto:false,reason:'manual'}); };
+  global.addEventListener('offline', function () { state('offline', () => I18.t(hasPending() ? 'gc.cloudOffline' : 'gc.stOffline')); });
   down.onclick = function () { runDownload({silent:false}); };
   global.addEventListener('online', function () { scheduleReconcile('network_restored', 120); });
   if (global.document && global.document.addEventListener) {
@@ -2030,7 +3058,9 @@ GC.sync = (() => {
     upload(tool, opt) { const c = controls.get(String(tool || '')); return c ? c.upload(opt || {}) : Promise.resolve({ok:false,unmounted:true}); },
     download(tool, opt) { const c = controls.get(String(tool || '')); return c ? c.download(opt || {}) : Promise.resolve({ok:false,unmounted:true}); },
     reconcile(tool, reason) { const c=controls.get(String(tool||'')); return c&&c.reconcile ? c.reconcile(reason||'manual_reconcile') : Promise.resolve({ok:false,unmounted:true}); },
-    hasPending(tool) { const c = controls.get(String(tool || '')); return !!(c && c.hasPending()); }
+    hasPending(tool) { const c = controls.get(String(tool || '')); return !!(c && c.hasPending()); },
+    /** 本機資料整包清除後呼叫：清掉該模組的同步基準，下次同步只會從雲端合併回來、不會刪雲端。 */
+    resetState(tool) { SMART.clearState(tool ? String(tool) : ''); return true; }
   };
 })();
 
@@ -2045,6 +3075,15 @@ GC.telegram = {
     if (lang === 'en') return en;
     if (lang === 'km') return km || en;
     return zh + ' / ' + en;
+  },
+  /** Telegram 按鈕文字依報表語言：'dashboard' | 'portal'；lang='bi' 時中英並列。 */
+  buttonText(kind, lang) {
+    const key = kind === 'portal' ? 'gc.mainPortal' : 'gc.openDashboard';
+    const icon = kind === 'portal' ? '🏠 ' : '📊 ';
+    lang = lang || I18.lang;
+    const pick = l => (BASE_DICT[l] && BASE_DICT[l][key]) || BASE_DICT.en[key];
+    if (lang === 'bi') return icon + pick('en') + ' / ' + pick('zh');
+    return icon + pick(BASE_DICT[lang] ? lang : 'en');
   },
   slotText(item, lang) {
     if (typeof item === 'string') return item;
@@ -2102,7 +3141,11 @@ GC.telegram = {
     const titleMap = {
       asset: ['VRT 資產', 'VRT Asset', 'VRT ទ្រព្យសម្បត្តិ'],
       dormitory: ['VRT 宿舍', 'VRT Dormitory', 'VRT អន្តេវាសិកដ្ឋាន'],
-      keymovement: ['VRT 鑰匙管理', 'VRT Key Management', 'VRT គ្រប់គ្រងសោ']
+      keymovement: ['VRT 鑰匙管理', 'VRT Key Management', 'VRT គ្រប់គ្រងសោ'],
+      cleaning: ['VRT 清潔', 'VRT Cleaning', 'VRT អនាម័យ'],
+      ehs: ['VRT EHS 回收／廢料', 'VRT EHS Recycle / Waste', 'VRT EHS កែច្នៃ / កាកសំណល់'],
+      temperature: ['VRT 溫濕度', 'VRT Temperature & Humidity', 'VRT សីតុណ្ហភាព និងសំណើម'],
+      waterdrum: ['VRT 飲用水', 'VRT Drinking Water', 'VRT ទឹកផឹក']
     }[cfg.tool];
     const title = U.escapeHtml(titleMap ? GC.telegram.text(titleMap[0], titleMap[1], titleMap[2], lang || I18.lang) : (cfg.title || cfg.tool || 'AC GASCHECK'));
     const lines = [
@@ -2110,7 +3153,7 @@ GC.telegram = {
       '📅 ' + U.escapeHtml(periodLabels[period] || period || I18.t('gc.thisMonth')),
       (slot && !(Array.isArray(slot) ? slot.includes('all') : slot === 'all') ? '⏱️ ' + U.escapeHtml(label('gc.slot', '發送時段', 'Send time slot', 'ពេលវេលាផ្ញើ')) + ': ' + U.escapeHtml((Array.isArray(slot) ? slot : [slot]).map(function (value) { const found=slotItems.find(x => (typeof x === 'string' ? x : x.value) === value); return found ? GC.telegram.slotText(found, lang) : value; }).join(', ')) : ''),
       '📊 ' + U.escapeHtml(label('gc.records', '記錄', 'Records', 'កំណត់ត្រា')) + ': <b>' + view.length + '</b> / ' +
-        U.escapeHtml(label('gc.total', '總計', 'Total', 'សរុប')) + ': ' + list.length,
+        U.escapeHtml(label('gc.total', '總計', 'Total', 'សរុប')) + ': ' + GC.data.live(list).length,
       '🧾 ' + U.escapeHtml(label('gc.mode', '訊息類型', 'Message type', 'ប្រភេទសារ')) + ': ' + U.escapeHtml(modeLabels[mode] || modeLabels.summary)
     ];
     const photoCount = cfg.photoField ? view.filter(r => U.asArray(r && r[cfg.photoField]).length).length : 0;
@@ -2137,7 +3180,7 @@ GC.telegram = {
     (rows||[]).forEach(row=>{
       row=String(row);
       if(chunk.length&&(chunk.length>=maxRows||render(chunk.concat(row)).length>3450)){chunks.push(chunk);chunk=[];}
-      if(render([row]).length>3450)throw new Error('單日內容過長，請選擇較少區域 / Select fewer zones for this report');
+      if(render([row]).length>3450)throw new Error(I18.t('gc.dayTooLong'));
       chunk.push(row);
     });
     if(chunk.length||!chunks.length)chunks.push(chunk);
@@ -2204,7 +3247,11 @@ GC.telegram = {
         try{
           const result=await GC.telegram.send(text[i],i===text.length-1?photos:[],i===text.length-1?buttons:[],chatId,tool,pageMeta);
           receipts.push(result.messageId);
-        }catch(err){throw new Error('第 '+(i+1)+'/'+text.length+' 頁未完成 / Page '+(i+1)+'/'+text.length+': '+err.message);}
+        }catch(err){
+          const pageMsg=I18.f('gc.pageFailed',{i:i+1,n:text.length});
+          // 中文介面附英文對照（方便回報）；英文／高棉文只顯示單一語言。
+          throw new Error(pageMsg+': '+(I18.mono?I18.mono(err.message):err.message));
+        }
         if(i<text.length-1)await new Promise(resolve=>setTimeout(resolve,1100));
       }
       return {ok:true,messageId:receipts[receipts.length-1],messageIds:receipts,pagesSent:receipts.length,totalPages:text.length};
@@ -2224,10 +3271,17 @@ GC.telegram = {
         return next;
       });
     }).filter(Boolean) : [];
+    const buttonLang = (meta && meta.reportLanguage) || I18.lang;
     const hasDashboard = finalButtons.some(row => Array.isArray(row) && row.some(btn => btn && btn.url === dashboardUrl));
-    if (!hasDashboard) finalButtons.push([{ text: '📊 Open Dashboard / 開啟平台', url: dashboardUrl }]);
+    if (!hasDashboard) {
+      if (buttonLang === 'bi') finalButtons.push([{ text: '📊 Open Dashboard / 開啟平台', url: dashboardUrl }]);
+      else finalButtons.push([{ text: GC.telegram.buttonText('dashboard', buttonLang), url: dashboardUrl }]);
+    }
     const hasPortal = finalButtons.some(row => Array.isArray(row) && row.some(btn => btn && btn.url === portalUrl));
-    if (!hasPortal) finalButtons.push([{ text: '🏠 Main Portal / 總平台', url: portalUrl }]);
+    if (!hasPortal) {
+      if (buttonLang === 'bi') finalButtons.push([{ text: '🏠 Main Portal / 總平台', url: portalUrl }]);
+      else finalButtons.push([{ text: GC.telegram.buttonText('portal', buttonLang), url: portalUrl }]);
+    }
     const res = await CLOUD.post(Object.assign({
       action: 'telegram', text: text,
       photos: PHOTO.list(photos).slice(0, 5),
@@ -2239,7 +3293,7 @@ GC.telegram = {
     // 只有 Telegram API 回傳 message_id（或確認原訊息未變）才算真正送達。
     // 避免舊後端／中介層只回 ok:true，畫面顯示成功但群組實際沒有訊息。
     const confirmedMessage = res.notModified === true || (res.messageId !== undefined && res.messageId !== null && String(res.messageId) !== '');
-    if (!confirmedMessage) throw new Error('Telegram 未回傳送達確認 / No delivery confirmation');
+    if (!confirmedMessage) throw new Error(I18.t('gc.noDelivery'));
     return res;
   }
 };
@@ -2262,7 +3316,7 @@ GC.attach = function (cfg) {
     importSchema: null, importParser: null, importAccept: null, cloudKey: null, telegramScopes: null, telegramSlots: null,
     telegramScopeMultiple: false, telegramSlotMultiple: false, telegramScopeLabel: null,
     telegramSlotFilter: null, telegramSlotField: null, telegramGroups: null,
-    telegramDefaultLanguage: 'bi', telegramDefaultSlot: 'all', hideLegacyTools: true,
+    telegramDefaultLanguage: null, telegramDefaultSlot: 'all', hideLegacyTools: true,
     telegramSender: false, telegramSenderStorageKey: null, telegramRequireSender: false,
     telegramConfirmSender: false, telegramRequireData: false, telegramValidator: null,
     telegramAutoUpload: false, telegramSameDayUpdate: false, telegramPhotoDedupe: false,
@@ -2292,7 +3346,7 @@ GC.attach = function (cfg) {
   tools.dataset.gcTool = C.tool || '';
   tools.innerHTML = [
     '<span class="gc-toolbar-title">☁️ <span data-i="gc.quickActions">' + U.escapeHtml(I18.t('gc.quickActions')) + '</span></span>',
-    '<span class="gc-cloud-state"><i></i><span class="gc-state-label" data-i="gc.cloudReady">' + U.escapeHtml(I18.t('gc.cloudReady')) + '</span></span>',
+    '<span class="gc-cloud-state" role="status" aria-live="polite"><i></i><span class="gc-state-short">' + U.escapeHtml(I18.t('gc.stChecking')) + '</span><span class="gc-state-label gc-state-detail"></span></span>',
     '<span class="gc-head-cloud"></span>',
     '<button type="button" class="gc-head-btn gc-head-tg" data-gc-open-tg title="' + U.escapeHtml(I18.t('gc.telegramTitle')) + '"><span class="gc-btn-ico">✈️</span><span class="gc-btn-label" data-i="gc.telegram">' + U.escapeHtml(I18.t('gc.telegram')) + '</span></button>',
     C.importSchema ? '<button type="button" class="gc-head-btn gc-head-import" data-gc-open-import title="' + U.escapeHtml(I18.t('gc.importTitle')) + '"><span class="gc-btn-ico">📥</span><span class="gc-btn-label" data-i="gc.smartImport">' + U.escapeHtml(I18.t('gc.smartImport')) + '</span></button>' : '',
@@ -2343,7 +3397,13 @@ GC.attach = function (cfg) {
   let mode = 'summary';
   let scope = C.telegramScopeMultiple ? ['all'] : 'all';
   let slot = C.telegramSlotMultiple ? [C.telegramDefaultSlot || 'all'] : (C.telegramDefaultSlot || 'all');
-  let lang = C.telegramDefaultLanguage || 'bi';
+  /* 摘要語言預設＝介面語言（中文→中文、English→English、ខ្មែរ→ខ្មែរ，單一語言）；
+     需要中英雙語可在視窗內選。使用者在視窗內手動改過就不再自動跟隨。 */
+  const uiReportLanguage = () => C.telegramDefaultLanguage || I18.lang;
+  let lang = uiReportLanguage();
+  let langTouched = false;
+  /* 沒有真正核可流程的模組不顯示「核可」選項（只有模組明確設定 telegramModes 才顯示）。 */
+  const telegramModes = Array.isArray(C.telegramModes) && C.telegramModes.length ? C.telegramModes : ['summary', 'review'];
   const senderStorageKey = C.telegramSenderStorageKey || ('ac_gc_sender_' + String(C.tool || 'tool'));
   let sender = '';
   try { sender = String(localStorage.getItem(senderStorageKey) || '').trim(); } catch (e) {}
@@ -2377,25 +3437,48 @@ GC.attach = function (cfg) {
     return meta;
   }
 
+  /* 雲端同步 meta 只放業務設定；報表期間／發送選項不進同步（A17）。 */
   function cloudExtra() {
     const base = typeof C.extra === 'function' ? (C.extra() || {}) : (C.extra || {});
-    return Object.assign({}, base, reportActivityMeta());
+    return Object.assign({}, base);
   }
 
-  function setCloudState(kind, message) {
+  /* 雲端狀態：文字＋顏色（📱 只存手機／☁ 已上雲／⚠ 離線…），不再只有一個小圓點。 */
+  let cloudStateKind = '', cloudStateRender = null, cloudStateText = '';
+  function shortCloudLabel(kind) {
+    const online = !(global.navigator && global.navigator.onLine === false);
+    if (kind === 'ok') return I18.t('gc.stCloud');
+    if (kind === 'busy') return I18.t('gc.stSyncing');
+    if (kind === 'offline' || !online) return I18.t('gc.stOffline');
+    if (kind === 'error') return I18.t('gc.stError');
+    if (kind === 'local' || kind === 'warning') return I18.t('gc.stLocal');
+    return I18.t('gc.stChecking');
+  }
+  function setCloudState(kind, message, render) {
     const state = tools.querySelector('.gc-cloud-state');
     const label = state && state.querySelector('.gc-state-label');
+    const short = state && state.querySelector('.gc-state-short');
     if (!state || !label) return;
-    state.classList.remove('ok', 'busy', 'warning', 'error');
+    cloudStateKind = kind || ''; cloudStateRender = typeof render === 'function' ? render : null; cloudStateText = message || '';
+    state.classList.remove('ok', 'busy', 'warning', 'error', 'local', 'offline');
     if (kind) state.classList.add(kind);
+    const shortText = shortCloudLabel(kind);
+    if (short) short.textContent = shortText;
     label.removeAttribute('data-i');
-    label.textContent = message || I18.t('gc.cloudReady');
-    state.title = label.textContent;
+    const detail = kind === 'busy' ? '' : String(message || '');
+    // 詳細說明與短標籤相同時不重複顯示
+    label.textContent = detail && detail.replace(/^[^\w\u0080-\uffff]+/, '') !== shortText.replace(/^[^\w\u0080-\uffff]+/, '') ? detail : '';
+    state.title = [shortText, detail].filter(Boolean).join(' · ');
+    state.dataset.state = kind || '';
+  }
+  function rerenderCloudState() {
+    if (!cloudStateKind) { const short = tools.querySelector('.gc-state-short'); if (short) short.textContent = shortCloudLabel(''); return; }
+    setCloudState(cloudStateKind, cloudStateRender ? cloudStateRender() : cloudStateText, cloudStateRender);
   }
 
   const cloudOpt = {
-    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, keyFn:C.cloudKey, extra: cloudExtra,
-    autoReconcile:C.cloudAutoReconcile !== false, allowDeletes:C.cloudAllowDeletes !== false,
+    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, photoFields:C.photoFields, keyFn:C.cloudKey, extra: cloudExtra,
+    autoReconcile:C.cloudAutoReconcile !== false, allowDeletes:C.cloudAllowDeletes !== false, tombstoneDays:C.tombstoneDays,
     toCloud: C.toCloud, fromCloud: C.fromCloud,
     beforeSync:C.beforeCloudSync,
     getList: function () { return (C.cloudRead || C.read)() || []; },
@@ -2405,35 +3488,79 @@ GC.attach = function (cfg) {
     onDone: function (list, result) {
       refreshPeriodOptions();
       if (C.onSync) C.onSync(list, result);
-      const state = tools.querySelector('.gc-cloud-state');
-      if (state) state.classList.add('ok');
     }
   };
   const cloudControl = GC.sync.register(C.tool, GC.mountCloudButtons(tools.querySelector('.gc-head-cloud'), cloudOpt));
+  if (!cloudStateKind && cloudControl) {
+    if (global.navigator && global.navigator.onLine === false) setCloudState('offline', I18.t(cloudControl.hasPending() ? 'gc.cloudOffline' : 'gc.stOffline'), () => I18.t(cloudControl.hasPending() ? 'gc.cloudOffline' : 'gc.stOffline'));
+    else if (cloudControl.hasPending()) setCloudState('local', I18.t('gc.cloudPending'), () => I18.t('gc.cloudPending'));
+  }
 
+  /* 匯出：不含已刪除記錄（C12）；欄位可由模組指定 exportColumns（A16）：
+       [{key, label:{zh,en,km} 或 zh/en/km, value(row, lang)}]，標題與內容依目前語言。
+       未指定時列出所有非內部欄位；照片輸出連結（base64 不輸出），陣列以逗號分隔。 */
+  function exportColumnList(rows) {
+    const cols = typeof C.exportColumns === 'function' ? C.exportColumns(I18.lang) : C.exportColumns;
+    if (Array.isArray(cols) && cols.length) return cols.map(c => typeof c === 'string' ? { key: c } : c).filter(c => c && (c.key || typeof c.value === 'function'));
+    const seen = [], skip = /^(_|\$)|^(synced|approvalToken|approvalMessageId|chatId|token|photoKey|photoDedupeKey|messageKey)$/i;
+    rows.forEach(r => Object.keys(r || {}).forEach(k => { if (!skip.test(k) && seen.indexOf(k) < 0) seen.push(k); }));
+    return seen.map(k => ({ key: k }));
+  }
+  function exportHeader(col) {
+    const lbl = col.label != null ? col.label : ((col.zh || col.en || col.km) ? { zh: col.zh, en: col.en, km: col.km } : (C.fieldLabels && C.fieldLabels[col.key]));
+    if (lbl && typeof lbl === 'object') return GC.L(lbl);
+    if (lbl != null && lbl !== '') return String(lbl);
+    return String(col.key || '');
+  }
+  function exportCell(v, key, row) {
+    if (typeof C.exportValue === 'function') {
+      const custom = C.exportValue(key, v, row, I18.lang);
+      if (custom !== undefined) v = custom;
+    }
+    const photoWord = I18.t('gc.photo');
+    const one = x => {
+      if (x == null) return '';
+      if (typeof x === 'string') return x.indexOf('data:') === 0 ? '[' + photoWord + ']' : x;
+      if (typeof x === 'number' || typeof x === 'boolean') return String(x);
+      if (typeof x === 'object') {
+        const u = PHOTO.value(x);
+        if (u) return u.indexOf('data:') === 0 ? '[' + photoWord + ']' : u;
+        if (x.name || x.label || x.value) return String(x.name || x.label || x.value);
+        try { return JSON.stringify(x); } catch (e) { return ''; }
+      }
+      return String(x);
+    };
+    let out;
+    if (v == null) out = '';
+    else if (Array.isArray(v)) out = v.map(one).filter(x => x !== '').join(/photo/i.test(String(key || '')) ? '\n' : ', ');
+    else if (typeof v === 'object') out = one(v);
+    else if (typeof v === 'string') out = one(v);
+    else return v;
+    return out.length > 32000 ? out.slice(0, 32000) + '…' : out;
+  }
   function exportLocalData() {
-    const list = C.read() || [];
+    const list = GC.data.live(C.read() || []);
     if (!list.length) {
       GC.toast('⚠ ' + I18.t('gc.noData'), 'warning');
       return;
     }
+    const cols = exportColumnList(list);
+    const headers = cols.map(exportHeader);
     const safeRows = list.map(function (row) {
-      const out = {};
-      Object.keys(row || {}).forEach(function (key) {
-        const value = row[key];
-        out[key] = value && typeof value === 'object' ? JSON.stringify(value) : value;
+      return cols.map(function (col) {
+        const raw = typeof col.value === 'function' ? col.value(row, I18.lang) : (row || {})[col.key];
+        return exportCell(raw, col.key, row);
       });
-      return out;
     });
     const base = 'AC_GASCHECK_' + String(C.tool || 'data') + '_' + U.ymd(new Date());
     try {
       if (global.XLSX && global.XLSX.utils && global.XLSX.writeFile) {
         const wb = global.XLSX.utils.book_new();
-        const ws = global.XLSX.utils.json_to_sheet(safeRows);
-        global.XLSX.utils.book_append_sheet(wb, ws, String(C.tool || 'Data').slice(0, 31));
+        const ws = global.XLSX.utils.aoa_to_sheet([headers].concat(safeRows));
+        global.XLSX.utils.book_append_sheet(wb, ws, String(C.exportSheetName || C.tool || 'Data').slice(0, 31));
         global.XLSX.writeFile(wb, base + '.xlsx');
       } else {
-        const blob = new Blob([JSON.stringify({tool:C.tool, exportedAt:U.ymdhms(), records:list}, null, 2)], {type:'application/json'});
+        const blob = new Blob([JSON.stringify({tool:C.tool, exportedAt:U.ymdhms(), columns:headers, records:list}, null, 2)], {type:'application/json'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob); a.download = base + '.json';
         document.body.appendChild(a); a.click();
@@ -2445,7 +3572,15 @@ GC.attach = function (cfg) {
     }
   }
   const exportButton = tools.querySelector('[data-gc-export]');
-  if (exportButton) exportButton.onclick = exportLocalData;
+  /* 模組有自己的在地化匯出（欄位標題／狀態值依語言、不含已刪除）→ 💾 直接用它；
+     否則用通用匯出（exportColumns 或非內部欄位）。 */
+  if (exportButton) exportButton.onclick = function () {
+    if (typeof C.exportHandler === 'function') {
+      try { return C.exportHandler(); }
+      catch (e) { GC.toast('❌ ' + I18.t('gc.export') + ': ' + (e && e.message || e), 'error'); return; }
+    }
+    return exportLocalData();
+  };
 
   const tgModal = document.createElement('div');
   tgModal.className = 'gc-common-modal';
@@ -2472,6 +3607,7 @@ GC.attach = function (cfg) {
     '</div>'
   ].join('');
   document.body.appendChild(tgModal);
+  tgModal.querySelectorAll('[data-gc-mode]').forEach(function (b) { const off = !telegramModes.includes(b.dataset.gcMode); b.hidden = off; b.style.display = off ? 'none' : ''; });
 
   let importModal = null;
   if (C.importSchema) {
@@ -2486,9 +3622,39 @@ GC.attach = function (cfg) {
       '</div>'
     ].join('');
     document.body.appendChild(importModal);
+    /* 沒有自訂 mergeImport 的模組：重複匯入同一檔案不會重複新增（A8）。
+       有 importKey（或 keymovement 預設 key_no+日期+時間）→ 相同鍵更新原記錄；
+       否則所有欄位完全相同才視為重複並略過。 */
+    const defaultImportKey = C.tool === 'keymovement' ? ['key_no', C.dateField || 'issue_date', 'issue_time'] : null;
+    function importIdentity(r, keyed) {
+      const key = C.importKey || defaultImportKey;
+      if (keyed && typeof key === 'function') return String(key(r) || '');
+      const fields = keyed && Array.isArray(key) ? key : Object.keys(C.importSchema || {});
+      return fields.map(f => String(r && r[f] != null ? r[f] : '').trim().toLowerCase()).join('|');
+    }
+    function mergeImportDefault(cur, rows) {
+      const keyed = !!(C.importKey || defaultImportKey);
+      const out = cur.slice(), index = new Map();
+      out.forEach((r, i) => { if (r && !r._deleted) { const id = importIdentity(r, keyed); if (id.replace(/\|/g, '')) index.set(id, i); } });
+      let added = 0, updated = 0, skipped = 0;
+      rows.forEach(r => {
+        const id = importIdentity(r, keyed);
+        if (!id.replace(/\|/g, '') || !index.has(id)) { out.push(r); if (id.replace(/\|/g, '')) index.set(id, out.length - 1); added++; return; }
+        const i = index.get(id), old = out[i];
+        const next = Object.assign({}, old);
+        let changed = false;
+        Object.keys(C.importSchema || {}).forEach(f => {
+          if (r[f] != null && r[f] !== '' && String(r[f]) !== String(old[f] == null ? '' : old[f])) { next[f] = r[f]; changed = true; }
+        });
+        if (keyed && changed) { next.updatedAt = r.updatedAt || U.now(); out[i] = next; updated++; }
+        else skipped++;
+      });
+      return { list: out, added, updated, skipped };
+    }
     GC.import.mount(importModal.querySelector('.gc-import-mount'), {
       schema: C.importSchema,
       parse: C.importParser,
+      dateFields: C.importDateFields, timeFields: C.importTimeFields,
       accept: C.importAccept || '.xlsx,.xls,.xlsb,.csv',
       onData: function (rows, meta) {
         const cur = C.read() || [];
@@ -2497,11 +3663,16 @@ GC.attach = function (cfg) {
           r.updatedAt = U.now();
           delete r._raw;
         });
-        const merged = typeof C.mergeImport === 'function' ? C.mergeImport(cur, rows) : cur.concat(rows);
+        let merged, stats = null;
+        if (typeof C.mergeImport === 'function') merged = C.mergeImport(cur, rows);
+        else { stats = mergeImportDefault(cur, rows); merged = stats.list; }
         C.write(merged);
         refreshPeriodOptions();
-        GC.toast('✅ ' + rows.length + ' ' + I18.t('gc.imported') + ' — ' + (meta.fileName || ''), 'success');
+        const count = stats ? stats.added + stats.updated : rows.length;
+        GC.toast('✅ ' + count + ' ' + I18.t('gc.imported') + (stats && stats.skipped ? ' · ' + stats.skipped + ' ' + I18.t('gc.dupSkipped') : '') + ' — ' + (meta.fileName || ''), stats && stats.skipped ? 'warning' : 'success');
         if (C.onImport) C.onImport(rows);
+        if (cloudControl && !C.onImport) cloudControl.scheduleAuto('smart_import');
+        return stats ? { skipped: stats.skipped, updated: stats.updated, added: stats.added } : null;
       }
     });
   }
@@ -2712,7 +3883,7 @@ GC.attach = function (cfg) {
     const packet = typeof built === 'string' ? { text: built } : (built || {});
     if (!Array.isArray(packet.photos) || !packet.photos.length) packet.photos = collectPhotos();
     const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
-    if (!packet.buttons) packet.buttons = [[{ text: '📊 Open Dashboard / 開啟平台', url: dashUrl }]];
+    if (!packet.buttons) packet.buttons = [[{ text: GC.telegram.buttonText('dashboard', lang), url: dashUrl }]];
     return packet;
   }
   async function updatePreview() {
@@ -2744,7 +3915,11 @@ GC.attach = function (cfg) {
   }
   function refreshModal() {
     if (telegramSending) return;
-    tgModal.querySelectorAll('[data-gc-mode]').forEach(b=>{b.hidden=Array.isArray(C.telegramModes)&&!C.telegramModes.includes(b.dataset.gcMode);b.style.display=b.hidden?'none':'';});
+    if (!langTouched) lang = uiReportLanguage();
+    if (!telegramModes.includes(mode)) mode = telegramModes[0] || 'summary';
+    tgModal.querySelectorAll('[data-gc-mode]').forEach(b=>{b.hidden=!telegramModes.includes(b.dataset.gcMode);b.style.display=b.hidden?'none':'';b.classList.toggle('on',b.dataset.gcMode===mode);});
+    const seg = tgModal.querySelector('.gc-seg');
+    if (seg) seg.style.gridTemplateColumns = 'repeat(' + Math.max(1, telegramModes.length) + ',1fr)';
     renderScope();
     renderPeriods();
     renderSlots();
@@ -2794,12 +3969,23 @@ GC.attach = function (cfg) {
          訊息，Dashboard／History 就已能從雲端下載到同一批資料。 */
       if (cloudControl && C.telegramAutoUpload) {
         const uploaded = await cloudControl.upload({silent:true,auto:false,reason:'telegram_preflight'});
-        if (!uploaded || uploaded.ok === false) throw new Error('雲端上傳未完成，尚未發送 / Cloud upload failed; report not sent: ' + (uploaded && uploaded.error && (uploaded.error.message || String(uploaded.error)) || I18.t('gc.upFail')));
+        if (!uploaded || uploaded.ok === false) {
+          const why = (uploaded && uploaded.error && (uploaded.error.message || String(uploaded.error))) || I18.t('gc.upFail');
+          // 中文介面保留英文對照（方便回報問題）；英文／高棉文介面只顯示單一語言。
+          const head = I18.lang === 'zh' ? I18.t('gc.uploadBeforeSendFail') + ' / ' + BASE_DICT.en['gc.uploadBeforeSendFail'] : I18.t('gc.uploadBeforeSendFail');
+          throw new Error(head + ': ' + why);
+        }
+        /* 記錄已上雲但有照片仍留在手機：不送出缺照片的報告，保留重試（A5）。 */
+        const pendingPhotos = (uploaded.photoFailures || []).length;
+        if (pendingPhotos) {
+          const headP = I18.lang === 'zh' ? I18.t('gc.uploadBeforeSendFail') + ' / ' + BASE_DICT.en['gc.uploadBeforeSendFail'] : I18.t('gc.uploadBeforeSendFail');
+          throw new Error(headP + ': ' + I18.f('gc.photoPending', { n: pendingPhotos }));
+        }
       }
       const afterUploadError = telegramValidationError();
       if (afterUploadError) throw new Error(afterUploadError);
       const packet = await buildPacket();
-      sendState.textContent = GC.telegram.text('正在發送 Telegram…','Sending to Telegram…','កំពុងផ្ញើទៅ Telegram…',I18.lang);
+      sendState.textContent = I18.t('gc.sendingTelegram');
       await GC.telegram.send(
         packet.pages || packet.text, packet.photos, packet.buttons,
         groupSelect.value || DEFAULT_CHAT_ID, C.tool, reportActivityMeta()
@@ -2817,7 +4003,7 @@ GC.attach = function (cfg) {
       if (cloudControl && (C.telegramAutoUpload || mode === 'summary' || mode === 'review' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
       setTimeout(function () { setModalOpen(tgModal, false); }, 450);
     } catch (e) {
-      sendState.textContent = '✕ ' + e.message;
+      sendState.textContent = '✕ ' + I18.mono(e.message);
       GC.toast('❌ ' + e.message, 'error');
     }
     telegramSending=false;lockedControls.forEach(x=>x.el.disabled=x.disabled);sendButton.disabled = !!telegramValidationError();
@@ -2849,7 +4035,7 @@ GC.attach = function (cfg) {
     slot = toggleSelection(slot, b.dataset.value);
     renderSlots(); refreshPeriodOptions(); updatePreview();
   };
-  langSelect.onchange = function () { lang = langSelect.value || 'bi'; renderScope(); renderSlots(); updatePreview(); };
+  langSelect.onchange = function () { lang = langSelect.value || uiReportLanguage(); langTouched = true; renderScope(); renderSlots(); updatePreview(); };
   if (senderInput) senderInput.oninput = function () { sender = senderInput.value.trim(); updatePreview(); };
   groupSelect.onchange = updatePreview;
   sendButton.onclick = sendCurrentTelegram;
@@ -2895,8 +4081,17 @@ GC.attach = function (cfg) {
   });
   window.addEventListener('gc:langchange', function () {
     renderHeaderLanguage();
+    rerenderCloudState();
+    if (!langTouched) lang = uiReportLanguage();
     if (tgModal.classList.contains('open')) refreshModal();
     if (importModal && importModal.classList.contains('open')) I18.apply(importModal);
+  });
+  /* 其他分頁改了本機資料：更新期間選單，並通知模組重新載入（C.onStorageChange）。 */
+  window.addEventListener('gc:storagechange', function (e) {
+    try {
+      refreshPeriodOptions();
+      if (typeof C.onStorageChange === 'function') C.onStorageChange(e && e.detail || {});
+    } catch (err) { console.warn('[AC GASCHECK] storage change:', err); }
   });
 
   applyModuleLanguage(I18.lang);
@@ -2938,7 +4133,7 @@ GC.attachLegacy = function (cfg) {
   const C = Object.assign({
     dateField: 'date', idField: 'id', groupField: null,
     weather: false, photo: false, importSchema: null, importParser: null,
-    telegramScopes: null, scopeField: null, telegramSlots: null, telegramSlotFilter: null, telegramLanguage: false, telegramDefaultLanguage: 'bi', telegramDefaultSlot: 'all', periodRef: false,
+    telegramScopes: null, scopeField: null, telegramSlots: null, telegramSlotFilter: null, telegramLanguage: false, telegramDefaultLanguage: null, telegramDefaultSlot: 'all', periodRef: false,
     weatherField: 'weather',   // 各模組欄位名可能不同（如 temperature 用 'wx'）
     photoField:   'photos',
     cloudAutoReconcile:true, cloudAllowDeletes:true
@@ -2967,7 +4162,7 @@ GC.attachLegacy = function (cfg) {
       <div class="gc-mode" id="gcQuickMode">
         <button type="button" class="gc-mode-btn on" data-gc-mode="summary">📄 <span data-i="gc.summary">${U.escapeHtml(I18.t('gc.summary'))}</span></button>
         <button type="button" class="gc-mode-btn" data-gc-mode="review">🔎 <span data-i="gc.review">${U.escapeHtml(I18.t('gc.review'))}</span></button>
-        <button type="button" class="gc-mode-btn" data-gc-mode="approval">✅ <span data-i="gc.approval">${U.escapeHtml(I18.t('gc.approval'))}</span></button>
+        ${Array.isArray(C.telegramModes) && C.telegramModes.includes('approval') ? `<button type="button" class="gc-mode-btn" data-gc-mode="approval">✅ <span data-i="gc.approval">${U.escapeHtml(I18.t('gc.approval'))}</span></button>` : ''}
       </div>
       ${C.telegramLanguage ? `<span class="gc-action-label" data-i="gc.reportLanguage">${U.escapeHtml(I18.t('gc.reportLanguage'))}</span><select class="gc-lang-select" data-gc-lang aria-label="${U.escapeHtml(I18.t('gc.reportLanguage'))}"><option value="bi">${U.escapeHtml(I18.t('gc.bilingual'))}</option><option value="zh">${U.escapeHtml(I18.t('gc.chinese'))}</option><option value="en">${U.escapeHtml(I18.t('gc.english'))}</option><option value="km">${U.escapeHtml(I18.t('gc.khmer'))}</option></select>` : ''}
       <span class="gc-action-status" id="gcTelegramState" aria-live="polite"></span>
@@ -3018,7 +4213,7 @@ GC.attachLegacy = function (cfg) {
   let periodRef = C.periodRef ? U.ymd(new Date()) : null;
   let scope = 'all';
   let slot = C.telegramDefaultSlot || 'all';
-  let lang = C.telegramDefaultLanguage || 'bi';
+  let lang = C.telegramDefaultLanguage || I18.lang;
   const scopeSelect = bar.querySelector('[data-gc-scope]');
   const slotSelect = bar.querySelector('[data-gc-slot]');
   const langSelect = bar.querySelector('[data-gc-lang]');
@@ -3042,7 +4237,7 @@ GC.attachLegacy = function (cfg) {
     langSelect.value = lang;
   }
   if (slotSelect) slotSelect.onchange = () => { slot = slotSelect.value || 'all'; refresh(); };
-  if (langSelect) { langSelect.onchange = () => { lang = langSelect.value || 'bi'; renderSlot(); refresh(); }; }
+  if (langSelect) { langSelect.onchange = () => { lang = langSelect.value || I18.lang; renderSlot(); refresh(); }; }
   renderScope();
   renderLanguage();
   renderSlot();
@@ -3075,7 +4270,7 @@ GC.attachLegacy = function (cfg) {
   });
 
   const cloudOpt = {
-    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, extra:C.extra,
+    tool: C.tool, idKey: C.idField, tsKey: 'updatedAt', dateField:C.dateField, photoField:C.photoField, photoFields:C.photoFields, extra:C.extra, keyFn:C.cloudKey,
     autoReconcile:C.cloudAutoReconcile !== false, allowDeletes:C.cloudAllowDeletes !== false,
     toCloud: C.toCloud,
     fromCloud: C.fromCloud,
@@ -3100,8 +4295,8 @@ GC.attachLegacy = function (cfg) {
       const built = customText == null ? GC.telegram.buildText(C, period, mode, periodRef, scope, slot, lang) : customText;
       const packet = typeof built === 'string' ? { text: built, photos: [] } : (built || { text: '', photos: [] });
       const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
-      const buttons = packet.buttons || [[{text:'📊 Open Dashboard / 開啟平台',url:dashUrl}]];
-      await GC.telegram.send(packet.pages || packet.text, packet.photos, buttons, null, C.tool, reportActivityMeta());
+      const buttons = packet.buttons || [[{text:GC.telegram.buttonText('dashboard', lang),url:dashUrl}]];
+      await GC.telegram.send(packet.pages || packet.text, packet.photos, buttons, null, C.tool, {reportPeriod:period,reportRef:periodRef||U.ymd(new Date()),reportMode:mode,reportScope:scope,reportSlot:slot,reportLanguage:lang});
       if (typeof C.onTelegramSent === 'function') {
         await C.onTelegramSent({ period, mode, ref:periodRef, scope, slot, lang, packet });
       }
@@ -3110,7 +4305,7 @@ GC.attachLegacy = function (cfg) {
       if (cloudControl && (mode === 'summary' || mode === 'review' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
     } catch (e) {
       if (telegramState) telegramState.textContent = '✕ ' + e.message;
-      GC.toast('❌ ' + I18.t('gc.upFail') + ': ' + e.message, 'error');
+      GC.toast('❌ ' + e.message, 'error');
     }
     if (sendTelegram) sendTelegram.disabled = false;
   }
@@ -3145,7 +4340,7 @@ GC.attachLegacy = function (cfg) {
 
   /* ── 重新整理儀表板 ── */
   function refresh() {
-    const all  = C.read() || [];
+    const all  = GC.data.live(C.read() || []);
     let view = GC.telegram.filter(all, C, period, periodRef, scope, slot);
     const cards = [
       { label: I18.t('gc.records'), value: view.length, color: '#1A3E78' },
@@ -3189,23 +4384,29 @@ const BAR_CSS = `
 .gc-head-tools{width:100%;max-width:1600px;min-width:0;margin:0 auto;padding:8px 14px;display:flex;align-items:center;justify-content:flex-start;gap:7px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;font-family:inherit}
 .gc-head-tools::-webkit-scrollbar{display:none}
 .gc-toolbar-title{display:inline-flex;align-items:center;gap:5px;color:#183B66;font:800 12px/1 inherit;white-space:nowrap;margin-right:2px}
-.gc-cloud-state{display:inline-flex;align-items:center;gap:6px;min-height:34px;padding:0 10px;border:1px solid #C9D6E4;border-radius:18px;color:#4D6078;background:#fff;font:600 11px/1.1 inherit;white-space:nowrap}
-.gc-cloud-state i{display:block;width:7px;height:7px;border-radius:50%;background:#8BA0B8}
-.gc-cloud-state.ok i{background:#2DD879;box-shadow:0 0 0 3px rgba(45,216,121,.14)}
-.gc-cloud-state.busy i{background:#E9A21B;box-shadow:0 0 0 3px rgba(233,162,27,.15);animation:gcPulse 1s ease-in-out infinite}
-.gc-cloud-state.warning i{background:#E9A21B}.gc-cloud-state.error i{background:#D8424A;box-shadow:0 0 0 3px rgba(216,66,74,.13)}
-@keyframes gcPulse{50%{opacity:.35;transform:scale(.75)}}
+.gc-cloud-state{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;border:1px solid #C9D6E4;border-radius:22px;color:#4D6078;background:#fff;font:700 12px/1.1 inherit;white-space:nowrap}
+.gc-cloud-state i{display:none}
+.gc-state-short{font-weight:800}
+.gc-state-detail{font-weight:600;opacity:.85;max-width:260px;overflow:hidden;text-overflow:ellipsis}
+.gc-state-detail:empty{display:none}
+.gc-cloud-state.ok{background:#E8F7EE;border-color:#9BD9B3;color:#146C3A}
+.gc-cloud-state.busy{background:#EAF2FF;border-color:#A9C4F0;color:#1F4E9A}
+.gc-cloud-state.busy .gc-state-short{animation:gcPulse 1.2s ease-in-out infinite}
+.gc-cloud-state.local,.gc-cloud-state.warning{background:#FFF6E0;border-color:#EBC77A;color:#7A4E00}
+.gc-cloud-state.offline{background:#F1F3F6;border-color:#B8C2CF;color:#46505E}
+.gc-cloud-state.error{background:#FDECEC;border-color:#EFA3A3;color:#A31D1D}
+@keyframes gcPulse{50%{opacity:.45}}
 .gc-head-tools .gc-cloud-btns{gap:5px}
-.gc-head-tools .gc-cloud-btn,.gc-head-btn{height:38px;min-width:40px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #B9D9EA;border-radius:9px;background:#EDF8FC;color:#126B91;font:800 12px/1 inherit;cursor:pointer;white-space:nowrap;box-shadow:none;transition:.16s}
+.gc-head-tools .gc-cloud-btn,.gc-head-btn{height:44px;min-width:44px;padding:0 11px;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:1px solid #B9D9EA;border-radius:9px;background:#EDF8FC;color:#126B91;font:800 12px/1 inherit;cursor:pointer;white-space:nowrap;box-shadow:none;transition:.16s}
 .gc-head-tools .gc-cloud-btn:hover{background:#DDF2FA;border-color:#65B5D6}
 .gc-head-btn:hover{transform:translateY(-1px);filter:brightness(.98)}
 .gc-btn-ico{font-size:15px;line-height:1}.gc-btn-label{white-space:nowrap}
 .gc-head-import{background:#FFF8E8;border-color:#EBCB83;color:#865C08}
 .gc-head-tg{background:#EEF3FF;border-color:#B8C8F0;color:#3156A5}
 .gc-head-export{background:#F7F8FA;border-color:#D5DCE5;color:#48586C}
-.gc-head-langs{height:36px;display:inline-flex;align-items:stretch;border:1px solid #CBD5E1;border-radius:8px;overflow:hidden;background:#fff}
+.gc-head-langs{min-height:44px;display:inline-flex;align-items:stretch;border:1px solid #CBD5E1;border-radius:8px;overflow:hidden;background:#fff}
 .gc-head-langs{margin-left:auto;flex:0 0 auto}
-.gc-head-langs button{min-width:38px;padding:0 8px;border:0;border-right:1px solid #CBD5E1;background:#fff;color:#334155;font:700 11px/1 inherit;cursor:pointer}
+.gc-head-langs button{min-width:44px;min-height:44px;padding:0 8px;border:0;border-right:1px solid #CBD5E1;background:#fff;color:#334155;font:700 12px/1 inherit;cursor:pointer}
 .gc-head-langs button:last-child{border-right:0}
 .gc-head-langs button.on{background:#17B981;color:#fff}
 .gc-modal-open{overflow:hidden!important}
@@ -3215,7 +4416,7 @@ const BAR_CSS = `
 @keyframes gcModalIn{from{opacity:0;transform:translateY(10px) scale(.985)}to{opacity:1;transform:none}}
 .gc-modal-head{display:flex;align-items:center;gap:10px;padding:17px 22px;border-bottom:1px solid #E6EAF0}
 .gc-modal-head strong{flex:1;font-size:17px;color:#172238}
-.gc-modal-head button{width:36px;height:36px;border:0;border-radius:9px;background:transparent;color:#718096;font-size:27px;line-height:1;cursor:pointer}
+.gc-modal-head button{width:44px;height:44px;border:0;border-radius:9px;background:transparent;color:#718096;font-size:27px;line-height:1;cursor:pointer}
 .gc-modal-head button:hover{background:#F1F5F9;color:#1E293B}
 .gc-modal-body{display:grid;grid-template-columns:1fr 1fr;gap:14px 16px;padding:20px 22px;overflow:auto}
 .gc-field{display:flex;flex-direction:column;gap:7px;min-width:0;color:#63718A;font-size:11px;font-weight:800;letter-spacing:.05em;text-transform:uppercase}
@@ -3257,12 +4458,15 @@ const BAR_CSS = `
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
 @media(max-width:1050px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-import-sec{grid-column:auto}}
 @media(max-width:560px){
-  .gc-head-tools{gap:5px;padding:7px 8px;overflow-x:auto}
-  .gc-toolbar-title,.gc-state-label,.gc-btn-label{display:none!important}
-  .gc-cloud-state{min-width:30px;width:30px;padding:0;justify-content:center}
-  .gc-head-tools .gc-cloud-btn,.gc-head-btn{width:38px;min-width:38px;padding:0}
-  .gc-head-langs{margin-left:auto}
-  .gc-head-langs button{min-width:34px;padding:0 5px}
+  /* 手機：第一列＝雲端狀態＋語言；第二列＝操作按鈕（平均分配寬度），不再左右捲動。 */
+  .gc-head-tools{gap:6px;padding:7px 8px;flex-wrap:wrap;overflow-x:visible}
+  .gc-toolbar-title,.gc-btn-label,.gc-state-detail{display:none!important}
+  .gc-cloud-state{order:1;flex:1 1 auto;min-width:0;padding:0 12px;font-size:13px;justify-content:flex-start}
+  .gc-head-langs{order:2;margin-left:auto}
+  .gc-head-cloud{order:3;flex:2 1 96px;display:flex}
+  .gc-head-cloud .gc-cloud-btns{display:flex;width:100%;gap:6px}
+  .gc-head-tools .gc-cloud-btn,.gc-head-btn{order:3;flex:1 1 44px;width:auto;min-width:44px;padding:0}
+  .gc-head-langs button{min-width:44px;padding:0 5px}
   .gc-common-modal{padding:8px;align-items:flex-end}
   .gc-modal-card{width:100%;max-height:94vh;border-radius:18px 18px 0 0}
   .gc-modal-head{padding:14px 16px}
@@ -3273,7 +4477,7 @@ const BAR_CSS = `
   .gc-action-strip{align-items:center;flex-wrap:nowrap;overflow-x:auto;overflow-y:visible;white-space:nowrap;padding:8px 9px}
   .gc-action-heading,.gc-action-label{width:auto;margin-left:0}
   .gc-action-strip #gcTopCloud,.gc-action-strip .gc-cloud-btns,.gc-action-strip .gc-period,.gc-mode{width:auto;flex:0 0 auto}
-  .gc-action-strip .gc-cloud-btn,.gc-action-strip .gc-pd-btn,.gc-mode-btn,.gc-action-btn{flex:0 0 auto;justify-content:center;min-height:38px;touch-action:manipulation}
+  .gc-action-strip .gc-cloud-btn,.gc-action-strip .gc-pd-btn,.gc-mode-btn,.gc-action-btn{flex:0 0 auto;justify-content:center;min-height:44px;touch-action:manipulation}
   .gc-mode{flex-wrap:wrap}
   .gc-panel-body{grid-template-columns:1fr}
   .gc-sec:last-child{grid-column:auto}
@@ -3289,6 +4493,7 @@ const BAR_CSS = `
 /* ── 匯出 ── */
 GC.version = '3.16-key-water-daily-monthly';
 GC.release = '62-single-decision-card';
+GC.coreFix = 'fix-core-2026-09-29';
 global.GC = GC;
 global.GASCheckCore = GC;
 

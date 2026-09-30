@@ -168,7 +168,13 @@ tbody tr:hover{background:var(--bg);}
 .mtit{font-size:15px;font-weight:700;margin-bottom:16px;}
 .mact{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
 /* TOAST */
-#tbox{position:fixed;bottom:22px;right:22px;z-index:900;display:flex;flex-direction:column;gap:7px;}
+#tbox{position:fixed;top:70px;right:12px;left:auto;z-index:900;display:flex;flex-direction:column;gap:7px;max-width:min(420px,calc(100vw - 24px));}
+#tbox .toast.t-err{cursor:pointer}
+.gcx-invalid{outline:2px solid var(--hot)!important;outline-offset:1px;background:var(--hot-bg)!important}
+.temp-overview-bar .period-pick{flex:1 1 140px;min-width:0;max-width:100%}
+.temp-overview-bar select#ov-zone{flex:1 1 100%}
+.temp-set-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px}@media(max-width:700px){.temp-set-grid{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:640px){.btn{min-height:40px}.pbtn{min-height:40px}.period-step{min-width:40px;min-height:40px}.date-nav button{min-width:36px;height:38px}.temp-zone-select-tools .btn{flex:1}}
 .toast{padding:9px 15px;border-radius:9px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);animation:slideUp .22s ease;display:flex;align-items:center;gap:7px;}
 @keyframes slideUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
 .t-ok{background:#dcfce7;color:#15803d;border:1px solid #bbf7d0;}
@@ -216,7 +222,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=56-key-water-monthly&patch=62-single-decision-card"></script>
+<script src="./gascheck-core.js?v=20260929-fix"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -233,8 +239,8 @@ tbody tr:hover{background:var(--bg);}
 </div></div>
 <!-- TABS -->
 <div class="tabs">
-  <button class="tab on" id="tab-dash" onclick="showTab('dash')">📊 <span id="i-tab-dash">總覽與記錄</span></button>
-  <button class="tab" id="tab-rec" onclick="showTab('rec')">✏️ <span id="i-tab-rec">記錄</span></button>
+  <button class="tab" id="tab-dash" onclick="showTab('dash')">📊 <span id="i-tab-dash">總覽與記錄</span></button>
+  <button class="tab on" id="tab-rec" onclick="showTab('rec')">✏️ <span id="i-tab-rec">記錄</span></button>
   <button class="tab" id="tab-zones" onclick="showTab('zones')">🏭 <span id="i-tab-zones">區域</span></button>
   <button class="tab" id="tab-alert" onclick="showTab('alert')">⚠️ <span id="i-tab-alert">異常</span> <span class="tbadge" id="abadge" style="display:none">0</span></button>
   <button class="tab" id="tab-set" onclick="showTab('set')">⚙️ <span id="i-tab-set">設定</span></button>
@@ -242,7 +248,7 @@ tbody tr:hover{background:var(--bg);}
 <div class="main">
 
 <!-- ═══ DASHBOARD ═══ -->
-<div class="pnl on" id="pnl-dash">
+<div class="pnl" id="pnl-dash">
   <div class="cbar temp-overview-bar" id="temp-overview-bar">
     <select id="ov-zone" class="period-pick" onchange="setTempOverviewZone(this.value)"><option value="all">全部區域</option></select>
     <div class="ptog">
@@ -276,7 +282,7 @@ tbody tr:hover{background:var(--bg);}
 </div>
 
 <!-- ═══ RECORD ═══ -->
-<div class="pnl" id="pnl-rec">
+<div class="pnl on" id="pnl-rec">
   <div class="cbar">
     <span class="clbl" id="i-date2">日期</span>
     <div class="date-nav"><button type="button" onclick="shiftTempDate('rec-date',-1)">◀</button><input type="date" id="rec-date" style="width:155px" onchange="renderRec();ensureLiveWeather()"><button type="button" onclick="shiftTempDate('rec-date',1)">▶</button></div>
@@ -287,16 +293,16 @@ tbody tr:hover{background:var(--bg);}
     <div class="rec-weather"><span class="clbl" id="i-rec-weather">🌤️ 天氣 Weather</span><div id="rec-wx"></div></div>
     <input type="text" id="rec-checker" style="width:150px" placeholder="檢查人">
     <input type="text" id="rec-note" style="width:180px" placeholder="備註（可選）">
-    <button class="btn bp ml" onclick="saveAllRec()" id="i-saveall">💾 全部儲存</button>
+    <button class="btn bp ml" onclick="saveAllRecGuarded()" id="i-saveall">💾 全部儲存</button>
     <button class="btn bg" onclick="sendTodayCombinedTemp()" id="i-send-combined">✈️ 早＋午合併摘要</button>
     <button class="btn bg sm" onclick="syncUp()" id="i-upload-after-save" disabled>⬆ 上傳</button>
     <button class="btn bg" onclick="clearRI()" id="i-clear">清除</button>
   </div>
   <div class="temp-zone-select-tools">
-    <strong>區域 / Zones</strong>
-    <button type="button" class="btn bo sm" onclick="selectTempZones(true)">✅ 全選 / All</button>
-    <button type="button" class="btn bo sm" onclick="selectTempZones(false)">☐ 清除選取 / Clear</button>
-    <span>勾選後填寫，儲存或發送只處理已選區域 / selected zones only</span>
+    <strong id="i-zsel-title">區域</strong>
+    <button type="button" class="btn bo sm" onclick="selectTempZones(true)" id="i-zsel-all">✅ 全選</button>
+    <button type="button" class="btn bo sm" onclick="selectTempZones(false)" id="i-zsel-none">☐ 清除選取</button>
+    <span id="i-zsel-hint">勾選後填寫，儲存或發送只處理已選區域</span>
   </div>
   <div class="livewx" id="live-wx-card">
     <div class="livewx-head">
@@ -419,7 +425,7 @@ tbody tr:hover{background:var(--bg);}
 
 <!-- ═══ SETTINGS ═══ -->
 <div class="pnl" id="pnl-set">
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px">
+  <div class="temp-set-grid">
     <div>
       <!-- Thresholds -->
       <div class="card" style="margin-bottom:16px">
@@ -443,19 +449,18 @@ tbody tr:hover{background:var(--bg);}
       </div>
       <!-- Telegram -->
       <div class="card">
-        <div class="chd"><span class="ct">📱 Telegram</span><span class="bdg b-ok" style="margin-left:auto">☁️ 由 GAS 自動發送</span></div>
+        <div class="chd"><span class="ct">📱 Telegram</span><span class="bdg b-ok" style="margin-left:auto" id="i-tg-auto">☁️ 由 GAS 自動發送</span></div>
         <div class="cb">
-          <div style="background:var(--pri-bg);border-radius:8px;padding:10px 13px;font-size:12px;color:var(--pri);margin-bottom:12px;border-left:3px solid var(--pri)">
-            💡 儲存記錄後，GAS 後端會自動推送 Telegram 通知至群組，無需在此設定 Bot Token。<br>
-            如需從瀏覽器手動發送報告，可在下方填入 Token（選填）。
+          <div id="i-tg-help" style="background:var(--pri-bg);border-radius:8px;padding:10px 13px;font-size:12px;color:var(--pri);margin-bottom:12px;border-left:3px solid var(--pri)">
+            💡 報告請用上方工具列的「✈️ Telegram」按鈕發送；Bot Token 只保存在 GAS，這裡不需要設定。
           </div>
           <div class="g2" style="margin-bottom:10px">
-            <div class="fg"><label>Bot Token（選填，手動發送用）</label><input type="password" id="tg-tok" placeholder="123456:ABC..." oninput="saveTGcfg()"></div>
-            <div class="fg"><label>Chat ID（選填）</label><input type="text" id="tg-chat" placeholder="-100..." oninput="saveTGcfg()"></div>
+            <div class="fg"><label id="i-tg-toklbl">Bot Token</label><input type="password" id="tg-tok" placeholder="123456:ABC..." oninput="saveTGcfg()"></div>
+            <div class="fg"><label id="i-tg-chatlbl">Chat ID</label><input type="text" id="tg-chat" placeholder="-100..." oninput="saveTGcfg()"></div>
           </div>
           <div class="g2" style="margin-bottom:10px">
-            <div class="fg"><label id="i-tgperiod">摘要期間</label><select id="tg-period" onchange="prevTG()"><option value="day" id="i-tgday">日 / Day</option><option value="week" id="i-tgweek">週 / Week</option><option value="month" id="i-tgmonth" selected>月 / Month</option><option value="year" id="i-tgyear">年 / Year</option><option value="all" id="i-tgall">全部 / All</option></select></div>
-            <div class="fg"><label id="i-tgtype">訊息類型</label><select id="tg-type" onchange="prevTG()"><option value="summary" id="i-tgsum">📄 摘要</option><option value="review" id="i-tgrev">🔎 審查</option><option value="approval" id="i-tgapp">✅ 核可</option></select></div>
+            <div class="fg"><label id="i-tgperiod">摘要期間</label><select id="tg-period" onchange="prevTG()"><option value="day" id="i-tgday">日</option><option value="week" id="i-tgweek">週</option><option value="month" id="i-tgmonth" selected>月</option><option value="year" id="i-tgyear">年</option><option value="all" id="i-tgall">全部</option></select></div>
+            <div class="fg"><label id="i-tgtype">訊息類型</label><select id="tg-type" onchange="prevTG()"><option value="summary" id="i-tgsum">📄 摘要</option></select></div>
           </div>
           <div class="g2" style="margin-bottom:10px">
             <div class="fg"><label id="i-tgdate">日期</label><div class="date-nav"><button type="button" onclick="shiftTempDate('tg-date',-1)">◀</button><input type="date" id="tg-date"><button type="button" onclick="shiftTempDate('tg-date',1)">▶</button></div></div>
@@ -472,11 +477,11 @@ tbody tr:hover{background:var(--bg);}
     <div>
       <!-- GAS -->
       <div class="card" style="margin-bottom:16px">
-        <div class="chd"><span class="ct">☁️ Google Sheets 雲端同步</span></div>
+        <div class="chd"><span class="ct" id="i-gas-title">☁️ 雲端同步</span></div>
         <div class="cb">
           <div class="fg" style="margin-bottom:10px"><label>GAS Web App URL</label><input type="text" id="gas-url" placeholder="https://script.google.com/macros/s/..." oninput="saveGAScfg()"></div>
           <div class="flw" style="gap:6px">
-            <div class="fl" style="gap:5px"><div class="syncdt sd-idle" id="sdot"></div><span class="sm-t muted" id="sstatus">未連接</span></div>
+            <div class="fl" style="gap:5px"><div class="syncdt sd-idle" id="sdot"></div><span class="sm-t muted" id="sstatus">—</span></div>
             <button class="btn bg sm" onclick="testGAS()" id="i-testcon">🔗 測試</button>
             <button class="btn bp sm" onclick="syncUp()" id="i-syncup">⬆ 上傳</button>
             <button class="btn bg sm" onclick="syncDown()" id="i-pull">⬇ 拉取</button>
@@ -487,14 +492,14 @@ tbody tr:hover{background:var(--bg);}
       <div class="card" style="margin-bottom:16px">
         <div class="chd"><span class="ct" id="i-ie">📁 匯入 / 匯出</span></div>
         <div class="cb">
-          <div class="sttit" id="i-imp">匯入 Import</div>
+          <div class="sttit" id="i-imp">匯入</div>
           <div class="flw" style="gap:6px;margin-bottom:10px">
-            <label class="btn bg sm" style="cursor:pointer">📊 Excel (VRT格式)<input type="file" accept=".xlsx,.xls" style="display:none" onchange="importXL(event)"></label>
+            <label class="btn bg sm" style="cursor:pointer"><span id="i-imp-xl">📊 Excel</span><input type="file" accept=".xlsx,.xls" style="display:none" onchange="importXL(event)"></label>
             <label class="btn bg sm" style="cursor:pointer">📄 JSON<input type="file" accept=".json" style="display:none" onchange="importJSON(event)"></label>
           </div>
           <div id="imp-log" style="display:none;background:var(--bg);border-radius:8px;padding:10px;font-size:12px;color:var(--text2);border:1px solid var(--border)"></div>
           <div class="sep"></div>
-          <div class="sttit" id="i-exp">匯出 Export</div>
+          <div class="sttit" id="i-exp">匯出</div>
           <div class="flw" style="gap:6px">
             <button class="btn bg sm" onclick="exportXL()" id="i-exl">📊 Excel</button>
             <button class="btn bg sm" onclick="exportJSON()" id="i-ejson">📄 JSON</button>
@@ -535,14 +540,14 @@ tbody tr:hover{background:var(--bg);}
 <div class="mover" id="zm-over"><div class="mdl">
   <div class="mtit" id="zm-tit">新增監測區域</div>
   <div class="g2" style="margin-bottom:11px">
-    <div class="fg"><label id="i-znzh">中文名稱</label><input type="text" id="zm-zh" placeholder="例: A廠"></div>
+    <div class="fg"><label id="i-znzh">中文名稱</label><input type="text" id="zm-zh" placeholder="A"></div>
     <div class="fg"><label id="i-znen">English Name</label><input type="text" id="zm-en" placeholder="e.g. Building A"></div>
   </div>
   <div class="g2" style="margin-bottom:11px">
     <div class="fg"><label id="i-znkm">ឈ្មោះខ្មែរ</label><input type="text" id="zm-km" placeholder="ឧ. អគារ A"></div>
     <div class="fg"><label id="i-zncol">顏色</label><input type="color" id="zm-col" value="#4f6ef7"></div>
   </div>
-  <div class="fg" style="margin-bottom:11px"><label id="i-zndesc">說明</label><input type="text" id="zm-desc" placeholder="可選說明"></div>
+  <div class="fg" style="margin-bottom:11px"><label id="i-zndesc">說明</label><input type="text" id="zm-desc" placeholder=""></div>
   <div class="fl"><label style="font-size:13px" id="i-znact">啟用此區域</label><input type="checkbox" id="zm-act" checked style="width:auto;margin-left:8px"></div>
   <div class="mact">
     <button class="btn bg" onclick="closeMod('zm-over')" id="i-cancel">取消</button>
@@ -612,7 +617,7 @@ zh:{
   znzh:'中文名稱',znen:'英文名稱',znkm:'柬文名稱',zncol:'顏色',znact:'啟用此區域',zndesc:'說明',
   addztit:'新增監測區域',edittit:'編輯記錄',conftit:'確認操作',
   cht:'🌡️ 溫度趨勢',chh:'💧 濕度趨勢',cha:'⚠️ 異常統計',chs:'📊 統計表',
-  tgperiod:'摘要期間',tgtype:'訊息類型',tgdate:'基準日期',tgday:'日 / Day',tgweek:'週 / Week',tgmonth:'月 / Month',tgyear:'年 / Year',tgall:'全部 / All',tgsum:'📄 摘要',tgrev:'🔎 審查',tgapp:'✅ 核可',
+  tgperiod:'摘要期間',tgtype:'訊息類型',tgdate:'基準日期',tgday:'日',tgweek:'週',tgmonth:'月',tgyear:'年',tgall:'全部',tgsum:'📄 摘要',tgrev:'🔎 審查',tgapp:'✅ 核可',
   today:'今天',yesterday:'昨天',nodata:'暫無數據',saved:'已儲存',deleted:'已刪除',
   impok:'匯入成功',expok:'匯出成功',noanom:'✅ 無異常',
   cdelrec:'確認刪除此記錄？',cdelzone:'確認刪除此區域（及其所有記錄）？',
@@ -683,7 +688,7 @@ km:{
   tcold:'🔵 ត្រជាក់',tcool:'🔵 ត្រជាក់ស្រួល',twarm:'🟡 កក្តៅ',thot:'🔴 ក្តៅខ្លាំង',
   hdry:'🟡 ស្ងួត',hhumid:'🟠 សើម',hvhum:'🔴 សើមខ្លាំង',
   idle:'មិនបានតភ្ជាប់',imp:'នាំចូល',exp:'នាំចេញ',
-  danger:'⚠️ ប្រតិបត្តិការគ្រោះថ្នាក់',danwarn:'⚠️ ប្រតិបត្តិការទាំងនេះមិនអាចប្រឡែកបាន។',
+  danger:'⚠️ ប្រតិបត្តិការគ្រោះថ្នាក់',danwarn:'⚠️ ប្រតិបត្តិការទាំងនេះមិនអាចត្រឡប់វិញបានទេ។ សូមនាំចេញបម្រុងទុកជាមុន។',
   appinfo:'ℹ️ ព័ត៌មានប្រព័ន្ធ',irc:'កំណត់ត្រាសរុប',izn:'តំបន់សកម្ម',ifc:'កំណត់ត្រាដំបូង',ilc:'កំណត់ត្រាថ្មី',ist:'ទំហំផ្ទុក',
   znzh:'ឈ្មោះចិន',znen:'ឈ្មោះអង់គ្លេស',znkm:'ឈ្មោះខ្មែរ',zncol:'ពណ៌',znact:'តំបន់សកម្ម',zndesc:'ការពិពណ៌នា',
   addztit:'បន្ថែមតំបន់ត្រួតពិនិត្យ',edittit:'កែប្រែកំណត់ត្រា',conftit:'បញ្ជាក់ប្រតិបត្តិការ',
@@ -692,7 +697,7 @@ km:{
   today:'ថ្ងៃនេះ',yesterday:'ម្សិលមិញ',nodata:'គ្មានទិន្នន័យ',saved:'បានរក្សាទុក',deleted:'បានលុប',
   impok:'នាំចូលបានជោគជ័យ',expok:'នាំចេញបានជោគជ័យ',noanom:'✅ គ្មានភាពខុសប្រក្រតី',
   cdelrec:'លុបកំណត់ត្រានេះ?',cdelzone:'លុបតំបន់ (និងកំណត់ត្រាទាំងអស់)?',
-  cclrall:'លុបកំណត់ត្រាទាំងអស់?',crstzone:'កំណត់ទ្សសន្ណ?',
+  cclrall:'លុបកំណត់ត្រាទាំងអស់?',crstzone:'កំណត់តំបន់ទាំងអស់ឡើងវិញ?',
   ahigh:'សីតុណ្ហភាពខ្ពស់',alow:'សីតុណ្ហភាពទាប',ahhigh:'សំណើមខ្ពស់',ahlow:'សំណើមទាប',
   clbl_date:'កាលបរិច្ឆេទ',clbl_zone:'តំបន់',clbl_per:'វេលា',clbl_tmp:'°C',clbl_hum:'%',clbl_stat:'ស្ថានភាព',clbl_note:'ចំណាំ',clbl_checker:'អ្នកត្រួតពិនិត្យ',
   an_cnt:'កំណត់ត្រា',an_avgt:'មធ្យម°C',an_maxt:'ខ្ពស់°C',an_mint:'ទាប°C',an_avgh:'មធ្យម%',an_maxh:'ខ្ពស់%',an_minh:'ទាប%',an_anom:'ខុសប្រក្រតី',
@@ -704,6 +709,130 @@ km:{
   view_day:'ថ្ងៃ',view_week:'សប្តាហ៍',view_month:'ខែ',view_year:'ឆ្នាំ',
   months:['មករា','កុម្ភៈ','មីនា','មេសា','ឧសភា','មិថុនា','កក្កដា','សីហា','កញ្ញា','តុលា','វិច្ឆិកា','ធ្នូ'],
 }};
+/* FIX-M3（B10）：工具列、設定、說明與錯誤訊息全部單一語言；en／km 缺字退回英文，不回中文。 */
+Object.assign(D.zh,{
+  doc_title:'VRT 溫濕度管理',zsel_title:'區域',zsel_all:'✅ 全選',zsel_none:'☐ 清除選取',zsel_hint:'勾選後填寫，儲存或發送只處理已選區域',zsel_pick:'選取',
+  zsel_all_ok:'已選全部區域',zsel_cleared:'已清除選取',auto_sync:'會自動同步到雲端',tg_auto:'☁️ 由 GAS 發送',
+  tg_help:'💡 報告請用上方工具列的「✈️ Telegram」按鈕發送；Bot Token 只保存在 GAS，這裡不需要設定。',gas_title:'☁️ 雲端同步',imp_xl:'📊 Excel',
+  need_date:'請選擇日期',need_value:'請至少輸入一個區域的溫度或濕度',need_zone_sel:'請至少勾選一個區域',bad_temp:'溫度必須介於 0–60 °C',bad_hum:'濕度必須介於 0–100 %',
+  need_tmp_or_hum:'請輸入溫度或濕度',need_zone:'請選擇區域',need_name:'請輸入區域名稱',max_zones:'最多 10 個區域',reset_ok:'已重置',
+  collide:'{date} {slot} {zone} 已經有一筆讀值（{t}°C / {h}%）。\n要用這次的數值取代它嗎？',collide_cancel:'已取消，原有讀值未更動',
+  deleted_sync:'已刪除（會同步到其他手機）',storage_full:'本機儲存空間不足，已保留原資料；請先匯出備份',
+  imp_reading:'⏳ 讀取中…',imp_done:'✅ 完成：有效 {n} 筆；新增 {a}，更新／合併 {u}；工作表 {s}',imp_fail:'匯入失敗',imp_rows:'筆',
+  imp_trunc:'⚠️ 工作表「{s}」超過 {max} 列，只讀取前 {max} 列；請分檔匯入其餘資料',json_merged:'（已合併，未刪除本機資料）',json_fail:'JSON 匯入失敗',
+  new_zone:'新增區域',no_day_rows:'當日尚無已儲存記錄',combined_ok:'雲端已確認，早上＋下午摘要已發送',kept_local:'資料已保留在本機，Telegram 未重複發送',
+  empty_msg:'訊息內容為空，請確認日期有記錄',tg_ok:'Telegram 發送成功，完成狀態已同步',net_err:'網路錯誤',no_confirm:'Telegram 未回傳送達確認',
+  open_dash:'📊 開啟平台',refresh_needed:'請重新整理頁面以載入分頁發送功能',need_gas:'請設定 GAS URL',testing:'測試中…',connected:'✅ 已連接',conn_fail:'❌ 連接失敗',
+  gas_ok:'GAS 連接成功',uploading:'上傳中…',sync_fail:'❌ 同步失敗',up_fail:'上傳失敗',pulling:'拉取中…',pull_fail:'拉取失敗',synced:'✅ 已同步',
+  pull_ok:'拉取成功：雲端 {c} 筆，本機保留 {k} 筆',init_synced:'已從雲端同步 {n} 筆記錄',sent_n:'已送出 {n} 筆',imp_sent:'雲端匯入已送出：{n} 筆',cloud_err:'雲端網路錯誤',
+  clear_prompt:'這會清除「這支手機」上的全部溫濕度記錄。\n雲端資料會保留，之後會自動重新下載。\n\n請輸入 CLEAR 確認：',clear_cancel:'未輸入 CLEAR，已取消',clear_done:'已清除本機記錄',
+  latest:'🕒 所選期間最新讀值',anal_title:'📈 期間分析',hist_title:'📋 詳細記錄',zone_off:'停用'
+});
+Object.assign(D.en,{
+  doc_title:'VRT Temp & Humidity',zsel_title:'Zones',zsel_all:'✅ Select all',zsel_none:'☐ Clear selection',zsel_hint:'Tick zones to fill in; Save and Send only use ticked zones',zsel_pick:'Select',
+  zsel_all_ok:'All zones selected',zsel_cleared:'Selection cleared',auto_sync:'will sync to the cloud automatically',tg_auto:'☁️ Sent by GAS',
+  tg_help:'💡 Send reports with the “✈️ Telegram” button in the toolbar above. The bot token stays in GAS; nothing to set here.',gas_title:'☁️ Cloud Sync',imp_xl:'📊 Excel',
+  need_date:'Select a date',need_value:'Enter temperature or humidity for at least one zone',need_zone_sel:'Tick at least one zone',bad_temp:'Temperature must be 0–60 °C',bad_hum:'Humidity must be 0–100 %',
+  need_tmp_or_hum:'Enter temperature or humidity',need_zone:'Select a zone',need_name:'Enter a zone name',max_zones:'Up to 10 zones',reset_ok:'Reset done',
+  collide:'{date} {slot} {zone} already has a reading ({t}°C / {h}%).\nReplace it with these values?',collide_cancel:'Cancelled; the existing reading was not changed',
+  deleted_sync:'Deleted (will sync to other phones)',storage_full:'Storage on this phone is full; your data was kept. Export a backup first',
+  imp_reading:'⏳ Reading…',imp_done:'✅ Done: {n} valid rows; {a} added, {u} updated/merged; sheets {s}',imp_fail:'Import failed',imp_rows:'rows',
+  imp_trunc:'⚠️ Sheet “{s}” has more than {max} rows; only the first {max} were read. Import the rest as a separate file',json_merged:' (merged; no local data deleted)',json_fail:'JSON import failed',
+  new_zone:'Add Zone',no_day_rows:'No saved records for this day',combined_ok:'Cloud confirmed; AM + PM summary sent',kept_local:'Data kept on this phone; Telegram was not sent twice',
+  empty_msg:'The message is empty; check that the date has records',tg_ok:'Telegram sent; status synced',net_err:'Network error',no_confirm:'Telegram returned no delivery confirmation',
+  open_dash:'📊 Open Dashboard',refresh_needed:'Refresh the page to load paginated delivery',need_gas:'Set the GAS URL',testing:'Testing…',connected:'✅ Connected',conn_fail:'❌ Connection failed',
+  gas_ok:'GAS connected',uploading:'Uploading…',sync_fail:'❌ Sync failed',up_fail:'Upload failed',pulling:'Pulling…',pull_fail:'Pull failed',synced:'✅ Synced',
+  pull_ok:'Pulled: {c} cloud rows, {k} local rows kept',init_synced:'Synced {n} records from the cloud',sent_n:'Sent {n} rows',imp_sent:'Cloud import sent: {n} rows',cloud_err:'Cloud network error',
+  clear_prompt:'This clears ALL temperature records on THIS phone.\nThe cloud copy is kept and will download again.\n\nType CLEAR to confirm:',clear_cancel:'CLEAR was not typed — cancelled',clear_done:'Records on this phone cleared',
+  latest:'🕒 Latest readings in selected period',anal_title:'📈 Period analysis',hist_title:'📋 Detailed records',zone_off:'Off'
+});
+Object.assign(D.km,{
+  doc_title:'VRT សីតុណ្ហភាព និងសំណើម',zsel_title:'តំបន់',zsel_all:'✅ ជ្រើសទាំងអស់',zsel_none:'☐ ដកការជ្រើស',zsel_hint:'ធីកតំបន់ដែលត្រូវបំពេញ; រក្សាទុក និងផ្ញើ ប្រើតែតំបន់ដែលបានធីក',zsel_pick:'ជ្រើស',
+  zsel_all_ok:'បានជ្រើសតំបន់ទាំងអស់',zsel_cleared:'បានដកការជ្រើស',auto_sync:'នឹងធ្វើសមកាលកម្មទៅ Cloud ដោយស្វ័យប្រវត្តិ',tg_auto:'☁️ ផ្ញើដោយ GAS',
+  tg_help:'💡 សូមផ្ញើរបាយការណ៍ដោយប៊ូតុង «✈️ Telegram» នៅរបារខាងលើ។ Bot Token រក្សាទុកក្នុង GAS មិនចាំបាច់កំណត់នៅទីនេះទេ។',gas_title:'☁️ សមកាលកម្ម Cloud',imp_xl:'📊 Excel',
+  need_date:'សូមជ្រើសកាលបរិច្ឆេទ',need_value:'សូមបញ្ចូលសីតុណ្ហភាព ឬសំណើមយ៉ាងហោចណាស់មួយតំបន់',need_zone_sel:'សូមធីកតំបន់យ៉ាងហោចណាស់មួយ',bad_temp:'សីតុណ្ហភាពត្រូវនៅចន្លោះ 0–60 °C',bad_hum:'សំណើមត្រូវនៅចន្លោះ 0–100 %',
+  need_tmp_or_hum:'សូមបញ្ចូលសីតុណ្ហភាព ឬសំណើម',need_zone:'សូមជ្រើសតំបន់',need_name:'សូមបញ្ចូលឈ្មោះតំបន់',max_zones:'អាចមានរហូតដល់ 10 តំបន់',reset_ok:'បានកំណត់ឡើងវិញ',
+  collide:'{date} {slot} {zone} មានតម្លៃរួចហើយ ({t}°C / {h}%)។\nជំនួសដោយតម្លៃថ្មីនេះ?',collide_cancel:'បានបោះបង់; តម្លៃចាស់មិនបានផ្លាស់ប្តូរ',
+  deleted_sync:'បានលុប (នឹងធ្វើសមកាលកម្មទៅទូរស័ព្ទផ្សេង)',storage_full:'ទំហំផ្ទុកក្នុងទូរស័ព្ទពេញ; ទិន្នន័យនៅរក្សា។ សូមនាំចេញបម្រុងទុកជាមុន',
+  imp_reading:'⏳ កំពុងអាន…',imp_done:'✅ រួចរាល់៖ {n} ជួរត្រឹមត្រូវ; បន្ថែម {a}, ធ្វើបច្ចុប្បន្នភាព {u}; សន្លឹក {s}',imp_fail:'នាំចូលបរាជ័យ',imp_rows:'ជួរ',
+  imp_trunc:'⚠️ សន្លឹក «{s}» មានលើស {max} ជួរ; បានអានតែ {max} ជួរដំបូង។ សូមនាំចូលផ្នែកដែលនៅសល់ជាឯកសារដាច់ដោយឡែក',json_merged:' (បានបញ្ចូលគ្នា មិនលុបទិន្នន័យក្នុងទូរស័ព្ទ)',json_fail:'នាំចូល JSON បរាជ័យ',
+  new_zone:'បន្ថែមតំបន់',no_day_rows:'មិនមានកំណត់ត្រាដែលបានរក្សាទុកសម្រាប់ថ្ងៃនេះ',combined_ok:'បានបញ្ជាក់លើ Cloud និងផ្ញើសង្ខេបព្រឹក + រសៀល',kept_local:'ទិន្នន័យនៅរក្សាក្នុងទូរស័ព្ទ ហើយ Telegram មិនបានផ្ញើស្ទួន',
+  empty_msg:'សារទទេ; សូមពិនិត្យថាកាលបរិច្ឆេទមានកំណត់ត្រា',tg_ok:'បានផ្ញើ Telegram និងធ្វើសមកាលកម្មស្ថានភាព',net_err:'បញ្ហាបណ្តាញ',no_confirm:'Telegram មិនបានបញ្ជាក់ការផ្ញើ',
+  open_dash:'📊 បើកផ្ទាំងគ្រប់គ្រង',refresh_needed:'សូមផ្ទុកទំព័រឡើងវិញ',need_gas:'សូមកំណត់ GAS URL',testing:'កំពុងសាកល្បង…',connected:'✅ បានភ្ជាប់',conn_fail:'❌ ការភ្ជាប់បរាជ័យ',
+  gas_ok:'បានភ្ជាប់ GAS',uploading:'កំពុងផ្ទុកឡើង…',sync_fail:'❌ សមកាលកម្មបរាជ័យ',up_fail:'ផ្ទុកឡើងបរាជ័យ',pulling:'កំពុងទាញ…',pull_fail:'ទាញបរាជ័យ',synced:'✅ បានធ្វើសមកាលកម្ម',
+  pull_ok:'បានទាញ៖ {c} ជួរពី Cloud, រក្សាទុក {k} ជួរក្នុងទូរស័ព្ទ',init_synced:'បានធ្វើសមកាលកម្ម {n} កំណត់ត្រាពី Cloud',sent_n:'បានផ្ញើ {n} ជួរ',imp_sent:'បានផ្ញើការនាំចូលទៅ Cloud៖ {n} ជួរ',cloud_err:'បញ្ហាបណ្តាញ Cloud',
+  clear_prompt:'វានឹងលុបកំណត់ត្រាសីតុណ្ហភាពទាំងអស់ក្នុងទូរស័ព្ទនេះ។\nទិន្នន័យលើ Cloud នៅរក្សា ហើយនឹងទាញយកម្តងទៀត។\n\nសូមវាយ CLEAR ដើម្បីបញ្ជាក់៖',clear_cancel:'មិនបានវាយ CLEAR — បានបោះបង់',clear_done:'បានលុបកំណត់ត្រាក្នុងទូរស័ព្ទនេះ',
+  latest:'🕒 ទិន្នន័យចុងក្រោយក្នុងរយៈពេល',anal_title:'📈 ការវិភាគតាមរយៈពេល',hist_title:'📋 កំណត់ត្រាលម្អិត',zone_off:'បិទ'
+});
+
+/* ═══ FIX-M3 共用小工具：優先使用核心 GC（tombstone／guard），核心尚未提供時用本頁備援 ═══ */
+var GCX=(function(){
+  const TOMB_DAYS=90, inflight=new Set();
+  const lang=()=>{try{if(typeof LANG!=='undefined'&&LANG)return LANG;}catch(e){}try{return (window.GC&&GC.i18n&&GC.i18n.lang)||localStorage.getItem('gc_lang')||'zh';}catch(e){return 'zh';}};
+  const L=(zh,en,km)=>{const l=lang();if(l==='en')return en;if(l==='km')return km||en;return zh;};
+  const isLive=r=>!!r&&!r._deleted;
+  function live(rows){
+    rows=Array.isArray(rows)?rows:[];
+    try{if(window.GC&&GC.data&&typeof GC.data.live==='function')return GC.data.live(rows).filter(isLive);}catch(e){}
+    return rows.filter(isLive);
+  }
+  /* 刪除＝保留 {id,_deleted,updatedAt}＋業務鍵，讓同步把刪除帶到雲端與其他手機。 */
+  function tomb(row,keys){
+    let t=null;try{if(window.GC&&GC.data&&typeof GC.data.tomb==='function')t=GC.data.tomb(row);}catch(e){}
+    const now=_localTS(),out={};
+    (keys||[]).forEach(k=>{if(row&&row[k]!==undefined)out[k]=row[k];});
+    Object.assign(out,t&&typeof t==='object'?t:{});
+    out.id=row&&row.id!==undefined?row.id:out.id;out._deleted=true;out.updatedAt=now;out.deletedAt=now;
+    return out;
+  }
+  function stampOf(r){const n=new Date(String(r&&(r.deletedAt||r.updatedAt)||'').replace(' ','T')).getTime();return isNaN(n)?Date.now():n;}
+  function prune(rows){
+    rows=Array.isArray(rows)?rows:[];
+    try{if(window.GC&&GC.data&&typeof GC.data.prune==='function')return GC.data.prune(rows);}catch(e){}
+    const limit=Date.now()-TOMB_DAYS*86400000;
+    return rows.filter(r=>!r||!r._deleted||stampOf(r)>=limit);
+  }
+  /* 按鈕防連點：同一個 key 執行中時忽略第二次點擊，並把按鈕設為 disabled。 */
+  async function guard(key,fn,btn){
+    if(inflight.has(key))return undefined;
+    inflight.add(key);const b=typeof btn==='string'?document.getElementById(btn):btn;if(b)b.disabled=true;
+    try{return await fn();}finally{inflight.delete(key);if(b)b.disabled=false;}
+  }
+  /* 必填欄位：紅框標示＋捲到該欄，輸入後自動移除。 */
+  function invalid(el){
+    el=typeof el==='string'?document.getElementById(el):el;if(!el)return;
+    el.classList.add('gcx-invalid');
+    try{el.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){}
+    try{if(el.focus)el.focus({preventScroll:true});}catch(e){}
+    const off=()=>{el.classList.remove('gcx-invalid');el.removeEventListener('input',off);el.removeEventListener('change',off);el.removeEventListener('click',off);};
+    el.addEventListener('input',off);el.addEventListener('change',off);el.addEventListener('click',off);
+  }
+  function clearInvalid(root){(root||document).querySelectorAll('.gcx-invalid').forEach(x=>x.classList.remove('gcx-invalid'));}
+  /* 真正等 IndexedDB 刪除完成（核心同步 removeItem 只是排程刪除）。 */
+  function idbDelete(key){
+    return new Promise(resolve=>{
+      try{
+        if(typeof indexedDB==='undefined')return resolve(false);
+        const req=indexedDB.open('ac_gascheck_data_v1');
+        req.onerror=()=>resolve(false);
+        req.onsuccess=()=>{const db=req.result;try{
+          if(!db.objectStoreNames.contains('kv')){db.close();return resolve(true);}
+          const tx=db.transaction('kv','readwrite');tx.objectStore('kv').delete(String(key));
+          tx.oncomplete=()=>{db.close();resolve(true);};tx.onerror=tx.onabort=()=>{db.close();resolve(false);};
+        }catch(e){try{db.close();}catch(x){}resolve(false);}};
+      }catch(e){resolve(false);}
+    });
+  }
+  /* Telegram 視窗：報告語言預設＝介面語言（中文介面沿用中英雙語）。 */
+  function tgLangValue(){return lang();} /* 摘要語言預設＝介面語言（單一語言）；雙語可在視窗內另選 */
+  function hookTelegramLanguage(){
+    const apply=()=>{const sel=document.querySelector('.gc-common-modal.open [data-gc-lang]')||document.querySelector('.gc-common-modal [data-gc-lang]');if(!sel)return;const v=tgLangValue();if(sel.value!==v&&Array.from(sel.options).some(o=>o.value===v)){sel.value=v;sel.dispatchEvent(new Event('change',{bubbles:true}));}};
+    /* 開啟視窗時不再強制改回預設：使用者選的「中英雙語」會保留（核心已預設＝介面語言）。 */
+    window.addEventListener('gc:langchange',()=>setTimeout(apply,0));
+  }
+  return {L,lang,live,tomb,prune,guard,invalid,clearInvalid,idbDelete,tgLangValue,hookTelegramLanguage,isLive};
+})();
+GCX.hookTelegramLanguage();
 
 // ══════════════════════════════════════════
 // STATE & STORAGE
@@ -721,7 +850,7 @@ window._liveWeatherLoading=false;
 window._liveWeatherError=false;
 window._liveWeatherApplied=false;
 
-try { LANG=localStorage.getItem(LSLANG)||'zh'; } catch(e) {}
+try { LANG=localStorage.getItem('gc_lang')||localStorage.getItem(LSLANG)||'zh'; if(!['zh','en','km'].includes(LANG))LANG='zh'; } catch(e) {}
 
 const DZ=[
   {id:'za',zh:'A廠車間',en:'Building A Workshop',km:'អគារ A (រោងចក្រ)',col:'#4f6ef7',desc:'',on:true},
@@ -731,7 +860,13 @@ const DZ=[
 ];
 const DTH={t:{cold:18,cool:23,warm:32,hot:35},h:{dry:40,humid:80,vhum:90}};
 
-const T=k=>(D[LANG]||D.zh)[k]||(D.zh[k]||k);
+const T=(k,vars)=>{
+  const d=D[LANG]||D.zh;let v=d[k]!==undefined?d[k]:(LANG==='zh'?D.zh[k]:D.en[k]);
+  if(v===undefined)v=k;
+  if(vars&&typeof v==='string')Object.keys(vars).forEach(x=>{v=v.split('{'+x+'}').join(String(vars[x]));});
+  return v;
+};
+const TL=(zh,en,km)=>LANG==='en'?en:LANG==='km'?(km||en):zh;
 function compactTempZones(list){
   const out=[],byId=new Map(),defaults=tempReportZoneDefaults();
   (Array.isArray(list)?list:[]).forEach(function(raw){
@@ -767,6 +902,7 @@ function tempStoredList(d){
   return Object.values(d).filter(Array.isArray).reduce((a,b)=>a.concat(b),[]);
 }
 function tempRecordKey(r){
+  if(typeof GC!=='undefined'&&GC&&GC.syncKeys&&GC.syncKeys.temperature)return GC.syncKeys.temperature(r,getZ()); // 與 Portal 共用
   if(!r||typeof r!=='object')return '';
   const d=String(r.d!==undefined?r.d:(r.date||'')).slice(0,10);
   const p=String(r.p!==undefined?r.p:(r.period||'')).toLowerCase();
@@ -784,6 +920,8 @@ function validTempBusinessRecord(r){
   if(!r||!validTempBusinessDate(r.d))return false;
   if(r.p!=='morning'&&r.p!=='afternoon')return false;
   if(!String(r.z||'').trim())return false;
+  /* A3：刪除標記只需日期＋時段＋區域即可保留並同步。 */
+  if(r._deleted===true)return true;
   const tv=r.t===''||r.t==null?null:Number(r.t),hv=r.h===''||r.h==null?null:Number(r.h);
   return (tv!==null&&isFinite(tv)&&tv>=-50&&tv<=80)||(hv!==null&&isFinite(hv)&&hv>=0&&hv<=100);
 }
@@ -794,7 +932,11 @@ function tempPhotoList(v){
   return[v];
 }
 function mergeTempRecord(a,b){
-  const ot=String(a&&a.updatedAt||a&&a.ts||''),nt=String(b&&b.updatedAt||b&&b.ts||''),out=nt&&(!ot||nt>ot)?Object.assign({},a,b):Object.assign({},b,a);
+  const ot=String(a&&a.updatedAt||a&&a.ts||''),nt=String(b&&b.updatedAt||b&&b.ts||''),bNewer=!!nt&&(!ot||nt>ot||(nt===ot&&!!(b&&b._deleted)&&!(a&&a._deleted))),newer=bNewer?b:a,older=bNewer?a:b;
+  /* 較新的是刪除標記 → 只留標記；較新的是重新輸入 → _deleted:false，舊標記失效。 */
+  if(newer&&newer._deleted)return Object.assign({},tempTombFields(newer));
+  const out=Object.assign({},older,newer);
+  if(older&&older._deleted){out._deleted=false;delete out.deletedAt;}
   out.photos=Array.from(new Set(tempPhotoList(a&&a.photos).concat(tempPhotoList(b&&b.photos))));
   ['telegramSentAt','summarySentAt','reviewSentAt','approvalSentAt'].forEach(k=>{const v=[a&&a[k],b&&b[k]].filter(Boolean).sort().pop();if(v)out[k]=v;});
   return out;
@@ -816,13 +958,16 @@ function compactTempRecords(list){
   });
   return Array.from(map.values());
 }
+function tempTombFields(r){return {id:r.id||'',z:r.z||'',d:r.d||'',p:r.p||'',_deleted:true,updatedAt:r.updatedAt||'',deletedAt:r.deletedAt||r.updatedAt||'',ts:r.ts||''};}
 function tempStorageRecord(r){
+  if(r&&r._deleted===true)return tempTombFields(r);
   const out={id:r.id||'',z:r.z||'',d:r.d||'',p:r.p||'',t:r.t!==undefined?r.t:'',h:r.h!==undefined?r.h:'',wx:r.wx||'',checker:String(r.checker||'').slice(0,200),note:String(r.note||'').slice(0,2000),ts:r.ts||'',updatedAt:r.updatedAt||''};
   if(r.telegramSentAt)out.telegramSentAt=r.telegramSentAt;
   if(r.summarySentAt)out.summarySentAt=r.summarySentAt;
   if(r.reviewSentAt)out.reviewSentAt=r.reviewSentAt;
   if(r.approvalSentAt)out.approvalSentAt=r.approvalSentAt;
   if(r.telegramMode)out.telegramMode=r.telegramMode;
+  if(r._deleted===false)out._deleted=false;
   const weatherObservation=parseWeatherObservation(r.weatherObservation||r.liveWeather);
   if(weatherObservation)out.weatherObservation=weatherObservation;
   const photos=tempPhotoList(r.photos).filter(p=>typeof p==='string'&&!/^data:image\//i.test(p)&&p.length<=4096);
@@ -830,7 +975,7 @@ function tempStorageRecord(r){
   return out;
 }
 function persistTempRecords(list){
-  const safe=compactTempRecords(list).map(tempStorageRecord), json=JSON.stringify(safe);
+  const safe=GCX.prune(compactTempRecords(list)).map(tempStorageRecord), json=JSON.stringify(safe);
   let oldRaw=''; try{oldRaw=localStorage.getItem(LSR)||'';}catch(e){}
   try{localStorage.setItem(LSR,json);return safe;}
   catch(first){
@@ -839,12 +984,22 @@ function persistTempRecords(list){
       localStorage.removeItem(LSR); localStorage.setItem(LSR,json); return safe;
     }catch(second){
       try{if(oldRaw)localStorage.setItem(LSR,oldRaw);}catch(restore){}
-      throw new Error('本機儲存空間不足，已保留原資料；請先匯出備份或清除舊照片');
+      throw new Error(T('storage_full'));
     }
   }
 }
-const getR=()=>{try{const d=localStorage.getItem(LSR);return d?compactTempRecords(tempStoredList(JSON.parse(d))):[];}catch{return [];}};
-const setR=r=>persistTempRecords(r);
+/* getRAll＝含刪除標記（同步用）；getR＝畫面／統計／Telegram／匯出只看有效記錄。 */
+const getRAll=()=>{try{const d=localStorage.getItem(LSR);return d?compactTempRecords(tempStoredList(JSON.parse(d))):[];}catch{return [];}};
+const getR=()=>GCX.live(getRAll());
+/* setR 保留本機既有刪除標記（清單裡沒有的鍵），刪除一律走 tempTombstoneWhere，不會因清單少了而「消失」。 */
+const setR=r=>persistTempRecords(getRAll().filter(x=>x&&x._deleted).concat(Array.isArray(r)?r:[]));
+function tempTombstoneWhere(pred){
+  const all=getRAll();let n=0;
+  const next=all.map(r=>{if(!r||r._deleted||!pred(r))return r;n++;return tempTombFields(GCX.tomb(r,['z','d','p','ts']));});
+  if(n)persistTempRecords(next);
+  if(n&&typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','record_delete');
+  return n;
+}
 const getTH=()=>{try{const d=localStorage.getItem(LSTH);return d?JSON.parse(d):JSON.parse(JSON.stringify(DTH));}catch{return JSON.parse(JSON.stringify(DTH));}};
 const setTH=t=>localStorage.setItem(LSTH,JSON.stringify(t));
 const getTG=()=>{try{const d=localStorage.getItem(LSTG);return d?JSON.parse(d):{tok:'',chat:''};}catch{return {tok:'',chat:''};}}
@@ -951,6 +1106,12 @@ function applyI18n(){
   Object.entries(MAP).forEach(([id,k])=>{
     const el=document.getElementById(id);if(el&&T(k)!==k)el.textContent=T(k);
   });
+  /* FIX-M3：單一語言標題與工具列／設定文字 */
+  try{document.title=T('doc_title');document.documentElement.lang=LANG==='zh'?'zh-Hant':LANG;}catch(e){}
+  [['i-zsel-title','zsel_title'],['i-zsel-all','zsel_all'],['i-zsel-none','zsel_none'],['i-zsel-hint','zsel_hint'],['i-tg-auto','tg_auto'],['i-tg-help','tg_help'],['i-gas-title','gas_title'],['i-imp-xl','imp_xl']].forEach(([id,k])=>{const el=document.getElementById(id);if(el)el.textContent=T(k);});
+  document.querySelectorAll('.temp-zone-pick span').forEach(el=>{el.textContent=T('zsel_pick');});
+  const zph=document.getElementById('zm-desc');if(zph)zph.placeholder=T('zndesc');
+  const sst=document.getElementById('sstatus');if(sst&&(sst.textContent==='—'||!sst.textContent))sst.textContent=T('idle');
   // Period/view toggle buttons (proper IDs, no duplicate)
   const btn=(id,k)=>{const el=document.getElementById(id);if(el)el.textContent=T(k);};
   btn('dbam','am');btn('dbpm','pm');btn('dball','all');
@@ -966,7 +1127,7 @@ function applyI18n(){
   const alsev=document.getElementById('alsev');
   if(alsev){alsev.options[0].text=T('allsev');alsev.options[1].text=T('crit');alsev.options[2].text=T('warn');}
   const tgtype=document.getElementById('tg-type');
-  if(tgtype){tgtype.options[0].text=T('tgd');tgtype.options[1].text=T('tga');tgtype.options[2].text=T('tgf');}
+  if(tgtype&&tgtype.options[0])tgtype.options[0].text=T('tgsum');
   const reper=document.getElementById('re-per');
   if(reper){reper.options[0].text=T('am');reper.options[1].text=T('pm');}
   // Repopulate zone selects with new language
@@ -1057,6 +1218,7 @@ function mergeTemperatureViews(){
 // ══════════════════════════════════════════
 function showTab(n){
   if(n==='hist'||n==='anal')n='dash';
+  try{sessionStorage.setItem('vrt_th_tab',n);}catch(e){}
   document.querySelectorAll('.pnl').forEach(p=>p.classList.remove('on'));
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('on'));
   document.getElementById('pnl-'+n).classList.add('on');
@@ -1181,8 +1343,8 @@ function renderRec(){
       <div class="rzlbl">
         <div style="width:12px;height:12px;border-radius:50%;background:${z.col};flex-shrink:0"></div>
         <span style="font-weight:700">${znm(z)}</span>
-        <span class="sm-t muted">${z.en}</span>
-        <label class="temp-zone-pick"><input type="checkbox" id="ri-p-${z.id}" checked onchange="toggleTempZone('${z.id}',this.checked)"> <span>選取 / Send</span></label>
+        <span class="sm-t muted">${LANG==='zh'?tempTgEsc(z.en||''):''}</span>
+        <label class="temp-zone-pick"><input type="checkbox" id="ri-p-${z.id}" checked onchange="toggleTempZone('${z.id}',this.checked)"> <span>${T('zsel_pick')}</span></label>
       </div>
       <div class="g2">
         <div class="fg"><label>🌡️ ${T('clbl_tmp')}</label>
@@ -1214,7 +1376,7 @@ function selectTempZones(yes){
   const zones=getZ().filter(z=>z.on);
   _tempSelectedZones=new Set(yes?zones.map(z=>z.id):[]);
   zones.forEach(z=>{const el=document.getElementById('ri-p-'+z.id);if(el)el.checked=!!yes;});
-  toast(yes?'✅ 已選全部區域 / All zones selected':'已清除選取 / Selection cleared','inf');
+  toast(yes?'✅ '+T('zsel_all_ok'):T('zsel_cleared'),'inf');
 }
 
 function prvSt(zid){
@@ -1227,34 +1389,51 @@ function prvSt(zid){
   el.innerHTML=html;
 }
 
-function saveAllRec(){
+/* C10：沒有任何數值不再顯示「已儲存」；超出範圍的數值指出是哪一區並標紅。
+   opt.allowEmpty：合併發送前的「順便儲存」，沒輸入新數值時不報錯。 */
+function saveAllRec(opt){
+  opt=opt||{};
+  GCX.clearInvalid(document.getElementById('pnl-rec'));
   const rd=document.getElementById('rec-date');
-  const sel=rd.value;if(!sel){toast('請選擇日期','err');return;}
+  const sel=rd.value;if(!sel){toast(T('need_date'),'err');GCX.invalid(rd);return {ok:false};}
   const checker=document.getElementById('rec-checker').value.trim();
   const note=document.getElementById('rec-note').value;
   const wx=window._recWxCtl?window._recWxCtl.get():'';
   const weatherObservation=weatherObservationForSave(wx,sel);
   const zones=getZ().filter(z=>z.on);
-  let recs=getR();const newRecs=[];
-  zones.forEach(z=>{
-    if(!_tempSelectedZones.has(String(z.id)))return;
-    const t=document.getElementById('ri-t-'+z.id)?.value;
-    const h=document.getElementById('ri-h-'+z.id)?.value;
-    if((t===''||t===undefined)&&(h===''||h===undefined))return;
+  const picked=zones.filter(z=>_tempSelectedZones.has(String(z.id)));
+  if(!picked.length){if(opt.allowEmpty)return {ok:true,saved:0};toast(T('need_zone_sel'),'err');GCX.invalid(document.querySelector('.temp-zone-select-tools'));return {ok:false};}
+  const values=[];
+  for(const z of picked){
+    const ti=document.getElementById('ri-t-'+z.id),hi=document.getElementById('ri-h-'+z.id);
+    const t=ti?ti.value:'',h=hi?hi.value:'';
+    if((t===''||t===undefined)&&(h===''||h===undefined))continue;
+    const tn=t===''?'':parseFloat(t),hn=h===''?'':parseFloat(h);
+    if(tn!==''&&(!isFinite(tn)||tn<0||tn>60)){toast(znm(z)+': '+T('bad_temp'),'err');GCX.invalid(ti);return {ok:false};}
+    if(hn!==''&&(!isFinite(hn)||hn<0||hn>100)){toast(znm(z)+': '+T('bad_hum'),'err');GCX.invalid(hi);return {ok:false};}
+    values.push({z,tn,hn});
+  }
+  if(!values.length){
+    if(opt.allowEmpty)return {ok:true,saved:0};
+    toast(T('need_value'),'err');const first=document.getElementById('ri-t-'+picked[0].id);if(first)GCX.invalid(first);return {ok:false};
+  }
+  let recs=getR();const newRecs=[],now=_localTS();
+  values.forEach(({z,tn,hn})=>{
     recs=recs.filter(r=>!(r.d===sel&&r.p===RP&&r.z===z.id));
     const rec={id:'r'+Date.now()+Math.random().toString(36).slice(2,5),z:z.id,d:sel,p:RP,
-      t:t!==''&&t!==undefined?parseFloat(t):'',h:h!==''&&h!==undefined?parseFloat(h):'',wx,weatherObservation,checker,note,ts:_localTS(),updatedAt:_localTS()};
+      t:tn,h:hn,wx,weatherObservation,checker,note,ts:now,updatedAt:now};
     recs.push(rec);newRecs.push(rec);
   });
-  setR(recs);toast(newRecs.length?T('saved')+' · ☁ 自動同步 / Auto sync':T('saved'),'ok');renderTodayCard(sel);updBadge();
+  try{setR(recs);}catch(e){toast(e.message,'err');return {ok:false};}
+  toast(T('saved')+' · '+newRecs.length+' · ☁ '+T('auto_sync'),'ok');renderTodayCard(sel);updBadge();
   // v48：比照 HRA PAY。儲存先落本機，完成一批後自動排入雲端；手動 ☁↑/☁↓ 仍保留作強制同步。
-  if(newRecs.length){
-    window._tempPendingUpload=false;
-    if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule) GC.sync.schedule('temperature','batch_save',250);
-    else gasBulkSync(newRecs);
-  }
+  window._tempPendingUpload=false;
+  if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule) GC.sync.schedule('temperature','batch_save',250);
+  else gasBulkSync(newRecs);
   updateTempUploadButton();
+  return {ok:true,saved:newRecs.length};
 }
+function saveAllRecGuarded(){return GCX.guard('temp-save',async()=>saveAllRec(),'i-saveall');}
 
 function updateTempUploadButton(){
   const b=document.getElementById('i-upload-after-save');
@@ -1282,7 +1461,7 @@ function renderTodayCard(date){
 }
 
 function clearRI(){const zones=getZ().filter(z=>z.on);zones.forEach(z=>{const ti=document.getElementById('ri-t-'+z.id),hi=document.getElementById('ri-h-'+z.id),si=document.getElementById('ri-s-'+z.id);if(ti)ti.value='';if(hi)hi.value='';if(si)si.innerHTML='';});}
-function clearTodayRecs(){const date=document.getElementById('rec-date').value;confirmAction(T('cdelrec')+' ('+date+')',()=>{setR(getR().filter(r=>r.d!==date));toast(T('deleted'),'inf');renderTodayCard(date);updBadge();});}
+function clearTodayRecs(){const date=document.getElementById('rec-date').value;confirmAction(T('cdelrec')+' ('+date+')',()=>{tempTombstoneWhere(r=>r.d===date);toast(T('deleted_sync'),'inf');renderTodayCard(date);updBadge();});}
 function openREfromDash(zid,date){const r=getR().filter(r=>r.z===zid&&r.d===date);if(r.length)openREmod(r[r.length-1].id);else{popREmod(null);document.getElementById('re-zon').value=zid;document.getElementById('re-date').value=date;}}
 
 // ══════════════════════════════════════════
@@ -1508,10 +1687,10 @@ function renderZones(){
   document.getElementById('zone-list').innerHTML=zones.length?zones.map(z=>`
     <div class="zli" style="${!z.on?'opacity:.5':''}">
       <div class="zcdot" style="background:${z.col}" onclick="openZM('${z.id}')"></div>
-      <div style="flex:1"><div style="font-size:14px;font-weight:600">${z.zh} / ${z.en}</div><div class="sm-t muted">${z.km}${z.desc?' · '+z.desc:''}</div></div>
-      <span class="bdg ${z.on?'b-ok':'b-dry'}">${z.on?T('znact'):'Off'}</span>
-      <button class="btn bg sm" onclick="openZM('${z.id}')">✏️</button>
-      <button class="btn bd sm" onclick="delZone('${z.id}')">🗑</button>
+      <div style="flex:1"><div style="font-size:14px;font-weight:600">${tempTgEsc(znm(z)||z.en||z.zh||z.id)}</div><div class="sm-t muted">${tempTgEsc(LANG==='zh'?(z.en||''):LANG==='en'?(z.km||''):(z.en||''))}${z.desc?' · '+tempTgEsc(z.desc):''}</div></div>
+      <span class="bdg ${z.on?'b-ok':'b-dry'}">${z.on?T('znact'):T('zone_off')}</span>
+      <button class="btn bg sm" onclick="openZM('${z.id}')" aria-label="${T('edit')}">✏️</button>
+      <button class="btn bd sm" onclick="delZone('${z.id}')" aria-label="${T('del')}">🗑</button>
     </div>`).join(''):
     `<div class="emp"><div class="empi">🏭</div><div>${T('nodata')}</div></div>`;
 }
@@ -1530,7 +1709,7 @@ function openZM(id){
 
 function saveZone(){
   const zh=document.getElementById('zm-zh').value.trim(),en=document.getElementById('zm-en').value.trim();
-  if(!zh&&!en){toast('請輸入名稱','err');return;}
+  if(!zh&&!en){toast(T('need_name'),'err');GCX.invalid(LANG==='zh'?'zm-zh':'zm-en');return;}
   const zones=getZ();
   if(editZID){
     const i=zones.findIndex(z=>z.id===editZID);
@@ -1540,15 +1719,15 @@ function saveZone(){
       desc:document.getElementById('zm-desc').value.trim(),
       on:document.getElementById('zm-act').checked,updatedAt:_localTS()};
   }else{
-    if(zones.length>=10){toast('最多10個區域','err');return;}
+    if(zones.length>=10){toast(T('max_zones'),'err');return;}
     zones.push({id:'z'+Date.now().toString(36),zh,en,km:document.getElementById('zm-km').value.trim(),
       col:document.getElementById('zm-col').value,desc:document.getElementById('zm-desc').value.trim(),on:document.getElementById('zm-act').checked,updatedAt:_localTS()});
   }
   setZ(zones);closeMod('zm-over');toast(T('saved'),'ok');renderAll();syncZoneConfig('replace');
 }
 
-function delZone(id){confirmAction(T('cdelzone'),()=>{const old=getR().filter(r=>r.z===id).map(r=>r.id);setZ(getZ().filter(z=>z.id!==id));setR(getR().filter(r=>r.z!==id));old.forEach(gasDelete);toast(T('deleted'),'inf');renderAll();syncZoneConfig('replace');});}
-function resetZones(){confirmAction(T('crstzone'),()=>{setZ(JSON.parse(JSON.stringify(DZ)));toast('已重置','inf');popSelects();renderZones();syncZoneConfig('replace');});}
+function delZone(id){confirmAction(T('cdelzone'),()=>{const old=getR().filter(r=>r.z===id).map(r=>r.id);setZ(getZ().filter(z=>z.id!==id));tempTombstoneWhere(r=>r.z===id);if(!(typeof GC!=='undefined'&&GC.sync))old.forEach(gasDelete);toast(T('deleted_sync'),'inf');renderAll();syncZoneConfig('replace');});}
+function resetZones(){confirmAction(T('crstzone'),()=>{setZ(JSON.parse(JSON.stringify(DZ)));toast(T('reset_ok'),'inf');popSelects();renderZones();syncZoneConfig('replace');});}
 
 // ══════════════════════════════════════════
 // ALERTS
@@ -1622,7 +1801,17 @@ function updateThV(id,v,u){document.getElementById(id).textContent=v+u;}
 function saveTH(){setTH({t:{cold:+document.getElementById('th-tc').value,cool:+document.getElementById('th-tl').value,warm:+document.getElementById('th-tw').value,hot:+document.getElementById('th-th').value},h:{dry:+document.getElementById('th-hd').value,humid:+document.getElementById('th-hh').value,vhum:+document.getElementById('th-hv').value}});renderThLegend();}
 function saveTGcfg(){setTG({tok:document.getElementById('tg-tok').value,chat:document.getElementById('tg-chat').value});}
 function saveGAScfg(){setGAS({url:document.getElementById('gas-url').value});}
-function clearAll(){confirmAction(T('cclrall'),()=>{setR([]);toast(T('deleted'),'inf');renderAll();updBadge();});}
+/* 與清潔頁一致：「清除所有記錄」只清這支手機（須輸入 CLEAR），並清掉同步狀態，
+   重開時雲端資料視為首次下載；絕不會因本機空白而把雲端清空。 */
+async function clearAll(){
+  const typed=window.prompt(T('clear_prompt'),'');
+  if(String(typed||'').trim().toUpperCase()!=='CLEAR'){toast(T('clear_cancel'),'inf');return;}
+  try{localStorage.removeItem(LSR);}catch(e){}
+  await GCX.idbDelete(LSR);
+  ['ac_gc_smart_sync_v1_temperature','ac_gc_auto_sync_v1_temperature'].forEach(k=>{try{localStorage.removeItem(k);}catch(e){}});
+  toast(T('clear_done'),'inf');renderAll();updBadge();
+  if(!window.__gcNoReload)setTimeout(()=>location.reload(),300);
+}
 
 // ══════════════════════════════════════════
 // RECORD EDIT MODAL
@@ -1765,7 +1954,7 @@ function liveWeatherDevicePosition(){
     navigator.geolocation.getCurrentPosition(pos=>resolve({lat:pos.coords.latitude,lon:pos.coords.longitude,locationKey:'livewx_device_loc'}),reject,{enableHighAccuracy:true,timeout:8000,maximumAge:300000});
   });
 }
-async function refreshLiveWeather(useDevice){
+async function refreshLiveWeather(useDevice,auto){
   if(window._liveWeatherLoading)return;
   window._liveWeatherLoading=true;window._liveWeatherError=false;window._liveWeatherApplied=false;renderLiveWeather();
   let place=Object.assign({},LIVE_WEATHER_DEFAULT);
@@ -1775,7 +1964,7 @@ async function refreshLiveWeather(useDevice){
     if(typeof AbortController!=='undefined'){controller=new AbortController();timer=setTimeout(()=>controller.abort(),15000);}
     const url=(getGAS().url||GAS_DEFAULT_URL).trim();
     if(!url)throw new Error('GAS URL not configured');
-    const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'weatherCurrent',latitude:place.lat,longitude:place.lon}),signal:controller?controller.signal:undefined});
+    const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify((typeof tempLangPayload==='function'?tempLangPayload:function(o){return o;})({action:'weatherCurrent',latitude:place.lat,longitude:place.lon})),signal:controller?controller.signal:undefined});
     if(!response.ok)throw new Error('HTTP '+response.status);
     const payload=await response.json();
     if(!payload||payload.ok===false||payload.temperature===undefined||payload.humidity===undefined)throw new Error((payload&&payload.error)||'Invalid weather response');
@@ -1784,7 +1973,8 @@ async function refreshLiveWeather(useDevice){
     try{localStorage.setItem(LSLIVEWX,JSON.stringify(packet));}catch(e){}
   }catch(e){
     window._liveWeatherError=true;
-    toast(T('livewx_error')+': '+(e&&e.name==='AbortError'?'timeout':(e.message||e)),'err');
+    /* 開頁自動更新失敗只在天氣卡顯示狀態，不跳出需要點掉的錯誤。 */
+    if(!auto)toast(T('livewx_error')+': '+(e&&e.name==='AbortError'?'timeout':(e.message||e)),'err');
   }finally{
     if(timer)clearTimeout(timer);window._liveWeatherLoading=false;renderLiveWeather();
   }
@@ -1792,7 +1982,7 @@ async function refreshLiveWeather(useDevice){
 function ensureLiveWeather(){
   const data=loadLiveWeatherCache(),selectedDate=(document.getElementById('rec-date')||{}).value||today();
   renderLiveWeather();
-  if(selectedDate===today()&&(!data||liveWeatherAgeMs(data)>10*60*1000))refreshLiveWeather(false);
+  if(selectedDate===today()&&(!data||liveWeatherAgeMs(data)>10*60*1000))refreshLiveWeather(false,true);
 }
 function applyLiveWeather(){
   const data=loadLiveWeatherCache(),selectedDate=(document.getElementById('rec-date')||{}).value||today();
@@ -1824,23 +2014,51 @@ function openREmod(id){
   openMod('re-over');
 }
 
+/* C7：改日期／時段／區域後若撞到另一筆讀值 → 先詢問，不再默默刪掉另一筆。
+   C10：溫度與濕度都空白不能儲存。原位置（舊鍵）留下刪除標記，其他手機不會再把它救回來。 */
 function saveREedit(){
-  const id=document.getElementById('re-id').value;
-  const t=document.getElementById('re-tmp').value,h=document.getElementById('re-hum').value;
-  let recs=getR();
-  if(id){
-    const i=recs.findIndex(r=>r.id===id);
-    if(i>=0)recs[i]={...recs[i],d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',wx:(window._wxCtl?window._wxCtl.get():(recs[i].wx||'')),checker:document.getElementById('re-checker').value.trim(),note:document.getElementById('re-note').value,ts:_localTS(),updatedAt:_localTS()};
-  }else{
-    recs.push({id:'r'+Date.now()+Math.random().toString(36).slice(2,5),d:document.getElementById('re-date').value,p:document.getElementById('re-per').value,z:document.getElementById('re-zon').value,t:t!==''?parseFloat(t):'',h:h!==''?parseFloat(h):'',wx:(window._wxCtl?window._wxCtl.get():''),checker:document.getElementById('re-checker').value.trim(),note:document.getElementById('re-note').value,ts:_localTS(),updatedAt:_localTS()});
-  }
-  setR(recs);closeMod('re-over');toast(T('saved'),'ok');renderAll();updBadge();
-  // 雲端同步
-  const syncRec=recs.find(r=>r.id===(id||recs[recs.length-1]?.id));
-  if(syncRec) gasAutoSync([syncRec]);
+  return GCX.guard('temp-edit',async()=>{
+    GCX.clearInvalid(document.getElementById('re-over'));
+    const id=document.getElementById('re-id').value;
+    const t=document.getElementById('re-tmp').value,h=document.getElementById('re-hum').value;
+    const d=document.getElementById('re-date').value,p=document.getElementById('re-per').value,z=document.getElementById('re-zon').value;
+    if(!d){toast(T('need_date'),'err');GCX.invalid('re-date');return;}
+    if(!z){toast(T('need_zone'),'err');GCX.invalid('re-zon');return;}
+    if(t===''&&h===''){toast(T('need_tmp_or_hum'),'err');GCX.invalid('re-tmp');return;}
+    const tn=t===''?'':parseFloat(t),hn=h===''?'':parseFloat(h);
+    if(tn!==''&&(!isFinite(tn)||tn<0||tn>60)){toast(T('bad_temp'),'err');GCX.invalid('re-tmp');return;}
+    if(hn!==''&&(!isFinite(hn)||hn<0||hn>100)){toast(T('bad_hum'),'err');GCX.invalid('re-hum');return;}
+    let recs=getR();
+    const now=_localTS(),orig=id?recs.find(r=>r.id===id):null;
+    const other=recs.find(r=>r.d===d&&r.p===p&&r.z===z&&(!orig||r.id!==orig.id));
+    if(other){
+      const zone=getZ().find(x=>x.id===z);
+      const msg=T('collide',{date:d,slot:p==='morning'?T('am'):T('pm'),zone:zone?znm(zone):z,t:other.t!==''?other.t:'--',h:other.h!==''?other.h:'--'});
+      if(!window.confirm(msg)){toast(T('collide_cancel'),'inf');return;}
+      recs=recs.filter(r=>r!==other);
+    }
+    const base={d,p,z,t:tn,h:hn,wx:(window._wxCtl?window._wxCtl.get():(orig&&orig.wx||'')),checker:document.getElementById('re-checker').value.trim(),note:document.getElementById('re-note').value,ts:now,updatedAt:now};
+    let saved;
+    if(orig){
+      saved=Object.assign({},orig,base);
+      recs=recs.map(r=>r===orig?saved:r);
+    }else{
+      saved=Object.assign({id:'r'+Date.now()+Math.random().toString(36).slice(2,5)},base);
+      recs.push(saved);
+    }
+    try{setR(recs);}catch(e){toast(e.message,'err');return;}
+    /* 鍵改變：舊的「日期＋時段＋區域」留刪除標記（撞到的那筆由新值取代，同鍵不需標記）。 */
+    if(orig&&tempRecordKey(orig)!==tempRecordKey(saved)){
+      const all=getRAll().concat([Object.assign(tempTombFields(orig),{_deleted:true,updatedAt:now,deletedAt:now})]);
+      persistTempRecords(all);
+    }
+    closeMod('re-over');toast(T('saved'),'ok');renderAll();updBadge();
+    gasAutoSync([saved]);
+  },'i-save2');
 }
 
-function delRec(id){confirmAction(T('cdelrec'),()=>{setR(getR().filter(r=>r.id!==id));toast(T('deleted'),'inf');renderAll();updBadge();gasDelete(id);});}
+/* A3：刪除＝刪除標記（tempTombstoneWhere 會排入智慧同步）；不再用 no-cors 射後不理的 gasDelete。 */
+function delRec(id){confirmAction(T('cdelrec'),()=>{const n=tempTombstoneWhere(r=>r.id===id);toast(T('deleted_sync'),'inf');renderAll();updBadge();if(n&&!(typeof GC!=='undefined'&&GC.sync))gasDelete(id);});}
 
 // ══════════════════════════════════════════
 // IMPORT / EXPORT
@@ -1937,6 +2155,7 @@ function tempReportZoneDefaults(){return [
   {id:'z_buildingafinishingwh',zh:'A廠後整倉',en:'Building A Finishing WH',km:'ឃ្លាំងបញ្ចប់អគារ A'}
 ];}
 function tempCanonicalZoneId(value,definitions){
+  if(typeof GC!=='undefined'&&GC&&GC.syncKeys&&GC.syncKeys.tempZoneId)return GC.syncKeys.tempZoneId(value,definitions);
   const token=v=>String(v||'').normalize('NFKC').toLowerCase().replace(/inside|area/g,'').replace(/factory/g,'building').replace(/[\s_\-\/().（）]+/g,'');
   const aliases={za:'za',buildinga:'za',buildingaworkshop:'za',aworkshop:'za','a廠車間':'za','a厂车间':'za',zb:'zb',buildingb:'zb',buildingbworkshop:'zb',bworkshop:'zb','b廠車間':'zb','b厂车间':'zb',zc:'zc',buildingbwh:'zc',buildingbwarehouse:'zc',bwarehouse:'zc','b廠倉庫':'zc','b厂仓库':'zc',zbuildingafinishingwh:'z_buildingafinishingwh',zbuildingafinishingwarehouse:'z_buildingafinishingwh',buildingafinishingwh:'z_buildingafinishingwh',buildingafinishingwarehouse:'z_buildingafinishingwh',afinishingwh:'z_buildingafinishingwh',oldfinishing:'z_buildingafinishingwh','a廠後整倉':'z_buildingafinishingwh','a廠成品倉':'z_buildingafinishingwh'};
   // Actual v2/v50 fourth-zone names (not just the later Excel-generated label).
@@ -2054,17 +2273,19 @@ function parseTemperatureSmartImport(file){
     const reader=new FileReader();reader.onerror=function(){reject(reader.error||new Error('Unable to read file'));};
     reader.onload=function(e){
       try{
-        const wb=XLSX.read(e.target.result,{type:'array',cellDates:false,raw:true}),zones=getZ().map(function(z){return Object.assign({},z);}),pending=new Map(),objects=[],used=[];
+        const wb=XLSX.read(e.target.result,{type:'array',cellDates:false,raw:true}),zones=getZ().map(function(z){return Object.assign({},z);}),pending=new Map(),objects=[],used=[],warnings=[];
+        /* A9：清單格式一次最多讀 5000 列（舊版只讀 200 列而且不提示）；超過時明確警告。 */
+        const TEMP_IMPORT_MAX_ROWS=5000;
         wb.SheetNames.forEach(function(sn){
           if(/^chart(?:s)?$/i.test(tempImportText(sn)))return;
           const ws=wb.Sheets[sn];if(!ws)return;
           let range;try{range=ws['!ref']?XLSX.utils.decode_range(ws['!ref']):null;}catch(ignore){range=null;}
-          if(range){range.s={r:0,c:0};range.e.r=Math.min(range.e.r,200);range.e.c=Math.min(range.e.c,60);}
+          if(range){range.s={r:0,c:0};if(range.e.r>TEMP_IMPORT_MAX_ROWS){warnings.push(T('imp_trunc',{s:sn,max:TEMP_IMPORT_MAX_ROWS}));}range.e.r=Math.min(range.e.r,TEMP_IMPORT_MAX_ROWS);range.e.c=Math.min(range.e.c,60);}
           const rows=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true,range:range||undefined});
           const parsed=parseTemperatureRowsFromSheet(sn,rows,zones,pending);if(parsed.length){objects.push.apply(objects,parsed);used.push(sn);}
         });
-        const clean=compactTempRecords(objects);if(!clean.length)throw new Error('No valid temperature rows found');
-        const warnings=[];if(pending.size)warnings.push('新增區域 / New zone: '+Array.from(pending.values()).map(function(z){return z.en;}).join(', '));
+        const clean=compactTempRecords(objects);if(!clean.length)throw new Error(TL('找不到有效的溫濕度資料列','No valid temperature rows found','រកមិនឃើញជួរសីតុណ្ហភាពត្រឹមត្រូវ'));
+        if(pending.size)warnings.push(T('new_zone')+': '+Array.from(pending.values()).map(function(z){return z.en;}).join(', '));
         resolve({objects:clean,headers:[],rows:[],sheetName:used.join(', '),summary:{warnings:warnings,validRows:clean.length,usedSheets:used}});
       }catch(ex){reject(ex);}
     };
@@ -2083,16 +2304,16 @@ function mergeTempSmartImport(current,incoming){
 }
 async function importXL(evt){
   const input=evt.target,file=input.files[0];if(!file)return;input.value='';
-  const log=document.getElementById('imp-log');log.style.display='block';log.textContent='⏳ 讀取中...';
+  const log=document.getElementById('imp-log');log.style.display='block';log.textContent=T('imp_reading');
   try{
     const meta=await parseTemperatureSmartImport(file),rows=(meta.objects||[]),before=new Set(getR().map(tempRecordKey)),now=_localTS();
     rows.forEach(function(r){r.updatedAt=now;r.ts=r.ts||now;});
     const added=rows.filter(function(r){return !before.has(tempRecordKey(r));}).length,updated=rows.length-added;
     setR(mergeTempSmartImport(getR(),rows));
-    log.textContent='✅ 完成：有效 '+rows.length+' 筆；新增 '+added+'，更新／合併 '+updated+'；工作表 '+(meta.sheetName||'—');
-    toast(T('impok')+' ('+rows.length+'筆)','ok');renderAll();updBadge();
+    log.textContent=T('imp_done',{n:rows.length,a:added,u:updated,s:meta.sheetName||'—'})+((meta.summary&&meta.summary.warnings||[]).length?'\n'+meta.summary.warnings.join('\n'):'');
+    toast(T('impok')+' ('+rows.length+' '+T('imp_rows')+')','ok');(meta.summary&&meta.summary.warnings||[]).filter(w=>/^⚠/.test(w)).forEach(w=>toast(w,'err'));renderAll();updBadge();
     if(rows.length)gasBulkSync(rows);
-  }catch(ex){log.textContent='❌ 匯入失敗: '+ex.message;toast('匯入失敗：'+ex.message,'err');}
+  }catch(ex){log.textContent='❌ '+T('imp_fail')+': '+ex.message;toast(T('imp_fail')+': '+ex.message,'err');}
 }
 
 function importJSON(evt){
@@ -2104,9 +2325,9 @@ function importJSON(evt){
       if(d.records)setR(merge(getR(),d.records,'id'));
       if(d.zones)setZ(merge(getZ(),d.zones,'id'));
       if(d.thresholds)setTH(Object.assign({},getTH(),d.thresholds));
-      toast(T('impok')+'（已合併，未刪除本機較多資料）','ok');renderAll();updBadge();
+      toast(T('impok')+T('json_merged'),'ok');renderAll();updBadge();if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','restore');
       if(d.zones)syncZoneConfig('merge');
-    }catch(ex){toast('JSON匯入失敗','err');}
+    }catch(ex){toast(T('json_fail'),'err');}
   };
   reader.readAsText(file);evt.target.value='';
 }
@@ -2350,25 +2571,27 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
 async function sendTodayCombinedTemp(){
   if(window._tempTelegramSending)return;
   const date=(document.getElementById('rec-date')||{}).value||today();
-  saveAllRec();
+  const pre=saveAllRec({allowEmpty:true});if(pre&&pre.ok===false)return;
   const dayRows=getR().filter(r=>String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon'));
-  if(!dayRows.length){toast(tempTelegramText('當日尚無已儲存記錄','No saved records for this day','មិនមានកំណត់ត្រាដែលបានរក្សាទុកសម្រាប់ថ្ងៃនេះ','zh'),'err');return;}
+  if(!dayRows.length){toast(T('no_day_rows'),'err');return;}
   setTempTelegramSending(true);
   try{
     await uploadTemperatureNow('telegram_combined_preflight');
-    const packet=buildTGPeriodMsg('day','summary',date,'all','bi');
+    /* 報告語言＝介面語言（中文介面沿用中英雙語）。 */
+    const tgLang=GCX.tgLangValue();
+    const packet=tgLang==='bi'?buildTGPeriodMsg('day','summary',date,'all','bi'):buildTGPeriodMsg('day','summary',date,'all',tgLang);
     await sendTemperatureTelegramPacket(packet,'-5113064563',{reportPeriod:'day',reportMode:'summary',reportRef:date,reportMonth:date.slice(0,7),reportScope:'all',reportSlot:'all',updateExisting:true,messageKey:'temperature|'+date,dedupePhotos:true,photoDedupeKey:'temperature|'+date});
     const sentAt=_localTS(),all=getR();all.forEach(r=>{if(tempCanonicalZoneId(r.z,getZ())&&String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon')){r.telegramSentAt=sentAt;r.telegramMode='summary';r.summarySentAt=sentAt;}});setR(all);
     try{await uploadTemperatureNow('telegram_combined_status');}catch(syncErr){if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','telegram_status_retry',60);}
-    window._tempPendingUpload=false;updateTempUploadButton();toast('✅ '+tempTelegramText('雲端已確認，早上＋下午摘要已發送','Cloud confirmed; AM + PM summary sent','បានបញ្ជាក់លើ Cloud និងផ្ញើសង្ខេបព្រឹក + រសៀល','zh'),'ok');
-  }catch(ex){if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','telegram_record_retry',60);toast('Telegram: '+ex.message+'；資料已保留本機，未重複發送','err');}
+    window._tempPendingUpload=false;updateTempUploadButton();toast('✅ '+T('combined_ok'),'ok');
+  }catch(ex){if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','telegram_record_retry',60);toast('Telegram: '+ex.message+' · '+T('kept_local'),'err');}
   finally{setTempTelegramSending(false);}
 }
 function prevTG(){
   const period=(document.getElementById('tg-period')||{}).value||'month';
   const mode=(document.getElementById('tg-type')||{}).value||'summary';
   const ref=(document.getElementById('tg-date')||{}).value||today();
-  const packet=typeof buildTGPeriodMsg==='function'?buildTGPeriodMsg(period,mode,ref):{text:buildTGmsg('daily',ref)};
+  const packet=typeof buildTGPeriodMsg==='function'?buildTGPeriodMsg(period,mode,ref,'all',GCX.tgLangValue()):{text:buildTGmsg('daily',ref)};
   const p=document.getElementById('tg-prev');p.textContent=typeof packet==='string'?packet:(packet.text||'');p.style.display='block';
 }
 async function sendTG(){
@@ -2377,20 +2600,20 @@ async function sendTG(){
   const period=(document.getElementById('tg-period')||{}).value||'month';
   const mode=(document.getElementById('tg-type')||{}).value||'summary';
   const ref=(document.getElementById('tg-date')||{}).value||today();
-  const packet=typeof buildTGPeriodMsg==='function'?buildTGPeriodMsg(period,mode,ref):{text:buildTGmsg('daily',ref)};
+  const packet=typeof buildTGPeriodMsg==='function'?buildTGPeriodMsg(period,mode,ref,'all',GCX.tgLangValue()):{text:buildTGmsg('daily',ref)};
   const msg=typeof packet==='string'?packet:(packet.text||'');
-  if(!msg||!msg.trim()){toast('訊息內容為空，請確認日期有記錄','err');return;}
+  if(!msg||!msg.trim()){toast(T('empty_msg'),'err');return;}
   setTempTelegramSending(true);
   try{
     await uploadTemperatureNow('telegram_report_preflight');
     const meta={reportPeriod:period,reportMode:mode,reportRef:ref,reportMonth:String(ref).slice(0,7),reportScope:'all',reportSlot:'all',dedupePhotos:true,photoDedupeKey:['temperature',period,ref].join('|')};
     if(period==='day'){meta.updateExisting=true;meta.messageKey='temperature|'+String(ref).slice(0,10);meta.photoDedupeKey=meta.messageKey;}
     const d=await sendTemperatureTelegramPacket(packet,cfg.chat||'-5113064563',meta);
-    if(!tempTelegramDeliveryConfirmed(d))throw new Error((d&&(d.error||d.description))||'Telegram 未回傳送達確認');
+    if(!tempTelegramDeliveryConfirmed(d))throw new Error((d&&(d.error||d.description))||T('no_confirm'));
     markTemperatureTelegramSent({period:period,mode:mode,ref:ref,scope:'all',slot:'all',cfg:{dateField:'d',telegramSlotFilter:function(r,s){return tempTelegramSlotMatch(r,s);}}});
     try{await uploadTemperatureNow('telegram_report_status');}catch(syncErr){if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','telegram_status_retry',60);}
-    toast('Telegram 發送成功，完成狀態已同步 ✅','ok');
-  }catch(ex){toast('網路錯誤: '+ex.message,'err');}
+    toast('✅ '+T('tg_ok'),'ok');
+  }catch(ex){toast(T('net_err')+': '+ex.message,'err');}
   finally{setTempTelegramSending(false);}
 }
 
@@ -2402,6 +2625,8 @@ function setTempTelegramSending(yes){
   window._tempTelegramSending=!!yes;
   ['i-send-combined','i-send'].forEach(id=>{const b=document.getElementById(id);if(b)b.disabled=!!yes;});
 }
+/* 送往 GAS 的請求帶介面語言（後端錯誤訊息單一語言）。 */
+function tempLangPayload(o){if(typeof GC!=='undefined'&&GC&&typeof GC.withLang==='function')return GC.withLang(o);const l=(typeof GC!=='undefined'&&GC&&GC.i18n&&GC.i18n.lang)||'zh';return Object.assign({lang:l},o);}
 async function uploadTemperatureNow(reason){
   if(window.GC&&GC.sync){
     const out=await GC.sync.upload('temperature',{silent:true,reason:reason||'record_save'});
@@ -2409,19 +2634,19 @@ async function uploadTemperatureNow(reason){
     return out;
   }
   const url=(getGAS().url||GAS_DEFAULT_URL).trim();if(!url)throw new Error('GAS URL is missing');
-  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'push',tool:'temperature',records:getR().map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()})});
+  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(tempLangPayload({action:'push',tool:'temperature',records:getR().map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()}))});
   const data=await response.json();if(!data||data.ok===false)throw new Error(data&&data.error||'Cloud upload failed');return data;
 }
 
 async function sendTemperatureTelegramPacket(packet,chatId,meta){
-  const buttons=[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html'}]];
+  const buttons=[[{text:T('open_dash'),url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_temperature_v2.html'}]];
   if(typeof GC!=='undefined'&&GC.telegram&&typeof GC.telegram.send==='function')
     return GC.telegram.send(packet.pages||packet.text||'',packet.photos||[],buttons,chatId||'-5113064563','temperature',meta||{});
-  if(packet.pages)throw new Error('請重新整理頁面載入分頁發送功能 / Refresh to load paginated delivery');
+  if(packet.pages)throw new Error(T('refresh_needed'));
   const url=(getGAS().url||GAS_DEFAULT_URL).trim();
-  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(Object.assign({action:'telegram',tool:'temperature',chatId:chatId||'-5113064563',text:packet.text||'',photos:packet.photos||[],buttons},meta||{}))});
+  const response=await fetch(url,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(tempLangPayload(Object.assign({action:'telegram',tool:'temperature',chatId:chatId||'-5113064563',text:packet.text||'',photos:packet.photos||[],buttons},meta||{})))});
   const data=await response.json();
-  if(!tempTelegramDeliveryConfirmed(data))throw new Error((data&&(data.error||data.description))||'Telegram 未回傳送達確認 / No delivery confirmation');
+  if(!tempTelegramDeliveryConfirmed(data))throw new Error((data&&(data.error||data.description))||T('no_confirm')+' / No delivery confirmation');
   return data;
 }
 
@@ -2452,7 +2677,8 @@ function enrichRec(r){
     reviewSentAt:r.reviewSentAt||'',
     approvalSentAt:r.approvalSentAt||'',
     submittedAt: r.ts||r.updatedAt||_localTS(),
-    updatedAt:   r.updatedAt||r.ts||_localTS()
+    updatedAt:   r.updatedAt||r.ts||_localTS(),
+    ...(r._deleted===true?{_deleted:true,deletedAt:r.deletedAt||r.updatedAt||''}:(r._deleted===false?{_deleted:false}:{}))
   };
 }
 
@@ -2479,7 +2705,8 @@ function normalizeRec(r){
     reviewSentAt:r.reviewSentAt||'',
     approvalSentAt:r.approvalSentAt||'',
     ts:   r.submittedAt||r.ts||r.updatedAt||'',
-    updatedAt:r.updatedAt||r.submittedAt||''
+    updatedAt:r.updatedAt||r.submittedAt||'',
+    ...(r._deleted===true||r._deleted==='true'?{_deleted:true,deletedAt:r.deletedAt||r.updatedAt||''}:(r._deleted===false?{_deleted:false}:{}))
   };
 }
 
@@ -2494,29 +2721,29 @@ function mergeTempZones(local,remote){
 // 改用 doGet (GET request) 做 ping，GET 不受 CORS preflight 影響
 async function testGAS(){
   const url=document.getElementById('gas-url').value.trim();
-  if(!url){toast('請輸入 GAS URL','err');return;}
+  if(!url){toast(T('need_gas'),'err');return;}
   document.getElementById('sdot').className='syncdt sd-idle';
-  document.getElementById('sstatus').textContent='測試中...';
+  document.getElementById('sstatus').textContent=T('testing');
   try{
     // GET request：GAS doGet 回傳 JSON，瀏覽器可以直接讀
     const r=await fetch(url+'?ping=1',{method:'GET',redirect:'follow'});
     if(r.ok){
       document.getElementById('sdot').className='syncdt sd-ok';
-      document.getElementById('sstatus').textContent='✅ 已連接';
-      toast('GAS 連接成功 ✅','ok');
+      document.getElementById('sstatus').textContent=T('connected');
+      toast('✅ '+T('gas_ok'),'ok');
     } else {
       throw new Error('HTTP '+r.status);
     }
   }catch(ex){
     document.getElementById('sdot').className='syncdt sd-err';
-    document.getElementById('sstatus').textContent='❌ 連接失敗';
-    toast('連接失敗: '+ex.message,'err');
+    document.getElementById('sstatus').textContent=T('conn_fail');
+    toast(T('conn_fail')+': '+ex.message,'err');
   }
 }
 
 // 全量上傳（手動，不觸發 TG 通知）
 async function syncUp(){
-  const url=getGAS().url;if(!url){toast('請設定 GAS URL','err');return;}
+  const url=getGAS().url;if(!url){toast(T('need_gas'),'err');return;}
   if(typeof GC!=='undefined'&&GC.sync){
     const out=await GC.sync.upload('temperature',{silent:false});
     if(out&&out.ok){window._tempPendingUpload=false;updateTempUploadButton();}
@@ -2524,28 +2751,28 @@ async function syncUp(){
   }
   const recs=getR();
   document.getElementById('sdot').className='syncdt sd-idle';
-  document.getElementById('sstatus').textContent='上傳中...';
+  document.getElementById('sstatus').textContent=T('uploading');
   try{
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempSync',records:recs.map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev(),full:true})});
+      body:JSON.stringify(tempLangPayload({type:'tempSync',records:recs.map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev(),full:true}))});
     document.getElementById('sdot').className='syncdt sd-ok';
-    document.getElementById('sstatus').textContent='✅ 已連接';
+    document.getElementById('sstatus').textContent=T('connected');
     window._tempPendingUpload=false;
     updateTempUploadButton();
-    toast('✅ 已送出 '+recs.length+' 筆（no-cors模式，資料已送達GAS）','ok');
+    toast('✅ '+T('sent_n',{n:recs.length}),'ok');
   }catch(ex){
     document.getElementById('sdot').className='syncdt sd-err';
-    document.getElementById('sstatus').textContent='❌ 同步失敗';
-    toast('上傳失敗: '+ex.message,'err');
+    document.getElementById('sstatus').textContent=T('sync_fail');
+    toast(T('up_fail')+': '+ex.message,'err');
   }
 }
 
 // 從雲端拉取記錄（合併到本機，雲端為主）
 async function syncDown(){
-  const url=getGAS().url;if(!url){toast('請設定 GAS URL','err');return;}
+  const url=getGAS().url;if(!url){toast(T('need_gas'),'err');return;}
   if(typeof GC!=='undefined'&&GC.sync){return GC.sync.download('temperature',{silent:false});}
   document.getElementById('sdot').className='syncdt sd-idle';
-  document.getElementById('sstatus').textContent='拉取中...';
+  document.getElementById('sstatus').textContent=T('pulling');
   try{
     // Pull 用 GET + query param，避免 CORS 問題
     const r=await fetch(url+'?type=tempList',{method:'GET',redirect:'follow'});
@@ -2558,14 +2785,14 @@ async function syncDown(){
       if(Array.isArray(d.zones))applyRemoteTempZones(d.zones,d.zoneConfigUpdatedAt);
       setR(merged);
       document.getElementById('sdot').className='syncdt sd-ok';
-      document.getElementById('sstatus').textContent='✅ 已連接';
-      toast(`拉取成功：雲端 ${cloudRecs.length} 筆，本機保留 ${localKept} 筆`,'ok');
+      document.getElementById('sstatus').textContent=T('connected');
+      toast(T('pull_ok',{c:cloudRecs.length,k:localKept}),'ok');
       renderAll();
     } else throw new Error(d.error||'fail');
   }catch(ex){
     document.getElementById('sdot').className='syncdt sd-err';
-    document.getElementById('sstatus').textContent='❌ 拉取失敗';
-    toast('拉取失敗: '+ex.message,'err');
+    document.getElementById('sstatus').textContent=T('conn_fail');
+    toast(T('pull_fail')+': '+ex.message,'err');
   }
 }
 
@@ -2576,9 +2803,9 @@ async function gasAutoSync(newRecs){
   try{
     // no-cors: GAS CORS 限制，用 fire-and-forget 模式
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempSync',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()})});
+      body:JSON.stringify(tempLangPayload({type:'tempSync',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()}))});
     document.getElementById('sdot').className='syncdt sd-ok';
-    document.getElementById('sstatus').textContent='✅ 已同步';
+    document.getElementById('sstatus').textContent=T('synced');
   }catch(ex){
     document.getElementById('sdot').className='syncdt sd-err';
     console.warn('gasAutoSync failed:',ex.message);
@@ -2591,19 +2818,19 @@ async function gasBulkSync(newRecs){
   if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){GC.sync.schedule('temperature','smart_import');return;}
   try{
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempImport',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()})});
+      body:JSON.stringify(tempLangPayload({type:'tempImport',records:newRecs.map(enrichRec),zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()}))});
     if(true){
       document.getElementById('sdot').className='syncdt sd-ok';
-      document.getElementById('sstatus').textContent='✅ 已同步';
-      toast(`☁️ 雲端匯入已送出：${newRecs.length} 筆`,'ok');
+      document.getElementById('sstatus').textContent=T('synced');
+      toast('☁️ '+T('imp_sent',{n:newRecs.length}),'ok');
     } else {
       document.getElementById('sdot').className='syncdt sd-err';
-      toast('☁️ 雲端匯入失敗: '+(d.error||''),'err');
+      toast('☁️ '+T('imp_fail'),'err');
     }
   }catch(ex){
     document.getElementById('sdot').className='syncdt sd-err';
     console.warn('gasBulkSync failed:',ex.message);
-    toast('☁️ 雲端網路錯誤','err');
+    toast('☁️ '+T('cloud_err'),'err');
   }
 }
 
@@ -2612,14 +2839,14 @@ async function gasDelete(id){
   const url=getGAS().url;if(!url)return;
   try{
     await fetch(url,{method:'POST',mode:'no-cors',
-      body:JSON.stringify({type:'tempDelete',tool:'temperature',id})});
+      body:JSON.stringify(tempLangPayload({type:'tempDelete',tool:'temperature',id}))});
   }catch(ex){console.warn('gasDelete failed:',ex.message);}
 }
 
 async function syncZoneConfig(mode){
   const url=getGAS().url;if(!url)return;
   if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){GC.sync.schedule('temperature','zone_config');return;}
-  try{await fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify({action:'push',tool:'temperature',records:[],zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()})});}
+  try{await fetch(url,{method:'POST',mode:'no-cors',body:JSON.stringify(tempLangPayload({action:'push',tool:'temperature',records:[],zones:getZ(),zonesMode:'replace',zoneConfigUpdatedAt:getZRev()}))});}
   catch(ex){console.warn('syncZoneConfig failed:',ex.message);}
 }
 
@@ -2637,11 +2864,12 @@ async function gasPullOnInit(){
       const zonesChanged=Array.isArray(d.zones)?applyRemoteTempZones(d.zones,d.zoneConfigUpdatedAt):false;
       if(merged.length!==local.length||zonesChanged){
         setR(merged);
+        if(getR().length===local.length&&!zonesChanged){document.getElementById('sdot').className='syncdt sd-ok';return;}
         renderAll();
-        toast(`☁️ 已從雲端同步 ${cloudRecs.length} 筆記錄`,'inf');
+        toast('☁️ '+T('init_synced',{n:cloudRecs.length}),'inf');
       }
       document.getElementById('sdot').className='syncdt sd-ok';
-      document.getElementById('sstatus').textContent='✅ 已連接';
+      document.getElementById('sstatus').textContent=T('connected');
     }
   }catch(ex){
     console.warn('gasPullOnInit failed:',ex.message);
@@ -2660,12 +2888,15 @@ function confirmAction(msg,cb){
 }
 document.getElementById('cf-ok').onclick=()=>{if(cfCB){cfCB();cfCB=null;}closeMod('cf-over');};
 
+/* 提示放在畫面上方；錯誤（err）會停留直到點一下，避免使用者沒看到原因。 */
 function toast(msg,type='inf'){
   const c=document.getElementById('tbox'),t=document.createElement('div');
   t.className=`toast t-${type==='ok'?'ok':type==='err'?'err':'inf'}`;
-  t.innerHTML=(type==='ok'?'✅':type==='err'?'❌':'ℹ️')+' '+msg;
+  const text=String(msg==null?'':msg).replace(/^\s*(✅|❌|ℹ️)\s*/,'');
+  t.textContent=(type==='ok'?'✅':type==='err'?'❌':'ℹ️')+' '+text+(type==='err'?'  ✕':'');
   c.appendChild(t);
-  setTimeout(()=>{t.style.transition='opacity .3s';t.style.opacity='0';setTimeout(()=>t.remove(),300);},2800);
+  const hide=()=>{t.style.transition='opacity .3s';t.style.opacity='0';setTimeout(()=>t.remove(),300);};
+  if(type==='err')t.onclick=hide;else setTimeout(hide,2800);
 }
 
 // ══════════════════════════════════════════
@@ -2725,6 +2956,12 @@ function init(){
   ['hto','ato','alto'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=td;});
   if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==LANG)GC.i18n.set(LANG);
   mergeTemperatureViews();popSelects();applyI18n();refreshTempOverview();updBadge();updateTempUploadButton();
+  /* 第一個畫面＝每日記錄；時段依現在時間（12 點後預設下午）。同一工作階段重新整理回到上次分頁。 */
+  RP=new Date().getHours()>=12?'afternoon':'morning';
+  ['rbam','rbpm'].forEach(id=>{const b=document.getElementById(id);if(b)b.classList.toggle('on',(id==='rbam')===(RP==='morning'));});
+  let first='rec';try{first=sessionStorage.getItem('vrt_th_tab')||'rec';}catch(e){}
+  if(!document.getElementById('pnl-'+first))first='rec';
+  showTab(first);
   setInterval(tick,1000);tick();
   // 啟動時靜默從雲端拉取最新資料
   setTimeout(gasPullOnInit, 800);
@@ -2781,7 +3018,8 @@ function markTemperatureTelegramSent(ctx){
     if(typeof GC==='undefined'||!GC.attach){ setTimeout(boot,150); return; }
     GC.attach({
       tool:'temperature',
-      title:'Temperature 溫濕度',
+      exportHandler:function(){return exportXL('overview');},
+      title:'Temperature',
       gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
       dateField:'d',
       idField:'id',
@@ -2803,6 +3041,8 @@ function markTemperatureTelegramSent(ctx){
       telegramSlotFilter:(r,slot)=>tempTelegramSlotMatch(r,slot),
       telegramSlotsByPeriod:{day:['all']},
       telegramLanguage:true,
+      /* 溫濕度沒有真正的核可流程：只提供摘要。 */
+      telegramModes:['summary'],
       telegramAutoUpload:true,
       telegramSameDayUpdate:true,
       telegramPhotoDedupe:true,
@@ -2816,8 +3056,11 @@ function markTemperatureTelegramSent(ctx){
       importParser:parseTemperatureSmartImport,
       mergeImport:mergeTempSmartImport,
       onImport:function(rows){renderAll();updBadge();updateTempUploadButton();if(rows&&rows.length)gasBulkSync(rows);},
+    /* read＝有效記錄（畫面／Telegram／匯出）；cloudRead＝含刪除標記（同步）。 */
     read(){return getR();},
     write(list){ setR(list); },
+    cloudRead(){return getRAll();},
+    cloudWrite(list){ setR(list); },
     });
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();

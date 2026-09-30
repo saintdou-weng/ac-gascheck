@@ -84,7 +84,7 @@ const moduleRows = {
   cleaning:    [['id', 'date']],
   keymovement: [['id', 'issue_date'], ['k1', '2026-07-12']],
   ehs:         [['id', 'date', 'sourceType'], ['e1', '2026-07-13', 'recycle']],
-  waterdrum:   [['id', 'date'], ['w1', '2026-07-14']],
+  waterdrum:   [['id', 'date', 'fQty'], ['w1', '2026-07-14', 2]], // blank water rows (no qty/photos) are not records
   temperature: [['id', 'd'], ['t1', '2026-07-15']]
 };
 Object.keys(moduleRows).forEach(name => { sheets[name] = new Sheet(name, moduleRows[name]); });

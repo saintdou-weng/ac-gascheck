@@ -50,8 +50,11 @@ trCtx.document={getElementById(id){return {value:id==='ov-zone'?'za':'morning'};
 assert.deepStrictEqual(Array.from(trCtx.tempOverviewFilteredRecords()).map(r=>r.id),['keep']);
 
 // Cleaning sync reads/writes the same in-memory state used by Dashboard/History.
-assert(cleaning.includes('read(){ return compactCleaningRecords(state.db().records||[]); }'));
-assert(cleaning.includes('write(list){ state.replaceRecords((list||[]).map(cleaningFromCloud),{sync:false}); }'));
+// FIX pass (tombstones A3): read() = live rows for screens/Telegram/export, cloudRead() = what sync
+// uploads (incl. _deleted tombstones), cloudWrite() never drops a local tombstone. Checked
+// behaviourally below (cleaningSyncBehaviour) instead of matching source strings.
+assert(/read\(\)\{\s*return GCX\.live\(compactCleaningRecords\(state\.db\(\)\.records\|\|\[\]\)\);\s*\}/.test(cleaning),'Cleaning read() must filter tombstones');
+assert(/cloudRead:\s*cleaningCloudRead/.test(cleaning)&&/cloudWrite:\s*cleaningCloudWrite/.test(cleaning),'Cleaning sync must use tombstone-aware cloudRead/cloudWrite');
 assert(cleaning.includes('onSync:function(list)'));
 assert(cleaning.indexOf("await uploadNow('telegram_record_preflight')")<cleaning.indexOf('await api.tg('),'Cleaning must confirm cloud before Telegram');
 
@@ -121,4 +124,21 @@ assert.strictEqual(gt.rows[0].temperature,28);
 assert(gas.includes('function cleanupCleaningTemperatureDuplicates()'));
 assert(gas.includes("const protectedTool=tool==='ehs'||tool==='cleaning'||tool==='temperature'"));
 
+// Behaviour: the same in-memory state feeds screens and sync; tombstones sync but never show.
+(async function cleaningSyncBehaviour(){
+  const {load}=require('./dom-harness.cjs');
+  const x=await load('ac_gascheck_cleaning_v2.html',{vrt_clean_hub_v2:{records:[
+    {id:'live-1',date:'2026-09-03',locId:'loc_canteen',slots:['07:30'],cleaner:'A',updatedAt:'2026-09-03 08:00:00'},
+    {id:'dead-1',date:'2026-09-03',locId:'loc_office',slots:['07:30'],_deleted:true,updatedAt:'2026-09-03 09:00:00'}]}});
+  try{
+    const cfg=x.w.__configs.cleaning;
+    assert.deepStrictEqual(Array.from(cfg.read(),r=>r.id),['live-1'],'read() hides tombstones');
+    assert.deepStrictEqual(Array.from(cfg.cloudRead(),r=>r.id).sort(),['dead-1','live-1'],'cloudRead() uploads tombstones');
+    cfg.cloudWrite([{id:'live-2',date:'2026-09-04',locId:'loc_canteen',slots:['07:30'],cleaner:'B',updatedAt:'2026-09-04 08:00:00'},{id:'live-1',date:'2026-09-03',locId:'loc_canteen',slots:['07:30'],cleaner:'A',updatedAt:'2026-09-03 08:00:00'}]);
+    assert(cfg.cloudRead().some(r=>r.id==='dead-1'&&r._deleted),'cloudWrite keeps the local tombstone');
+    assert.deepStrictEqual(Array.from(cfg.read(),r=>r.id).sort(),['live-1','live-2']);
+    assert.deepStrictEqual(Array.from(x.errors),[]);
+  }finally{x.dom.window.close();}
+  console.log('v52 cleaning read/cloudRead/cloudWrite tombstone behaviour: PASS');
+})().catch(e=>{console.error(e);process.exitCode=1;});
 console.log('v52 Cleaning/Temperature unified overview, upload-first and cross-device dedupe tests: PASS');

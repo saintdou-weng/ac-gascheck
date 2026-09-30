@@ -70,7 +70,14 @@ vm.runInContext(gs.slice(deleteStart, deleteEnd), gas);
   assert.strictEqual(calls.length, 1);
   assert.strictEqual(calls[0].action, 'deleteBatch');
   assert.deepStrictEqual(Array.from(calls[0].ids), ['deleted-1']);
-  assert.deepStrictEqual(localStore.tombstones, [], 'confirmed deletion marker may clear only after cloud success');
+  // FIX pass (A3): tombstones are RETAINED after the cloud confirms (so smart sync carries the
+  // deletion to other phones); they are only stamped cloudDeletedAt and never re-sent.
+  assert.strictEqual(localStore.tombstones.length, 1, 'tombstone retained after cloud success');
+  assert.strictEqual(localStore.tombstones[0].id, 'deleted-1');
+  assert.strictEqual(localStore.tombstones[0].cloudDeletedAt, '2026-09-03 12:00:00', 'cloud confirmation recorded on the tombstone');
+  const again = await browser.ehsFlushTombstones({silent:true});
+  assert.strictEqual(again.deleted, 0, 'confirmed tombstone is not sent again');
+  assert.strictEqual(calls.length, 1);
 
   localStore.tombstones=[{id:'offline-1',module:'gate'}];
   browser.navigator.onLine=false;

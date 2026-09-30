@@ -124,12 +124,17 @@ assert(temp.includes("PM 15:30–16:30</b>"));
 // Dorm Pending can be opened from reminder, approved/rejected in-page, and refreshes shared memory.
 for(const token of [
   "ac_gascheck_dormitory_v2.html?view=pending",
-  "action:'dormDecision'","records.approve('","records.reject('",
   'state.replaceRecords(list)','cloudKey:dormRecordKey',
   "if(qv==='pending')","records.refreshStatus(true)",
   'records.showAllPending()','window._dormPendingAllDates===true',
   '全部月份待核 / All pending'
 ])assert(gas.includes(token)||dorm.includes(token),'missing Dorm v53 token: '+token);
+// FIX pass (C1): only Paul approves, by a genuine Telegram button press. The page must not
+// offer in-page approve/reject nor post a dormDecision (which carried a hard-coded approver id).
+assert(!dorm.includes("action:'dormDecision'"),'Dorm page must not send dormDecision');
+assert(!/records\.(approve|reject)\(/.test(dorm),'Dorm page must not have approve/reject buttons');
+assert(!/approverId|5026942575/.test(dorm),'Dorm page must not embed the approver Telegram id');
+assert(dorm.includes('dorm_ok_')&&dorm.includes('dorm_rej_'),'Approval stays on Telegram buttons');
 assert(gas.includes('function persistDormRecordEverywhere_'));
 assert(gas.includes('function handleDormPlatformDecision_'));
 assert(gas.includes('function backfillReportCompletionMarkers()'));

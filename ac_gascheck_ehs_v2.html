@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>VRT 廢棄物管理系統 v3</title>
+<title>VRT Recycle / Waste</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
@@ -71,8 +71,10 @@ select.bi{cursor:pointer}
 .spinner-dark{width:14px;height:14px;border:2px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-#toast{position:fixed;bottom:20px;right:20px;background:#1e293b;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transform:translateY(10px);transition:all .3s;pointer-events:none;max-width:320px}
-#toast.show{opacity:1;transform:translateY(0)}
+#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:11px 18px;border-radius:8px;font-size:13px;z-index:9999;opacity:0;transition:all .3s;pointer-events:none;max-width:92vw;text-align:center}
+#toast.show{opacity:1;pointer-events:auto}
+#toast.err{background:#b42318;cursor:pointer}
+#toast.warn{background:#b45309}
 /* SUPPLIER CARDS */
 .sup-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:12px}
 .sup-card{border:2px solid var(--border2);border-radius:8px;padding:14px;background:var(--col)}
@@ -129,6 +131,22 @@ select.bi{cursor:pointer}
 .pending-bar{display:flex;align-items:center;gap:8px;padding:8px 12px;background:#fef9c3;border-bottom:1px solid #fde047;font-size:12px}
 /* RESPONSIVE */
 @media(max-width:720px){.sup-grid{grid-template-columns:1fr}.period-bar{align-items:flex-start}.ptoggle{width:100%;overflow-x:auto}.ptoggle button{flex:1;padding:7px 10px}.period-summary{width:100%}.chart-wrap{height:235px;min-height:235px}.record-toolbar{margin-left:0;width:100%}.main{padding:8px}.stat-row{grid-template-columns:repeat(2,minmax(0,1fr))}.report-charts{grid-template-columns:1fr}.report-charts>div:first-child{border-right:0!important;border-bottom:1px solid var(--border2)}}
+
+/* v63 fix: phone tabs, validation, edit banner, touch targets */
+.bi.invalid,select.bi.invalid{outline:2px solid var(--red);outline-offset:-2px;background:#fff5f5!important}
+.edit-banner{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fff7e6;border-bottom:1px solid #fdba74;padding:8px 12px;font-size:12px;font-weight:700;color:#9a3412}
+.edit-banner[hidden]{display:none}
+.edit-banner .btn{margin-left:auto}
+.lang-btn{min-height:32px;min-width:36px}
+.period-nav{width:36px;height:36px}
+.btn{min-height:38px}
+.add-row-btn{min-height:38px}
+.tab{display:flex;align-items:center;gap:4px}
+@media(max-width:720px){
+  .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:0;overflow:visible}
+  .tab{flex-direction:column;justify-content:center;padding:7px 2px;min-height:50px;font-size:11px;white-space:normal;text-align:center;line-height:1.15}
+  .topbar-title{font-size:13px}
+}
 @media print{.topbar,.tabs,.btn-row,.lang-toggle,#toast,.no-print{display:none!important}body{background:#fff}.main{max-width:none;padding:0}}
 
 .ph-row-btn{border:1px solid #D8DCE6;background:#fff;border-radius:6px;padding:4px 9px;
@@ -146,13 +164,13 @@ select.bi{cursor:pointer}
 .rp-ok{border:0;background:#1A3E78;color:#fff;padding:8px 20px;border-radius:7px;
   font:600 13px/1 inherit;cursor:pointer}
 </style>
-<script src="./gascheck-core.js?v=56-key-water-monthly&patch=62-single-decision-card"></script>
+<script src="./gascheck-core.js?v=20260929-fix"></script>
 </head>
 <body>
 <div class="topbar">
   <span class="topbar-icon">♻️</span>
   <div>
-    <div class="topbar-title" id="tt-title">VRT 廢棄物回收管理系統</div>
+    <div class="topbar-title" id="tt-title" data-i="title">VRT 回收／廢料管理</div>
     <div class="topbar-sub" id="ts-sub">Vantage River Textiles · Sihanoukville</div>
   </div>
   <div style="flex:1"></div>
@@ -164,33 +182,30 @@ select.bi{cursor:pointer}
 </div>
 
 <div class="tabs" id="tab-bar">
-  <div class="tab active" onclick="switchTab('modA')">♻️ <span data-i18n="tab-a">Recycle 回收</span></div>
-  <div class="tab" onclick="switchTab('modB')">🗑️ <span data-i18n="tab-b">Waste 廢料</span></div>
-  <div class="tab" onclick="switchTab('report')">📊 <span data-i18n="tab-report">報表分析</span></div>
-  <div class="tab" onclick="switchTab('history')">📋 <span data-i18n="tab-hist">歷史記錄</span></div>
-  <div class="tab" onclick="switchTab('import')">📥 <span data-i18n="tab-import">歷史匯入</span></div>
-  <div class="tab" onclick="switchTab('tg')">✈ Telegram/雲端</div>
+  <div class="tab" data-tab="modB" onclick="switchTab('modB')">🗑️ <span data-i="tab-b">Waste 廢料</span></div>
+  <div class="tab" data-tab="modA" onclick="switchTab('modA')">♻️ <span data-i="tab-a">Recycle 回收</span></div>
+  <div class="tab" data-tab="report" onclick="switchTab('report')">📊 <span data-i="tab-report">報表分析</span></div>
+  <div class="tab" data-tab="history" onclick="switchTab('history')">📋 <span data-i="tab-hist">歷史記錄</span></div>
 </div>
 
 <div class="main">
 
-<!-- ========== MODULE A: INTERNAL WASTE ========== -->
-<div id="tab-modA" class="tab-content active">
-  <!-- Period analysis bar -->
+<!-- ========== MODULE A: RECYCLE ========== -->
+<div id="tab-modA" class="tab-content">
   <div class="sec">
     <div class="period-bar">
-      <strong style="font-size:12px">♻️ Recycle 回收</strong>
+      <strong style="font-size:12px">♻️ <span data-i="tab-a">Recycle 回收</span></strong>
       <div class="ptoggle" id="a-ptoggle">
-        <button onclick="setAPeriod('day',this)">日</button>
-        <button onclick="setAPeriod('week',this)">週</button>
-        <button class="active" onclick="setAPeriod('month',this)">月</button>
-        <button onclick="setAPeriod('year',this)">年</button>
+        <button onclick="setAPeriod('day',this)" data-i="p-day">日</button>
+        <button onclick="setAPeriod('week',this)" data-i="p-week">週</button>
+        <button class="active" onclick="setAPeriod('month',this)" data-i="p-month">月</button>
+        <button onclick="setAPeriod('year',this)" data-i="p-year">年</button>
       </div>
-      <button class="period-nav" onclick="moveEhsPeriod('a',-1)" title="Previous">◀</button>
+      <button class="period-nav" onclick="moveEhsPeriod('a',-1)" data-i-title="prev" title="Previous">◀</button>
       <input class="period-select" type="date" id="a-p-date" onchange="renderAAnalysis()" style="display:none">
       <select class="period-select" id="a-p-year" onchange="renderAAnalysis()"></select>
       <select class="period-select" id="a-p-month" onchange="renderAAnalysis()"></select>
-      <button class="period-nav" onclick="moveEhsPeriod('a',1)" title="Next">▶</button>
+      <button class="period-nav" onclick="moveEhsPeriod('a',1)" data-i-title="next" title="Next">▶</button>
       <div style="flex:1"></div>
       <span id="a-stat-total" style="font-size:12px;font-weight:700;color:var(--accent)"></span>
     </div>
@@ -198,32 +213,22 @@ select.bi{cursor:pointer}
     <div class="stat-row" id="a-stats"></div>
   </div>
 
-  <div class="sec" id="a-records">
-    <div class="sec-head">📋 <span>Recycle 記錄</span>
-      <span class="record-total" id="a-record-label"></span>
-      <span class="record-toolbar"><button class="btn btn-secondary row-mini" onclick="exportEhsPeriod('internal')">⬇ Excel</button></span>
-    </div>
-    <div class="htable-wrap"><table class="htable">
-      <thead id="a-record-head"></thead><tbody id="a-record-body"></tbody>
-    </table></div>
-  </div>
-
-  <!-- BATCH INPUT FORM -->
   <div class="sec">
-    <div class="sec-head">✏️ <span data-i18n="a-batch-title">批次填寫 — 上月回收記錄</span>
-      <span class="note">一次填多行，統一提交</span>
+    <div class="sec-head">✏️ <span data-i="a-batch-title">批次填寫 — Recycle 回收記錄</span>
+      <span class="note" data-i="batch-note">一次填多行，統一提交</span>
     </div>
+    <div class="edit-banner" id="a-edit-banner" hidden><span id="a-edit-text"></span><button type="button" class="btn btn-secondary row-mini" onclick="cancelEhsEdit('a')" data-i="cancel-edit">取消編輯</button></div>
     <div class="batch-wrap">
       <table class="batch-table" id="a-batch-table">
         <thead>
           <tr>
-            <th>日期 Date *</th>
-            <th>塑膠 Plastic (kg)</th>
-            <th>裁切碎布 Fabric (kg)</th>
-            <th>紙管 Core (kg)</th>
-            <th>合計 Total (kg)</th>
-            <th>檢查人 Inspector</th>
-            <th>備註 Remark</th>
+            <th data-i="th-date-req">日期 *</th>
+            <th data-i="th-plastic">塑膠 (kg)</th>
+            <th data-i="th-fabric">裁切碎布 (kg)</th>
+            <th data-i="th-core">紙管 (kg)</th>
+            <th data-i="th-total">合計 (kg)</th>
+            <th data-i="th-inspector">檢查人</th>
+            <th data-i="th-remark">備註</th>
             <th>📷</th>
             <th></th>
           </tr>
@@ -232,89 +237,90 @@ select.bi{cursor:pointer}
       </table>
     </div>
     <div class="btn-row">
-      <button class="add-row-btn" onclick="addARow()">➕ 新增一行</button>
-      <button class="btn btn-primary" id="a-submit-btn" onclick="submitModA()">📨 批次提交 (<span id="a-row-count">0</span> 筆)</button>
-      <button class="btn btn-secondary" onclick="clearABatch()">🗑️ 清除全部</button>
+      <button class="add-row-btn" onclick="addARow()" data-i="add-row">➕ 新增一行</button>
+      <button class="btn btn-primary" id="a-submit-btn" onclick="submitModA()">📨 批次提交</button>
+      <button class="btn btn-secondary" onclick="clearABatch()" data-i="clear-all">🗑️ 清除全部</button>
     </div>
+  </div>
+
+  <div class="sec" id="a-records">
+    <div class="sec-head">📋 <span data-i="a-records">Recycle 記錄</span>
+      <span class="record-total" id="a-record-label"></span>
+      <span class="record-toolbar"><button class="btn btn-secondary row-mini" onclick="exportEhsPeriod('internal')">⬇ Excel</button></span>
+    </div>
+    <div class="htable-wrap"><table class="htable">
+      <thead id="a-record-head"></thead><tbody id="a-record-body"></tbody>
+    </table></div>
   </div>
 </div>
 
-<!-- ========== MODULE B: GATE + SUPPLIER DASHBOARD ========== -->
+<!-- ========== MODULE B: WASTE (daily gate entries) ========== -->
 <div id="tab-modB" class="tab-content">
-
-  <!-- Supplier Dashboard -->
   <div class="sec">
-    <div class="period-bar">
-      <strong style="font-size:12px">🗑️ Waste 廢料</strong>
-      <div class="ptoggle" id="b-ptoggle">
-        <button onclick="setBPeriod('day',this)">日</button>
-        <button onclick="setBPeriod('week',this)">週</button>
-        <button class="active" onclick="setBPeriod('month',this)">月</button>
-        <button onclick="setBPeriod('year',this)">年</button>
-      </div>
-      <button class="period-nav" onclick="moveEhsPeriod('b',-1)" title="Previous">◀</button>
-      <input class="period-select" type="date" id="b-p-date" onchange="renderBAnalysis()" style="display:none">
-      <select class="period-select" id="b-p-year" onchange="renderBAnalysis()"></select>
-      <select class="period-select" id="b-p-month" onchange="renderBAnalysis()"></select>
-      <button class="period-nav" onclick="moveEhsPeriod('b',1)" title="Next">▶</button>
+    <div class="sec-head">✏️ <span data-i="b-batch-title">批次填寫 — Waste 廢料記錄</span>
+      <span class="note" data-i="batch-note">一次填多行，統一提交</span>
     </div>
-
-    <!-- Supplier trip badges -->
-    <div class="sup-grid" id="b-sup-grid"></div>
-
-    <div class="chart-wrap"><canvas id="chartB"></canvas></div>
-    <div class="stat-row" id="b-stats"></div>
-
-    <!-- Monthly approval -->
-    <div id="b-pending-bar" class="pending-bar" style="display:none">
-      ⏳ 本月月報已送審，等待 Paul 核可 &nbsp;<span id="b-pending-id" style="font-family:monospace;font-size:11px;color:var(--dim)"></span>
-    </div>
-    <div class="btn-row" id="b-approval-row">
-      <button class="btn btn-orange" id="b-approve-btn" onclick="submitMonthlyApproval()">📋 送審本月月報</button>
-    </div>
-  </div>
-
-  <!-- BATCH INPUT FORM -->
-  <div class="sec">
-    <div class="sec-head">✏️ <span data-i18n="b-batch-title">批次填寫 — Waste 廢料記錄</span>
-      <span class="note">一次填多行，統一提交</span>
-    </div>
+    <div class="edit-banner" id="b-edit-banner" hidden><span id="b-edit-text"></span><button type="button" class="btn btn-secondary row-mini" onclick="cancelEhsEdit('b')" data-i="cancel-edit">取消編輯</button></div>
     <div class="batch-wrap">
       <table class="batch-table" id="b-batch-table">
         <thead>
           <tr>
-            <th>日期 *</th><th>姓名 *</th><th>供應商 *</th><th>車牌</th>
-            <th>固體</th><th>工業</th><th>重量(kg)</th>
-            <th>Time In *</th><th>Time Out</th><th>Gate Keeper</th><th>檢查人 Inspector</th><th>備註</th><th>📷</th><th></th>
+            <th data-i="th-date-req">日期 *</th><th data-i="th-name-req">姓名 *</th><th data-i="th-supplier-req">供應商 *</th><th data-i="th-plate">車牌</th>
+            <th data-i="th-solid">固體</th><th data-i="th-ind">工業</th><th data-i="th-weight-req">重量 (kg) *</th>
+            <th data-i="th-timein-req">進場時間 *</th><th data-i="th-timeout">離場時間</th><th data-i="th-gate">門衛</th><th data-i="th-inspector">檢查人</th><th data-i="th-remark">備註</th><th>📷</th><th></th>
           </tr>
         </thead>
         <tbody id="b-batch-body"></tbody>
       </table>
     </div>
     <div class="btn-row">
-      <button class="add-row-btn" onclick="addBRow()">➕ 新增一行</button>
-      <button class="btn btn-primary" id="b-submit-btn" onclick="submitModB()">📨 批次提交 (<span id="b-row-count">0</span> 筆)</button>
-      <button class="btn btn-secondary" onclick="clearBBatch()">🗑️ 清除全部</button>
+      <button class="add-row-btn" onclick="addBRow()" data-i="add-row">➕ 新增一行</button>
+      <button class="btn btn-primary" id="b-submit-btn" onclick="submitModB()">📨 批次提交</button>
+      <button class="btn btn-secondary" onclick="clearBBatch()" data-i="clear-all">🗑️ 清除全部</button>
     </div>
   </div>
 
-  <!-- Selected-period Waste records -->
+  <div class="sec">
+    <div class="period-bar">
+      <strong style="font-size:12px">🗑️ <span data-i="tab-b">Waste 廢料</span></strong>
+      <div class="ptoggle" id="b-ptoggle">
+        <button onclick="setBPeriod('day',this)" data-i="p-day">日</button>
+        <button onclick="setBPeriod('week',this)" data-i="p-week">週</button>
+        <button class="active" onclick="setBPeriod('month',this)" data-i="p-month">月</button>
+        <button onclick="setBPeriod('year',this)" data-i="p-year">年</button>
+      </div>
+      <button class="period-nav" onclick="moveEhsPeriod('b',-1)" data-i-title="prev" title="Previous">◀</button>
+      <input class="period-select" type="date" id="b-p-date" onchange="renderBAnalysis()" style="display:none">
+      <select class="period-select" id="b-p-year" onchange="renderBAnalysis()"></select>
+      <select class="period-select" id="b-p-month" onchange="renderBAnalysis()"></select>
+      <button class="period-nav" onclick="moveEhsPeriod('b',1)" data-i-title="next" title="Next">▶</button>
+    </div>
+    <div class="sup-grid" id="b-sup-grid"></div>
+    <div class="chart-wrap"><canvas id="chartB"></canvas></div>
+    <div class="stat-row" id="b-stats"></div>
+    <!-- Monthly report: honest status (sent summary / pending Paul's Telegram button / approved / rejected) -->
+    <div id="b-pending-bar" class="pending-bar" style="display:none"><span id="b-pending-text"></span></div>
+    <div class="btn-row" id="b-approval-row">
+      <button class="btn btn-orange" id="b-approve-btn" onclick="submitMonthlyApproval()">📤</button>
+    </div>
+  </div>
+
   <div class="sec" id="b-month-records">
-    <div class="sec-head">📋 Waste 記錄 <span class="note" id="b-month-label"></span>
+    <div class="sec-head">📋 <span data-i="b-records">Waste 記錄</span> <span class="note" id="b-month-label"></span>
       <span class="record-toolbar">
-        <button class="btn btn-secondary waste-clean-btn" onclick="selectWasteRows('all')">☑ 全選</button>
-        <button class="btn btn-secondary waste-clean-btn" onclick="selectWasteRows('noPhoto')">📷 選無照片</button>
-        <button class="btn btn-secondary waste-clean-btn" onclick="selectWasteRows('badTime')">⏱ 選時間異常</button>
-        <button class="btn btn-secondary waste-clean-btn" onclick="repairWasteDuplicates(true)">🧹 清理重複</button>
-        <button class="btn btn-danger waste-clean-btn" id="b-delete-selected" onclick="deleteSelectedWaste()" disabled>🗑️ 刪除選取 <span class="waste-delete-count" id="b-selected-count">0</span></button>
+        <button class="btn btn-secondary waste-clean-btn" onclick="selectWasteRows('all')" data-i="sel-all">☑ 全選</button>
+        <button class="btn btn-secondary waste-clean-btn" onclick="selectWasteRows('noPhoto')" data-i="sel-nophoto">📷 選無照片</button>
+        <button class="btn btn-secondary waste-clean-btn" onclick="selectWasteRows('badTime')" data-i="sel-badtime">⏱ 選時間異常</button>
+        <button class="btn btn-secondary waste-clean-btn" onclick="repairWasteDuplicates(true)" data-i="clean-dup">🧹 清理重複</button>
+        <button class="btn btn-danger waste-clean-btn" id="b-delete-selected" onclick="deleteSelectedWaste()" disabled><span data-i="del-sel">🗑️ 刪除選取</span> <span class="waste-delete-count" id="b-selected-count">0</span></button>
         <button class="btn btn-secondary row-mini" onclick="exportEhsPeriod('gate')">⬇ Excel</button>
       </span>
     </div>
     <div class="htable-wrap">
       <table class="htable">
         <thead><tr>
-          <th><input class="waste-select" id="b-select-all" type="checkbox" aria-label="Select all" onchange="selectVisibleWaste(this.checked)"> #</th><th>日期</th><th>姓名</th><th>供應商</th><th>廢料類型</th>
-          <th>重量 (kg)</th><th>Time In</th><th>Time Out</th><th>停留</th><th>檢查人</th><th>照片</th><th>異常</th><th>操作</th>
+          <th><input class="waste-select" id="b-select-all" type="checkbox" aria-label="Select all" data-i-title="sel-all" onchange="selectVisibleWaste(this.checked)"> #</th><th data-i="th-date">日期</th><th data-i="th-name">姓名</th><th data-i="th-supplier">供應商</th><th data-i="th-wtype">廢料類型</th>
+          <th data-i="th-weight">重量 (kg)</th><th data-i="th-timein">進場</th><th data-i="th-timeout">離場</th><th data-i="th-dur">停留</th><th data-i="th-inspector">檢查人</th><th data-i="th-photos">照片</th><th data-i="th-anom">異常</th><th data-i="th-actions">操作</th>
         </tr></thead>
         <tbody id="b-month-body"></tbody>
       </table>
@@ -327,38 +333,37 @@ select.bi{cursor:pointer}
 <div id="tab-report" class="tab-content">
   <div class="sec">
     <div class="period-bar">
-      <strong style="font-size:12px">📊 綜合報表分析</strong>
+      <strong style="font-size:12px" data-i="r-title">📊 綜合報表分析</strong>
       <div class="ptoggle" id="r-ptoggle">
-        <button onclick="setRPeriod('day',this)">日</button>
-        <button onclick="setRPeriod('week',this)">週</button>
-        <button class="active" onclick="setRPeriod('month',this)">月</button>
-        <button onclick="setRPeriod('year',this)">年</button>
+        <button onclick="setRPeriod('day',this)" data-i="p-day">日</button>
+        <button onclick="setRPeriod('week',this)" data-i="p-week">週</button>
+        <button class="active" onclick="setRPeriod('month',this)" data-i="p-month">月</button>
+        <button onclick="setRPeriod('year',this)" data-i="p-year">年</button>
       </div>
-      <button class="period-nav" onclick="moveEhsPeriod('r',-1)" title="Previous">◀</button>
+      <button class="period-nav" onclick="moveEhsPeriod('r',-1)" data-i-title="prev" title="Previous">◀</button>
       <input class="period-select" type="date" id="r-date" onchange="renderReport()" style="display:none">
       <select class="period-select" id="r-year" onchange="renderReport()"></select>
       <select class="period-select" id="r-month" onchange="renderReport()"></select>
-      <button class="period-nav" onclick="moveEhsPeriod('r',1)" title="Next">▶</button>
+      <button class="period-nav" onclick="moveEhsPeriod('r',1)" data-i-title="next" title="Next">▶</button>
       <span class="period-summary" id="r-period-label"></span>
       <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px;margin-left:auto" onclick="exportReportComparison()">⬇ Excel</button>
     </div>
     <div class="stat-row" id="r-stats"></div>
     <div class="report-charts">
       <div style="border-right:1px solid var(--border2)">
-        <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)">Recycle 趨勢 (kg)</div>
+        <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)" data-i="r-trend">Recycle 趨勢 (kg)</div>
         <div class="chart-wrap"><canvas id="chartR1"></canvas></div>
       </div>
       <div>
-        <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)">Waste 收料重量 (kg)</div>
+        <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)" data-i="r-wweight">Waste 收料重量 (kg)</div>
         <div class="chart-wrap"><canvas id="chartR2"></canvas></div>
       </div>
     </div>
-    <!-- Comparison table -->
     <div style="padding:12px">
-      <div style="font-size:11px;font-weight:700;color:var(--dim);margin-bottom:8px">期間比較 Period Comparison</div>
+      <div style="font-size:11px;font-weight:700;color:var(--dim);margin-bottom:8px" data-i="r-cmp">期間比較</div>
       <table class="htable" id="r-cmp-table">
-        <thead><tr><th>指標</th><th>當期</th><th>上期</th><th>變化</th></tr></thead>
-        <tbody id="r-cmp-body"><tr><td colspan="4" class="empty-state">請選擇期間後查詢</td></tr></tbody>
+        <thead><tr><th data-i="th-metric">指標</th><th data-i="th-cur">當期</th><th data-i="th-prev">上期</th><th data-i="th-change">變化</th></tr></thead>
+        <tbody id="r-cmp-body"></tbody>
       </table>
     </div>
   </div>
@@ -368,242 +373,83 @@ select.bi{cursor:pointer}
 <div id="tab-history" class="tab-content">
   <div class="sec">
     <div class="period-bar">
-      <strong style="font-size:12px">📋 歷史記錄查詢</strong>
+      <strong style="font-size:12px" data-i="h-title">📋 歷史記錄查詢</strong>
       <select class="period-select" id="h-module" onchange="queryHistory()">
-        <option value="internal">Recycle</option>
-        <option value="gate">Waste</option>
+        <option value="gate" data-i="tab-b">Waste</option>
+        <option value="internal" data-i="tab-a">Recycle</option>
       </select>
       <select class="period-select" id="h-year" onchange="queryHistory()"></select>
-      <select class="period-select" id="h-month" onchange="queryHistory()">
-        <option value="">全年</option>
-        <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
-        <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
-        <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
-        <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
-      </select>
-      <input class="period-select" type="text" id="h-search" placeholder="搜尋..." oninput="queryHistory()" style="width:120px">
+      <select class="period-select" id="h-month" onchange="queryHistory()"></select>
+      <input class="period-select" type="text" id="h-search" data-i-ph="h-search-ph" placeholder="搜尋..." oninput="queryHistory()" style="width:120px">
       <div style="flex:1"></div>
-      <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px" id="h-export-btn" onclick="exportHistoryExcel()" style="display:none">📥 Excel</button>
+      <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px;display:none" id="h-export-btn" onclick="exportHistoryExcel()">📥 Excel</button>
     </div>
-    <div id="hist-wrap"><div class="empty-state">請選擇條件查詢</div></div>
-  </div>
-</div>
-
-<!-- ========== IMPORT ========== -->
-<div id="tab-import" class="tab-content">
-  <div class="sec">
-    <div class="sec-head">📥 <span data-i18n="import-title">歷史資料匯入</span>
-      <span class="note">支援 Recycle 月報及 Waste 檢查記錄</span>
-    </div>
-    <div class="import-zone" id="import-zone"
-         onclick="document.getElementById('import-file').click()"
-         ondragover="event.preventDefault();this.classList.add('drag')"
-         ondragleave="this.classList.remove('drag')"
-         ondrop="handleImportDrop(event)">
-      <div style="font-size:32px">📂</div>
-      <div style="font-size:13px;font-weight:600;margin-top:8px">點擊或拖放 Excel 檔案至此</div>
-      <div style="font-size:11px;margin-top:4px;color:#94a3b8">支援 Recycle / Waste Excel (.xlsx/.xls)</div>
-    </div>
-    <input type="file" id="import-file" accept=".xlsx,.xls" multiple style="display:none" onchange="handleImportFile(this)">
-    <div id="import-preview" style="padding:12px;display:none">
-      <div id="import-info" style="font-size:12px;color:var(--dim);margin-bottom:8px;padding:8px;background:var(--accent-bg);border-radius:5px;border-left:3px solid var(--accent)"></div>
-      <div class="htable-wrap">
-        <table class="htable" id="import-table"></table>
-      </div>
-      <div class="btn-row">
-        <button class="btn btn-primary" id="import-submit-btn" onclick="submitBatchImport()">☁️ 確認匯入雲端</button>
-        <button class="btn btn-secondary" onclick="cancelImport()">✕ 取消</button>
-      </div>
-    </div>
+    <div id="hist-wrap"></div>
   </div>
 </div>
 
 </div><!-- /main -->
-<div id="toast"></div>
-
-<!-- TELEGRAM / GAS TAB -->
-<div id="tab-tg" class="tab-content">
-  <div class="sec">
-    <div class="sec-head">⚙️ 設定 / Settings</div>
-    <div style="padding:16px;max-width:560px">
-
-      <!-- Cloud badge row -->
-      <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px">
-        <span style="font-size:12px;font-weight:700;color:var(--dim)">雲端狀態</span>
-        <div id="cloud-badge" style="font-size:9px;font-weight:700;padding:3px 9px;border-radius:20px;border:1px solid;cursor:pointer"
-          onclick="cfg.togglePanel()">☁ GAS</div>
-      </div>
-
-      <!-- GAS URL -->
-      <div style="margin-bottom:12px">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--dim);margin-bottom:5px">GAS Web App URL</label>
-        <input id="cfg-gas" class="period-select" type="text"
-          placeholder="https://script.google.com/macros/s/…/exec"
-          style="width:100%;font-family:monospace;font-size:10px;box-sizing:border-box">
-      </div>
-
-      <!-- Bot Token -->
-      <div style="margin-bottom:12px">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--dim);margin-bottom:5px">Telegram Bot Token</label>
-        <input id="cfg-token" class="period-select" type="text"
-          placeholder="8619620911:AAH..."
-          style="width:100%;font-family:monospace;font-size:10px;box-sizing:border-box">
-      </div>
-
-      <!-- Chat ID -->
-      <div style="margin-bottom:16px">
-        <label style="display:block;font-size:11px;font-weight:700;color:var(--dim);margin-bottom:5px">Telegram Chat ID</label>
-        <input id="cfg-chat" class="period-select" type="text"
-          placeholder="-5113064563"
-          style="width:100%;font-family:monospace;font-size:10px;box-sizing:border-box">
-      </div>
-
-      <!-- Action buttons -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px">
-        <button onclick="cfg.save()" class="btn" style="background:#2D7A5A;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit">💾 儲存設定</button>
-        <button onclick="cfg.testTg()" class="btn" style="background:#0369a1;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit">📤 測試 Telegram</button>
-        <button onclick="cfg.testGas()" class="btn" style="background:#64748b;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit">🔌 測試 GAS</button>
-      </div>
-
-      <!-- Cloud push/pull -->
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <button onclick="cloud.push('internal')" class="btn" style="background:#16a34a;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit">☁ 上傳資料</button>
-        <button onclick="cloud.pull('internal')" class="btn" style="background:#475569;color:#fff;border:none;border-radius:7px;padding:9px 18px;font-size:13px;cursor:pointer;font-family:inherit">⬇ 下載資料</button>
-      </div>
-
-      <div id="cfg-status" style="font-size:12px;color:var(--dim)"></div>
-    </div>
-  </div>
-</div>
-</div>
-
+<div id="toast" role="status" aria-live="polite"></div>
 <script>
 /* ── 本地時間戳（不用 toISOString，避免 UTC+7 時區偏移）── */
 function _localTS(){const d=new Date();const p=n=>String(n).padStart(2,'0');
   return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes())+':'+p(d.getSeconds());}
 function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2,'0');
   return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate());}
-/* ========== CONFIG ========== */
+/* ========== CONFIG（固定內建；頁面上沒有任何連線設定） ========== */
 const CFG_KEY = 'vrt_ehs_cfg_v1';
-const TG_BOT   = '';
 const TG_GROUP = '-5113064563';
-const PAUL_UID = '5026942575';
+const EHS_GAS_URL = 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
+const EHS_PAGE_URL = 'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_ehs_v2.html';
 const SUPPLIERS = ['K.S.W.M','SONYAPICH'];
 const SUP_TARGET = 4;
 const LOCAL_KEY  = 'vrt_waste_v3';
+const EHS_LAST_TAB_KEY = 'vrt_ehs_last_tab';
+const EHS_TOMBSTONE_DAYS = 90;
+/* 月報 Telegram 核可按鈕需要後端處理 ehs_ok_/ehs_rej_ 回呼（見 NEEDS FOR BACKEND）。
+   後端支援前一律只發「摘要」並誠實顯示狀態，不顯示假的「待核可」。 */
+/* 能力偵測：核心讀 GET ?action=ping 的 capabilities（每個工作階段一次），有 'ehs-approval' 才啟用真正核可。 */
+function ehsApprovalReady(){return !!(typeof window!=='undefined'&&window.GC&&GC.approvalTools&&GC.approvalTools.ehs===true);}
+if(typeof window!=='undefined'&&window.addEventListener)window.addEventListener('gc:capabilities',function(){try{if(typeof renderBAnalysis==='function')renderBAnalysis();}catch(e){}});
 
-/* ========== i18n ========== */
+/* ========== i18n：每列 [key, 中文, English, ខ្មែរ] ========== */
 let lang = (() => {
   try {
-    const saved = localStorage.getItem('vrt_ehs_lang') || localStorage.getItem('gc_lang') || 'zh';
+    const saved = localStorage.getItem('gc_lang') || localStorage.getItem('vrt_ehs_lang') || 'zh';
     return ['zh','en','km'].includes(saved) ? saved : 'zh';
   } catch (e) { return 'zh'; }
 })();
-const T = {
-  zh:{
-    'tab-a':'Recycle 回收','tab-b':'Waste 廢料','tab-report':'報表分析','tab-hist':'歷史記錄','tab-import':'歷史匯入',
-    'a-batch-title':'批次填寫 — Recycle 回收記錄','b-batch-title':'批次填寫 — Waste 廢料記錄',
-    'import-title':'智慧匯入 Recycle / Waste',
-  },
-  en:{
-    'tab-a':'Recycle','tab-b':'Waste','tab-report':'Report','tab-hist':'History','tab-import':'Import',
-    'a-batch-title':'Batch Entry — Recycle','b-batch-title':'Batch Entry — Waste',
-    'import-title':'Smart Import — Recycle / Waste',
-  },
-  km:{
-    'tab-a':'Recycle','tab-b':'Waste','tab-report':'របាយការណ៍','tab-hist':'កំណត់ត្រា','tab-import':'នាំចូល',
-    'a-batch-title':'បំពេញជាក្រុម — Recycle','b-batch-title':'បំពេញជាក្រុម — Waste',
-    'import-title':'នាំចូលឆ្លាតវៃ — Recycle / Waste',
-  }
-};
-
-/* EHS 舊版頁面有不少直接寫在 HTML／圖表 render 裡的文字，原本只有分頁有翻譯，
-   所以切到 English 後仍會看到大量中文。以下只處理介面文字節點，不碰使用者填入的資料。 */
-const EHS_LABELS = [
-  ['VRT 廢棄物回收管理系統','VRT Waste Recycling Management System','ប្រព័ន្ធគ្រប់គ្រងការកែច្នៃសំណល់ VRT'],
-  ['Vantage River Textiles · Sihanoukville','Vantage River Textiles · Sihanoukville','Vantage River Textiles · Sihanoukville'],
-  ['Recycle 回收','Recycle','Recycle'],['Waste 廢料','Waste','Waste'],
-  ['報表分析','Report','របាយការណ៍'],['歷史記錄','History','ប្រវត្តិ'],['歷史匯入','Import','នាំចូល'],
-  ['Telegram/雲端','Telegram / Cloud','Telegram / Cloud'],
-  ['Recycle 回收','Recycle','Recycle'],
-  ['Waste 廢料','Waste','Waste'],
-  ['批次填寫 — Recycle 回收記錄','Batch Entry — Recycle','បំពេញជាក្រុម — Recycle'],
-  ['批次填寫 — Waste 廢料記錄','Batch Entry — Waste','បំពេញជាក្រុម — Waste'],
-  ['一次填多行，統一提交','Enter multiple rows, then submit once','បញ្ចូលជួរច្រើន រួចដាក់ស្នើតែម្តង'],
-  ['日期 Date *','Date *','កាលបរិច្ឆេទ *'],['塑膠 Plastic (kg)','Plastic (kg)','ប្លាស្ទិក (kg)'],
-  ['裁切碎布 Fabric (kg)','Fabric (kg)','ក្រណាត់ (kg)'],['紙管 Core (kg)','Core (kg)','ស្នូលក្រដាស (kg)'],
-  ['合計 Total (kg)','Total (kg)','សរុប (kg)'],['備註 Remark','Remark','ចំណាំ'],
-  ['日期 *','Date *','កាលបរិច្ឆេទ *'],['姓名 *','Name *','ឈ្មោះ *'],['供應商 *','Supplier *','អ្នកផ្គត់ផ្គង់ *'],
-  ['車牌','Vehicle No.','លេខយានយន្ត'],['固體','Solid','រឹង'],['工業','Industrial','ឧស្សាហកម្ម'],
-  ['重量(kg)','Weight (kg)','ទម្ងន់ (kg)'],['Time In *','Time In *','ពេលចូល *'],['Time Out','Time Out','ពេលចេញ'],
-  ['日期','Date','កាលបរិច្ឆេទ'],['姓名','Name','ឈ្មោះ'],['廢料類型','Waste Type','ប្រភេទសំណល់'],
-  ['重量','Weight','ទម្ងន់'],['停留','Duration','រយៈពេល'],['異常','Anomaly','មិនប្រក្រតី'],
-  ['指標','Metric','សូចនាករ'],['當期','Current','បច្ចុប្បន្ន'],['上期','Previous','មុន'],['變化','Change','ការផ្លាស់ប្តូរ'],
-  ['請選擇期間後查詢','Select a period to query','ជ្រើសរយៈពេលដើម្បីស្វែងរក'],
-  ['Gate Keeper','Gate Keeper','អ្នកយាមច្រក'],['備註','Remark','ចំណាំ'],['新增一行','Add Row','បន្ថែមជួរ'],
-  ['清除全部','Clear All','លុបទាំងអស់'],['Waste 記錄','Waste Records','Waste Records'],
-  ['綜合報表分析','Consolidated Report','របាយការណ៍សង្ខេប'],['歷史記錄查詢','History Query','ស្វែងរកប្រវត្តិ'],
-  ['歷史資料匯入','Historical Data Import','នាំចូលទិន្នន័យប្រវត្តិ'],['連線設定','Connection Settings','ការកំណត់ការតភ្ជាប់'],
-  ['GAS Web App URL','GAS Web App URL','GAS Web App URL'],['Telegram Bot Token','Telegram Bot Token','Telegram Bot Token'],
-  ['Telegram Chat ID','Telegram Chat ID','Telegram Chat ID'],['儲存設定','Save Settings','រក្សាទុកការកំណត់'],
-  ['測試 Telegram','Test Telegram','សាកល្បង Telegram'],['測試 GAS','Test GAS','សាកល្បង GAS'],
-  ['上傳資料','Upload Data','ផ្ទុកទិន្នន័យឡើង'],['下載資料','Download Data','ទាញយកទិន្នន័យ'],
-  ['月','Month','ខែ'],['週','Week','សប្ដាហ៍'],['年','Year','ឆ្នាំ'],['日','Day','ថ្ងៃ'],
-  ['總趟數','Total Trips','ចំនួនជើងសរុប'],['異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី'],
-  ['供應商達標','Suppliers Meeting Target','អ្នកផ្គត់ផ្គង់ដល់គោលដៅ'],['回收次數','Recycling Count','ចំនួនកែច្នៃ'],
-  ['Recycle (kg)','Recycle (kg)','Recycle (kg)'],['Waste 記錄','Waste Records','កំណត់ត្រា Waste'],
-  ['Recycle 記錄','Recycle Records','កំណត់ត្រា Recycle'],['Waste 收料重量 (kg)','Waste Received Weight (kg)','ទម្ងន់ Waste ទទួល (kg)'],
-  ['月份','Month','ខែ'],['總重量','Total Weight','ទម្ងន់សរុប'],['記錄','Records','កំណត់ត្រា'],['照片','Photos','រូបថត'],
-  ['操作','Actions','សកម្មភាព'],['查看','View','មើល'],['重量 (kg)','Weight (kg)','ទម្ងន់ (kg)'],
-  ['全選','Select All','ជ្រើសទាំងអស់'],['選無照片','Select No Photo','ជ្រើសគ្មានរូប'],
-  ['選時間異常','Select Invalid Time','ជ្រើសពេលវេលាមិនត្រឹមត្រូវ'],['清理重複','Clean Duplicates','សម្អាតកំណត់ត្រាស្ទួន'],
-  ['刪除選取','Delete Selected','លុបដែលបានជ្រើស']
-].map(x=>({zh:x[0],en:x[1],km:x[2]}));
-const EHS_PARTS = [
-  ['Recycle','Recycle','Recycle'],['Waste','Waste','Waste'],['內部廢料','Recycle','Recycle'],
-  ['大門','Waste','Waste'],['供應商','Supplier','អ្នកផ្គត់ផ្គង់'],['趟數','Trips','ចំនួនជើង'],['本月','This Month','ខែនេះ'],
-  ['合計','Total','សរុប'],['回收次數','Recycling Count','ចំនួនកែច្នៃ'],['異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី'],
-  ['目標','Target','គោលដៅ'],['達標','Target Met','ដល់គោលដៅ'],['未達標','Below Target','មិនដល់គោលដៅ'],['送審','Submit for Review','ដាក់ស្នើពិនិត្យ'],
-  ['等待核可','Waiting for Approval','កំពុងរង់ចាំអនុម័ត'],['清除全部','Clear All','លុបទាំងអស់'],
-  ['批次提交','Batch Submit','ដាក់ស្នើជាក្រុម'],['尚無記錄','No records','គ្មានកំណត់ត្រា'],['請選擇','Select','ជ្រើស'],
-  ['共','Total','សរុប'],['筆','records','កំណត់ត្រា'],['趟','trips','ជើង'],['狀態','Status','ស្ថានភាព'],
-  ['等待','Waiting','រង់ចាំ'],['核可','Approval','អនុម័ត'],['內部','Recycle','Recycle'],['出入','Waste Entry / Exit','Waste Entry / Exit'],
-  ['廢料','Recycling','សំណល់'],['資料','Data','ទិន្នន័យ'],['設定','Settings','ការកំណត់'],['天','days','ថ្ងៃ']
-].map(x=>({zh:x[0],en:x[1],km:x[2]}));
-EHS_PARTS.unshift(
-  {zh:'本月月報已送審，等待 Paul 核可',en:'This month report was submitted; waiting for Paul approval',km:'របាយការណ៍ខែនេះបានដាក់ស្នើ កំពុងរង់ចាំ Paul អនុម័ត'},
-  {zh:'送審本月月報',en:'Submit This Month Report',km:'ដាក់ស្នើរបាយការណ៍ខែនេះ'},
-  {zh:'新增一行',en:'Add Row',km:'បន្ថែមជួរ'},
-  {zh:'— 選擇 —',en:'— Select —',km:'— ជ្រើស —'},
-  {zh:'Waste 記錄',en:'Waste Records',km:'កំណត់ត្រា Waste'},
-  {zh:'綜合報表分析',en:'Consolidated Report',km:'របាយការណ៍សង្ខេប'},
-  {zh:'Recycle 趨勢',en:'Recycle Trend',km:'និន្នាការ Recycle'},
-  {zh:'記錄趟數',en:'Trips',km:'ចំនួនជើង'},
-  {zh:'期間比較 Period Comparison',en:'Period Comparison',km:'ការប្រៀបធៀបរយៈពេល'},
-  {zh:'歷史記錄查詢',en:'History Query',km:'ស្វែងរកប្រវត្តិ'},
-  {zh:'請選擇條件查詢',en:'Select filters to query',km:'ជ្រើសលក្ខខណ្ឌដើម្បីស្វែងរក'},
-  {zh:'照片 Photos',en:'Photos',km:'រូបថត'},
-  {zh:'確定 OK',en:'OK',km:'យល់ព្រម'},
-  {zh:'回收',en:'Recycle',km:'Recycle'}
-);
-EHS_PARTS.push(
-  {zh:'Telegram/雲端',en:'Telegram / Cloud',km:'Telegram / Cloud'},
-  {zh:'快速操作',en:'Quick actions',km:'សកម្មភាពរហ័ស'},
-  {zh:'智慧匯入',en:'Smart Import',km:'នាំចូលឆ្លាតវៃ'},
-  {zh:'全選',en:'Select All',km:'ជ្រើសទាំងអស់'},
-  {zh:'選無照片',en:'Select No Photo',km:'ជ្រើសគ្មានរូប'},
-  {zh:'選時間異常',en:'Select Invalid Time',km:'ជ្រើសពេលវេលាមិនត្រឹមត្រូវ'},
-  {zh:'清理重複',en:'Clean Duplicates',km:'សម្អាតកំណត់ត្រាស្ទួន'},
-  {zh:'刪除選取',en:'Delete Selected',km:'លុបដែលបានជ្រើស'},
-  {zh:'摘要期間',en:'Summary period',km:'រយៈពេលសង្ខេប'},
-  {zh:'審查',en:'Review',km:'ពិនិត្យ'},
-  {zh:'Approval',en:'Approval',km:'អនុម័ត'}
-);
-const EHS_EXACT = new Map();
-EHS_LABELS.forEach(x=>[x.zh,x.en,x.km].forEach(v=>EHS_EXACT.set(v,x)));
-const EHS_ORIGINAL_TEXT = new WeakMap();
-let _ehsApplying = false;
-let _ehsTimer = 0;
+const EHS_TEXT = [
+  ['title','VRT 回收／廢料管理','VRT Recycle / Waste','VRT កែច្នៃ / សំណល់'],
+  ['tab-a','Recycle 回收','Recycle','កែច្នៃ'],['tab-b','Waste 廢料','Waste','សំណល់'],['tab-report','報表分析','Report','របាយការណ៍'],['tab-hist','歷史記錄','History','ប្រវត្តិ'],
+  ['p-day','日','Day','ថ្ងៃ'],['p-week','週','Week','សប្ដាហ៍'],['p-month','月','Month','ខែ'],['p-year','年','Year','ឆ្នាំ'],
+  ['prev','上一期','Previous','មុន'],['next','下一期','Next','បន្ទាប់'],
+  ['a-records','Recycle 記錄','Recycle records','កំណត់ត្រាកែច្នៃ'],['b-records','Waste 記錄','Waste records','កំណត់ត្រាសំណល់'],
+  ['a-batch-title','批次填寫 — Recycle 回收記錄','Batch entry — Recycle','បំពេញជាក្រុម — កែច្នៃ'],['b-batch-title','批次填寫 — Waste 廢料記錄','Batch entry — Waste','បំពេញជាក្រុម — សំណល់'],
+  ['batch-note','一次填多行，統一提交','Enter several rows, then submit once','បញ្ចូលជួរច្រើន រួចដាក់ស្នើតែម្ដង'],
+  ['th-date-req','日期 *','Date *','កាលបរិច្ឆេទ *'],['th-date','日期','Date','កាលបរិច្ឆេទ'],
+  ['th-plastic','塑膠 (kg)','Plastic (kg)','ប្លាស្ទិក (kg)'],['th-fabric','裁切碎布 (kg)','Fabric (kg)','ក្រណាត់ (kg)'],['th-core','紙管 (kg)','Core (kg)','ស្នូលក្រដាស (kg)'],
+  ['th-total','合計 (kg)','Total (kg)','សរុប (kg)'],['th-inspector','檢查人','Inspector','អ្នកត្រួតពិនិត្យ'],['th-remark','備註','Remark','ចំណាំ'],
+  ['th-name-req','姓名 *','Name *','ឈ្មោះ *'],['th-name','姓名','Name','ឈ្មោះ'],['th-supplier-req','供應商 *','Supplier *','អ្នកផ្គត់ផ្គង់ *'],['th-supplier','供應商','Supplier','អ្នកផ្គត់ផ្គង់'],
+  ['th-plate','車牌','Vehicle no.','ផ្លាកលេខ'],['th-solid','固體','Solid','រឹង'],['th-ind','工業','Industrial','ឧស្សាហកម្ម'],
+  ['th-weight-req','重量 (kg) *','Weight (kg) *','ទម្ងន់ (kg) *'],['th-weight','重量 (kg)','Weight (kg)','ទម្ងន់ (kg)'],
+  ['th-timein-req','進場時間 *','Time in *','ម៉ោងចូល *'],['th-timein','進場','Time in','ម៉ោងចូល'],['th-timeout','離場時間','Time out','ម៉ោងចេញ'],
+  ['th-gate','門衛','Gate keeper','អ្នកយាមច្រក'],['th-wtype','廢料類型','Waste type','ប្រភេទសំណល់'],['th-dur','停留','Duration','រយៈពេល'],
+  ['th-photos','照片','Photos','រូបថត'],['th-anom','異常','Anomaly','មិនប្រក្រតី'],['th-actions','操作','Actions','សកម្មភាព'],
+  ['add-row','➕ 新增一行','➕ Add row','➕ បន្ថែមជួរ'],['clear-all','🗑️ 清除全部','🗑️ Clear all','🗑️ លុបទាំងអស់'],
+  ['batch-submit','📨 批次提交','📨 Submit all','📨 ដាក់ស្នើទាំងអស់'],['rows-n','{n} 筆','{n} rows','{n} ជួរ'],['submitting','提交中…','Saving…','កំពុងរក្សាទុក…'],
+  ['cancel-edit','取消編輯','Cancel edit','បោះបង់ការកែ'],['editing','✏️ 編輯中','✏️ Editing','✏️ កំពុងកែ'],
+  ['sel-all','☑ 全選','☑ Select all','☑ ជ្រើសទាំងអស់'],['sel-nophoto','📷 選無照片','📷 Rows without photo','📷 ជួរគ្មានរូប'],['sel-badtime','⏱ 選時間異常','⏱ Invalid times','⏱ ពេលវេលាមិនត្រឹមត្រូវ'],
+  ['clean-dup','🧹 清理重複','🧹 Clean duplicates','🧹 សម្អាតកំណត់ត្រាស្ទួន'],['del-sel','🗑️ 刪除選取','🗑️ Delete selected','🗑️ លុបដែលបានជ្រើស'],
+  ['r-title','📊 綜合報表分析','📊 Summary report','📊 របាយការណ៍សង្ខេប'],['r-trend','Recycle 趨勢 (kg)','Recycle trend (kg)','និន្នាការកែច្នៃ (kg)'],
+  ['r-wweight','Waste 收料重量 (kg)','Waste received (kg)','សំណល់ដែលបានទទួល (kg)'],['r-cmp','期間比較','Period comparison','ការប្រៀបធៀបរយៈពេល'],
+  ['th-metric','指標','Metric','សូចនាករ'],['th-cur','當期','Current','បច្ចុប្បន្ន'],['th-prev','上期','Previous','មុន'],['th-change','變化','Change','ការប្រែប្រួល'],
+  ['h-title','📋 歷史記錄查詢','📋 History','📋 ប្រវត្តិ'],['h-search-ph','搜尋...','Search...','ស្វែងរក...'],
+  ['rp-title','📷 照片','📷 Photos','📷 រូបថត'],['ok','確定','OK','យល់ព្រម'],
+];
+const EHS_DICT={zh:{},en:{},km:{}};
+EHS_TEXT.forEach(r=>{EHS_DICT.zh[r[0]]=r[1];EHS_DICT.en[r[0]]=r[2];EHS_DICT.km[r[0]]=r[3];});
+function ehsT(k,vars){let v=EHS_DICT[lang]&&EHS_DICT[lang][k];if(v==null)v=lang==='zh'?EHS_DICT.zh[k]:EHS_DICT.en[k];v=v==null?'':String(v);return vars?v.replace(/\{(\w+)\}/g,(m,x)=>vars[x]!=null?String(vars[x]):m):v;}
 function ehsText(zh,en,km){return lang==='en'?en:(lang==='km'?(km||en):zh);}
 function ehsYearLabel(y){return lang==='zh'?y+'年':(lang==='km'?'ឆ្នាំ '+y:String(y));}
 function ehsMonthLabel(m){
@@ -612,71 +458,48 @@ function ehsMonthLabel(m){
   return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1]||String(m);
 }
 function ehsDayLabel(d){return lang==='zh'?d+'日':(lang==='km'?'ថ្ងៃទី '+d:String(d));}
-function applyEhsStaticLanguage(){
-  if(!document.body || _ehsApplying)return;
-  _ehsApplying = true;
-  try {
-    const nodes=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
-    let n;
-    while(n=nodes.nextNode()){
-      const p=n.parentElement;
-      if(!p||['SCRIPT','STYLE','INPUT','TEXTAREA'].includes(p.tagName))continue;
-      const base = EHS_ORIGINAL_TEXT.has(n) ? EHS_ORIGINAL_TEXT.get(n) : n.nodeValue;
-      EHS_ORIGINAL_TEXT.set(n, base);
-      const trimmed=base.trim();
-      const exact=EHS_EXACT.get(trimmed);
-      let out;
-      if(exact) out=base.replace(trimmed,exact[lang]);
-      else {
-        out=base;
-        EHS_PARTS.forEach(x=>[x.zh,x.en,x.km].forEach(v=>{
-          if(v && v!==x[lang])out=out.split(v).join(x[lang]);
-        }));
-      }
-      if(out!==n.nodeValue)n.nodeValue=out;
-    }
-  } finally { _ehsApplying = false; }
+/* 靜態文字只用 data-i 精確字典（不再用整頁子字串替換，不會改到使用者資料或 Telegram 預覽）。 */
+function applyEhsStaticLanguage(root){
+  root=root||document;
+  root.querySelectorAll('[data-i]').forEach(el=>{const k=el.getAttribute('data-i');if(EHS_DICT.zh[k]!=null)el.textContent=ehsT(k);});
+  root.querySelectorAll('[data-i-ph]').forEach(el=>{const k=el.getAttribute('data-i-ph');if(EHS_DICT.zh[k]!=null)el.placeholder=ehsT(k);});
+  root.querySelectorAll('[data-i-title]').forEach(el=>{const k=el.getAttribute('data-i-title');if(EHS_DICT.zh[k]!=null){el.title=ehsT(k);if(el.hasAttribute('aria-label'))el.setAttribute('aria-label',ehsT(k));}});
 }
 window.applyEhsStaticLanguage=applyEhsStaticLanguage;
+let _ehsSettingLang=false;
 function setLang(l){
-  if(!T[l])l='zh';
-  lang=l;
-  try{localStorage.setItem('vrt_ehs_lang',l);}catch(e){}
-  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.textContent.trim()===({zh:'中',en:'EN',km:'ខ្មែរ'}[l])));
-  document.querySelectorAll('[data-i18n]').forEach(el=>{const k=el.getAttribute('data-i18n');if(T[l]&&T[l][k])el.textContent=T[l][k];});
-  if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==l)GC.i18n.set(l);
-  const stamp=document.getElementById('ts-sub');if(stamp){const now=new Date(),locale=l==='zh'?'zh-TW':(l==='km'?'km-KH':'en-GB');stamp.textContent='Vantage River Textiles · '+now.toLocaleString(locale,{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
-  scheduleEhsLanguageApply();
-  setTimeout(function(){
+  if(!EHS_DICT[l])l='zh';
+  if(_ehsSettingLang)return;
+  _ehsSettingLang=true;
+  try{
+    lang=l;
+    try{localStorage.setItem('vrt_ehs_lang',l);}catch(e){}
+    document.documentElement.lang=l==='zh'?'zh-TW':l;
+    document.querySelectorAll('.lang-btn').forEach(b=>b.classList.toggle('active',b.textContent.trim()===({zh:'中',en:'EN',km:'ខ្មែរ'}[l])));
+    if(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang!==l)GC.i18n.set(l);
+    applyEhsStaticLanguage();
+    document.title=ehsT('title');
+    const stamp=document.getElementById('ts-sub');if(stamp){const now=new Date(),locale=l==='zh'?'zh-TW':(l==='km'?'km-KH':'en-GB');stamp.textContent='Vantage River Textiles · '+now.toLocaleString(locale,{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});}
     ['a-p-year','b-p-year','r-year','h-year'].forEach(function(id){const s=document.getElementById(id);if(!s)return;Array.from(s.options).forEach(function(o){if(o.value)o.textContent=ehsYearLabel(+o.value);else o.textContent=ehsText('全年份','All years','គ្រប់ឆ្នាំ');});});
     ['a-p-month','b-p-month','r-month','h-month'].forEach(function(id){const s=document.getElementById(id);if(!s)return;Array.from(s.options).forEach(function(o){if(o.value)o.textContent=ehsMonthLabel(+o.value);else o.textContent=ehsText('全年','All year','ពេញមួយឆ្នាំ');});});
-    if(document.getElementById('a-p-year')&&document.getElementById('a-p-year').options.length){renderAAnalysis();renderBAnalysis();renderReport();renderABatch();renderBBatch();const active=document.querySelector('.tab-content.active');if(active&&active.id==='tab-history')queryHistory();}
-  },0);
+    if(document.getElementById('a-p-year')&&document.getElementById('a-p-year').options.length){renderAAnalysis();renderBAnalysis();renderReport();renderABatch();renderBBatch();renderEhsEditBanners();const active=document.querySelector('.tab-content.active');if(active&&active.id==='tab-history')queryHistory();}
+  }finally{_ehsSettingLang=false;}
 }
-function scheduleEhsLanguageApply(){
-  clearTimeout(_ehsTimer);
-  _ehsTimer=setTimeout(applyEhsStaticLanguage,40);
-}
-function startEhsLanguageObserver(){
-  applyEhsStaticLanguage();
-  if(typeof MutationObserver==='undefined'||!document.body)return;
-  const _ehsObserver=new MutationObserver(()=>{if(!_ehsApplying&&lang!=='zh')scheduleEhsLanguageApply();});
-  _ehsObserver.observe(document.body,{subtree:true,childList:true});
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',startEhsLanguageObserver);
-else startEhsLanguageObserver();
+window.addEventListener('gc:langchange',e=>{const l=e&&e.detail&&e.detail.lang;if(l&&l!==lang)setLang(l);});
+/* Telegram 報告語言：由核心依介面語言預設（中文介面＝中英雙語），使用者手動選擇後保留；頁面不再覆寫。 */
 
-/* ========== TABS ========== */
+/* ========== TABS（開啟時直接進入每日工作：Waste） ========== */
 function switchTab(id){
-  document.querySelectorAll('.tab').forEach(function(t){t.classList.remove('active');});
-  document.querySelectorAll('.tab-content').forEach(function(c){c.classList.remove('active');});
-  var tabBtn=document.querySelector('.tab[onclick*="'+id+'"]');
-  var tabPane=document.getElementById('tab-'+id);
-  if(tabBtn) tabBtn.classList.add('active');
-  if(tabPane) tabPane.classList.add('active');
-  else{console.error('Missing tab pane: tab-'+id);return;}
-  if(id === 'tg') { try { cfg.load(); } catch(e){} }
-  if(id==='tg') cfg.load();
+  const pane=document.getElementById('tab-'+id);
+  if(!pane){id='modB';}
+  const cur=document.querySelector('.tab-content.active');
+  if(cur&&cur.id!=='tab-'+id){
+    if(cur.id==='tab-modA'&&ehsEditing('a')&&!cancelEhsEdit('a',true))return;
+    if(cur.id==='tab-modB'&&ehsEditing('b')&&!cancelEhsEdit('b',true))return;
+  }
+  document.querySelectorAll('.tab').forEach(function(t){t.classList.toggle('active',t.dataset.tab===id);});
+  document.querySelectorAll('.tab-content').forEach(function(c){c.classList.toggle('active',c.id==='tab-'+id);});
+  try{sessionStorage.setItem(EHS_LAST_TAB_KEY,id);}catch(e){}
   if(id==='modA')renderAAnalysis();
   if(id==='modB')renderBAnalysis();
   if(id==='report')renderReport();
@@ -684,28 +507,45 @@ function switchTab(id){
 }
 
 /* ========== LOCAL STORAGE ========== */
+function ehsIsDel(r){return !!(r&&(r._deleted===true||r._deleted==='true'||r._deleted===1));}
 function loadLocal(){
   try{
     const d=JSON.parse(localStorage.getItem(LOCAL_KEY))||{};
     d.gate=Array.isArray(d.gate)?d.gate:[];d.internal=Array.isArray(d.internal)?d.internal:[];d.monthly=Array.isArray(d.monthly)?d.monthly:[];d.tombstones=Array.isArray(d.tombstones)?d.tombstones:[];
     const deleted=new Set(d.tombstones.map(function(t){return String(t&&t.id||'');}).filter(Boolean));
-    d.gate=d.gate.filter(function(r){return r&&!r._deleted&&!deleted.has(String(r.id||''));});
-    d.internal=d.internal.filter(function(r){return r&&!r._deleted&&!deleted.has(String(r.id||''));});
+    d.gate=d.gate.filter(function(r){return r&&!ehsIsDel(r)&&!deleted.has(String(r.id||''));});
+    d.internal=d.internal.filter(function(r){return r&&!ehsIsDel(r)&&!deleted.has(String(r.id||''));});
     return d;
   }
   catch(e){return{gate:[],internal:[],monthly:[],tombstones:[]};}
 }
 function saveLocal(d){
   const result=ehsPrepareLocalData(d||{});
-  localStorage.setItem(LOCAL_KEY,JSON.stringify(result.data));
+  try{localStorage.setItem(LOCAL_KEY,JSON.stringify(result.data));}catch(e){showToast('❌ '+e.message,'error');throw e;}
   return result;
 }
-
-function showToast(msg,dur=3000){
-  const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),dur);
+function showToast(msg,type){
+  const s=String(msg==null?'':msg);
+  if(typeof type!=='string')type=/^\s*(❌|⛔)/.test(s)?'error':(/^\s*⚠/.test(s)?'warning':(/^\s*✅/.test(s)?'success':''));
+  if(typeof GC!=='undefined'&&typeof GC.toast==='function'){try{GC.toast(s,type);return;}catch(e){}}
+  const t=document.getElementById('toast');if(!t)return;t.textContent=s;t.className='show'+(type==='error'?' err':type==='warning'?' warn':'');
+  clearTimeout(t._t);if(type==='error'){t.onclick=()=>{t.className='';};return;}
+  t.onclick=null;t._t=setTimeout(()=>{t.className='';},type==='warning'?5000:3000);
 }
-
+const _ehsBusy={};
+/* 防連點：同一個動作執行中再按不會重複執行；成功（回傳 true）後再擋 400ms。 */
+function ehsGuard(key,fn){
+  if(_ehsBusy[key])return Promise.resolve(undefined);
+  _ehsBusy[key]=true;let p;
+  try{p=Promise.resolve(fn());}catch(e){p=Promise.reject(e);}
+  const release=()=>{delete _ehsBusy[key];};
+  return p.then(v=>{if(v===true)setTimeout(release,400);else release();return v;},e=>{release();throw e;});
+}
+function ehsMarkInvalid(els){
+  document.querySelectorAll('.batch-table .invalid').forEach(x=>x.classList.remove('invalid'));
+  (els||[]).forEach(el=>{if(!el)return;el.classList.add('invalid');const off=()=>el.classList.remove('invalid');el.addEventListener('input',off,{once:true});el.addEventListener('change',off,{once:true});});
+  const f=els&&els.find(Boolean);if(f){try{f.focus();}catch(e){}try{f.scrollIntoView({block:'center',behavior:'smooth'});}catch(e){}}
+}
 /* ========== PERIOD SELECTS ========== */
 let aPeriod='month', bPeriod='month', rPeriod='month';
 let chartAInst, chartBInst, chartR1Inst, chartR2Inst;
@@ -838,9 +678,9 @@ function renderAAnalysis(){
   chartAInst=new Chart(ctx,{
     type:'bar',
     data:{labels,datasets:[
-      {label:'Plastic (kg)',data:plastic,backgroundColor:'rgba(59,130,246,.7)',stack:'s'},
-      {label:'Fabric (kg)',data:fabric,backgroundColor:'rgba(16,185,129,.7)',stack:'s'},
-      {label:'Core (kg)',data:core,backgroundColor:'rgba(245,158,11,.7)',stack:'s'},
+      {label:ehsT('th-plastic'),data:plastic,backgroundColor:'rgba(59,130,246,.7)',stack:'s'},
+      {label:ehsT('th-fabric'),data:fabric,backgroundColor:'rgba(16,185,129,.7)',stack:'s'},
+      {label:ehsT('th-core'),data:core,backgroundColor:'rgba(245,158,11,.7)',stack:'s'},
     ]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top'}},scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true,title:{display:true,text:'kg'}}}}
   });
@@ -849,9 +689,9 @@ function renderAAnalysis(){
   const photoCount=view.reduce(function(s,r){return s+photoArray(r.photos).length;},0);
   document.getElementById('a-stats').innerHTML=`
     <div class="stat-card"><div class="stat-val">${kgDisplay(totalKg)}</div><div class="stat-lbl">${ehsText('回收總重量','Recycle total weight','ទម្ងន់ Recycle សរុប')}</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:#3b82f6">${kgDisplay(tP)}</div><div class="stat-lbl">Plastic</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:#10b981">${kgDisplay(tF)}</div><div class="stat-lbl">Fabric</div></div>
-    <div class="stat-card"><div class="stat-val" style="color:#f59e0b">${kgDisplay(tC)}</div><div class="stat-lbl">Core</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:#3b82f6">${kgDisplay(tP)}</div><div class="stat-lbl">${ehsText('塑膠','Plastic','ប្លាស្ទិក')}</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:#10b981">${kgDisplay(tF)}</div><div class="stat-lbl">${ehsText('碎布','Fabric','ក្រណាត់')}</div></div>
+    <div class="stat-card"><div class="stat-val" style="color:#f59e0b">${kgDisplay(tC)}</div><div class="stat-lbl">${ehsText('紙管','Core','ស្នូលក្រដាស')}</div></div>
     <div class="stat-card"><div class="stat-val">${view.length}</div><div class="stat-lbl">${ehsText('收料記錄','Receiving records','កំណត់ត្រាទទួល')}</div></div>
     <div class="stat-card"><div class="stat-val">${photoCount}</div><div class="stat-lbl">${ehsText('照片','Photos','រូបថត')}</div></div>
   `;
@@ -863,11 +703,11 @@ function renderARecordList(view,bounds){
   const head=document.getElementById('a-record-head'),body=document.getElementById('a-record-body'),label=document.getElementById('a-record-label');
   label.textContent=bounds.label+' · '+view.length+' '+ehsText('筆','records','កំណត់ត្រា')+' · '+kgDisplay(ehsRecycleTotal(view));
   if(bounds.period==='year'){
-    head.innerHTML='<tr><th>'+ehsText('月份','Month','ខែ')+'</th><th>Plastic (kg)</th><th>Fabric (kg)</th><th>Core (kg)</th><th>'+ehsText('總重量','Total weight','ទម្ងន់សរុប')+'</th><th>'+ehsText('記錄','Records','កំណត់ត្រា')+'</th><th>'+ehsText('照片','Photos','រូបថត')+'</th><th>'+ehsText('查看','View','មើល')+'</th></tr>';
+    head.innerHTML='<tr><th>'+ehsText('月份','Month','ខែ')+'</th><th>'+ehsT('th-plastic')+'</th><th>'+ehsT('th-fabric')+'</th><th>'+ehsT('th-core')+'</th><th>'+ehsText('總重量','Total weight','ទម្ងន់សរុប')+'</th><th>'+ehsText('記錄','Records','កំណត់ត្រា')+'</th><th>'+ehsText('照片','Photos','រូបថត')+'</th><th>'+ehsText('查看','View','មើល')+'</th></tr>';
     const rows=ehsBuckets(bounds).map(function(b){const rs=ehsFilterPeriod(view,b),photos=rs.reduce(function(s,r){return s+photoArray(r.photos).length;},0);return '<tr><td><strong>'+ehsEsc(b.label)+'</strong></td><td>'+kgDisplay(ehsSum(rs,'plastic_kg'))+'</td><td>'+kgDisplay(ehsSum(rs,'fabric_kg'))+'</td><td>'+kgDisplay(ehsSum(rs,'core_kg'))+'</td><td><strong>'+kgDisplay(ehsRecycleTotal(rs))+'</strong></td><td>'+rs.length+'</td><td>📷 '+photos+'</td><td><button class="month-link" onclick="showRecycleMonth(\''+b.key+'\')">'+ehsText('查看明細','View records','មើលលម្អិត')+'</button></td></tr>';}).join('');
     body.innerHTML=rows||'<tr><td colspan="8" class="empty-state">'+ehsText('尚無記錄','No records','គ្មានកំណត់ត្រា')+'</td></tr>';return;
   }
-  head.innerHTML='<tr><th>'+ehsText('日期','Date','កាលបរិច្ឆេទ')+'</th><th>Plastic (kg)</th><th>Fabric (kg)</th><th>Core (kg)</th><th>'+ehsText('總重量','Total weight','ទម្ងន់សរុប')+'</th><th>'+ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')+'</th><th>'+ehsText('照片','Photos','រូបថត')+'</th><th>'+ehsText('備註','Remark','ចំណាំ')+'</th><th>'+ehsText('操作','Actions','សកម្មភាព')+'</th></tr>';
+  head.innerHTML='<tr><th>'+ehsText('日期','Date','កាលបរិច្ឆេទ')+'</th><th>'+ehsT('th-plastic')+'</th><th>'+ehsT('th-fabric')+'</th><th>'+ehsT('th-core')+'</th><th>'+ehsText('總重量','Total weight','ទម្ងន់សរុប')+'</th><th>'+ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')+'</th><th>'+ehsText('照片','Photos','រូបថត')+'</th><th>'+ehsText('備註','Remark','ចំណាំ')+'</th><th>'+ehsText('操作','Actions','សកម្មភាព')+'</th></tr>';
   body.innerHTML=view.slice().sort(function(a,b){return String(b.date).localeCompare(String(a.date));}).map(function(r){return '<tr><td><strong>'+ehsEsc(ehsYmd(r.date))+'</strong></td><td>'+kgDisplay(r.plastic_kg)+'</td><td>'+kgDisplay(r.fabric_kg)+'</td><td>'+kgDisplay(r.core_kg)+'</td><td><strong>'+kgDisplay(ehsRecycleRowTotal(r))+'</strong></td><td>'+ehsEsc(r.checked_by||'—')+'</td><td>'+(typeof GC!=='undefined'&&GC.photo?GC.photo.cell(photoArray(r.photos)):'📷 '+photoArray(r.photos).length)+'</td><td>'+ehsEsc(r.remark||'')+'</td><td><span class="row-actions"><button class="btn btn-secondary row-mini" onclick="editRecord(\''+ehsEsc(r.id)+'\',\'internal\')">✏️</button><button class="btn btn-danger row-mini" onclick="deleteRecord(\''+ehsEsc(r.id)+'\',\'internal\')">🗑️</button></span></td></tr>';}).join('')||'<tr><td colspan="9" class="empty-state">'+ehsText('此期間沒有 Recycle 記錄','No Recycle records in this period','គ្មានកំណត់ត្រា Recycle ក្នុងរយៈពេលនេះ')+'</td></tr>';
 }
 
@@ -913,16 +753,7 @@ function renderBAnalysis(){
     <div class="stat-card"><div class="stat-val" style="color:${anomCount>0?'var(--orange)':'var(--green)'}">${anomCount}</div><div class="stat-lbl">${ehsText('異常記錄','Anomalies','កំណត់ត្រាមិនប្រក្រតី')}</div></div>
   `;
 
-  // Check pending monthly approval
-  const yr=+bounds.start.slice(0,4),mo=+bounds.start.slice(5,7);
-  const pending=(db.monthly||[]).find(r=>{
-    const key=yr+String(mo||new Date().getMonth()+1).padStart(2,'0');
-    return r.reportId&&r.reportId.includes(key)&&r.status==='pending';
-  });
-  const pb=document.getElementById('b-pending-bar');
-  if(pending&&bPeriod==='month'){pb.style.display='flex';document.getElementById('b-pending-id').textContent=pending.reportId;}
-  else{pb.style.display='none';}
-  document.getElementById('b-approval-row').style.display=bPeriod==='month'?'flex':'none';
+  renderEhsMonthlyStatus(bounds);
 
   const moRecs=filterRecs.slice().sort(function(a,b){return String(b.date||'').localeCompare(String(a.date||''));});
   document.getElementById('b-month-label').textContent=bounds.label+' · '+ehsText('共','Total','សរុប')+' '+moRecs.length+' '+ehsText('筆','records','កំណត់ត្រា')+' · '+kgDisplay(totalKg);
@@ -931,8 +762,7 @@ function renderBAnalysis(){
     tbody.innerHTML='<tr><td colspan="13" style="text-align:center;padding:16px;color:var(--dim)">'+ehsText('此期間沒有 Waste 記錄','No Waste records in this period','គ្មានកំណត់ត្រា Waste ក្នុងរយៈពេលនេះ')+'</td></tr>';
   }else{
     tbody.innerHTML=moRecs.map((r,i)=>{
-      const wtype=[(r.solid_waste?'<span class="badge badge-solid">固</span>':''),
-                   (r.industrial_waste?'<span class="badge badge-ind">工</span>':'')].filter(Boolean).join(' ')||'—';
+      const wtype=ehsWasteTypeBadges(r);
       const anom=r.anomaly?'<span class="badge badge-anom">⚠️</span>':'—';
       const dur=r.duration_min!=null?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'—';
       const photos=photoArray(r.photos);
@@ -969,7 +799,7 @@ function renderReport(){
   const buckets=ehsBuckets(curBounds),mLabels=buckets.map(function(b){return b.label;}),mTotals=buckets.map(function(b){return ehsRecycleTotal(ehsFilterPeriod(intRecs,b));});
   if(chartR1Inst)chartR1Inst.destroy();
   chartR1Inst=new Chart(document.getElementById('chartR1').getContext('2d'),{
-    type:'bar',data:{labels:mLabels,datasets:[{label:'Total (kg)',data:mTotals,backgroundColor:'rgba(16,185,129,.7)'}]},
+    type:'bar',data:{labels:mLabels,datasets:[{label:ehsT('th-total'),data:mTotals,backgroundColor:'rgba(16,185,129,.7)'}]},
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,title:{display:true,text:'kg'}}}}
   });
 
@@ -987,9 +817,9 @@ function renderReport(){
 
   const rows=[
     {m:ehsText('Recycle 總重量','Recycle total weight','ទម្ងន់ Recycle សរុប'),unit:'kg',cv:curTotalKg,pv:prevTotalKg},
-    {m:'Plastic',unit:'kg',cv:ehsSum(curInt,'plastic_kg'),pv:ehsSum(prevInt,'plastic_kg')},
-    {m:'Fabric',unit:'kg',cv:ehsSum(curInt,'fabric_kg'),pv:ehsSum(prevInt,'fabric_kg')},
-    {m:'Core',unit:'kg',cv:ehsSum(curInt,'core_kg'),pv:ehsSum(prevInt,'core_kg')},
+    {m:ehsText('塑膠','Plastic','ប្លាស្ទិក'),unit:'kg',cv:ehsSum(curInt,'plastic_kg'),pv:ehsSum(prevInt,'plastic_kg')},
+    {m:ehsText('碎布','Fabric','ក្រណាត់'),unit:'kg',cv:ehsSum(curInt,'fabric_kg'),pv:ehsSum(prevInt,'fabric_kg')},
+    {m:ehsText('紙管','Core','ស្នូលក្រដាស'),unit:'kg',cv:ehsSum(curInt,'core_kg'),pv:ehsSum(prevInt,'core_kg')},
     {m:ehsText('Recycle 收料記錄','Recycle receiving records','កំណត់ត្រាទទួល Recycle'),unit:ehsText('筆','records','កំណត់ត្រា'),cv:curInt.length,pv:prevInt.length},
     {m:ehsText('Waste 收料總重量','Waste received weight','ទម្ងន់ Waste ទទួលសរុប'),unit:'kg',cv:curWasteKg,pv:prevWasteKg},
     {m:ehsText('Waste 收料記錄','Waste receiving records','កំណត់ត្រាទទួល Waste'),unit:ehsText('筆','records','កំណត់ត្រា'),cv:curGate.length,pv:prevGate.length},
@@ -1025,10 +855,10 @@ function queryHistory(){
 
 function renderHistoryTable(module,recs){
   const wrap=document.getElementById('hist-wrap');
-  if(!recs.length){wrap.innerHTML='<div class="empty-state">🔍 無符合記錄</div>';return;}
+  if(!recs.length){wrap.innerHTML='<div class="empty-state">🔍 '+ehsText('無符合記錄','No matching records','គ្មានកំណត់ត្រាត្រូវគ្នា')+'</div>';return;}
   let hdrs,rows;
   if(module==='internal'){
-    hdrs=[ehsText('日期','Date','កាលបរិច្ឆេទ'),'Plastic (kg)','Fabric (kg)','Core (kg)','Total (kg)',ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ'),ehsText('照片','Photos','រូបថត'),ehsText('備註','Remark','ចំណាំ'),ehsText('提交時間','Saved at','ពេលរក្សាទុក'),ehsText('操作','Actions','សកម្មភាព')];
+    hdrs=[ehsText('日期','Date','កាលបរិច្ឆេទ'),ehsT('th-plastic'),ehsT('th-fabric'),ehsT('th-core'),ehsT('th-total'),ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ'),ehsText('照片','Photos','រូបថត'),ehsText('備註','Remark','ចំណាំ'),ehsText('提交時間','Saved at','ពេលរក្សាទុក'),ehsText('操作','Actions','សកម្មភាព')];
     rows=recs.map(r=>`<tr>
       <td>${ehsEsc(ehsYmd(r.date))}</td><td>${kgDisplay(r.plastic_kg)}</td><td>${kgDisplay(r.fabric_kg)}</td>
       <td>${kgDisplay(r.core_kg)}</td><td><strong>${kgDisplay(r.total_kg)}</strong></td><td>${ehsEsc(r.checked_by||'—')}</td>
@@ -1037,21 +867,20 @@ function renderHistoryTable(module,recs){
       <td><span class="row-actions"><button class="btn btn-secondary row-mini" onclick="editRecord('${ehsEsc(r.id)}','internal')">✏️</button><button class="btn btn-danger row-mini" onclick="deleteRecord('${ehsEsc(r.id)}','internal')">🗑️</button></span></td>
     </tr>`).join('');
   }else{
-    hdrs=[ehsText('日期','Date','កាលបរិច្ឆេទ'),ehsText('姓名','Name','ឈ្មោះ'),ehsText('供應商','Supplier','អ្នកផ្គត់ផ្គង់'),ehsText('車牌','Vehicle No.','លេខយានយន្ត'),ehsText('廢料類型','Waste type','ប្រភេទសំណល់'),ehsText('重量','Weight','ទម្ងន់')+' (kg)','Time In','Time Out',ehsText('停留','Duration','រយៈពេល'),ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ'),ehsText('照片','Photos','រូបថត'),ehsText('異常','Anomaly','មិនប្រក្រតី'),ehsText('操作','Actions','សកម្មភាព')];
+    hdrs=[ehsText('日期','Date','កាលបរិច្ឆេទ'),ehsText('姓名','Name','ឈ្មោះ'),ehsText('供應商','Supplier','អ្នកផ្គត់ផ្គង់'),ehsText('車牌','Vehicle No.','លេខយានយន្ត'),ehsText('廢料類型','Waste type','ប្រភេទសំណល់'),ehsText('重量','Weight','ទម្ងន់')+' (kg)',ehsT('th-timein'),ehsT('th-timeout'),ehsText('停留','Duration','រយៈពេល'),ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ'),ehsText('照片','Photos','រូបថត'),ehsText('異常','Anomaly','មិនប្រក្រតី'),ehsText('操作','Actions','សកម្មភាព')];
     rows=recs.map(r=>{
-      const wtype=[(r.solid_waste?'<span class="badge badge-solid">固</span>':''),
-                   (r.industrial_waste?'<span class="badge badge-ind">工</span>':'')].filter(Boolean).join(' ')||'—';
+      const wtype=ehsWasteTypeBadges(r);
       return `<tr>
-        <td>${r.date||''}</td><td>${r.name||''}</td><td><strong>${r.supplier||''}</strong></td>
+        <td>${ehsEsc(ehsYmd(r.date))}</td><td>${ehsEsc(r.name||'')}</td><td><strong>${ehsEsc(r.supplier||'')}</strong></td>
         <td>${ehsEsc(r.car_number||'')}</td><td>${wtype}</td><td><strong>${kgDisplay(r.weight_kg)}</strong></td>
-        <td>${r.time_in||''}</td><td>${r.time_out||'—'}</td>
-        <td>${r.duration_min!=null?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'—'}</td><td>${r.checked_by||'—'}</td>
+        <td>${ehsEsc(r.time_in||'')}</td><td>${ehsEsc(r.time_out||'—')}</td>
+        <td>${r.duration_min!=null?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'—'}</td><td>${ehsEsc(r.checked_by||'—')}</td>
         <td>${typeof GC!=='undefined'&&GC.photo?GC.photo.cell(photoArray(r.photos)):'📷 '+photoArray(r.photos).length}</td><td>${r.anomaly?'<span class="badge badge-anom">⚠️</span>':'—'}</td>
         <td><span class="row-actions"><button class="btn btn-secondary row-mini" onclick="editRecord('${ehsEsc(r.id)}','gate')">✏️</button><button class="btn btn-danger row-mini" onclick="deleteRecord('${ehsEsc(r.id)}','gate')">🗑️</button></span></td>
       </tr>`;
     }).join('');
   }
-  wrap.innerHTML=`<div style="padding:7px 12px;font-size:11px;color:var(--dim)">共 ${recs.length} 筆記錄</div>
+  wrap.innerHTML=`<div style="padding:7px 12px;font-size:11px;color:var(--dim)">${ehsText('共 '+recs.length+' 筆記錄',recs.length+' records',recs.length+' កំណត់ត្រា')}</div>
     <div class="htable-wrap"><table class="htable">
     <thead><tr>${hdrs.map(h=>'<th>'+h+'</th>').join('')}</tr></thead>
     <tbody>${rows}</tbody>
@@ -1064,33 +893,51 @@ function openStoredPhotos(id){
 }
 
 async function deleteRecord(id,module){
-  if(!id||id==='undefined'){showToast('⚠️ 無效ID');return;}
+  if(!id||id==='undefined'){showToast(ehsText('⚠️ 無效的記錄','⚠️ Invalid record','⚠️ កំណត់ត្រាមិនត្រឹមត្រូវ'));return;}
   if(!confirm(ehsText('確定刪除此筆記錄？本機及雲端會一併刪除。','Delete this record from both this device and cloud?','លុបកំណត់ត្រានេះពីឧបករណ៍ និង Cloud មែនទេ?')))return;
   await ehsDeleteRecords([{id:String(id),module:module==='gate'?'gate':'internal'}],{reason:'manual_delete'});
 }
 
 function exportHistoryExcel(){
-  if(!historyData.length){showToast('無資料');return;}
-  const ws=XLSX.utils.json_to_sheet(historyData);
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'VRT_Waste');
-  XLSX.writeFile(wb,'VRT_Waste_Export_'+_localYMD()+'.xlsx');
-  showToast('✅ 已下載');
+  exportRowsExcel(historyData,document.getElementById('h-module').value==='gate'?'Waste':'Recycle');
 }
 
+/* 匯出：固定欄位、依介面語言的表頭（不輸出內部欄位名）。 */
+function ehsExportAoa(rows,name){
+  if(name==='Comparison'){
+    return [[ehsT('th-metric'),ehsT('th-cur'),ehsT('th-prev'),ehsText('單位','Unit','ឯកតា'),ehsT('th-change'),ehsText('當期期間','Current period','រយៈពេលបច្ចុប្បន្ន'),ehsText('上期期間','Previous period','រយៈពេលមុន')]]
+      .concat(rows.map(r=>[r.Metric,r.Current,r.Previous,r.Unit,r.Change,r.CurrentPeriod,r.PreviousPeriod]));
+  }
+  if(name==='Waste'){
+    return [[ehsT('th-date'),ehsT('th-name'),ehsT('th-supplier'),ehsT('th-plate'),ehsT('th-wtype'),ehsT('th-weight'),ehsT('th-timein'),ehsT('th-timeout'),ehsText('停留（分鐘）','Duration (min)','រយៈពេល (នាទី)'),ehsT('th-gate'),ehsT('th-inspector'),ehsT('th-remark'),ehsT('th-anom'),ehsT('th-photos'),ehsText('照片連結','Photo links','តំណរូបថត')]]
+      .concat(rows.map(r=>[ehsYmd(r.date),r.name||'',r.supplier||'',r.car_number||'',ehsWasteTypeText(r),kgNumber(r.weight_kg),r.time_in||'',r.time_out||'',r.duration_min!=null?r.duration_min:'',r.gate_keeper||'',r.checked_by||'',r.remark||'',r.anomaly?'⚠':'',photoArray(r.photos).length,photoArray(r.photos).filter(p=>/^https?:/i.test(String(p))).join('\n')]));
+  }
+  return [[ehsT('th-date'),ehsT('th-plastic'),ehsT('th-fabric'),ehsT('th-core'),ehsT('th-total'),ehsT('th-inspector'),ehsT('th-remark'),ehsT('th-photos'),ehsText('照片連結','Photo links','តំណរូបថត')]]
+    .concat(rows.map(r=>[ehsYmd(r.date),kgNumber(r.plastic_kg),kgNumber(r.fabric_kg),kgNumber(r.core_kg),ehsRecycleRowTotal(r),r.checked_by||'',r.remark||'',photoArray(r.photos).length,photoArray(r.photos).filter(p=>/^https?:/i.test(String(p))).join('\n')]));
+}
 function exportRowsExcel(rows,name){
   if(!rows||!rows.length){showToast(ehsText('⚠️ 此期間沒有資料','⚠️ No data in this period','⚠️ គ្មានទិន្នន័យក្នុងរយៈពេលនេះ'));return;}
-  const safe=rows.map(function(r){const o={};Object.keys(r||{}).forEach(function(k){if(k==='photos'){o.photo_count=photoArray(r[k]).length;o.photos=photoArray(r[k]).join('\n');}else if(k==='weight_kg'||/_kg$/.test(k))o[k]=kgNumber(r[k]);else o[k]=r[k];});return o;});
-  const ws=XLSX.utils.json_to_sheet(safe),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,String(name||'EHS').slice(0,31));XLSX.writeFile(wb,'VRT_EHS_'+name+'_'+_localYMD()+'.xlsx');showToast(ehsText('✅ 已匯出 Excel','✅ Excel exported','✅ បាននាំចេញ Excel'));
+  try{
+    const ws=XLSX.utils.aoa_to_sheet(ehsExportAoa(rows,name)),wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,String(name||'EHS').slice(0,31));XLSX.writeFile(wb,'VRT_EHS_'+name+'_'+_localYMD()+'.xlsx');showToast(ehsText('✅ 已匯出 Excel','✅ Excel exported','✅ បាននាំចេញ Excel'));
+  }catch(e){showToast('❌ '+e.message,'error');}
+}
+/* 💾 工具列匯出：依目前分頁（紀錄查詢 → 查詢結果；Recycle → 回收；其他 → Waste 本期）。 */
+function ehsToolbarExport(){
+  const t=(document.querySelector('.tab.active')||{}).dataset||{};
+  if(t.tab==='history'&&historyData.length)return exportHistoryExcel();
+  return exportEhsPeriod(t.tab==='modA'?'internal':'gate');
 }
 function exportEhsPeriod(module){exportRowsExcel(ehsViewState[module]||[],module==='gate'?'Waste':'Recycle');}
 function exportReportComparison(){exportRowsExcel(ehsReportRows,'Comparison');}
 
 function editRecord(id,module){
   const d=loadLocal(),r=(module==='gate'?d.gate:d.internal).find(function(x){return String(x.id)===String(id);});if(!r)return;
+  const rows=module==='internal'?aRows:bRows,unsaved=rows.filter(module==='internal'?ehsARowStarted:ehsBRowStarted);
+  if(unsaved.length&&!confirm(ehsText('目前有 '+unsaved.length+' 筆尚未提交的內容，載入編輯會清除它們。確定繼續？',unsaved.length+' unsaved row(s) will be cleared to load this record. Continue?','មាន '+unsaved.length+' ជួរមិនទាន់រក្សាទុក នឹងត្រូវលុប។ បន្តមែនទេ?')))return;
   if(module==='internal'){
-    aRows=[{id:'EA-'+Date.now(),_editId:r.id,date:ehsYmd(r.date),plastic:kgNumber(r.plastic_kg),fabric:kgNumber(r.fabric_kg),core:kgNumber(r.core_kg),total:kgNumber(r.total_kg),checked_by:r.checked_by||'',remark:r.remark||'',photos:photoArray(r.photos)}];renderABatch();switchTab('modA');document.getElementById('a-batch-table').scrollIntoView({behavior:'smooth',block:'center'});
+    aRows=[{id:'EA-'+Date.now(),_editId:r.id,date:ehsYmd(r.date),plastic:kgNumber(r.plastic_kg),fabric:kgNumber(r.fabric_kg),core:kgNumber(r.core_kg),total:kgNumber(r.total_kg),checked_by:r.checked_by||'',remark:r.remark||'',photos:photoArray(r.photos)}];ehsEditOrig.a=JSON.stringify(aRows[0]);switchTab('modA');renderABatch();renderEhsEditBanners();try{document.getElementById('a-batch-table').scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
   }else{
-    bRows=[{id:'EB-'+Date.now(),_editId:r.id,date:ehsYmd(r.date),name:r.name||'',supplier:r.supplier||'',car:r.car_number||'',solid:!!r.solid_waste,industrial:!!r.industrial_waste,kg:kgNumber(r.weight_kg),timein:r.time_in||'',timeout:r.time_out||'',gate:r.gate_keeper||'',checked_by:r.checked_by||'',remark:r.remark||'',photos:photoArray(r.photos)}];renderBBatch();switchTab('modB');document.getElementById('b-batch-table').scrollIntoView({behavior:'smooth',block:'center'});
+    bRows=[{id:'EB-'+Date.now(),_editId:r.id,date:ehsYmd(r.date),name:r.name||'',supplier:r.supplier||'',car:r.car_number||'',solid:!!r.solid_waste,industrial:!!r.industrial_waste,kg:kgNumber(r.weight_kg),timein:r.time_in||'',timeout:r.time_out||'',gate:r.gate_keeper||'',checked_by:r.checked_by||'',remark:r.remark||'',photos:photoArray(r.photos)}];ehsEditOrig.b=JSON.stringify(bRows[0]);switchTab('modB');renderBBatch();renderEhsEditBanners();try{document.getElementById('b-batch-table').scrollIntoView({behavior:'smooth',block:'center'});}catch(e){}
   }
   showToast(ehsText('✏️ 已載入記錄，修改後按儲存','✏️ Record loaded; edit and save','✏️ បានផ្ទុកកំណត់ត្រា កែហើយរក្សាទុក'));
 }
@@ -1106,7 +953,7 @@ function refreshEhsAll(){
 let aRows=[];
 function addARow(){
   const id='A-'+Date.now()+'-'+Math.floor(Math.random()*9999);
-  aRows.push({id,date:'',plastic:0,fabric:0,core:0,total:0,checked_by:'',remark:'',photos:[]});
+  aRows.push({id,date:_localYMD(),plastic:0,fabric:0,core:0,total:0,checked_by:'',remark:'',photos:[]});
   renderABatch();
 }
 function removeARow(id){
@@ -1114,23 +961,24 @@ function removeARow(id){
   renderABatch();
 }
 function renderABatch(){
-  document.getElementById('a-row-count').textContent=aRows.length;
+  const sb=document.getElementById('a-submit-btn');if(sb&&!sb.disabled)sb.textContent=ehsT('batch-submit')+' ('+ehsT('rows-n',{n:aRows.filter(ehsARowStarted).length})+')';
   const tbody=document.getElementById('a-batch-body');
   tbody.innerHTML=aRows.map(r=>`
     <tr data-id="${r.id}">
-      <td><input class="bi" type="date" value="${r.date}" onchange="updateARow('${r.id}','date',this.value)"></td>
-      <td><input class="bi" type="number" placeholder="0" value="${r.plastic||''}" min="0" onchange="updateARow('${r.id}','plastic',this.value);calcATotal('${r.id}',this)"></td>
+      <td><input class="bi" type="date" data-f="date" value="${ehsEsc(r.date)}" onchange="updateARow('${r.id}','date',this.value)"></td>
+      <td><input class="bi" type="number" data-f="plastic" inputmode="decimal" placeholder="0" value="${r.plastic||''}" min="0" onchange="updateARow('${r.id}','plastic',this.value);calcATotal('${r.id}',this)"></td>
       <td><input class="bi" type="number" placeholder="0" value="${r.fabric||''}" min="0" onchange="updateARow('${r.id}','fabric',this.value);calcATotal('${r.id}',this)"></td>
       <td><input class="bi" type="number" placeholder="0" value="${r.core||''}" min="0" onchange="updateARow('${r.id}','core',this.value);calcATotal('${r.id}',this)"></td>
       <td><input class="bi total-cell" type="number" id="a-total-${r.id}" value="${r.total||''}" readonly></td>
-      <td><input class="bi" type="text" placeholder="${ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')}" value="${r.checked_by||''}" onchange="updateARow('${r.id}','checked_by',this.value)"></td>
-      <td><input class="bi" type="text" placeholder="${ehsText('備註...','Remark...','ចំណាំ...')}" value="${r.remark||''}" onchange="updateARow('${r.id}','remark',this.value)"></td>
+      <td><input class="bi" type="text" placeholder="${ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')}" value="${ehsEsc(r.checked_by||'')}" onchange="updateARow('${r.id}','checked_by',this.value)"></td>
+      <td><input class="bi" type="text" placeholder="${ehsText('備註...','Remark...','ចំណាំ...')}" value="${ehsEsc(r.remark||'')}" onchange="updateARow('${r.id}','remark',this.value)"></td>
       <td><button class="ph-row-btn" onclick="openRowPhotos('a','${r.id}')">${(r.photos&&r.photos.length)?'📷'+r.photos.length:'📷'}</button></td>
       <td><button class="del-row-btn" onclick="removeARow('${r.id}')">✕</button></td>
     </tr>`).join('');
 }
 function updateARow(id,field,val){
   const r=aRows.find(r=>r.id===id);if(r){r[field]=val;}
+  const sb=document.getElementById('a-submit-btn');if(sb&&!sb.disabled)sb.textContent=ehsT('batch-submit')+' ('+ehsT('rows-n',{n:aRows.filter(ehsARowStarted).length})+')';
 }
 function calcATotal(id,inputEl){
   const row=inputEl.closest('tr');
@@ -1142,36 +990,44 @@ function calcATotal(id,inputEl){
   document.getElementById('a-total-'+id).value=total||'';
   updateARow(id,'plastic',p);updateARow(id,'fabric',f);updateARow(id,'core',c);updateARow(id,'total',total);
 }
-function clearABatch(){if(!aRows.length)return;if(!confirm(ehsText('清除所有未提交內容？','Clear all unsaved entries?','លុបព័ត៌មានដែលមិនទាន់រក្សាទុកទាំងអស់?')))return;aRows=[];addARow();}
+function clearABatch(){if(!aRows.some(ehsARowStarted)&&!ehsEditing('a')){aRows=[];addARow();return;}if(!confirm(ehsText('清除所有未提交內容？','Clear all unsaved entries?','លុបព័ត៌មានដែលមិនទាន់រក្សាទុកទាំងអស់?')))return;aRows=[];ehsEditOrig.a='';addARow();renderEhsEditBanners();}
 
-async function submitModA(){
-  const started=aRows.filter(function(r){return r.date||kgNumber(r.plastic)||kgNumber(r.fabric)||kgNumber(r.core)||String(r.checked_by||r.remark||'').trim()||photoArray(r.photos).length;});
-  const valid=aRows.filter(function(r){return r.date&&(kgNumber(r.plastic)||kgNumber(r.fabric)||kgNumber(r.core));});
-  if(started.length!==valid.length){showToast(ehsText('⚠️ 每筆已填內容都必須有日期及至少一個重量','⚠️ Every started row needs a date and at least one weight','⚠️ គ្រប់ជួរដែលបានបំពេញត្រូវមានកាលបរិច្ឆេទ និងទម្ងន់យ៉ាងហោចណាស់មួយ'));return;}
-  if(!valid.length){showToast('⚠️ 請至少填寫一行有效記錄（日期 + 重量）');return;}
+function submitModA(){return ehsGuard('recycle-submit',submitModAInner);}
+async function submitModAInner(){
+  const started=aRows.filter(ehsARowStarted);
+  const bad=started.filter(function(r){return !ehsYmd(r.date)||!(kgNumber(r.plastic)||kgNumber(r.fabric)||kgNumber(r.core));});
+  if(bad.length){
+    ehsMarkInvalid(bad.map(function(r){const tr=document.querySelector('#a-batch-body tr[data-id="'+r.id+'"]');if(!tr)return null;return !ehsYmd(r.date)?tr.querySelector('[data-f="date"]'):tr.querySelector('[data-f="plastic"]');}));
+    showToast(ehsText('⚠️ 每筆已填內容都必須有日期及至少一個重量','⚠️ Every started row needs a date and at least one weight','⚠️ គ្រប់ជួរដែលបានបំពេញត្រូវមានកាលបរិច្ឆេទ និងទម្ងន់យ៉ាងហោចណាស់មួយ'));return;
+  }
+  const valid=started;
+  if(!valid.length){ehsMarkInvalid([document.querySelector('#a-batch-body [data-f="plastic"]')]);showToast(ehsText('⚠️ 請至少填寫一行有效記錄（日期＋重量）','⚠️ Enter at least one row with a date and a weight','⚠️ សូមបញ្ចូលយ៉ាងហោចណាស់មួយជួរ (កាលបរិច្ឆេទ + ទម្ងន់)'));return;}
   const btn=document.getElementById('a-submit-btn');
-  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 提交中...';
-  const now=_localTS();
-  const ld=loadLocal();
-  const newRecs=valid.map(r=>({
-    id:r._editId||('A-'+Date.now()+'-'+Math.random().toString(36).slice(2)),module:'internal',sourceType:'recycle',
-    date:ehsYmd(r.date),plastic_kg:kgNumber(r.plastic),fabric_kg:kgNumber(r.fabric),core_kg:kgNumber(r.core),
-    total_kg:kgNumber(r.plastic)+kgNumber(r.fabric)+kgNumber(r.core),checked_by:r.checked_by||'',remark:r.remark||'',photos:photoArray(r.photos),submitted_at:now,updatedAt:now
-  }));
-  const editIds=new Set(valid.map(function(r){return String(r._editId||'');}).filter(Boolean));
-  ld.internal=(ld.internal||[]).filter(function(r){return !editIds.has(String(r.id));}).concat(newRecs);
-  saveLocal(ld);
-  if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){
-    GC.sync.schedule('ehs','recycle_save');
-    showToast(ehsText('✅ 已儲存 '+valid.length+' 筆；雲端背景同步','✅ Saved '+valid.length+' records; cloud sync runs in background','✅ បានរក្សាទុក '+valid.length+' កំណត់ត្រា; កំពុងសមកាលកម្មពពក'));
-  }else try{
-    const res=await gasPost({action:'push',tool:'ehs',records:newRecs});
-    if(!res||res.ok===false)throw new Error(res&&res.error||'cloud push failed');
-    showToast('✅ 已提交 '+valid.length+' 筆至雲端');
-  }catch(e){showToast('⚠️ 本機已儲存 ('+valid.length+' 筆)，雲端離線');}
-  btn.disabled=false;btn.innerHTML='📨 '+ehsText('批次提交','Batch Submit','ដាក់ស្នើជាក្រុម')+' (<span id="a-row-count">0</span> '+ehsText('筆','records','កំណត់ត្រា')+')';
-  aRows=[];addARow();
-  refreshEhsAll();
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> '+ehsEsc(ehsT('submitting'));
+  try{
+    const now=_localTS();
+    const ld=loadLocal();
+    const newRecs=valid.map(r=>({
+      id:r._editId||('A-'+Date.now()+'-'+Math.random().toString(36).slice(2)),module:'internal',sourceType:'recycle',
+      date:ehsYmd(r.date),plastic_kg:kgNumber(r.plastic),fabric_kg:kgNumber(r.fabric),core_kg:kgNumber(r.core),
+      total_kg:kgNumber(r.plastic)+kgNumber(r.fabric)+kgNumber(r.core),checked_by:r.checked_by||'',remark:r.remark||'',photos:photoArray(r.photos),submitted_at:now,updatedAt:now
+    }));
+    const editIds=new Set(valid.map(function(r){return String(r._editId||'');}).filter(Boolean));
+    ld.internal=(ld.internal||[]).filter(function(r){return !editIds.has(String(r.id));}).concat(newRecs);
+    saveLocal(ld);
+    if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){
+      GC.sync.schedule('ehs','recycle_save');
+      showToast(ehsText('✅ 已儲存 '+valid.length+' 筆；雲端背景同步','✅ Saved '+valid.length+' records; cloud sync runs in background','✅ បានរក្សាទុក '+valid.length+' កំណត់ត្រា; កំពុងសមកាលកម្ម Cloud'));
+    }else try{
+      const res=await gasPost({action:'push',tool:'ehs',records:newRecs});
+      if(!res||res.ok===false)throw new Error(res&&res.error||'cloud push failed');
+      showToast(ehsText('✅ 已提交 '+valid.length+' 筆至雲端','✅ Saved '+valid.length+' records to cloud','✅ បានរក្សាទុក '+valid.length+' ទៅ Cloud'));
+    }catch(e){showToast(ehsText('⚠️ 本機已儲存 '+valid.length+' 筆，雲端離線','⚠️ Saved '+valid.length+' on this phone; cloud offline','⚠️ បានរក្សាទុក '+valid.length+' ក្នុងទូរស័ព្ទ; Cloud អុហ្វឡាញ'));}
+    aRows=[];ehsEditOrig.a='';addARow();renderEhsEditBanners();
+    refreshEhsAll();
+    return true;
+  }catch(e){showToast('❌ '+e.message,'error');}
+  finally{btn.disabled=false;renderABatch();}
 }
 
 /* ========== MODULE B BATCH INPUT ========== */
@@ -1179,37 +1035,37 @@ let bRows=[];
 let ehsWasteSubmitBusy=false;
 function addBRow(){
   const id='B-'+Date.now()+'-'+Math.floor(Math.random()*9999);
-  bRows.push({id,date:'',name:'',supplier:'',car:'',solid:false,industrial:false,kg:'',timein:'',timeout:'',gate:'',checked_by:'',remark:'',photos:[]});
+  bRows.push({id,date:_localYMD(),name:'',supplier:'',car:'',solid:false,industrial:false,kg:'',timein:'',timeout:'',gate:'',checked_by:'',remark:'',photos:[]});
   renderBBatch();
 }
 function removeBRow(id){bRows=bRows.filter(r=>r.id!==id);renderBBatch();}
 function renderBBatch(){
-  document.getElementById('b-row-count').textContent=bRows.length;
+  const sb=document.getElementById('b-submit-btn');if(sb&&!sb.disabled)sb.textContent=ehsT('batch-submit')+' ('+ehsT('rows-n',{n:bRows.filter(ehsBRowStarted).length})+')';
   const tbody=document.getElementById('b-batch-body');
   tbody.innerHTML=bRows.map(r=>`
     <tr data-id="${r.id}">
-      <td><input class="bi" type="date" style="min-width:110px" value="${r.date}" onchange="updateBRow('${r.id}','date',this.value)"></td>
-      <td><input class="bi" type="text" style="min-width:90px" placeholder="Na Rin" value="${r.name}" list="b-namelist" onchange="updateBRow('${r.id}','name',this.value)"></td>
-      <td><select class="bi" style="min-width:100px" onchange="updateBRow('${r.id}','supplier',this.value);autoFillB('${r.id}',this)">
+      <td><input class="bi" type="date" data-f="date" style="min-width:110px" value="${ehsEsc(r.date)}" onchange="updateBRow('${r.id}','date',this.value)"></td>
+      <td><input class="bi" type="text" style="min-width:90px" data-f="name" placeholder="Na Rin" value="${ehsEsc(r.name)}" list="b-namelist" onchange="updateBRow('${r.id}','name',this.value)"></td>
+      <td><select class="bi" data-f="supplier" style="min-width:100px" onchange="updateBRow('${r.id}','supplier',this.value);autoFillB('${r.id}',this)">
         <option value="" ${!r.supplier?'selected':''}>${ehsText('— 選擇 —','— Select —','— ជ្រើស —')}</option>
         <option value="K.S.W.M" ${r.supplier==='K.S.W.M'?'selected':''}>K.S.W.M</option>
         <option value="SONYAPICH" ${r.supplier==='SONYAPICH'?'selected':''}>SONYAPICH</option>
-        <option value="OTHER" ${r.supplier==='OTHER'?'selected':''}>Other</option>
+        <option value="OTHER" ${r.supplier==='OTHER'?'selected':''}>${ehsText('其他','Other','ផ្សេងៗ')}</option>
       </select></td>
-      <td><input class="bi" type="text" style="min-width:70px" placeholder="C527" value="${r.car}" onchange="updateBRow('${r.id}','car',this.value)"></td>
+      <td><input class="bi" type="text" style="min-width:70px" placeholder="C527" value="${ehsEsc(r.car)}" onchange="updateBRow('${r.id}','car',this.value)"></td>
       <td style="text-align:center"><input type="checkbox" ${r.solid?'checked':''} onchange="updateBRow('${r.id}','solid',this.checked)"></td>
       <td style="text-align:center"><input type="checkbox" ${r.industrial?'checked':''} onchange="updateBRow('${r.id}','industrial',this.checked)"></td>
-      <td><input class="bi" type="text" style="min-width:70px" placeholder="2000kg" value="${r.kg}" onchange="updateBRow('${r.id}','kg',this.value)"></td>
-      <td><input class="bi" type="text" style="min-width:80px" placeholder="03:10pm" value="${r.timein}" onchange="updateBRow('${r.id}','timein',this.value)"></td>
-      <td><input class="bi" type="text" style="min-width:80px" placeholder="03:30pm" value="${r.timeout}" onchange="updateBRow('${r.id}','timeout',this.value)"></td>
-      <td><input class="bi" type="text" style="min-width:80px" placeholder="Kun Vin" value="${r.gate}" onchange="updateBRow('${r.id}','gate',this.value)"></td>
-      <td><input class="bi" type="text" style="min-width:100px" placeholder="${ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')}" value="${r.checked_by||''}" onchange="updateBRow('${r.id}','checked_by',this.value)"></td>
-      <td><input class="bi" type="text" style="min-width:80px" placeholder="${ehsText('備註','Remark','ចំណាំ')}" value="${r.remark}" onchange="updateBRow('${r.id}','remark',this.value)"></td>
+      <td><input class="bi" type="text" style="min-width:70px" data-f="kg" inputmode="decimal" placeholder="2000" value="${ehsEsc(r.kg)}" onchange="updateBRow('${r.id}','kg',this.value)"></td>
+      <td><input class="bi" type="text" style="min-width:80px" data-f="timein" placeholder="15:10" value="${ehsEsc(r.timein)}" onchange="updateBRow('${r.id}','timein',this.value)"></td>
+      <td><input class="bi" type="text" style="min-width:80px" data-f="timeout" placeholder="15:30" value="${ehsEsc(r.timeout)}" onchange="updateBRow('${r.id}','timeout',this.value)"></td>
+      <td><input class="bi" type="text" style="min-width:80px" placeholder="Kun Vin" value="${ehsEsc(r.gate)}" onchange="updateBRow('${r.id}','gate',this.value)"></td>
+      <td><input class="bi" type="text" style="min-width:100px" placeholder="${ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')}" value="${ehsEsc(r.checked_by||'')}" onchange="updateBRow('${r.id}','checked_by',this.value)"></td>
+      <td><input class="bi" type="text" style="min-width:80px" placeholder="${ehsText('備註','Remark','ចំណាំ')}" value="${ehsEsc(r.remark)}" onchange="updateBRow('${r.id}','remark',this.value)"></td>
       <td><button class="ph-row-btn" onclick="openRowPhotos('b','${r.id}')">${(r.photos&&r.photos.length)?'📷'+r.photos.length:'📷'}</button></td>
       <td><button class="del-row-btn" onclick="removeBRow('${r.id}')">✕</button></td>
     </tr>`).join('');
 }
-function updateBRow(id,field,val){const r=bRows.find(r=>r.id===id);if(r)r[field]=val;}
+function updateBRow(id,field,val){const r=bRows.find(r=>r.id===id);if(r)r[field]=val;const sb=document.getElementById('b-submit-btn');if(sb&&!sb.disabled)sb.textContent=ehsT('batch-submit')+' ('+ehsT('rows-n',{n:bRows.filter(ehsBRowStarted).length})+')';}
 function autoFillB(id,sel){
   const r=bRows.find(r=>r.id===id);if(!r)return;
   const row=sel.closest('tr');
@@ -1221,7 +1077,7 @@ function autoFillB(id,sel){
   if(sel.value==='SONYAPICH'){if(!r.name){nameInp.value='Nhem Eoen';r.name='Nhem Eoen';}
     row.querySelectorAll('input[type=checkbox]')[1].checked=true;r.industrial=true;}
 }
-function clearBBatch(){if(!bRows.length)return;if(!confirm(ehsText('清除所有未提交內容？','Clear all unsaved entries?','លុបព័ត៌មានដែលមិនទាន់រក្សាទុកទាំងអស់?')))return;bRows=[];addBRow();}
+function clearBBatch(){if(!bRows.some(ehsBRowStarted)&&!ehsEditing('b')){bRows=[];addBRow();return;}if(!confirm(ehsText('清除所有未提交內容？','Clear all unsaved entries?','លុបព័ត៌មានដែលមិនទាន់រក្សាទុកទាំងអស់?')))return;bRows=[];ehsEditOrig.b='';addBRow();renderEhsEditBanners();}
 
 /* v51 Waste 防重複／刪除保護：
    同日期 + 同供應商/公司 + 同重量 + 同 Time In 視為同一次回收。
@@ -1309,11 +1165,15 @@ function ehsConsolidateWasteRows(rows){
 }
 function ehsMakeTombstone(r,reason,winnerId){
   if(!r||!r.id)return null;const now=_localTS();
-  return {id:String(r.id),module:r.module==='internal'?'internal':'gate',sourceType:r.sourceType==='recycle'?'recycle':'waste',date:ehsYmd(r.date),deletedAt:now,updatedAt:now,reason:reason||'deleted',winnerId:winnerId||'',fingerprint:ehsWasteDuplicateKey(r)};
+  const internal=r.module==='internal'||r.sourceType==='recycle';
+  return {id:String(r.id),_deleted:true,module:internal?'internal':'gate',sourceType:internal?'recycle':'waste',date:ehsYmd(r.date),deletedAt:now,updatedAt:now,reason:reason||'deleted',winnerId:winnerId||'',fingerprint:ehsWasteDuplicateKey(r)};
 }
 function ehsPrepareLocalData(input){
   const d=Object.assign({},input||{});d.gate=Array.isArray(d.gate)?d.gate.filter(Boolean):[];d.internal=Array.isArray(d.internal)?d.internal.filter(Boolean):[];d.monthly=Array.isArray(d.monthly)?d.monthly:[];d.tombstones=Array.isArray(d.tombstones)?d.tombstones.filter(function(t){return t&&t.id;}):[];
-  const tombBy=new Map();d.tombstones.forEach(function(t){const id=String(t.id),old=tombBy.get(id);if(!old||String(t.updatedAt||t.deletedAt||'')>String(old.updatedAt||old.deletedAt||''))tombBy.set(id,t);});
+  /* 墓碑至少保留 90 天（雲端已刪除也保留），避免其他手機的舊資料同步回來「復活」。 */
+  const tombLimit=Date.now()-90*86400000;
+  const tombAge=function(t){const n=Date.parse(String(t.deletedAt||t.updatedAt||'').replace(' ','T'));return isNaN(n)?Date.now():n;};
+  const tombBy=new Map();d.tombstones.forEach(function(t){if(tombAge(t)<tombLimit)return;const id=String(t.id),old=tombBy.get(id);if(!old||String(t.updatedAt||t.deletedAt||'')>String(old.updatedAt||old.deletedAt||''))tombBy.set(id,Object.assign({},old&&old.cloudDeletedAt?{cloudDeletedAt:old.cloudDeletedAt}:{},t));});
   d.gate=d.gate.filter(function(r){return r&&!r._deleted&&!tombBy.has(String(r.id||''));});
   d.internal=d.internal.filter(function(r){return r&&!r._deleted&&!tombBy.has(String(r.id||''));});
   const clean=ehsConsolidateWasteRows(d.gate.map(function(r){return Object.assign({module:'gate',sourceType:'waste'},r);}));
@@ -1340,7 +1200,7 @@ function ehsCloudPost(payload){
   return gasPost(payload).then(function(r){if(!r||r.ok===false)throw new Error(r&&r.error||'cloud request failed');return r;});
 }
 async function ehsFlushTombstones(opt){
-  opt=opt||{};const snapshot=loadLocal(),pending=(snapshot.tombstones||[]).filter(function(t){return t&&t.id;});
+  opt=opt||{};const snapshot=loadLocal(),pending=(snapshot.tombstones||[]).filter(function(t){return t&&t.id&&!t.cloudDeletedAt;});
   if(!pending.length)return {ok:true,deleted:0};
   if(typeof navigator!=='undefined'&&navigator.onLine===false)throw new Error('offline');
   const ids=Array.from(new Set(pending.map(function(t){return String(t.id);}))),done=new Set();
@@ -1350,7 +1210,8 @@ async function ehsFlushTombstones(opt){
   }catch(batchErr){
     for(const id of ids){try{const res=await ehsCloudPost({action:'delete',tool:'ehs',id:id});if(res&&res.ok!==false)done.add(id);}catch(e){}}
   }
-  if(done.size){const latest=loadLocal();latest.tombstones=(latest.tombstones||[]).filter(function(t){return !done.has(String(t.id));});saveLocal(latest);}
+  /* 雲端確認刪除後只標記 cloudDeletedAt，墓碑本身保留（同步給其他手機）。 */
+  if(done.size){const latest=loadLocal(),at=_localTS();latest.tombstones=(latest.tombstones||[]).map(function(t){return t&&done.has(String(t.id))&&!t.cloudDeletedAt?Object.assign({},t,{cloudDeletedAt:at}):t;});saveLocal(latest);}
   if(done.size!==ids.length)throw new Error('pending cloud deletes: '+(ids.length-done.size));
   if(!opt.silent)showToast(ehsText('☁ 已確認雲端刪除 '+done.size+' 筆','☁ Confirmed '+done.size+' cloud deletions','☁ បានបញ្ជាក់ការលុបពី Cloud '+done.size+' កំណត់ត្រា'));
   return {ok:true,deleted:done.size};
@@ -1381,7 +1242,7 @@ function selectWasteRows(mode){
   if(mode==='all')rows.forEach(function(r){if(r&&r.id)ehsWasteSelectedIds.add(String(r.id));});
   if(mode==='noPhoto')rows.forEach(function(r){if(r&&r.id&&!photoArray(r.photos).length)ehsWasteSelectedIds.add(String(r.id));});
   if(mode==='badTime')rows.forEach(function(r){if(r&&r.id&&ehsWasteTimeIssue(r))ehsWasteSelectedIds.add(String(r.id));});
-  updateWasteSelectionUi();if(!ehsWasteSelectedIds.size&&mode!=='all')showToast(mode==='noPhoto'?ehsText('✅ 此期間沒有無照片記錄','✅ No no-photo records in this period','✅ គ្មានកំណត់ត្រាគ្មានរូបក្នុងរយៈពេលនេះ'):ehsText('✅ 此期間沒有時間異常記錄','✅ No invalid-time records in this period','✅ គ្មានកំណត់ត្រាពេលវេលាមិនត្រឹមត្រូវ'));
+  updateWasteSelectionUi();if(!ehsWasteSelectedIds.size&&mode!=='all')showToast(mode==='noPhoto'?ehsText('✅ 此期間沒有無照片記錄','✅ No no-photo records in this period','✅ គ្មានកំណត់ត្រាគ្មានរូបក្នុងរយៈពេលនេះ'):ehsText('✅ 此期間沒有時間異常記錄','✅ No invalid-time records in this period','✅ គ្មានកំណត់ត្រាពេលវេលាមិនត្រឹមត្រូវក្នុងរយៈពេលនេះ'));
 }
 async function deleteSelectedWaste(){
   const ids=Array.from(ehsWasteSelectedIds),ld=loadLocal(),rows=(ld.gate||[]).filter(function(r){return ids.includes(String(r.id||''));});if(!rows.length){updateWasteSelectionUi();return;}
@@ -1391,15 +1252,18 @@ async function deleteSelectedWaste(){
 
 async function submitModB(){
   if(ehsWasteSubmitBusy){showToast(ehsText('⏳ 正在儲存，請勿重複送出','⏳ Saving; duplicate submission is blocked','⏳ កំពុងរក្សាទុក មិនអាចដាក់ស្ទួនបានទេ'));return;}
-  const started=bRows.filter(function(r){return r.date||r.supplier||r.name||r.car||r.solid||r.industrial||String(r.kg||r.timein||r.timeout||r.gate||r.checked_by||r.remark||'').trim()||photoArray(r.photos).length;});
-  const valid=bRows.filter(function(r){return r.date&&r.supplier&&kgNumber(r.kg)>0&&String(r.timein||'').trim();});
-  if(started.length!==valid.length){showToast(ehsText('⚠️ 每筆已填內容都必須有日期、供應商、大於 0 的重量及 Time In','⚠️ Every started row needs a date, supplier, weight above 0 and Time In','⚠️ គ្រប់ជួរត្រូវមានកាលបរិច្ឆេទ អ្នកផ្គត់ផ្គង់ ទម្ងន់លើស 0 និង Time In'));return;}
-  if(!valid.length){showToast(ehsText('⚠️ 日期、供應商、重量及 Time In 都是必填','⚠️ Date, supplier, weight and Time In are required','⚠️ ត្រូវបញ្ចូលកាលបរិច្ឆេទ អ្នកផ្គត់ផ្គង់ ទម្ងន់ និង Time In'));return;}
+  const started=bRows.filter(ehsBRowStarted);
+  const valid=started.filter(function(r){return ehsYmd(r.date)&&String(r.name||'').trim()&&r.supplier&&kgNumber(r.kg)>0&&String(r.timein||'').trim();});
+  if(started.length!==valid.length){
+    const els=[];started.filter(r=>!valid.includes(r)).forEach(function(r){const tr=document.querySelector('#b-batch-body tr[data-id="'+r.id+'"]');if(!tr)return;
+      if(!ehsYmd(r.date))els.push(tr.querySelector('[data-f="date"]'));if(!String(r.name||'').trim())els.push(tr.querySelector('[data-f="name"]'));if(!r.supplier)els.push(tr.querySelector('[data-f="supplier"]'));if(!(kgNumber(r.kg)>0))els.push(tr.querySelector('[data-f="kg"]'));if(!String(r.timein||'').trim())els.push(tr.querySelector('[data-f="timein"]'));});
+    ehsMarkInvalid(els);showToast(ehsText('⚠️ 每筆已填內容都必須有日期、姓名、供應商、大於 0 的重量及進場時間','⚠️ Every started row needs a date, name, supplier, weight above 0 and time in','⚠️ គ្រប់ជួរត្រូវមានកាលបរិច្ឆេទ ឈ្មោះ អ្នកផ្គត់ផ្គង់ ទម្ងន់លើស 0 និងម៉ោងចូល'));return;}
+  if(!valid.length){ehsMarkInvalid(['name','supplier','kg','timein'].map(f=>document.querySelector('#b-batch-body [data-f="'+f+'"]')));showToast(ehsText('⚠️ 日期、姓名、供應商、重量及進場時間都是必填','⚠️ Date, name, supplier, weight and time in are required','⚠️ ត្រូវបញ្ចូលកាលបរិច្ឆេទ ឈ្មោះ អ្នកផ្គត់ផ្គង់ ទម្ងន់ និងម៉ោងចូល'));return;}
   const ldBefore=loadLocal(),existingWaste=Array.isArray(ldBefore.gate)?ldBefore.gate:[];
   const batchKeys=new Map();
   for(const row of valid){
     if(ehsWasteTimeMinutes(row.timein)==null||ehsWasteTimeIssue({time_in:row.timein,time_out:row.timeout})){
-      showToast(ehsText('⛔ 時間格式不正確，且 Time Out 必須晚於 Time In','⛔ Invalid time; Time Out must be later than Time In','⛔ ពេលវេលាមិនត្រឹមត្រូវ ហើយ Time Out ត្រូវក្រោយ Time In'));return;
+      showToast(ehsText('⛔ 時間格式不正確，且離場時間必須晚於進場時間','⛔ Invalid time; time out must be later than time in','⛔ ពេលវេលាមិនត្រឹមត្រូវ ហើយម៉ោងចេញត្រូវក្រោយម៉ោងចូល'));return;
     }
     const candidate={date:row.date,supplier:row.supplier,weight_kg:kgNumber(row.kg),time_in:row.timein,time_out:row.timeout};
     const k=ehsWasteDuplicateKey(candidate);
@@ -1410,16 +1274,17 @@ async function submitModB(){
   }
   const btn=document.getElementById('b-submit-btn');
   ehsWasteSubmitBusy=true;
-  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 提交中...';
+  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> '+ehsEsc(ehsT('submitting'));
+  try{
   const now=_localTS();
   const ld=loadLocal();
   const newRecs=valid.map(r=>{
     const dur=calcDuration(r.timein,r.timeout);
     return{
       id:r._editId||('B-'+Date.now()+'-'+Math.random().toString(36).slice(2)),module:'gate',sourceType:'waste',
-      date:r.date,name:r.name,supplier:r.supplier,car_number:r.car,
+      date:ehsYmd(r.date),name:String(r.name||'').trim(),supplier:r.supplier,car_number:r.car,
       solid_waste:r.solid?'V':'',industrial_waste:r.industrial?'V':'',
-      weight_kg:kgNumber(r.kg),time_in:r.timein,time_out:r.timeout,
+      weight_kg:kgNumber(r.kg),time_in:ehsTimeText(r.timein),time_out:ehsTimeText(r.timeout),
       duration_min:dur,gate_keeper:r.gate,checked_by:r.checked_by||'',remark:r.remark,
       anomaly:dur>180,photos:photoArray(r.photos),submitted_at:now,updatedAt:now
     };
@@ -1433,12 +1298,12 @@ async function submitModB(){
   }else try{
     const res=await gasPost({action:'push',tool:'ehs',records:newRecs});
     if(!res||res.ok===false)throw new Error(res&&res.error||'cloud push failed');
-    showToast('✅ 已提交 '+valid.length+' 筆至雲端');
-  }catch(e){showToast('⚠️ 本機已儲存 ('+valid.length+' 筆)，雲端離線');}
-  btn.disabled=false;btn.innerHTML='📨 '+ehsText('批次提交','Batch Submit','ដាក់ស្នើជាក្រុម')+' (<span id="b-row-count">0</span> '+ehsText('筆','records','កំណត់ត្រា')+')';
-  ehsWasteSubmitBusy=false;
-  bRows=[];addBRow();
+    showToast(ehsText('✅ 已提交 '+valid.length+' 筆至雲端','✅ Saved '+valid.length+' records to cloud','✅ បានរក្សាទុក '+valid.length+' ទៅ Cloud'));
+  }catch(e){showToast(ehsText('⚠️ 本機已儲存 '+valid.length+' 筆，雲端離線','⚠️ Saved '+valid.length+' on this phone; cloud offline','⚠️ បានរក្សាទុក '+valid.length+' ក្នុងទូរស័ព្ទ; Cloud អុហ្វឡាញ'));}
+  bRows=[];ehsEditOrig.b='';addBRow();renderEhsEditBanners();
   refreshEhsAll();
+  }catch(e){showToast('❌ '+e.message,'error');}
+  finally{btn.disabled=false;ehsWasteSubmitBusy=false;renderBBatch();}
 }
 
 function calcDuration(tin,tout){
@@ -1448,66 +1313,121 @@ function calcDuration(tin,tout){
   return t2>t1?t2-t1:null;
 }
 
-/* ========== MONTHLY APPROVAL ========== */
-async function submitMonthlyApproval(){
-  const yr=parseInt(document.getElementById('b-p-year').value||new Date().getFullYear());
-  const mo=parseInt(document.getElementById('b-p-month').value||new Date().getMonth()+1);
-  const ld=loadLocal();
-  const moRecs=ld.gate.filter(r=>{const dt=new Date(r.date);return dt.getFullYear()===yr&&(dt.getMonth()+1)===mo;});
-  const kN=moRecs.filter(r=>r.supplier==='K.S.W.M').length;
-  const sN=moRecs.filter(r=>r.supplier==='SONYAPICH').length;
-  const reportId='RPT-'+yr+String(mo).padStart(2,'0')+'-'+Date.now();
-  const report={reportId,year:yr,month:mo,kswm_trips:kN,sonyapich_trips:sN,status:'pending',submitted_at:_localTS()};
-  ld.monthly=[...(ld.monthly||[]),report];
-  saveLocal(ld);
-  const msg=`📋 *VRT廢棄物月報送審*\n報告ID: \`${reportId}\`\n月份: ${yr}年${mo}月\nK.S.W.M: ${kN}趟 (目標${SUP_TARGET})\nSONYAPICH: ${sN}趟 (目標${SUP_TARGET})\n狀態: 等待核可`;
-  sendTG(msg,PAUL_UID);
-  showToast('✅ 月報已送審，等待 Paul 核可');
-  renderBAnalysis();
+/* ========== MONTHLY REPORT / APPROVAL ==========
+   與送水月報相同的機制：Telegram 訊息附「核可／退件」按鈕，只有 Paul 在 Telegram 按下才算核可。
+   後端尚未支援 ehs_ok_/ehs_rej_ 回呼前（ehsApprovalReady() 為 false），只發送摘要並誠實標示，不顯示假的「待核可」。 */
+function ehsMonthOf(bounds){return String(bounds&&bounds.start||_localYMD()).slice(0,7);}
+function ehsMonthRows(month){const ld=loadLocal();return {gate:(ld.gate||[]).filter(function(r){return ehsYmd(r.date).slice(0,7)===month;}),internal:(ld.internal||[]).filter(function(r){return ehsYmd(r.date).slice(0,7)===month;})};}
+function ehsFnv(str){let h=2166136261>>>0;for(let i=0;i<str.length;i++){h^=str.charCodeAt(i);h=Math.imul(h,16777619);}return ('00000000'+(h>>>0).toString(16)).slice(-8);}
+/* 月報內容指紋：資料一改，舊的核可按鈕即失效（後端需用同一演算法重算）。 */
+function ehsApprovalDigest(month){
+  const m=ehsMonthRows(month);
+  const g=m.gate.map(function(r){return ['W',r.id,ehsYmd(r.date),r.supplier||'',kgNumber(r.weight_kg),ehsWasteTimeKey(r.time_in),ehsWasteTimeKey(r.time_out)].join('|');});
+  const i=m.internal.map(function(r){return ['R',r.id,ehsYmd(r.date),kgNumber(r.plastic_kg),kgNumber(r.fabric_kg),kgNumber(r.core_kg),ehsRecycleRowTotal(r)].join('|');});
+  return ehsFnv(g.concat(i).sort().join('\n'));
+}
+function ehsMonthlyEntry(month){
+  const list=(loadLocal().monthly||[]).filter(function(x){
+    if(!x)return false;
+    if(x.month&&String(x.month).length===7)return x.month===month;
+    return x.year&&x.month&&(x.year+'-'+String(x.month).padStart(2,'0'))===month;
+  });
+  return list.sort(function(a,b){return String(b.sentAt||b.submitted_at||'').localeCompare(String(a.sentAt||a.submitted_at||''));})[0]||null;
+}
+/* 後端在 Paul 按下按鈕後，把 ehsApprovals[YYYY-MM|all] 寫進該月記錄（同步回來後顯示）。 */
+function ehsCloudDecision(month){
+  const m=ehsMonthRows(month),key=month+'|all',found=[];
+  m.gate.concat(m.internal).forEach(function(r){let v=r&&r.ehsApprovals;if(typeof v==='string'){try{v=JSON.parse(v);}catch(e){v=null;}}if(v&&v[key])found.push(v[key]);});
+  return found.sort(function(a,b){return String(b.at||'').localeCompare(String(a.at||''));})[0]||null;
+}
+function renderEhsMonthlyStatus(bounds){
+  const row=document.getElementById('b-approval-row'),bar=document.getElementById('b-pending-bar'),txt=document.getElementById('b-pending-text'),btn=document.getElementById('b-approve-btn');
+  if(!row||!bar||!txt||!btn)return;
+  const isMonth=bPeriod==='month';
+  row.style.display=isMonth?'flex':'none';
+  if(!btn.disabled)btn.textContent=ehsApprovalReady()?ehsText('📋 送 Paul 核可本月月報','📋 Ask Paul to approve this month','📋 ស្នើ Paul អនុម័តរបាយការណ៍ខែនេះ'):ehsText('📤 發送本月月報摘要','📤 Send this month\'s report summary','📤 ផ្ញើសង្ខេបរបាយការណ៍ខែនេះ');
+  if(!isMonth){bar.style.display='none';return;}
+  const month=ehsMonthOf(bounds),digest=ehsApprovalDigest(month),entry=ehsMonthlyEntry(month),cloud=ehsCloudDecision(month);
+  let msg='';
+  if(cloud&&cloud.digest===digest){
+    msg=(cloud.status==='approved'?'✅ '+ehsText('已核可','Approved','បានអនុម័ត'):'❌ '+ehsText('已退件','Rejected','បានបដិសេធ'))+' · '+month+' · '+(cloud.by||'Paul')+(cloud.at?' · '+cloud.at:'');
+  }else if(entry&&entry.digest){
+    const changed=entry.digest!==digest;
+    if(entry.status==='pending')msg=changed?'📝 '+ehsText('月報送出後資料已變更，請重新送審','Data changed after the request; send it again','ទិន្នន័យបានផ្លាស់ប្ដូរ; សូមផ្ញើម្ដងទៀត'):'⏳ '+ehsText('已送出，等待 Paul 在 Telegram 按核可','Sent; waiting for Paul to approve in Telegram','បានផ្ញើ; រង់ចាំ Paul អនុម័តក្នុង Telegram')+' · '+entry.sentAt;
+    else msg='📤 '+ehsText(month+' 月報摘要已於 '+entry.sentAt+' 發送（Telegram 核可功能尚未啟用）',month+' report summary sent '+entry.sentAt+' (Telegram approval not enabled yet)','សង្ខេបរបាយការណ៍ '+month+' បានផ្ញើ '+entry.sentAt+' (ការអនុម័ត Telegram មិនទាន់បើក)')+(changed?' · '+ehsText('之後資料有變更','data changed since','ទិន្នន័យបានផ្លាស់ប្ដូរបន្ទាប់មក'):'');
+  }else if(entry){
+    msg='ℹ️ '+ehsText('舊版送審紀錄沒有 Telegram 核可按鈕，不代表已核可；請重新發送','The old request had no Telegram approval button and is not approved; please send again','សំណើចាស់គ្មានប៊ូតុងអនុម័ត ហើយមិនទាន់អនុម័តទេ; សូមផ្ញើម្ដងទៀត');
+  }
+  bar.style.display=msg?'flex':'none';txt.textContent=msg;
+}
+function submitMonthlyApproval(){return ehsGuard('monthly-report',submitMonthlyApprovalInner);}
+async function submitMonthlyApprovalInner(){
+  if(bPeriod!=='month')return;
+  const bounds=ehsPeriodBounds('b'),month=ehsMonthOf(bounds),m=ehsMonthRows(month);
+  if(!m.gate.length&&!m.internal.length){showToast(ehsText('⚠️ '+month+' 沒有記錄，未發送','⚠️ No records in '+month+'; nothing sent','⚠️ គ្មានកំណត់ត្រាក្នុង '+month+'; មិនបានផ្ញើ'));return;}
+  if(typeof GC==='undefined'||!GC.telegram||!GC.telegram.send){showToast('❌ '+ehsText('核心元件尚未載入，請重新整理','Core not loaded; reload the page','មិនទាន់ផ្ទុក; សូមផ្ទុកទំព័រឡើងវិញ'),'error');return;}
+  const mode=ehsApprovalReady()?'approval':'summary';
+  if(!confirm(mode==='approval'?ehsText('發送 '+month+' 月報，請 Paul 在 Telegram 核可？','Send the '+month+' report for Paul to approve in Telegram?','ផ្ញើរបាយការណ៍ '+month+' ឲ្យ Paul អនុម័តក្នុង Telegram មែនទេ?'):ehsText('發送 '+month+' 月報摘要到 Telegram？','Send the '+month+' report summary to Telegram?','ផ្ញើសង្ខេបរបាយការណ៍ '+month+' ទៅ Telegram មែនទេ?')))return;
+  const btn=document.getElementById('b-approve-btn');
+  if(btn){btn.disabled=true;btn.textContent='⏳ '+ehsT('submitting');}
+  try{
+    /* 先確認雲端已有同一批資料，群組看到的報告才與平台一致。 */
+    if(GC.sync&&GC.sync.upload){
+      const up=await GC.sync.upload('ehs',{silent:true,reason:'monthly_report'});
+      if(up&&up.ok===false&&!up.unmounted)throw new Error(ehsText('雲端上傳未完成：','Cloud upload failed: ','ការផ្ទុកឡើងបរាជ័យ៖ ')+String(up.error&&up.error.message||up.error||''));
+    }
+    const digest=ehsApprovalDigest(month),id=month+'_all_'+digest,ref=month+'-01';
+    const packet=buildEhsTelegram({cfg:ehsTgCfg(),period:'month',ref:ref,mode:mode,scope:'all',slot:'all',lang:lang});
+    const buttons=[];
+    if(mode==='approval')buttons.push([{text:'✅ '+ehsTelegramText('核可','Approve','អនុម័ត',lang),data:'ehs_ok_'+id},{text:'❌ '+ehsTelegramText('退件','Reject','បដិសេធ',lang),data:'ehs_rej_'+id}]);
+    buttons.push([{text:'📊 '+ehsTelegramText('開啟平台','Open dashboard','បើកផ្ទាំងគ្រប់គ្រង',lang),url:EHS_PAGE_URL}]);
+    const res=await GC.telegram.send(packet.text,packet.photos||[],buttons,TG_GROUP,'ehs',{reportPeriod:'month',reportRef:ref,reportMonth:month,reportMode:mode,reportScope:'all',reportSlot:'all',reportLanguage:lang});
+    const ld=loadLocal();
+    ld.monthly=(ld.monthly||[]).concat([{id:'MR-'+month+'-'+Date.now().toString(36),month:month,digest:digest,mode:mode,status:mode==='approval'?'pending':'summary_sent',sentAt:_localTS(),messageId:res&&res.messageId!=null?String(res.messageId):''}]).slice(-60);
+    saveLocal(ld);
+    markEhsTelegramSent({cfg:ehsTgCfg(),period:'month',ref:ref,scope:'all',slot:'all',mode:mode});
+    showToast(mode==='approval'?ehsText('✅ 月報已送出，等待 Paul 在 Telegram 按核可','✅ Report sent; waiting for Paul to approve in Telegram','✅ បានផ្ញើ; រង់ចាំ Paul អនុម័តក្នុង Telegram'):ehsText('✅ 月報摘要已發送（Telegram 核可功能尚未啟用）','✅ Report summary sent (Telegram approval not enabled yet)','✅ បានផ្ញើសង្ខេប (ការអនុម័ត Telegram មិនទាន់បើក)'),'success');
+    if(GC.sync&&GC.sync.schedule)GC.sync.schedule('ehs','monthly_report');
+    return true;
+  }catch(e){showToast('❌ '+ehsText('月報未發送：','Report not sent: ','មិនបានផ្ញើរបាយការណ៍៖ ')+(e&&e.message||e),'error');}
+  finally{if(btn)btn.disabled=false;renderBAnalysis();}
 }
 
-/* ========== EXCEL IMPORT ========== */
-let importRows=[],importType='';
-function handleImportDrop(e){
-  e.preventDefault();document.getElementById('import-zone').classList.remove('drag');
-  const files=Array.from((e.dataTransfer&&e.dataTransfer.files)||[]);if(files.length)parseImportFiles(files);
-}
-function handleImportFile(input){const files=Array.from(input.files||[]);if(files.length)parseImportFiles(files);}
-function cancelImport(){
-  document.getElementById('import-preview').style.display='none';
-  document.getElementById('import-file').value='';importRows=[];
-}
-
+/* ========== EXCEL IMPORT（共用「智慧匯入」使用 parseEhsSmartImport；舊的隱藏匯入頁已移除） ========== */
+/* 日期：Excel 序號、Date、文字（日在前 D/M/YYYY，只有第二段 >12 才視為 M/D），並驗證月份 ≤12。
+   無效回 ''（不再把看不懂的文字原樣存成日期）。月份標題（Jan-2026）回 'YYYY-MM'。自給自足，不依賴頁面其他函式。 */
 function excelDateToISO(v){
-  if(!v&&v!==0)return'';
-  const s=String(v).trim();
-  // Already YYYY-MM-DD
-  if(/^\d{4}-\d{2}-\d{2}/.test(s))return s.substring(0,10);
-  // 2026-March-02 text format
-  const monthNames={january:'01',jan:'01',february:'02',feb:'02',march:'03',mar:'03',april:'04',apr:'04',may:'05',
-    june:'06',jun:'06',july:'07',jul:'07',august:'08',aug:'08',september:'09',sep:'09',october:'10',oct:'10',november:'11',nov:'11',december:'12',dec:'12'};
-  const mMatch=s.match(/^(\d{4})-([A-Za-z]+)-(\d{1,2})$/);
-  if(mMatch){const mn=monthNames[mMatch[2].toLowerCase()];if(mn)return mMatch[1]+'-'+mn+'-'+mMatch[3].padStart(2,'0');}
-  // Month labels used by the waste workbook, e.g. Jan-2026 / January 2026.
-  const ymMatch=s.match(/^(\d{4})[-/\s]+([A-Za-z]+)$/) || s.match(/^([A-Za-z]+)[-/\s]+(\d{4})$/);
-  if(ymMatch){
-    const year=/^\d{4}$/.test(ymMatch[1])?ymMatch[1]:ymMatch[2];
-    const mon=/^\d{4}$/.test(ymMatch[1])?ymMatch[2]:ymMatch[1];
-    const mn=monthNames[String(mon).toLowerCase()];
-    if(mn)return year+'-'+mn;
+  if(v==null||v==='')return'';
+  const p2=function(n){return String(n).padStart(2,'0');};
+  const valid=function(y,m,d){y=+y;m=+m;d=+d;if(!(y>=1950&&y<=2999&&m>=1&&m<=12&&d>=1))return '';if(d>new Date(y,m,0).getDate())return '';return y+'-'+p2(m)+'-'+p2(d);};
+  const core=(typeof GC!=='undefined'&&GC&&typeof GC.parseDate==='function')?GC.parseDate:null;
+  if(v instanceof Date)return isNaN(v)?'':v.getFullYear()+'-'+p2(v.getMonth()+1)+'-'+p2(v.getDate());
+  if(typeof v==='number'){
+    if(core)return core(v)||'';
+    if(!isFinite(v)||v<1||v>2958465)return '';
+    const d=new Date(1899,11,30+Math.floor(v+1e-7));return valid(d.getFullYear(),d.getMonth()+1,d.getDate());
   }
-  // MM/DD/YYYY or MM/DD/YY
-  if(/^\d{1,2}\/\d{1,2}\/\d{2,4}/.test(s)){const p=s.split('/');const y=p[2].length===2?'20'+p[2]:p[2];return y+'-'+p[0].padStart(2,'0')+'-'+p[1].padStart(2,'0');}
-  // Excel serial number
-  const n=parseFloat(v);
-  if(!isNaN(n)&&n>1000){
-    const d=new Date(Math.round((n-25569)*86400*1000));
-    if(!isNaN(d.getTime()))return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
-  }
-  // SheetJS 某些日期格式會回傳可被瀏覽器辨識的日期字串，作最後退路。
-  const dt=new Date(s);
-  if(!isNaN(dt.getTime()))return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0');
-  return s;
+  const s=String(v).trim();if(!s)return '';
+  const monthNames={january:1,jan:1,february:2,feb:2,march:3,mar:3,april:4,apr:4,may:5,june:6,jun:6,july:7,jul:7,august:8,aug:8,september:9,sep:9,sept:9,october:10,oct:10,november:11,nov:11,december:12,dec:12};
+  let m=s.match(/^(\d{4})-([A-Za-z]+)-(\d{1,2})$/);                     // 2026-March-02
+  if(m&&monthNames[m[2].toLowerCase()])return valid(m[1],monthNames[m[2].toLowerCase()],m[3]);
+  m=s.match(/^(\d{4})[-/\s]+([A-Za-z]+)$/)||s.match(/^([A-Za-z]+)[-/\s]+(\d{4})$/);   // Jan-2026 / 2026 Jan
+  if(m){const year=/^\d{4}$/.test(m[1])?m[1]:m[2],mon=/^\d{4}$/.test(m[1])?m[2]:m[1],mn=monthNames[String(mon).toLowerCase()];if(mn)return year+'-'+p2(mn);}
+  if(core)return core(s)||'';
+  if(/^\d+(\.\d+)?$/.test(s))return excelDateToISO(Number(s));
+  m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);if(m)return valid(m[1],m[2],m[3]);
+  m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4}|\d{2})$/);
+  if(m){const a=+m[1],b=+m[2],y=m[3].length===2?2000+ +m[3]:+m[3];if(b>12&&a<=12)return valid(y,a,b);return valid(y,b,a);}
+  m=s.match(/^(\d{1,2})[\s\-\/.]*([A-Za-z]{3,9})\.?[\s\-\/.,]*(\d{4}|\d{2})$/);
+  if(m&&monthNames[m[2].toLowerCase()])return valid(m[3].length===2?2000+ +m[3]:m[3],monthNames[m[2].toLowerCase()],m[1]);
+  return '';
+}
+/* 時間：Excel 小數（0.354）、序號日期時間、'3:10pm'、'15:10:00' → 'HH:MM'；看不懂就保留原文字（驗證另有提示）。 */
+function ehsTimeText(v){
+  if(v==null||v==='')return '';
+  if(typeof GC!=='undefined'&&GC&&typeof GC.parseTime==='function'){const t=GC.parseTime(v);if(t)return t;}
+  if(typeof v==='number'&&isFinite(v)&&v>=0){const mins=Math.round((v-Math.floor(v))*1440)%1440;return String(Math.floor(mins/60)).padStart(2,'0')+':'+String(mins%60).padStart(2,'0');}
+  return String(v).trim();
 }
 
 function xlsxXmlText(content){
@@ -1581,148 +1501,6 @@ function xlsxEmbeddedPhotos(wb,sheetPath,firstDayRow){
   return out;
 }
 
-function parseImportFileLegacy(file){
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false,raw:false,bookFiles:true});
-      let detected=false;
-      const internalAll=[];
-      const workbookDoc=xlsxXmlDoc(wb.files&&wb.files['xl/workbook.xml']&&wb.files['xl/workbook.xml'].content);
-      const workbookRels=xlsxRelMap(wb.files||{},'xl/workbook.xml');
-      const sheetPaths={};
-      xlsxNodes(workbookDoc,'sheet').forEach(function(n){
-        const rel=workbookRels[n.getAttribute('r:id')||n.getAttribute('id')];
-        if(n.getAttribute('name')&&rel)sheetPaths[n.getAttribute('name')]=rel.path;
-      });
-      const wasteNum=function(v){
-        if(v==null||v==='')return 0;
-        if(typeof v==='number')return isFinite(v)?v:0;
-        const n=parseFloat(String(v).replace(/[\s,，]/g,'').replace(/[^0-9.+-]/g,''));
-        return isNaN(n)?0:n;
-      };
-      // Try each sheet
-      for(const sn of wb.SheetNames){
-        if(sn.toLowerCase()==='chart')continue; // Skip yearly summary chart sheet
-        const ws=wb.Sheets[sn];
-        // Read as 2D raw array
-        const raw=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false});
-        if(!raw||raw.length<4)continue;
-
-        // ===== DETECT FILE 01: Internal Waste (day-indexed format) =====
-        // Signature: Row ~3 has "Date","Kg" and row ~4 has "Plastic","Waste fabric"
-        // Col 0 = day number (1-31), Col 1 = Plastic, Col 2 = Fabric, Col 3 = Core, Col 4 = Total
-        let isInternal=false;
-        let monthDate=''; // We'll extract from the date cell
-        let dataStartRow=-1;
-
-        for(let i=0;i<Math.min(10,raw.length);i++){
-          const joined=raw[i].join('|').toLowerCase();
-          if(joined.includes('plastic')&&(joined.includes('fabric')||joined.includes('cutting'))){
-            isInternal=true;dataStartRow=i+1;break;
-          }
-        }
-
-        if(isInternal){
-          // Find the month date — source uses labels such as Jan-2026.
-          for(let i=0;i<dataStartRow;i++){
-            for(let j=0;j<(raw[i]||[]).length;j++){
-              const cell=raw[i][j];
-              if(cell&&String(cell).match(/\d{4}/)){
-                const iso=excelDateToISO(cell);
-                if(/^\d{4}-\d{2}/.test(iso)){monthDate=iso.substring(0,7);break;}
-              }
-            }
-            if(monthDate)break;
-          }
-          // Fall back to the sheet name (Jan, Feb, Mar...) when the title is absent.
-          if(!monthDate){
-            const shortMonths=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
-            const sm=shortMonths.findIndex(function(m){return sn.toLowerCase().trim()===m||sn.toLowerCase().trim().startsWith(m);});
-            const titleYear=String(raw.slice(0,dataStartRow).flat().join(' ')).match(/(\d{4})/);
-            if(sm>=0)monthDate=(titleYear?titleYear[1]:String(new Date().getFullYear()))+'-'+String(sm+1).padStart(2,'0');
-          }
-          if(!monthDate){const now=new Date();monthDate=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');}
-          let firstDayRow=dataStartRow;
-          for(let ri=dataStartRow;ri<raw.length;ri++){
-            const candidate=parseInt(raw[ri]&&raw[ri][0]);
-            if(!isNaN(candidate)&&candidate>=1&&candidate<=31){firstDayRow=ri;break;}
-          }
-          const sheetPhotos=xlsxEmbeddedPhotos(wb,sheetPaths[sn],firstDayRow);
-          // Parse day rows: col0=dayNum, col1=plastic, col2=fabric, col3=core, col4=total
-          const parsed=[];
-          for(let i=dataStartRow;i<raw.length;i++){
-            const row=raw[i];
-            const dayNum=parseInt(row[0]);
-            if(isNaN(dayNum)||dayNum<1||dayNum>31)continue;
-            const plastic=wasteNum(row[1]);
-            const fabric=wasteNum(row[2]);
-            const core=wasteNum(row[3]);
-            const total=wasteNum(row[4]);
-            if(plastic===0&&fabric===0&&core===0&&total===0)continue; // skip empty days
-            const isoDate=monthDate+'-'+String(dayNum).padStart(2,'0');
-            parsed.push({date:isoDate,plastic_kg:plastic,fabric_kg:fabric,core_kg:core,total_kg:total||plastic+fabric+core,photos:sheetPhotos[dayNum]||[]});
-          }
-          if(parsed.length)internalAll.push({monthDate:monthDate,sheetName:sn,rows:parsed});
-        }
-
-        // ===== DETECT FILE 02: Gate Check (Suppliers column) =====
-        // Find header row (has "Suppliers" or "Date" + "Name")
-        let headerIdx=-1;
-        for(let i=0;i<Math.min(10,raw.length);i++){
-          const joined=raw[i].join('|').toLowerCase();
-          if(joined.includes('supplier')&&joined.includes('date')){headerIdx=i;break;}
-          if(joined.includes('date')&&joined.includes('name')&&joined.includes('time')){headerIdx=i;break;}
-        }
-        if(headerIdx>=0){
-          const hdrs=raw[headerIdx].map(h=>String(h||'').trim());
-          const flex=(row,...kws)=>{for(const kw of kws){for(let j=0;j<hdrs.length;j++){if(hdrs[j].toLowerCase().includes(kw.toLowerCase())){const v=row[j];if(v!==undefined&&String(v).trim()!=='')return String(v).trim();}}}return'';};
-          const parsed=raw.slice(headerIdx+1).map(row=>{
-            const rawDate=flex(row,'date');
-            const date=excelDateToISO(rawDate);
-            const supplier=(flex(row,'supplier','suppliers')||'');
-            const solid=flex(row,'solid');
-            const ind=flex(row,'industrial');
-            return{date,name:flex(row,'name'),id_number:flex(row,'id number','id'),
-              supplier:supplier.toUpperCase().includes('K.S')||supplier.toUpperCase().includes('KSWM')?'K.S.W.M':
-                        supplier.toUpperCase().includes('SONY')?'SONYAPICH':supplier,
-              car_number:flex(row,'car number','car'),visitor_id:flex(row,'visitor'),
-              solid_waste:solid?'V':'',industrial_waste:ind?'V':'',
-              weight_kg:flex(row,'kg','weight'),maintain_by:flex(row,'maintain'),
-              checked_by:flex(row,'checked','check'),
-              time_in:flex(row,'time in','timein'),time_out:flex(row,'time out','timeout'),
-              gate_keeper:flex(row,'gate keeper','gate')};
-          }).filter(r=>r.date&&r.date.match(/\d{4}-\d{2}-\d{2}/));
-          if(parsed.length){
-            importType='gate';importRows=parsed;
-            showImportPreview(['date','name','supplier','car_number','solid_waste','industrial_waste','time_in','time_out']);
-            detected=true;break;
-          }
-        }
-      }
-      if(internalAll.length){
-        const byKey=new Map();
-        internalAll.forEach(function(group){group.rows.forEach(function(row){
-          const key=[row.date,row.plastic_kg,row.fabric_kg,row.core_kg,row.total_kg].join('|');
-          const old=byKey.get(key);
-          if(!old)byKey.set(key,Object.assign({},row,{photos:(row.photos||[]).slice()}));
-          else (row.photos||[]).forEach(function(p){if(!old.photos.includes(p))old.photos.push(p);});
-        });});
-        importType='internal';
-        importRows=Array.from(byKey.values()).sort(function(a,b){return a.date.localeCompare(b.date);});
-        const months=Array.from(new Set(internalAll.map(function(g){return g.monthDate;}))).join(', ');
-        showImportPreview(['date','plastic_kg','fabric_kg','core_kg','total_kg'],months);
-        detected=true;
-      }
-      if(!detected)showToast('⚠️ 無法識別格式。請確認是 Recycle 或 Waste Excel。');
-    }catch(err){
-      console.error('Import error:',err);
-      showToast('❌ 解析失敗：'+err.message);
-    }
-  };
-  reader.readAsArrayBuffer(file);
-}
-
 /*
  * EHS 專用智慧匯入：
  * 01 Recycle 檔案是一個月份一個分頁；02 Waste 檔案除了月份廢料分頁，
@@ -1743,7 +1521,8 @@ function parseEhsSmartImport(file){
       try{
         /* Waste 活頁簿把格式延伸到 16,384 欄；限制讀取列數並使用 dense
            結構，避免智慧匯入先花很久建立無用的空白儲存格。 */
-        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false,raw:false,bookFiles:true,sheetRows:3000,dense:true});
+        /* A10：讀原始值（raw:true、cellDates:false），日期序號／時間小數自行轉換，避免 dd/mm 被當成 mm/dd。 */
+        const wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',cellDates:false,bookFiles:true,sheetRows:3000,dense:true});
         const workbookDoc=xlsxXmlDoc(wb.files&&wb.files['xl/workbook.xml']&&wb.files['xl/workbook.xml'].content);
         const workbookRels=xlsxRelMap(wb.files||{},'xl/workbook.xml');
         const sheetPaths={};
@@ -1760,8 +1539,9 @@ function parseEhsSmartImport(file){
         };
         const text=function(v){return String(v==null?'':v).trim();};
         const norm=function(v){return text(v).toLowerCase().replace(/[\s_\-\/()（）:：.]/g,'');};
+        let invalidDates=0;
         const isDate=function(v){
-          const s=text(v),iso=excelDateToISO(s);
+          const iso=excelDateToISO(typeof v==='number'?v:text(v));
           // 舊範本某些隱藏／重複分頁只有「2026」單一數字；若把它當 Excel
           // 序號會變成 1905-07-18。EHS 工作表只接受合理營運年份，排除這種假日期。
           if(!/^\d{4}-\d{2}-\d{2}$/.test(iso))return '';
@@ -1801,7 +1581,7 @@ function parseEhsSmartImport(file){
           try{range=ws&&ws['!ref']?XLSX.utils.decode_range(ws['!ref']):{s:{r:0,c:0},e:{r:5000,c:40}};}
           catch(e){range={s:{r:0,c:0},e:{r:5000,c:40}};}
           range.s={r:0,c:0}; range.e.c=Math.min(Number(range.e.c)||40,40); range.e.r=Math.min(Number(range.e.r)||5000,5000);
-          return XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:false,range:range});
+          return XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true,range:range});
         };
         const merge=function(map,key,row){
           const old=map.get(key);
@@ -1828,14 +1608,18 @@ function parseEhsSmartImport(file){
             const month=sheetMonth(sn,raw,recycleHead+1);
             if(month){
               let firstDay=-1;
-              for(let i=recycleHead+1;i<raw.length;i++){const d=parseInt(text(raw[i][0]),10);if(d>=1&&d<=31){firstDay=i;break;}}
+              /* 第一欄可能是「日」數字，也可能是真正的日期（序號）；兩種都支援。 */
+              const dayOf=function(cell){const iso=typeof cell==='number'&&cell>31?isDate(cell):'';if(iso)return {day:+iso.slice(8,10),month:iso.slice(0,7)};const d=parseInt(text(cell),10);return d>=1&&d<=31&&/^\s*\d{1,2}(\.0+)?\s*$/.test(text(cell))?{day:d,month:''}:null;};
+              for(let i=recycleHead+1;i<raw.length;i++){if(dayOf(raw[i][0])){firstDay=i;break;}}
               const photos=firstDay>=0?xlsxEmbeddedPhotos(wb,sheetPaths[sn],firstDay):{};
               if(firstDay>=0)for(let i=firstDay;i<raw.length;i++){
-                const row=raw[i],day=parseInt(text(row[0]),10);
-                if(!(day>=1&&day<=31))continue;
+                const row=raw[i],dd=dayOf(row[0]);
+                if(!dd)continue;
+                const day=dd.day,rowDate=(dd.month||month)+'-'+String(day).padStart(2,'0');
                 const plastic=num(row[1]),fabric=num(row[2]),core=num(row[3]),total=num(row[4]);
                 if(!plastic&&!fabric&&!core&&!total)continue;
-                const item={id:makeId('r'),module:'internal',sourceType:'recycle',date:month+'-'+String(day).padStart(2,'0'),plastic_kg:plastic,fabric_kg:fabric,core_kg:core,total_kg:total||plastic+fabric+core,photos:photos[day]||[],remark:'',submitted_at:_localTS(),updatedAt:_localTS()};
+                if(!excelDateToISO(rowDate)){invalidDates++;continue;}
+                const item={id:makeId('r'),module:'internal',sourceType:'recycle',date:rowDate,plastic_kg:plastic,fabric_kg:fabric,core_kg:core,total_kg:total||plastic+fabric+core,photos:photos[day]||[],remark:'',submitted_at:_localTS(),updatedAt:_localTS()};
                 merge(recycle,[item.date,item.plastic_kg,item.fabric_kg,item.core_kg,item.total_kg].join('|'),item);
               }
               sheets.push('Recycle:'+sn);
@@ -1856,9 +1640,9 @@ function parseEhsSmartImport(file){
             const dateI=idx('date'),nameI=idx('name'),supplierI=idx('supplier'),idI=idx('id number'),carI=idx('car number'),visitorI=idx('visitor id'),solidI=idx('solid waste'),indI=idx('industrial waste'),weightI=idx('kg','weight'),maintainI=idx('maintain'),checkI=idx('checked','check'),inI=idx('time in','timein'),outI=idx('time out','timeout'),keeperI=idx('gate keeper');
             for(let i=wasteHead+1;i<raw.length;i++){
               const row=raw[i]||[],date=isDate(row[dateI]);
-              if(!date)continue;
+              if(!date){if(text(row[dateI])&&(text(row[supplierI])||num(row[weightI])))invalidDates++;continue;}
               const supplier=text(row[supplierI]);
-              const item={id:makeId('w'),module:'gate',sourceType:'waste',date:date,name:text(row[nameI]),id_number:text(row[idI]),supplier:supplier.toUpperCase().indexOf('K.S')>=0||supplier.toUpperCase().indexOf('KSWM')>=0?'K.S.W.M':supplier.toUpperCase().indexOf('SONY')>=0?'SONYAPICH':supplier,car_number:text(row[carI]),visitor_id:text(row[visitorI]),solid_waste:text(row[solidI])?'V':'',industrial_waste:text(row[indI])?'V':'',weight_kg:num(row[weightI]),maintain_by:text(row[maintainI]),checked_by:text(row[checkI]),time_in:text(row[inI]),time_out:text(row[outI]),gate_keeper:text(row[keeperI]),photos:[],submitted_at:_localTS(),updatedAt:_localTS()};
+              const item={id:makeId('w'),module:'gate',sourceType:'waste',date:date,name:text(row[nameI]),id_number:text(row[idI]),supplier:supplier.toUpperCase().indexOf('K.S')>=0||supplier.toUpperCase().indexOf('KSWM')>=0?'K.S.W.M':supplier.toUpperCase().indexOf('SONY')>=0?'SONYAPICH':supplier,car_number:text(row[carI]),visitor_id:text(row[visitorI]),solid_waste:text(row[solidI])?'V':'',industrial_waste:text(row[indI])?'V':'',weight_kg:num(row[weightI]),maintain_by:text(row[maintainI]),checked_by:text(row[checkI]),time_in:ehsTimeText(row[inI]),time_out:ehsTimeText(row[outI]),gate_keeper:text(row[keeperI]),photos:[],submitted_at:_localTS(),updatedAt:_localTS()};
               if(!item.name&&!item.supplier&&!item.weight_kg&&!item.solid_waste&&!item.industrial_waste)continue;
               merge(waste,[item.date,item.name,item.supplier,item.car_number,item.time_in,item.time_out,item.weight_kg].join('|'),item);
             }
@@ -1867,8 +1651,9 @@ function parseEhsSmartImport(file){
         }
         const recycleRows=Array.from(recycle.values()),wasteRows=Array.from(waste.values());
         const objects=recycleRows.concat(wasteRows).sort(function(a,b){return String(a.date).localeCompare(String(b.date));});
-        if(!objects.length)throw new Error('找不到 Recycle 或 Waste 的有效欄位／資料');
+        if(!objects.length)throw new Error(ehsText('找不到 Recycle 或 Waste 的有效欄位／資料','No valid Recycle or Waste columns / rows found','រកមិនឃើញជួរឈរ ឬទិន្នន័យ កែច្នៃ / សំណល់ ត្រឹមត្រូវ'));
         const detailedRecycleKg=recycleRows.reduce(function(sum,row){return sum+num(row.total_kg);},0),warnings=[];
+        if(invalidDates)warnings.push(ehsText('已略過 '+invalidDates+' 筆日期無效的列（例如月份大於 12）','Skipped '+invalidDates+' row(s) with an invalid date (e.g. month above 12)','បានរំលង '+invalidDates+' ជួរដែលកាលបរិច្ឆេទមិនត្រឹមត្រូវ'));
         if(declaredRecycleKg&&detailedRecycleKg&&Math.abs(declaredRecycleKg-detailedRecycleKg)>.01){
           warnings.push(ehsText(
             '年度總表 '+declaredRecycleKg.toLocaleString()+' kg 與每日明細 '+detailedRecycleKg.toLocaleString()+' kg 不一致；已採用可追溯日期／照片的每日明細',
@@ -1883,286 +1668,94 @@ function parseEhsSmartImport(file){
   });
 }
 
-/* 舊版 EHS 匯入頁也使用同一個全分頁解析器。 */
-function parseImportFile(file){
-  parseEhsSmartImport(file).then(function(meta){
-    importRows=meta.objects||[];
-    const hasRecycle=importRows.some(function(r){return r.sourceType==='recycle';});
-    importType=hasRecycle?'internal':'gate';
-    const cols=hasRecycle?['date','plastic_kg','fabric_kg','core_kg','total_kg']:['date','name','supplier','car_number','solid_waste','industrial_waste','weight_kg','time_in','time_out'];
-    showImportPreview(cols,meta.sheetName);
-  }).catch(function(err){console.error('Import error:',err);showToast('❌ 解析失敗：'+err.message);});
-}
-async function parseImportFiles(files){
-  importRows=[]; importType='';
-  const metas=[],errors=[];
-  for(const file of (files||[])){
-    try{const meta=await parseEhsSmartImport(file);metas.push({file:file.name,meta:meta});importRows=importRows.concat(meta.objects||[]);}
-    catch(e){errors.push(file.name+': '+(e&&e.message||e));}
-  }
-  const hasRecycle=importRows.some(function(r){return r.sourceType==='recycle';});
-  const hasWaste=importRows.some(function(r){return r.sourceType==='waste';});
-  importType=hasRecycle&&hasWaste?'mixed':hasWaste?'gate':'internal';
-  if(!importRows.length){showToast('❌ 解析失敗：'+(errors.join(' | ')||'沒有有效資料'));return;}
-  const cols=importType==='gate'?['date','name','supplier','car_number','solid_waste','industrial_waste','weight_kg','time_in','time_out']:
-    importType==='internal'?['date','plastic_kg','fabric_kg','core_kg','total_kg']:
-    ['sourceType','date','name','supplier','plastic_kg','fabric_kg','core_kg','total_kg','weight_kg'];
-  const note=metas.map(function(x){return x.file;}).join(', ')+(errors.length?' | ⚠️ '+errors.join(' | '):'');
-  showImportPreview(cols,note);
-}
 
-function showImportPreview(cols,monthNote){
-  const info=document.getElementById('import-info');
-  const typeLabel=importType==='internal'?'♻️ Recycle 回收':importType==='gate'?'🗑️ Waste 廢料':'♻️ Recycle + 🗑️ Waste';
-  info.innerHTML=`<strong>${typeLabel}</strong>${monthNote?' — '+monthNote+' 月份':''} &nbsp;|&nbsp; 解析到 <strong>${importRows.length}</strong> 筆有效記錄（顯示前 20 筆）`;
-  const hdrs=cols.map(h=>'<th>'+h+'</th>').join('');
-  const rows=importRows.slice(0,20).map(r=>'<tr>'+cols.map(c=>'<td>'+(r[c]!==undefined?r[c]:'')+'</td>').join('')+'</tr>').join('');
-  document.getElementById('import-table').innerHTML='<thead><tr>'+hdrs+'</tr></thead><tbody>'+rows+'</tbody>';
-  document.getElementById('import-preview').style.display='block';
-}
-
-async function submitBatchImport(){
-  if(!importRows.length){showToast('無資料');return;}
-  const btn=document.getElementById('import-submit-btn');
-  btn.disabled=true;btn.innerHTML='<span class="spinner"></span> 匯入中...';
-  const ld=loadLocal();
-  if(!Array.isArray(ld.gate))ld.gate=[];
-  if(!Array.isArray(ld.internal))ld.internal=[];
-  const now=_localTS();
-  const pushed=[];
-  importRows.forEach(r=>{
-    const isWaste=r.sourceType==='waste'||(r.sourceType==null&&importType==='gate');
-    const target=isWaste?ld.gate:ld.internal;
-    const signature=isWaste
-      ? ehsWasteDuplicateKey(r)
-      : [r.date,r.plastic_kg,r.fabric_kg,r.core_kg,r.total_kg].join('|');
-    const old=target.find(x=>{
-      if(isWaste)return signature&&ehsWasteDuplicateKey(x)===signature;
-      const vals=[x.date,x.plastic_kg,x.fabric_kg,x.core_kg,x.total_kg];return vals.join('|')===signature;
-    });
-    if(old){
-      const merged=Array.from(new Set([...(Array.isArray(old.photos)?old.photos:[]),...(Array.isArray(r.photos)?r.photos:[])]));
-      if(merged.length)old.photos=merged;
-      old.updatedAt=now;
-      pushed.push(old);
-    }else{
-      const id='IMP-'+Date.now()+'-'+Math.random().toString(36).slice(2);
-      const fresh={...r,id,submitted_at:now,updatedAt:now,photos:Array.isArray(r.photos)?r.photos:[]};
-      target.push(fresh);pushed.push(fresh);
-    }
+/* ========== BATCH HELPERS：列是否已開始填寫、編輯狀態與取消 ========== */
+function ehsARowStarted(r){return !!(r&&(kgNumber(r.plastic)||kgNumber(r.fabric)||kgNumber(r.core)||String(r.checked_by||r.remark||'').trim()||photoArray(r.photos).length||r._editId));}
+function ehsBRowStarted(r){return !!(r&&(r.supplier||String(r.name||'').trim()||String(r.car||'').trim()||r.solid||r.industrial||String(r.kg||r.timein||r.timeout||r.gate||r.checked_by||r.remark||'').trim()||photoArray(r.photos).length||r._editId));}
+const ehsEditOrig={a:'',b:''};
+function ehsEditing(w){const rows=w==='a'?aRows:bRows;return rows.some(function(r){return r&&r._editId;});}
+function renderEhsEditBanners(){
+  ['a','b'].forEach(function(w){
+    const banner=document.getElementById(w+'-edit-banner'),text=document.getElementById(w+'-edit-text');if(!banner||!text)return;
+    const row=(w==='a'?aRows:bRows).find(function(r){return r&&r._editId;});
+    if(!row){banner.hidden=true;return;}
+    banner.hidden=false;
+    text.textContent=ehsT('editing')+'：'+[ehsYmd(row.date)||'—',w==='b'?(row.supplier||'—'):kgDisplay(kgNumber(row.plastic)+kgNumber(row.fabric)+kgNumber(row.core))].join(' · ');
   });
-  saveLocal(ld);
-  if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule){
-    GC.sync.schedule('ehs','smart_import');
-    showToast(ehsText('✅ 已匯入 '+pushed.length+' 筆；雲端背景同步','✅ Imported '+pushed.length+' records; cloud sync runs in background','✅ បាននាំចូល '+pushed.length+' កំណត់ត្រា; កំពុងសមកាលកម្មពពក'));
-  }else try{
-    const res=await fetchGAS({action:'push',tool:'ehs',records:pushed});
-    showToast(res&&res.ok?'✅ 已匯入 '+pushed.length+' 筆至雲端':'⚠️ 本機已儲存，雲端失敗');
-  }catch(e){showToast('⚠️ 離線模式，本機已儲存 '+pushed.length+' 筆');}
-  btn.disabled=false;btn.innerHTML='☁️ 確認匯入雲端';
-  cancelImport();
-  renderAAnalysis();renderBAnalysis();
+}
+/* 取消編輯：有改動時先確認；回傳 false 表示使用者選擇保留。 */
+function cancelEhsEdit(w,fromTab){
+  const rows=w==='a'?aRows:bRows,row=rows.find(function(r){return r&&r._editId;});
+  if(!row){renderEhsEditBanners();return true;}
+  const changed=ehsEditOrig[w]&&JSON.stringify(row)!==ehsEditOrig[w];
+  if(changed&&!confirm(ehsText('放棄尚未儲存的修改？','Discard unsaved changes?','បោះបង់ការកែប្រែដែលមិនទាន់រក្សាទុក?')))return false;
+  if(w==='a'){aRows=[];ehsEditOrig.a='';addARow();}else{bRows=[];ehsEditOrig.b='';addBRow();}
+  renderEhsEditBanners();
+  if(!fromTab)showToast(ehsText('已取消編輯','Edit cancelled','បានបោះបង់ការកែ'));
+  return true;
+}
+function ehsWasteTypeText(r){const a=[];if(r&&r.solid_waste)a.push(ehsText('固體','Solid','រឹង'));if(r&&r.industrial_waste)a.push(ehsText('工業','Industrial','ឧស្សាហកម្ម'));return a.join(' + ');}
+function ehsWasteTypeBadges(r){
+  const a=[];
+  if(r&&r.solid_waste)a.push('<span class="badge badge-solid">'+ehsEsc(ehsText('固','Solid','រឹង'))+'</span>');
+  if(r&&r.industrial_waste)a.push('<span class="badge badge-ind">'+ehsEsc(ehsText('工','Industrial','ឧស្សាហកម្ម'))+'</span>');
+  return a.join(' ')||'—';
 }
 
-/* ========== GAS / TELEGRAM ========== */
-async function fetchGAS(payload){
-  const url=GAS_URL+'?data='+encodeURIComponent(JSON.stringify(payload));
-  const res=await fetch(url,{mode:'cors'});return res.json();
-}
-function sendTG(text,chatId){
-  if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.send)
-    return GC.telegram.send(text,[],[[{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_ehs_v2.html'}]],chatId||TG_GROUP,'ehs').catch(()=>{});
-  return Promise.resolve(false);
-}
+/* ========== GAS（固定內建網址；舊版 payload= 表單格式僅作備援） ========== */
+var cfg = (() => {
+  const _cfg={gasUrl:EHS_GAS_URL,chatId:TG_GROUP};
+  return { load:()=>_cfg, get:()=>_cfg };
+})();
+var gasPost = async (payload) => {
+  if(typeof GC!=='undefined'&&typeof GC.withLang==='function')payload=GC.withLang(payload);
+  const f=(typeof GC!=='undefined'&&typeof GC.fetch==='function')?GC.fetch:fetch;
+  const body=new URLSearchParams({payload:JSON.stringify(payload)});
+  const r=await f(EHS_GAS_URL,{method:'POST',body,redirect:'follow',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+  return r.json();
+};
+var cloud = (() => ({
+  push: async () => { if(typeof GC!=='undefined'&&GC.sync) return GC.sync.upload('ehs',{silent:false}); },
+  pull: async () => { if(typeof GC!=='undefined'&&GC.sync){ const r=await GC.sync.download('ehs',{silent:false}); refreshEhsAll(); return r; } }
+}))();
+window.cfg=cfg;window.cloud=cloud;window.gasPost=gasPost;
 
-/* ========== HELPERS ========== */
-function getWeek(d){
-  const jan1=new Date(d.getFullYear(),0,1);
-  return Math.ceil(((d-jan1)/86400000+jan1.getDay()+1)/7);
+/* 共用讀取：Recycle + Waste 有效記錄（不含墓碑）。 */
+function ehsReadAll(){
+  try{const d=loadLocal();const o=[];
+    (Array.isArray(d.internal)?d.internal:[]).forEach(r=>o.push(Object.assign({module:'internal',sourceType:'recycle'},r,{date:ehsYmd(r.date),plastic_kg:kgNumber(r.plastic_kg),fabric_kg:kgNumber(r.fabric_kg),core_kg:kgNumber(r.core_kg),total_kg:kgNumber(r.total_kg)||kgNumber(r.plastic_kg)+kgNumber(r.fabric_kg)+kgNumber(r.core_kg),photos:photoArray(r.photos),sourceType:r.sourceType||'recycle'})));
+    (Array.isArray(d.gate)?d.gate:[]).forEach(r=>o.push(Object.assign({module:'gate',sourceType:'waste'},r,{date:ehsYmd(r.date),weight_kg:kgNumber(r.weight_kg),photos:photoArray(r.photos),sourceType:r.sourceType||'waste'})));
+    return o;}catch(e){return [];}
 }
+/* 雲端同步清單＝有效記錄＋墓碑（墓碑同步到其他手機，才不會被舊資料復活）。 */
+function ehsCloudReadAll(){
+  const live=ehsReadAll(),ids=new Set(live.map(r=>String(r.id||'')));
+  const tombs=(loadLocal().tombstones||[]).filter(t=>t&&t.id&&!ids.has(String(t.id))).map(t=>{const o=Object.assign({},t,{_deleted:true});delete o.cloudDeletedAt;return o;});
+  return live.concat(tombs);
+}
+function ehsTgCfg(){return window.__ehsGcCfg||{read:ehsReadAll,dateField:'date',scopeField:'sourceType',telegramSlotFilter:ehsTelegramSlotFilter};}
 
-/* ========== INIT ========== */
+/* ========== INIT：直接開啟每日工作（Waste）；同一分頁重新整理才回到上次分頁 ========== */
 (function init(){
   const run=()=>{
     repairWasteDuplicates(false);
-    setLang(lang); buildYearSelect('a-p-year',renderAAnalysis); buildMonthSelect('a-p-month',renderAAnalysis);
+    buildYearSelect('a-p-year',renderAAnalysis); buildMonthSelect('a-p-month',renderAAnalysis);
     buildYearSelect('b-p-year',renderBAnalysis); buildMonthSelect('b-p-month',renderBAnalysis);
     buildYearSelect('r-year',renderReport); buildMonthSelect('r-month',renderReport); buildYearSelect('h-year',queryHistory);
+    const hm=document.getElementById('h-month');if(hm){hm.innerHTML='<option value=""></option>'+Array.from({length:12},(_,i)=>'<option value="'+(i+1)+'"></option>').join('');hm.value='';}
     ['a-p-date','b-p-date','r-date'].forEach(function(id){const el=document.getElementById(id);if(el)el.value=_localYMD();});
     syncEhsPeriodControls('a');syncEhsPeriodControls('b');syncEhsPeriodControls('r');
-    const hy=document.getElementById('h-year'); const allOpt=document.createElement('option');allOpt.value='';allOpt.textContent=ehsText('全年份','All years','គ្រប់ឆ្នាំ');hy.insertBefore(allOpt,hy.firstChild);
+    const hy=document.getElementById('h-year'); const allOpt=document.createElement('option');allOpt.value='';hy.insertBefore(allOpt,hy.firstChild);
+    addARow();addBRow();
+    setLang(lang);
     const tick=()=>{const now=new Date();const locale=lang==='zh'?'zh-TW':(lang==='km'?'km-KH':'en-GB');document.getElementById('ts-sub').textContent='Vantage River Textiles · '+now.toLocaleString(locale,{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});};
-    tick();setInterval(tick,30000); addARow();addBRow(); renderAAnalysis();renderBAnalysis();renderReport();
+    tick();setInterval(tick,30000);
+    let first='modB';try{const last=sessionStorage.getItem(EHS_LAST_TAB_KEY);if(last&&document.getElementById('tab-'+last))first=last;}catch(e){}
+    switchTab(first);
+    renderAAnalysis();renderBAnalysis();renderReport();
   };
   if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 })();
-
-
-
-/* ═══════════════════════════════════════════════════════════════
-   CFG MODULE — copied from ac_gascheck_dormitory_v1 architecture
-   ═══════════════════════════════════════════════════════════════ */
-var cfg = (() => {
-  let _cfg = {};
-  const load = () => {
-    try { _cfg = JSON.parse(localStorage.getItem(CFG_KEY)||'{}'); } catch(e) {}
-    const fixedGasUrl='https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
-    _cfg.gasUrl=fixedGasUrl;
-    _cfg.botToken='';
-    _cfg.chatId=TG_GROUP || '-5113064563';
-    // Populate settings inputs
-    var g = document.getElementById('cfg-gas');
-    var b = document.getElementById('cfg-token');
-    var c = document.getElementById('cfg-chat');
-    if(g) g.value = _cfg.gasUrl;
-    if(b) b.value = _cfg.botToken;
-    if(c) c.value = _cfg.chatId;
-    updateCloudBadge();
-  };
-  const save = () => {
-    var g = document.getElementById('cfg-gas');
-    var b = document.getElementById('cfg-token');
-    var c = document.getElementById('cfg-chat');
-    _cfg.gasUrl   = g ? g.value.trim() : _cfg.gasUrl;
-    _cfg.botToken = b ? b.value.trim() : _cfg.botToken;
-    _cfg.chatId   = c ? c.value.trim() : _cfg.chatId;
-    if(_cfg.gasUrl) localStorage.setItem('ac_gascheck_gas_url',_cfg.gasUrl);
-    localStorage.setItem(CFG_KEY, JSON.stringify(_cfg));
-    updateCloudBadge();
-    showToast('✅ 設定已儲存');
-    var el = document.getElementById('cfg-status');
-    if(el) { el.textContent = '✅ 已儲存 '+new Date().toLocaleTimeString(); el.style.color='#16a34a'; }
-  };
-  const get = () => _cfg;
-  const togglePanel = () => { switchTab('tg'); };
-  const testTg = async () => {
-    const res = await tgPost({ text: '✅ VRT EHS 廢棄物管理系統 Telegram 測試成功！' });
-    var ok = res && res.ok;
-    var el = document.getElementById('cfg-status');
-    if(el) { el.textContent = ok ? '✅ Telegram 連接成功' : '❌ Telegram 失敗：'+(res&&res.description||''); el.style.color = ok?'#16a34a':'#dc2626'; }
-    showToast(ok ? '✅ Telegram OK' : '❌ Telegram 失敗');
-  };
-  const testGas = async () => {
-    try {
-      var d = await gasGet({action:'ping'});
-      var ok = d.ok !== false;
-      var el = document.getElementById('cfg-status');
-      if(el) { el.textContent = ok ? '✅ GAS 連接成功' : '⚠ '+d.message; el.style.color = ok?'#16a34a':'#f59e0b'; }
-      showToast(ok ? '✅ GAS OK' : '⚠ '+d.message);
-      updateCloudBadge(ok);
-    } catch(e) {
-      var el = document.getElementById('cfg-status');
-      if(el) { el.textContent = '❌ GAS 失敗：'+e.message; el.style.color='#dc2626'; }
-      showToast('❌ GAS 失敗：'+e.message);
-      updateCloudBadge(false);
-    }
-  };
-  return { load, save, get, togglePanel, testTg, testGas };
-})();
-
-/* ═══════════════════════════════════════════════════════════════
-   FETCH HELPERS — dormitory architecture
-   ═══════════════════════════════════════════════════════════════ */
-var tgPost = async (body) => {
-  var c = cfg.get();
-  var chatId = c.chatId   || TG_GROUP;
-  var payload = Object.assign({chat_id: chatId, parse_mode: 'HTML'}, body);
-  var rows = payload.reply_markup && payload.reply_markup.inline_keyboard ? payload.reply_markup.inline_keyboard.slice() : [];
-  rows.push([{text:'📊 Open Dashboard / 開啟平台',url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_ehs_v2.html'}]);
-  payload.reply_markup = {inline_keyboard:rows};
-  try {
-    if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.send)
-      return await GC.telegram.send(payload.text||'',[],rows,chatId,'ehs');
-    return await gasPost({action:'telegram',tool:'ehs',chatId:chatId,text:payload.text||'',buttons:rows});
-  } catch(e) { return {ok:false,error:e.message}; }
-};
-
-var gasGet = async (params) => {
-  var url = cfg.get().gasUrl;
-  if(!url) throw new Error('GAS URL 未設定');
-  var qs = new URLSearchParams(Object.assign({}, params, {_t: Date.now()})).toString();
-  var r  = await fetch(url+'?'+qs, {redirect:'follow'});
-  return r.json();
-};
-
-var gasPost = async (payload) => {
-  var url = cfg.get().gasUrl;
-  if(!url) throw new Error('GAS URL 未設定');
-  var body = new URLSearchParams({payload: JSON.stringify(payload)});
-  var r = await fetch(url, {method:'POST', body, redirect:'follow', headers:{'Content-Type':'application/x-www-form-urlencoded'}});
-  return r.json();
-};
-
-/* ═══════════════════════════════════════════════════════════════
-   CLOUD MODULE
-   ═══════════════════════════════════════════════════════════════ */
-var cloud = (() => {
-  const mergeRows = (local, remote) => {
-    const map=new Map();
-    (local||[]).forEach(r=>{if(!r)return;const k=String(r.id||((r.date||'')+'|'+(r.time||'')+'|'+(r.module||'')));map.set(k,r);});
-    (remote||[]).forEach(r=>{if(!r)return;const k=String(r.id||((r.date||'')+'|'+(r.time||'')+'|'+(r.module||''))),old=map.get(k);if(!old)map.set(k,r);else{const ot=String(old.updatedAt||''),nt=String(r.updatedAt||'');if(nt&&(!ot||nt>ot))map.set(k,Object.assign({},old,r));}});
-    return Array.from(map.values());
-  };
-  const push = async (type) => {
-    var url = cfg.get().gasUrl;
-    if(!url) { showToast('請先設定 GAS URL'); return; }
-    if(typeof GC!=='undefined'&&GC.sync){ await GC.sync.upload('ehs',{silent:false}); return; }
-    showToast('☁ 上傳中…');
-    var db = loadLocal();
-    var data = type === 'gate' ? db.gate : type === 'monthly' ? db.monthly : db.internal;
-    var records = (data||[]).map((r,i)=>Object.assign({},r,{id:r.id||((type||'internal')+'_'+(r.date||'')+'_'+(r.time||'')+'_'+i),module:type||'internal',updatedAt:r.updatedAt||_localTS()}));
-    try {
-      var r = await gasPost({action:'push', tool:'ehs', records:records});
-      var ok = r && r.ok !== false;
-      showToast(ok ? '✅ 已上傳 '+data.length+' 筆' : '❌ 上傳失敗：'+(r&&r.error||''));
-      updateCloudBadge(ok);
-    } catch(e) { showToast('❌ '+e.message); updateCloudBadge(false); }
-  };
-  const pull = async (type) => {
-    var url = cfg.get().gasUrl;
-    if(!url) { showToast('請先設定 GAS URL'); return; }
-    if(typeof GC!=='undefined'&&GC.sync){ await GC.sync.download('ehs',{silent:false}); refreshEhsAll(); return; }
-    showToast('⬇ 下載中…');
-    try {
-      var r = await gasGet({action:'pull', tool:'ehs'});
-      if(r && Array.isArray(r.records)) {
-        var db = loadLocal();
-        var rows=r.records.filter(x=>!x.module||x.module===(type||'internal'));
-        if(type === 'gate') db.gate = mergeRows(db.gate,rows); else if(type === 'monthly') db.monthly = mergeRows(db.monthly,rows); else db.internal = mergeRows(db.internal,rows);
-        saveLocal(db);
-        if(typeof renderABatch==='function') renderABatch();
-        if(typeof renderBBatch==='function') renderBBatch();
-        renderAAnalysis(); renderBAnalysis();
-        showToast('✅ 已下載 '+rows.length+' 筆');
-        updateCloudBadge(true);
-      } else { showToast('❌ '+(r&&r.error||'無資料')); updateCloudBadge(false); }
-    } catch(e) { showToast('❌ '+e.message); updateCloudBadge(false); }
-  };
-  return { push, pull };
-})();
-
-function updateCloudBadge(ok) {
-  var el  = document.getElementById('cloud-badge');
-  var url = cfg.get().gasUrl;
-  if(!el) return;
-  if(!url) {
-    el.style.cssText += ';background:rgba(255,255,255,.1);border-color:rgba(255,255,255,.15);color:rgba(255,255,255,.5)';
-    el.textContent = '☁ GAS';
-  } else if(ok === false) {
-    el.style.cssText += ';background:rgba(214,65,65,.2);border-color:rgba(214,65,65,.4);color:#f87171';
-    el.textContent = '☁ 失敗';
-  } else {
-    el.style.cssText += ';background:rgba(46,139,87,.2);border-color:rgba(46,139,87,.4);color:#4ade80';
-    el.textContent = '☁ 連接';
-  }
-}
-
-window.cfg   = cfg;
-window.cloud = cloud;
-window.tgPost = tgPost;
-window.gasGet = gasGet;
-window.gasPost = gasPost;
-window.updateCloudBadge = updateCloudBadge;
 
 /* 通用工具列的 EHS Telegram 報告：期間、資料類型、時段、模式各自獨立選擇。 */
 function ehsTelegramText(zh,en,km,lang){
@@ -2202,7 +1795,7 @@ function buildEhsTelegram(opt){
   rows=ehsUniqueWasteRows(rows);
   const periodLabel={day:ehsTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:ehsTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:ehsTelegramText('本月','This Month','ខែនេះ',lang),year:ehsTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:ehsTelegramText('全部','All','ទាំងអស់',lang)}[opt.period||'month']||opt.period;
   const modeLabel={summary:ehsTelegramText('摘要','Summary','សង្ខេប',lang),review:ehsTelegramText('審查','Review','ពិនិត្យ',lang),approval:ehsTelegramText('核可','Approval','អនុម័ត',lang)}[opt.mode||'summary']||opt.mode;
-  const dataLabel={all:ehsTelegramText('全部','All','ទាំងអស់',lang),recycle:ehsTelegramText('Recycle 回收','Recycle','Recycle',lang),waste:ehsTelegramText('Waste 廢料','Waste','Waste',lang)}[scope]||scope;
+  const dataLabel={all:ehsTelegramText('全部','All','ទាំងអស់',lang),recycle:ehsTelegramText('回收','Recycle','កែច្នៃ',lang),waste:ehsTelegramText('廢料','Waste','សំណល់',lang)}[scope]||scope;
   const slotLabel={all:ehsTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:ehsTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:ehsTelegramText('下午','Afternoon','ពេលរសៀល',lang),night:ehsTelegramText('晚上','Night','ពេលយប់',lang)}[slot]||slot;
   const checkers=[...new Set(rows.map(function(r){return String(r.checked_by||r.checker||r.checkBy||'').trim();}).filter(Boolean))];
   const wasteRows=rows.filter(function(r){return r.sourceType==='waste'||r.module==='gate';});
@@ -2221,8 +1814,9 @@ function buildEhsTelegram(opt){
     '━━━━━━━━━━━━━━━━',
     '📊 <b>'+ehsTelegramText('總覽','Overview','ទិដ្ឋភាពទូទៅ',lang)+'</b>'
   ];
+  const tl=function(zh,en,km){return lang==='bi'?en:ehsTelegramText(zh,en,km,lang);};
   lines.push(ehsTgTable(['Item','Qty'],[17,10],[
-    ['Records',rows.length],['Waste',wasteRows.length],['Recycle',recycleRows.length],['Waste kg',kgNumber(wasteKg)],['Recycle kg',kgNumber(recycleKg)],['Pending',pending.length],['Photos',photos.length]
+    [tl('記錄','Records','កំណត់ត្រា'),rows.length],[tl('廢料','Waste','សំណល់'),wasteRows.length],[tl('回收','Recycle','កែច្នៃ'),recycleRows.length],[tl('廢料 kg','Waste kg','សំណល់ kg'),kgNumber(wasteKg)],[tl('回收 kg','Recycle kg','កែច្នៃ kg'),kgNumber(recycleKg)],[tl('照片','Photos','រូបថត'),photos.length]
   ]));
   if(checkers.length)lines.push('👤 '+ehsTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+ehsTgEsc(checkers.join(', ')));
   if(!rows.length){lines.push('━━━━━━━━━━━━━━━━',ehsTelegramText('暫無記錄','No records','គ្មានកំណត់ត្រា',lang),'⏰ '+_localTS());return {text:lines.join('\n'),photos:photos};}
@@ -2242,7 +1836,7 @@ function buildEhsTelegram(opt){
     })));
     lines.push('🏢 <b>'+ehsTelegramText('公司對照','Company Key','លេខក្រុមហ៊ុន',lang)+'</b>');
     companyNames.forEach(function(n){lines.push('• <b>'+ehsTgEsc(companyCode.get(n))+'</b> = '+ehsTgEsc(n));});
-    lines.push('Type: S=Solid / 固體 · I=Industrial / 工業 · W=Waste / 廢料');
+    lines.push(ehsTgEsc(ehsTelegramText('類型：S=固體 · I=工業 · W=其他廢料','Type: S=Solid · I=Industrial · W=Other waste','ប្រភេទ៖ S=រឹង · I=ឧស្សាហកម្ម · W=សំណល់ផ្សេងៗ',lang)));
     if(sorted.length>shown.length)lines.push('… '+ehsTgEsc(String(sorted.length-shown.length))+' '+ehsTelegramText('筆其餘 Waste 記錄略；完整資料請開啟平台','more Waste records; open dashboard for full data','កំណត់ត្រា Waste បន្ថែម; បើកផ្ទាំងគ្រប់គ្រងសម្រាប់ទិន្នន័យពេញ',lang));
   }
   if(recycleRows.length){
@@ -2253,9 +1847,8 @@ function buildEhsTelegram(opt){
     lines.push(ehsTgTable(['Date','Inspector'],[5,20],shown.map(function(r){return [String(r.date||'').slice(5,10)||'—',r.checked_by||r.checker||'—'];})));
     if(sorted.length>shown.length)lines.push('… '+ehsTgEsc(String(sorted.length-shown.length))+' '+ehsTelegramText('筆其餘 Recycle 記錄略；完整資料請開啟平台','more Recycle records; open dashboard for full data','កំណត់ត្រា Recycle បន្ថែម; បើកផ្ទាំងគ្រប់គ្រងសម្រាប់ទិន្នន័យពេញ',lang));
   }
-  if(opt.mode==='review'||opt.mode==='approval'){
-    lines.push('━━━━━━━━━━━━━━━━','⏳ '+ehsTelegramText('待審查／待核可','Pending review / approval','កំពុងរង់ចាំពិនិត្យ/អនុម័ត',lang)+': <b>'+pending.length+'</b>');
-    if(!pending.length)lines.push('✅ '+ehsTelegramText('沒有待審查／待核可資料','No pending review/approval records','គ្មានទិន្នន័យកំពុងរង់ចាំពិនិត្យ/អនុម័ត',lang));
+  if(opt.mode==='approval'){
+    lines.push('━━━━━━━━━━━━━━━━','⏳ '+ehsTgEsc(ehsTelegramText('請 Paul 按下方按鈕核可或退件本月報告','Paul: please approve or reject this report with the buttons below','Paul៖ សូមអនុម័ត ឬបដិសេធរបាយការណ៍នេះ ដោយប៊ូតុងខាងក្រោម',lang)));
   }
   lines.push('━━━━━━━━━━━━━━━━','⏰ '+_localTS());
   return {text:lines.join('\n'),photos:photos};
@@ -2302,12 +1895,14 @@ function markEhsTelegramSent(ctx){
 
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
 (function(){
+  let attached=false;
   function boot(){
     if(typeof GC==='undefined'||!GC.attach){ setTimeout(boot,150); return; }
-    GC.attach({
+    if(attached)return;attached=true;
+    const conf={
       tool:'ehs',
       title:'EHS Recycle / Waste',
-      gasUrl: localStorage.getItem('ac_gascheck_gas_url') || 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec',
+      gasUrl: EHS_GAS_URL,
       dateField:'date',
       idField:'id',
       groupField:'sourceType',
@@ -2315,10 +1910,12 @@ function markEhsTelegramSent(ctx){
       weather:false,
       photo:true,
       periodRef:true,
-      telegramScopes:[{value:'all',zh:'全部',en:'All',km:'ទាំងអស់'},{value:'recycle',zh:'Recycle 回收',en:'Recycle',km:'Recycle'},{value:'waste',zh:'Waste 廢料',en:'Waste',km:'Waste'}],
+      telegramScopes:[{value:'all',zh:'全部',en:'All',km:'ទាំងអស់'},{value:'recycle',zh:'回收',en:'Recycle',km:'កែច្នៃ'},{value:'waste',zh:'廢料',en:'Waste',km:'សំណល់'}],
       scopeField:'sourceType',
       telegramSlots:[{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'},{value:'morning',zh:'早上',en:'Morning',km:'ពេលព្រឹក'},{value:'afternoon',zh:'下午',en:'Afternoon',km:'ពេលរសៀល'},{value:'night',zh:'晚上',en:'Night',km:'ពេលយប់'}],
       telegramSlotFilter:ehsTelegramSlotFilter,
+      /* 共用 Telegram 視窗只發摘要；月報核可走 Waste 頁的月報按鈕（Telegram 核可卡）。 */
+      telegramModes:['summary'],
       telegramLanguage:true,
       telegramPhotoDedupe:true,
       telegramAutoUpload:true,telegramRequireData:true,
@@ -2326,18 +1923,19 @@ function markEhsTelegramSent(ctx){
       onTelegramSent:markEhsTelegramSent,
       importParser:parseEhsSmartImport,
       mergeImport:mergeEhsImport,
-      importSchema:{"date": ["日期", "date", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "recycle weight", "ទម្ងន់"], "supplier": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "weight_kg": ["重量", "kg", "weight", "ទម្ងន់"], "checked_by": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
+      importSchema:{"date": ["日期", "date", "កាលបរិច្ឆេទ", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "recycle weight", "ទម្ងន់"], "supplier": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "weight_kg": ["重量", "kg", "weight", "ទម្ងន់"], "checked_by": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
       beforeCloudSync:function(){return ehsFlushTombstones({silent:true});},
       onSync:function(){setTimeout(refreshEhsAll,0);},
-      onImport:function(){setTimeout(refreshEhsAll,0);},
-    read(){ try{ const d=loadLocal(); let o=[];
-        (Array.isArray(d.internal)?d.internal:[]).forEach(r=>o.push(Object.assign({module:'internal',sourceType:'recycle'},r,{date:ehsYmd(r.date),plastic_kg:kgNumber(r.plastic_kg),fabric_kg:kgNumber(r.fabric_kg),core_kg:kgNumber(r.core_kg),total_kg:kgNumber(r.total_kg)||kgNumber(r.plastic_kg)+kgNumber(r.fabric_kg)+kgNumber(r.core_kg),photos:photoArray(r.photos),sourceType:r.sourceType||'recycle'})));
-        (Array.isArray(d.gate)?d.gate:[]).forEach(r=>o.push(Object.assign({module:'gate',sourceType:'waste'},r,{date:ehsYmd(r.date),weight_kg:kgNumber(r.weight_kg),photos:photoArray(r.photos),sourceType:r.sourceType||'waste'})));
-        return o; }catch(e){ return []; } },
+      onImport:function(){GC.sync.schedule('ehs','smart_import');setTimeout(refreshEhsAll,0);},
+      exportHandler:function(){return ehsToolbarExport();},
+    read(){ return ehsReadAll(); },
+    cloudRead(){ return ehsCloudReadAll(); },
     write(list){ try{ const old=loadLocal(),d={gate:[],internal:[],monthly:Array.isArray(old.monthly)?old.monthly:[],tombstones:Array.isArray(old.tombstones)?old.tombstones.slice():[]};const deleted=new Set(d.tombstones.map(function(t){return String(t&&t.id||'');}).filter(Boolean));
-        (list||[]).forEach(r=>{if(!r)return;if(r._deleted){const t=ehsMakeTombstone(r,r.reason||'cloud_tombstone',r.winnerId||'');if(t&&!deleted.has(String(t.id))){d.tombstones.push(t);deleted.add(String(t.id));}return;}if(deleted.has(String(r.id||'')))return;const waste=r.sourceType==='waste'||r.module==='gate'; const clean=Object.assign({},r,{date:ehsYmd(r.date),photos:photoArray(r.photos),module:waste?'gate':'internal',sourceType:waste?'waste':'recycle'});if(waste)clean.weight_kg=kgNumber(clean.weight_kg);else{clean.plastic_kg=kgNumber(clean.plastic_kg);clean.fabric_kg=kgNumber(clean.fabric_kg);clean.core_kg=kgNumber(clean.core_kg);clean.total_kg=kgNumber(clean.total_kg)||clean.plastic_kg+clean.fabric_kg+clean.core_kg;} d[waste?'gate':'internal'].push(clean); });
-        saveLocal(d); }catch(e){} },
-    });
+        (list||[]).forEach(r=>{if(!r)return;if(ehsIsDel(r)){const base=ehsMakeTombstone(r,r.reason||'cloud_tombstone',r.winnerId||'');const t=base?Object.assign(base,r,{id:String(r.id),_deleted:true}):null;if(t&&!deleted.has(String(t.id))){d.tombstones.push(t);deleted.add(String(t.id));}return;}if(deleted.has(String(r.id||'')))return;const waste=r.sourceType==='waste'||r.module==='gate'; const clean=Object.assign({},r,{date:ehsYmd(r.date),photos:photoArray(r.photos),module:waste?'gate':'internal',sourceType:waste?'waste':'recycle'});if(waste)clean.weight_kg=kgNumber(clean.weight_kg);else{clean.plastic_kg=kgNumber(clean.plastic_kg);clean.fabric_kg=kgNumber(clean.fabric_kg);clean.core_kg=kgNumber(clean.core_kg);clean.total_kg=kgNumber(clean.total_kg)||clean.plastic_kg+clean.fabric_kg+clean.core_kg;} d[waste?'gate':'internal'].push(clean); });
+        saveLocal(d); }catch(e){ showToast('❌ '+e.message,'error'); } },
+    };
+    window.__ehsGcCfg=conf;
+    GC.attach(conf);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();
@@ -2346,18 +1944,18 @@ function markEhsTelegramSent(ctx){
 <div id="rowPhotoOv">
   <div class="rp-box">
     <div class="rp-head">
-      <span class="rp-title" id="rpTitle">📷 照片 Photos</span>
-      <button class="rp-x" onclick="closeRowPhotos()">✕</button>
+      <span class="rp-title" id="rpTitle" data-i="rp-title">📷 照片</span>
+      <button class="rp-x" onclick="closeRowPhotos()" aria-label="Close">✕</button>
     </div>
     <div class="rp-body"><div id="rpMount"></div></div>
-    <div class="rp-foot"><button class="rp-ok" onclick="closeRowPhotos()">確定 OK</button></div>
+    <div class="rp-foot"><button class="rp-ok" onclick="closeRowPhotos()" data-i="ok">確定</button></div>
   </div>
 </div>
 <script>
 /* ── 批次列照片：每列獨立照片集 ── */
 var _rpCtl=null, _rpTarget=null;
 function openRowPhotos(which,id){
-  if(typeof GC==='undefined'||!GC.photo){ alert('元件載入中，請稍候再試'); return; }
+  if(typeof GC==='undefined'||!GC.photo){ showToast(ehsText('⚠️ 元件載入中，請稍候再試','⚠️ Still loading; try again in a moment','⚠️ កំពុងផ្ទុក សូមព្យាយាមម្ដងទៀត')); return; }
   var arr = which==='a' ? aRows : bRows;
   var row = arr.find(function(r){return r.id===id;});
   if(!row) return;
@@ -2366,13 +1964,12 @@ function openRowPhotos(which,id){
   var mount=document.getElementById('rpMount');
   mount.innerHTML='';
   _rpCtl=GC.photo.mount(mount,{photos:row.photos,max:4,onChange:function(p){ row.photos=p; }});
-  document.getElementById('rpTitle').textContent='📷 '+(which==='a'?'Recycle':'Waste');
+  document.getElementById('rpTitle').textContent='📷 '+(which==='a'?ehsT('tab-a'):ehsT('tab-b'));
   document.getElementById('rowPhotoOv').classList.add('open');
 }
 function closeRowPhotos(){
   document.getElementById('rowPhotoOv').classList.remove('open');
   if(_rpTarget && _rpCtl){
-    /* 直接取控制器現值寫回，不依賴 onChange 是否觸發 */
     var arr2=_rpTarget.which==='a'?aRows:bRows;
     var row2=arr2.find(function(r){return r.id===_rpTarget.id;});
     if(row2) row2.photos=_rpCtl.get();

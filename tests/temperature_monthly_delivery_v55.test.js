@@ -72,7 +72,7 @@ assert(daily.text.includes('AM 08:00–09:00')&&daily.text.includes('PM 15:30–
 
 (async()=>{
   window.GC.cloud.post=async()=>({ok:true});
-  await assert.rejects(()=>window.GC.telegram.send('test',[],[],null,'temperature',{}),/No delivery confirmation/);
+  await assert.rejects(()=>window.GC.telegram.send('test',[],[],null,'temperature',{}),/No delivery confirmation|未回傳送達確認/);
   window.GC.cloud.post=async()=>({ok:true,messageId:12345});
   const result=await window.GC.telegram.send('test',[],[],null,'temperature',{});
   assert.strictEqual(result.messageId,12345);

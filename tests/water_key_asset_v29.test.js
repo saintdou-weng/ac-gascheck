@@ -57,8 +57,10 @@ assert(asset.includes("GC.cloud.download('asset'"));
 assert(!asset.includes('await deleteAssetFromGAS(delCode)'));
 assert(asset.includes('window.printLabelsA4'));
 assert(asset.includes('grid-template-columns:repeat(3,1fr)'));
-assert(asset.includes("currentUser.name!=='Phea'"));
-assert(asset.includes("currentUser.name!=='Paul'"));
+// FIX pass (C2): PIN roles removed from the public page; only Paul approves, via Telegram.
+assert(!asset.includes("currentUser.name!=='Phea'")&&!asset.includes("currentUser.name!=='Paul'"),'no web PIN roles');
+assert(!/pin\s*:\s*['"]?\d{4}/i.test(asset),'no PIN codes in public HTML');
+assert(/telegramModes:\s*\['summary'\]/.test(asset),'Asset Telegram is summary-only (no fake approval)');
 assert(asset.includes('before,after:assetSnapshot(next)'));
 assert(asset.includes("data-asset-period=\"day\""));
 assert(asset.includes("data-asset-period=\"week\""));

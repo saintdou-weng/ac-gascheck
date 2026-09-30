@@ -11,7 +11,7 @@ const clean = read('ac_gascheck_cleaning_v2.html');
 const temp = read('ac_gascheck_temperature_v2.html');
 const dorm = read('ac_gascheck_dormitory_v2.html');
 const water = read('ac_gascheck_waterdrum_v2.html');
-const cache = 'gascheck-core.js?v=56-key-water-monthly';
+const cache = 'gascheck-core.js?v=20260929-fix';
 
 assert(core.includes("GC.version = '3.16-key-water-daily-monthly'"));
 assert(core.includes('capture="environment"'));
@@ -43,7 +43,10 @@ assert(dorm.includes('id="record-detail"'));
 assert(dorm.includes('待 Paul 核可'));
 assert(dorm.includes('const withdraw = async'));
 assert(dorm.includes('const edit = id => appForm.edit(id)'));
-assert(dorm.includes("mode:'replace'"));
+// FIX pass: destructive push mode:'replace' removed (it overwrote other phones' applications);
+// duplicate cleanup now goes through smart sync (three-way bucket merge).
+assert(!dorm.includes("mode:'replace'"),'Dorm must not push mode:replace');
+assert(/removed\)\s*dormScheduleSync\('dedupe'\)/.test(dorm),'Dorm dedupe schedules a smart sync instead');
 assert(core.includes('next.data = next.callback_data'));
 const gas = read('ac_gascheck_core_v3_fixed.gs');
 // v61 routes both legacy and revision-bound callbacks; behavior is exercised in telegram_approval_v61.

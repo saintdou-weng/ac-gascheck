@@ -114,10 +114,20 @@ const delivery={day:18,fQty:4,fPrice:2000,fTime:'08:00',sQty:2,sPrice:3000,sTime
     w.document.querySelector('[data-gc-open-tg]').onclick();await new Promise(r=>setTimeout(r,25));
     const modal=w.document.querySelector('.gc-common-modal[data-gc-tool=waterdrum]');
     await modal.querySelector('[data-gc-send]').onclick();
+    // FIX pass: a failed photo no longer aborts the record upload (A5); the records sync, the
+    // photo stays on the phone, and the Telegram report is NOT sent without its photos.
     assert(modal.querySelector('[data-gc-send-state]').textContent.includes('上傳'),'Error identifies the cloud upload phase');
     assert.equal(s.requests.filter(p=>p.action==='telegram').length,0);
-    assert.equal(w.__configs.waterdrum.read()[0].fPhotos[0],largePhoto,'Failed upload preserves local original');
+    const day18=()=>w.__configs.waterdrum.read().find(r=>r.date==='2026-09-18');
+    assert.equal(day18().fPhotos[0],largePhoto,'Failed upload preserves local original');
     assert(!modal.querySelector('[data-gc-send]').disabled,'Retry remains available');
+    // Same failure in English UI: phase named in English, no Chinese in the message.
+    w.document.querySelector('[data-gc-ui-lang=en]').onclick();await new Promise(r=>setTimeout(r,25));
+    await modal.querySelector('[data-gc-send]').onclick();
+    const enMsg=modal.querySelector('[data-gc-send-state]').textContent;
+    assert(/upload/i.test(enMsg)&&!/[\u3400-\u9fff]/.test(enMsg),'English error names the upload phase without Chinese: '+enMsg);
+    assert.equal(s.requests.filter(p=>p.action==='telegram').length,0);
+    assert.equal(day18().fPhotos[0],largePhoto);
   }finally{failure.dom.window.close();}
 
   const legacy=await load('ac_gascheck_waterdrum_v2.html',{wdr_2026_09:[delivery]});
