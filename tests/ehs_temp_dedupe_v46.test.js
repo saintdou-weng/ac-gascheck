@@ -10,10 +10,10 @@ assert(ehs.includes('function ehsWasteDuplicateKey(r)'));
 assert(ehs.includes("rows=ehsUniqueWasteRows(rows)"));
 assert(ehs.includes('onTelegramSent:markEhsTelegramSent'));
 assert(ehs.includes('同日期、公司、重量及 Time In 不可登記兩次'));
-assert(temp.includes("['morning','afternoon'].forEach(p=>"));
-assert(temp.includes("AM | Morning 08:00–09:00"));
-assert(temp.includes("PM | Afternoon 15:30–16:30"));
-assert(temp.includes('function tempTgStatusCode(r)'));
+// 2026-10-03 compact card: AM/PM readings per zone, status text from tempTelegramCombinedStatus.
+assert(temp.includes("' · AM '+tempTgReading(am)+' → PM '+tempTgReading(pm)"));
+assert(temp.includes("⏱ AM 08:00–09:00 → PM 15:30–16:30"));
+assert(temp.includes('tempTelegramCombinedStatus(tSt(r.t),hSt(r.h),lang)'));
 assert(temp.includes('onTelegramSent:markTemperatureTelegramSent'));
 assert(!temp.includes("r.summarySentAt=sentAt;r.updatedAt=sentAt"));
 assert(gas.includes('function recordReportCompletionEpoch_(rec)'));

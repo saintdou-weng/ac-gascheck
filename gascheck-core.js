@@ -2745,6 +2745,16 @@ const CSS = `
 .gc-toast-act{flex:0 0 auto;min-height:36px;padding:0 12px;border:1px solid rgba(255,255,255,.7);border-radius:8px;background:rgba(255,255,255,.14);color:#fff;font:700 13px/1 inherit;cursor:pointer}
 .gc-toast.gc-flash{animation:gcFlash .5s ease}
 .gc-toast.out{opacity:0;transform:translateY(-8px);transition:.3s}
+.gc-preview blockquote,.gc-tg-modal blockquote{margin:4px 0;padding:4px 8px;border-left:3px solid #e17076;background:rgba(26,32,53,.06);border-radius:4px}
+.gc-fx{position:fixed;inset:0;z-index:2147483601;display:flex;align-items:center;justify-content:center;pointer-events:none;background:rgba(26,32,53,.18);animation:gcIn .18s ease-out}
+.gc-fx.out{opacity:0;transition:opacity .45s}
+.gc-fx-card{background:#fff;border-radius:18px;padding:22px 30px;box-shadow:0 12px 40px rgba(0,0,0,.25);text-align:center;min-width:200px;position:relative;overflow:hidden}
+.gc-fx-card b{display:block;margin-top:8px;font-size:15px;color:#1A2035}
+.gc-fx-plane{font-size:30px;animation:gcFxFly 1.1s ease-in forwards}
+.gc-fx-check{width:54px;height:54px;margin:-36px auto 0;border-radius:50%;background:#16a34a;color:#fff;font:700 32px/54px system-ui;transform:scale(0);animation:gcFxPop .45s .55s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes gcFxFly{0%{transform:translate(-60px,20px) rotate(0)}60%{transform:translate(40px,-30px) rotate(-8deg);opacity:1}100%{transform:translate(140px,-90px) rotate(-15deg);opacity:0}}
+@keyframes gcFxPop{to{transform:scale(1)}}
+@media (prefers-reduced-motion:reduce){.gc-fx-plane,.gc-fx-check{animation:none;transform:none}}
 @keyframes gcIn{from{opacity:0;transform:translateY(-10px)}to{opacity:1;transform:none}}
 @keyframes gcFlash{50%{transform:scale(1.03)}}
 .gc-busy{opacity:.6;cursor:progress!important}
@@ -3076,6 +3086,76 @@ GC.sync = (() => {
    10.5 TELEGRAM — 直接摘要／審查／Approval
    Telegram token 留在 GAS，瀏覽器只呼叫固定 Web App URL。
    ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   10b. GC.TG — Telegram 精簡卡片格式（2026-10-03）
+   手機一眼看懂：不用空白補齊的表格（Telegram 引用區塊不是等寬字，一定對不齊），
+   改成「狀態燈 → 彩色進度條 → 重點數字 → 需要注意的 → 正常只算數量」。
+   lang: 'zh' | 'en' | 'km' | 'bi'（bi = 中/英 並列，只合併標籤，數字與名字只出現一次）
+   ═══════════════════════════════════════════════════════════ */
+GC.TG = (function () {
+  const esc = s => U.escapeHtml(String(s == null ? '' : s));
+  function lbl(lang, zh, en, km) {
+    lang = lang || 'bi';
+    if (lang === 'zh') return zh;
+    if (lang === 'en') return en;
+    if (lang === 'km') return km || en;
+    return zh === en ? zh : zh + '/' + en;
+  }
+  function d(v) { v = String(v || ''); return /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(5, 10) : v; }
+  function time(v) { const m = String(v == null ? '' : v).match(/(\d{1,2}):(\d{2})/); return m ? ('0' + m[1]).slice(-2) + ':' + m[2] : ''; }
+  function mins(v) { const m = String(v == null ? '' : v).match(/(\d{1,2}):(\d{2})/); return m ? (+m[1]) * 60 + (+m[2]) : null; }
+  function dur(n) { n = Math.round(+n || 0); if (n <= 0) return ''; const h = Math.floor(n / 60), m = n % 60; return h ? h + 'h' + (m ? ('0' + m).slice(-2) : '') : m + 'm'; }
+  function ranges(dates) {
+    const list = Array.from(new Set((dates || []).map(String).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x)))).sort(), out = [];
+    let i = 0;
+    while (i < list.length) {
+      let j = i;
+      while (j + 1 < list.length && (Date.parse(list[j + 1]) - Date.parse(list[j])) === 86400000) j++;
+      out.push(j > i ? d(list[i]) + '~' + (list[i].slice(0, 7) === list[j].slice(0, 7) ? list[j].slice(8) : d(list[j])) : d(list[i]));
+      i = j + 1;
+    }
+    return out.join(', ');
+  }
+  function head(icon, title, period, sub) { return icon + ' <b>' + title + '</b>' + (period ? '\n📅 ' + esc(period) : '') + (sub ? '\n' + sub : '') + '\n━━━━━━━━━━━━'; }
+  function verdict(level, text) { return (level === 'bad' ? '🔴' : level === 'warn' ? '🟠' : '🟢') + ' <b>' + String(text == null ? '' : text) + '</b>'; }
+  function bar(value, total, width) {
+    width = width || 10; total = Number(total) || 0; value = Number(value) || 0;
+    if (total <= 0) return '';
+    const r = Math.max(0, Math.min(1, value / total)), n = Math.round(r * width), block = r >= 0.9 ? '🟩' : r >= 0.7 ? '🟨' : '🟥';
+    let out = ''; for (let i = 0; i < width; i++) out += i < n ? block : '⬜';
+    return out + ' ' + Math.round(r * 100) + '%';
+  }
+  function kpis(items, n) {
+    n = n || 3; const rows = []; let cur = [];
+    (items || []).filter(Boolean).forEach(x => { cur.push(x[0] + ' ' + x[1] + ' <b>' + x[2] + '</b>'); if (cur.length >= n) { rows.push(cur.join('  ·  ')); cur = []; } });
+    if (cur.length) rows.push(cur.join('  ·  '));
+    return rows.join('\n');
+  }
+  function sec(icon, title) { return '\n\n<b>' + icon + ' ' + title + '</b>'; }
+  function fold(lines) { lines = (lines || []).filter(x => x != null && x !== ''); return lines.length ? '\n<blockquote expandable>' + lines.join('\n') + '</blockquote>' : ''; }
+  function chunk(title, lines, budget) {
+    budget = budget || 3000; const pages = []; let cur = [], size = 0;
+    (lines || []).forEach(ln => { const len = String(ln).length + 1; if (cur.length && size + len > budget) { pages.push(title + '\n' + cur.join('\n')); cur = []; size = 0; } cur.push(ln); size += len; });
+    if (cur.length) pages.push(title + '\n' + cur.join('\n'));
+    return pages;
+  }
+  /* 多頁：每頁前面加【1/3】，給 GC.telegram.send 的 pages 用 */
+  function number(pages) { return pages.length > 1 ? pages.map((p, i) => '【' + (i + 1) + '/' + pages.length + '】\n' + p) : pages; }
+  return { lbl, esc, d, time, mins, dur, ranges, head, verdict, bar, kpis, sec, fold, chunk, number };
+})();
+
+/* 送出成功動畫（只在網頁上） */
+GC.sentFx = function (text) {
+  try {
+    const fx = document.createElement('div');
+    fx.className = 'gc-fx';
+    fx.innerHTML = '<div class="gc-fx-card"><div class="gc-fx-plane">✈️</div><div class="gc-fx-check">✓</div><b>' + U.escapeHtml(String(text || '')) + '</b></div>';
+    document.body.appendChild(fx);
+    setTimeout(() => fx.classList.add('out'), 1500);
+    setTimeout(() => { if (fx.parentNode) fx.parentNode.removeChild(fx); }, 2000);
+  } catch (e) {}
+};
+
 GC.telegram = {
   text(zh, en, km, lang) {
     lang = lang || 'bi';
@@ -3889,7 +3969,8 @@ GC.attach = function (cfg) {
       : null;
     const built = custom == null ? GC.telegram.buildText(C, period, mode, periodRef, scope, slot, lang) : custom;
     const packet = typeof built === 'string' ? { text: built } : (built || {});
-    if (!Array.isArray(packet.photos) || !packet.photos.length) packet.photos = collectPhotos();
+    /* 建構器明確回傳 photos:[]（例如全部打勾）就不附照片；沒指定才用預設收集 */
+    if (!Array.isArray(packet.photos)) packet.photos = collectPhotos();
     const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
     if (!packet.buttons) packet.buttons = [[{ text: GC.telegram.buttonText('dashboard', lang), url: dashUrl }]];
     return packet;
@@ -4008,6 +4089,7 @@ GC.attach = function (cfg) {
       }
       sendState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
+      GC.sentFx(I18.t('gc.sentTelegram'));
       if (cloudControl && (C.telegramAutoUpload || mode === 'summary' || mode === 'review' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
       setTimeout(function () { setModalOpen(tgModal, false); }, 450);
     } catch (e) {
@@ -4300,6 +4382,12 @@ GC.attachLegacy = function (cfg) {
       const customText = typeof C.telegramBuilder === 'function'
         ? await C.telegramBuilder({ period, mode, ref: periodRef, scope, slot, lang, cfg: C })
         : null;
+      /* 2026-10-03：這條快捷路徑也要先上雲再發群組（與視窗送出同一規則） */
+      if (cloudControl && C.telegramAutoUpload) {
+        const uploaded = await cloudControl.upload({silent:true,auto:false,reason:'telegram_preflight'});
+        if (!uploaded || uploaded.ok === false) throw new Error(I18.t('gc.uploadBeforeSendFail') + ': ' + ((uploaded && uploaded.error && (uploaded.error.message || String(uploaded.error))) || I18.t('gc.upFail')));
+        if ((uploaded.photoFailures || []).length) throw new Error(I18.t('gc.uploadBeforeSendFail') + ': ' + I18.f('gc.photoPending', { n: uploaded.photoFailures.length }));
+      }
       const built = customText == null ? GC.telegram.buildText(C, period, mode, periodRef, scope, slot, lang) : customText;
       const packet = typeof built === 'string' ? { text: built, photos: [] } : (built || { text: '', photos: [] });
       const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
@@ -4310,6 +4398,7 @@ GC.attachLegacy = function (cfg) {
       }
       if (telegramState) telegramState.textContent = '✓ ' + I18.t('gc.sentTelegram');
       GC.toast('✈️ ' + I18.t('gc.sentTelegram'), 'success');
+      GC.sentFx(I18.t('gc.sentTelegram'));
       if (cloudControl && (mode === 'summary' || mode === 'review' || mode === 'approval')) cloudControl.scheduleAuto('telegram_' + mode);
     } catch (e) {
       if (telegramState) telegramState.textContent = '✕ ' + e.message;

@@ -24,7 +24,8 @@ function controls(w){
     assert.equal(c.get('ref').value,'2026-09-14','Month -> Week stays in the real current week');
     assert(!Array.from(c.get('ref').options).some(o=>o.value==='2026-09-28'),'Empty last week must not become a report period');
     assert(!c.get('send').disabled,c.get('send-state').textContent);
-    assert(c.get('preview').textContent.includes('2026-09-18'));
+    // 1003 TG format: the week card shows the period range and the 09-18 Factory delivery as totals (no per-day table).
+    assert(c.get('preview').textContent.includes('09-14~09-20')&&c.get('preview').textContent.includes('4 桶 · 8,000 KHR'),c.get('preview').textContent);
     await c.change('period','day');assert.equal(c.get('ref').value,'2026-09-18','Choose latest real day on/before today');
     assert(!Array.from(c.get('ref').options).some(o=>o.value==='2026-09-30'));
     assert(Array.from(c.get('ref').options).some(o=>o.value==='2026-09-12'),'Explicit zero-quantity record remains selectable');

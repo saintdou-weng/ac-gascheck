@@ -30,13 +30,19 @@ zones.forEach((z,i)=>['morning','afternoon'].forEach((p,s)=>records.push({
     assert.equal(w.document.getElementById('ri-t-'+target).value,'32','Record form uses the same PM reading');
     assert.equal(w.document.getElementById('ri-h-'+target).value,'73');
     const before=w.buildTGPeriodMsg('day','summary','2026-09-15','all','bi','all');
-    assert(before.text.includes('28°C / 78%'),'Screenshot regression: fourth area AM value must be present in preview');
-    assert(before.text.includes('32°C / 73%'),'PM must use its own saved reading, not copy AM');
-    assert(!before.text.includes('No record'),'All eight readings exist');
+    assert(before.text.includes('AM 28°C/78% → PM 32°C/73%'),'Screenshot regression: fourth area AM and PM values must both be present (PM is its own reading)');
+    assert(!before.text.includes('Missing'),'All eight readings exist');
     assert.equal(before.notice,'');
-    assert.equal((before.text.match(/• /g)||[]).length,8);
-    assert.equal(before.photos.length,2,'Photos remain attached');
+    assert.equal((before.text.match(/• /g)||[]).length,4,'one line per zone');
+    assert.deepStrictEqual(Array.from(before.photos),[],'all in range → no photos');
     assert(before.text.includes('Finishing Warehouse'),'Summary uses the configured zone name');
+    // A reading out of range carries its photo and is listed as an exception.
+    cfg.write(cfg.read().map(r=>r.id==='zd-afternoon'?Object.assign({},r,{t:36}):r));
+    const hot=w.buildTGPeriodMsg('day','summary','2026-09-15','all','en','all');
+    assert.equal(hot.photos.length,1,'photo travels with the out-of-range reading');assert(hot.photos[0].includes('finishing-afternoon'));
+    assert(hot.text.includes('🔴 <b>1 out of range</b>') && hot.text.includes('• PM · <b>Finishing Warehouse</b> · 36°C/73% · Too hot'));
+    assert(hot.text.includes('→ PM 36°C/73%⚠️'));
+    cfg.write(cfg.read().map(r=>r.id==='zd-afternoon'?Object.assign({},r,{t:32}):r));
     for(const name of aliases)assert.equal(w.tempCanonicalZoneId(name),target,name);
     assert.equal(cfg.read().length,8);
     assert.equal(cfg.read().filter(r=>r.z===target).length,2);
@@ -49,10 +55,10 @@ zones.forEach((z,i)=>['morning','afternoon'].forEach((p,s)=>records.push({
     for(const name of aliases){const r=w.tempImportResolveZone(name,defs,pending);assert.equal(r.id,target);}
     assert.equal(defs.length,4);assert.equal(pending.size,0,'Re-import does not create a new zone');
     const monthly=w.buildTGPeriodMsg('month','summary','2026-09-01','all','en','all');
-    assert(monthly.text.includes('Z4 28/78 → 32/73'));
+    assert(monthly.text.includes('• <b>Finishing Warehouse</b> · 28–32°C · 73–78% · ×2'));
     for(const period of ['week','year'])assert(w.buildTGPeriodMsg(period,'summary','2026-09-15','all','en','all').text.includes('Finishing Warehouse'));
     const selected=w.buildTGPeriodMsg('day','summary','2026-09-15','all','en','zd');
-    assert(selected.text.includes('28°C / 78%'));assert.equal((selected.text.match(/• /g)||[]).length,2);
+    assert(selected.text.includes('AM 28°C/78% → PM 32°C/73%'));assert.equal((selected.text.match(/• /g)||[]).length,1);
 
     // Simulate stale cloud records after upload: latest values win, identities and photos survive.
     const uploaded=cfg.read().map(cfg.toCloud),stale=records.map(r=>({...r,t:20,updatedAt:'2026-09-14 16:00:00'}));
@@ -62,7 +68,7 @@ zones.forEach((z,i)=>['morning','afternoon'].forEach((p,s)=>records.push({
     assert.equal(cfg.extra().zones.length,4);
     const storageSeed={};for(let i=0;i<w.localStorage.length;i++){const k=w.localStorage.key(i);storageSeed[k]=w.localStorage.getItem(k);}
     const reloaded=await load('ac_gascheck_temperature_v2.html',storageSeed);
-    try{assert(reloaded.w.buildTGPeriodMsg('day','summary','2026-09-15','all','bi','all').text.includes('28°C / 78%'));assert.equal(reloaded.w.__configs.temperature.read().length,8);}
+    try{assert(reloaded.w.buildTGPeriodMsg('day','summary','2026-09-15','all','bi','all').text.includes('AM 28°C/78% → PM 32°C/73%'));assert.equal(reloaded.w.__configs.temperature.read().length,8);}
     finally{reloaded.dom.window.close();}
 
     // An arbitrary imported ID must remain resolvable after definition compaction and reload.
@@ -73,8 +79,8 @@ zones.forEach((z,i)=>['morning','afternoon'].forEach((p,s)=>records.push({
     // Missing PM stays missing; never fabricate a reading to make the report look complete.
     cfg.write(cfg.read().filter(r=>r.id!=='zd-afternoon'));
     const partial=w.buildTGPeriodMsg('day','summary','2026-09-15','all','en','all');
-    assert.equal((partial.text.match(/No record/g)||[]).length,1);assert(partial.text.includes('28°C / 78%'));
-    assert(!partial.text.includes('32°C / 73%'));
+    assert(partial.text.includes('Missing <b>1</b>'));assert(partial.text.includes('AM 28°C/78% → PM —'));
+    assert(!partial.text.includes('32°C/73%'));
   }finally{x.dom.window.close();}
 
   const g={};vm.createContext(g);vm.runInContext(fs.readFileSync('ac_gascheck_core_v3_fixed.gs','utf8'),g);

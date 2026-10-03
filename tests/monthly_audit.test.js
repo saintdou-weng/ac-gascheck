@@ -109,7 +109,7 @@ assert.strictEqual(audit.missing[2].telegram, false, 'A Recycle-only Telegram re
 const message = context.buildMonthlyMissingMessage_(audit);
 assert(message.includes('Previous-month report reminder'));
 assert(message.includes('ការរំលឹករបាយការណ៍ខែមុន'));
-assert(message.includes('Cloud upload missing'));
+assert(/cloud upload/.test(message),'cloud upload missing is named: '+message);
 
 context.recordCloudUploadActivity_({ reportMonth: '2026-06', reportPeriod: 'month' }, 'cleaning', [
   { id: 'c1', date: '2026-07-20' }

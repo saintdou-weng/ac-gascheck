@@ -67,11 +67,21 @@ function validateHtml(text){
       assert.equal(messages.at(-1).reportRef,'2026-09-14');
       assert.equal(messages.at(-1).reportPeriod,'week');
       assert.equal(messages.filter(p=>p.reportMode).length,1,'Completion recorded once, on final page only');
-      if(tool==='ehs'||tool==='keymovement'){
-        assert(expected.text.length>4096,tool+' reproduces original long report failure');
-        assert(messages.length>1,tool+' automatically paginates');
+      // 1003 TG format: EHS is a compact card (supplier lines + exceptions), so only Key Movement still reproduces the long report.
+      if(tool==='keymovement'){
         const asText=html=>{const el=w.document.createElement('div');el.innerHTML=html;return el.textContent;};
-        assert.equal(messages.map(p=>asText(p.text.replace(/^\[\d+\/\d+\]\n/,''))).join(''),asText(expected.text),tool+' no report text lost while splitting');
+        if(Array.isArray(expected.pages)){
+          // GC.TG compact format: the builder splits the long report itself (every record still listed, one per line).
+          assert(expected.pages.length>1,tool+' builder paginates the long report');
+          assert(messages.length===expected.pages.length,tool+' sends every page');
+          assert.deepStrictEqual(messages.map(p=>p.text),Array.from(expected.pages),tool+' no report text lost while splitting');
+          const allText=asText(expected.pages.join('\n'));
+          cfg.read().filter(r=>!r._deleted).forEach(r=>assert(allText.includes(r.key_no||r.supplier||r.id),tool+' lists every record across pages'));
+        }else{
+          assert(expected.text.length>4096,tool+' reproduces original long report failure');
+          assert(messages.length>1,tool+' automatically paginates');
+          assert.equal(messages.map(p=>asText(p.text.replace(/^\[\d+\/\d+\]\n/,''))).join(''),asText(expected.text),tool+' no report text lost while splitting');
+        }
         assert.equal(new Set(messages.map(p=>p.messageKey)).size,messages.length,'No duplicate page sent by rapid double-click');
         if(tool==='keymovement'){
           const long='<b><i>'+('🗝️ &lt;倉庫&gt; &amp; សោ '.repeat(500))+'</i></b>';
@@ -88,7 +98,7 @@ function validateHtml(text){
           assert.equal(attempts[0].messageKey,firstKey,'Retry reuses page identity');
           assert.equal(attempts.filter(p=>p.reportMode).length,1);
         }
-      }else assert.equal(messages.length,1,'Double-click sends one report');
+      }else{assert.equal(messages.length,1,'Double-click sends one report');if(tool==='ehs'){assert(expected.text.length<=3900,'ehs compact card fits one page');assert.equal(messages[0].text,expected.text,'ehs report text sent as built');}}
       if(tool==='keymovement'){
         w.promptDelete('k0');w.promptDelete('k1');
         const dead=JSON.parse(w.localStorage.getItem('vrt_key_tombstones'));

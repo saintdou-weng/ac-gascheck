@@ -78,7 +78,8 @@ const delivery={day:18,fQty:4,fPrice:2000,fTime:'08:00',sQty:2,sPrice:3000,sTime
     for(const field of ['photos','fPhotos','sPhotos'])assert(live[field].every(p=>p.startsWith('https://')),'Save converted links to '+field);
     assert.equal(s.photos.size,2);
     const posts=s.requests.filter(p=>p.action==='telegram');
-    assert.equal(posts.length,3,'September daily details use three pages');
+    assert.equal(posts.length,1,'September summary is one compact card (no per-day table)');
+    assert(!/│/.test(posts.at(-1).text),'no padded table');assert(posts.at(-1).text.includes('工廠</b> · 4 桶 · 8,000 KHR'));assert(posts.at(-1).text.includes('宿舍</b> · 2 桶 · 6,000 KHR'));
     assert(posts.at(-1).text.includes('14,000 KHR / $3.50'));
     assert.equal(posts.at(-1).photos.length,2);
     assert.equal(s.telegram.filter(p=>p.method==='sendPhoto').length,2);

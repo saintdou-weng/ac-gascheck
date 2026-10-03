@@ -285,7 +285,7 @@ button.user-pill{cursor:pointer;font-family:inherit;color:var(--tx)}
 @media(max-width:420px){.tb-title{font-size:12px}.user-pill{max-width:120px;overflow:hidden;text-overflow:ellipsis}}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=20260930-busyfix"></script>
+<script src="./gascheck-core.js?v=20261003a"></script>
 </head>
 <body>
 
@@ -1579,9 +1579,70 @@ if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(b
   window.renderAssetAnalysis=function(){const body=document.getElementById('asset-analysis-body');if(!body)return;const x=analysisMetrics(),events=x.events,qty=assets.reduce((a,v)=>a+(+v.qty||0),0),value=assets.reduce((a,v)=>a+(+v.qty||0)*(+v.unitPrice||0),0),actors=[...new Set(events.map(h=>h.actor||'').filter(Boolean))];const sc=(l,v)=>'<div class="sc"><div><div class="sc-l">'+esc(l)+'</div><div class="sc-v">'+esc(v)+'</div></div></div>';body.innerHTML='<div class="stats">'+sc(L3('異動次數','Events','ព្រឹត្តិការណ៍'),events.length)+sc(L3('目前數量','Current qty','បរិមាណបច្ចុប្បន្ន'),qty)+sc(L3('目前總值','Current value','តម្លៃបច្ចុប្បន្ន'),'$'+value.toLocaleString('en-US'))+sc(L3('操作人數','People','អ្នកធ្វើ'),actors.length)+'</div><div style="overflow:auto;margin-top:14px"><table class="tbl"><thead><tr>'+[L3('日期','Date','កាលបរិច្ឆេទ'),L3('類型','Type','ប្រភេទ'),L3('編號','Code','លេខកូដ'),L3('資產','Asset','ទ្រព្យ'),L3('操作人','By','ដោយ'),L3('說明','Detail','លម្អិត')].map(x=>'<th>'+esc(x)+'</th>').join('')+'</tr></thead><tbody>'+events.sort((a,b)=>b.date.localeCompare(a.date)).map(h=>'<tr><td>'+esc(h.date)+'</td><td>'+esc(typeof histTypeLabel==='function'?histTypeLabel(h.type):h.type)+'</td><td>'+esc(h.code)+'</td><td>'+esc(h.name)+'</td><td>'+esc(h.actor||'—')+'</td><td>'+esc(typeof describeHistory==='function'?describeHistory(h):(h.desc||''))+'</td></tr>').join('')+'</tbody></table></div>';};
   window.openAssetAnalysis=function(){syncAssetPeriodInputs();renderAssetAnalysis();openM('m-asset-analysis');};
 
+  /* 2026-10-03 群組摘要改為 GC.TG 精簡卡片：狀態燈 → 重點數字（資產、狀態、申請）→ 待核可／維修中逐筆列出；
+     不逐筆列資產；照片只附在待核可／維修中的資產。轉移／報廢申請卡（buildRequestTelegram、ast_ok_/ast_rej_）不變。 */
+  function assetTgPeriodLabel(period,ref,langOpt){
+    const G=GC.TG,r=GC.period.range(period,ref);
+    if(period==='day')return r.fromYmd;
+    if(period==='week')return G.d(r.fromYmd)+' ~ '+G.d(r.toYmd);
+    if(period==='month')return r.fromYmd.slice(0,7);
+    if(period==='year')return r.fromYmd.slice(0,4);
+    return G.lbl(langOpt,'全部','All','ទាំងអស់');
+  }
+  function assetTgRequestLine(a,h,langOpt,withDate){
+    const G=GC.TG,lb=(zh,en,km)=>G.lbl(langOpt,zh,en,km),r=h.request||{};
+    let what=r.type==='transfer'?'🔁 '+lb('轉移','Transfer','ផ្ទេរ')+(r.newLocation?' → '+G.esc(r.newLocation):'')+(r.newUser?' · 👤 '+G.esc(r.newUser):''):'🗑 '+lb('報廢','Scrap','ជម្រះចោល');
+    if(r.type!=='transfer'&&r.disposalType){const d=DISPOSAL.find(x=>x.v===r.disposalType);what+=' · '+(d?lb(d.t[0],d.t[1],d.t[2]):G.esc(r.disposalType));if(r.disposalType==='lost')what+=' ❗';}
+    let line='• <b>'+G.esc(String(a.code||'—')+(a.name?' '+a.name:''))+'</b> · '+what+(h.actor?' · '+G.esc(h.actor):'')+(withDate?' · '+G.d(String(h.date||'').slice(0,10)):'');
+    if(r.reason)line+=' · 📝 '+G.esc(String(r.reason).replace(/[\r\n]+/g,' '));
+    return line;
+  }
   window.buildAssetTelegram=function(opt){
     /* 資產模組沒有真正的 Telegram 核可流程：只發摘要；語言預設為目前介面語言。 */
-    opt=opt||{};const mode='summary',langOpt=opt.lang||lang||'en';const all=((opt.cfg&&opt.cfg.read?opt.cfg.read():assets)||[]).filter(r=>r&&!r._deleted),rows=GC.telegram.filter(all,opt.cfg,opt.period,opt.ref,opt.scope,opt.slot),qty=rows.reduce((a,r)=>a+(+r.qty||1),0),value=rows.reduce((a,r)=>a+(+r.qty||1)*(+r.unitPrice||0),0),recorders=[...new Set(rows.map(r=>r.recordedBy).filter(Boolean))],sender=opt.sender||storedActor()||'—',p={day:['日','Day','ថ្ងៃ'],week:['週','Week','សប្ដាហ៍'],month:['月','Month','ខែ'],year:['年','Year','ឆ្នាំ'],all:['全部','All','ទាំងអស់']}[opt.period]||['期間','Period','រយៈពេល'],m={summary:['摘要','Summary','សង្ខេប'],review:['審查','Review','ពិនិត្យ'],approval:['核可','Approval','អនុម័ត']}[mode],tr=(a)=>GC.telegram.text(a[0],a[1],a[2],langOpt),ph=[],te=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');rows.forEach(r=>(GC.util.asArray(r.photos)||[]).forEach(x=>{if(x&&!ph.includes(x)&&ph.length<5)ph.push(x);}));const lines=['📦 <b>'+tr(['VRT 資產管理','VRT Asset Management','VRT គ្រប់គ្រងទ្រព្យសម្បត្តិ'])+'</b>','📅 '+tr(p)+(opt.ref?' · '+te(opt.ref):'')+' · 🧾 '+tr(m),'━━━━━━━━━━━━━━━━','📊 '+tr(['資產','Assets','ទ្រព្យ'])+': <b>'+rows.length+'</b> · '+tr(['數量','Qty','បរិមាណ'])+': '+qty,'💰 '+tr(['總值','Total value','តម្លៃសរុប'])+': <b>$'+value.toLocaleString(undefined,{maximumFractionDigits:2})+'</b>','📷 '+ph.length,'🧑‍💻 '+tr(['記錄人','Recorded by','កត់ត្រាដោយ'])+': '+te(recorders.join(', ')||'—'),'✈️ '+tr(['發送人','Sent by','ផ្ញើដោយ'])+': <b>'+te(sender)+'</b>'];lines.push('━━━━━━━━━━━━━━━━','⏰ '+_localTS());return{text:lines.join('\n'),photos:ph};
+    opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',ref=opt.ref||today(),scope=opt.scope||'all',slot=opt.slot||'all',langOpt=opt.lang||lang||'en';
+    const G=GC.TG,lb=(zh,en,km)=>G.lbl(langOpt,zh,en,km),day=period==='day';
+    const all=((cfg&&cfg.read?cfg.read():assets)||[]).filter(r=>r&&!r._deleted);
+    const scoped=GC.telegram.filter(all,cfg,'all',undefined,scope,slot);
+    const range=GC.period.range(period,ref),inP=d=>{d=String(d||'').slice(0,10);return !range||(d>=range.fromYmd&&d<=range.toYmd);};
+    const mRange=GC.period.range('month',ref),inM=d=>{d=String(d||'').slice(0,10);return d>=mRange.fromYmd&&d<=mRange.toYmd;};
+    const added=scoped.filter(a=>inP(a.purchaseDate)),addedM=scoped.filter(a=>inM(a.purchaseDate));
+    const st={};ST_KEYS.forEach(k=>st[k]=0);scoped.forEach(a=>{const k=ST_LABEL[a.status]?a.status:'active';st[k]++;});
+    const value=scoped.filter(a=>a.status!=='disposed').reduce((s2,a)=>s2+(+a.qty||1)*(+a.unitPrice||0),0);
+    /* 申請：待核可＝history 有 pending 但沒有同 id 的決定（不限期間）；核可／退件＝決定日期在期間內 */
+    const open=[],decided=[],askedP=[],askedM=[];let decidedM=0;
+    scoped.forEach(a=>{
+      assetOpenRequests(a).forEach(h=>open.push({a,h}));
+      (Array.isArray(a.history)?a.history:[]).forEach(h=>{
+        if(!h||!h.request)return;
+        if(h.type==='pending'){if(inP(h.date))askedP.push({a,h});if(inM(h.date))askedM.push({a,h});}
+        if(h.type==='approved'||h.type==='rejected'){const req=(a.history||[]).find(x=>x&&x.type==='pending'&&x.request&&String(x.request.id)===String(h.request.id));if(inP(h.date))decided.push({a,h,req});if(inM(h.date))decidedM++;}
+      });
+    });
+    const cnt=(list,type,kind)=>list.filter(x=>((x.req||x.h).request||{}).type===type&&(!kind||x.h.type===kind)).length;
+    const repair=scoped.filter(a=>a.status==='repair'),missing=open.filter(x=>(x.h.request||{}).disposalType==='lost');
+    let txt=G.head('📦',lb('VRT 資產管理','VRT Asset Management','VRT គ្រប់គ្រងទ្រព្យសម្បត្តិ'),assetTgPeriodLabel(period,ref,langOpt),scope&&scope!=='all'?'🗂 '+G.esc((()=>{const z=AT['zone_'+scope];return z?lb(z[0],z[1],z[2]):String(scope);})()):'');
+    txt+='\n'+G.verdict(missing.length?'bad':open.length||repair.length?'warn':'ok',open.length?lb(open.length+' 筆待核可',open.length+' pending approval',open.length+' រង់ចាំអនុម័ត'):lb('沒有待辦','Nothing pending','គ្មានការរង់ចាំ'))+(repair.length?' · 🔧 '+lb('維修中','Under repair','កំពុងជួសជុល')+' '+repair.length:'')+(missing.length?' · ❗ '+lb('遺失','Missing','បាត់')+' '+missing.length:'');
+    txt+='\n'+G.kpis([
+      ['📦',lb('資產','Assets','ទ្រព្យ'),scoped.length],['🆕',lb('新增','Added','បន្ថែម'),added.length],['💰',lb('總值','Value','តម្លៃ'),'$'+Math.round(value).toLocaleString('en-US')],
+      ['✅',lb('使用中','In use','កំពុងប្រើ'),st.active],['🟡',lb('備用','Standby','បម្រុង'),st.standby],['📤',lb('外借','Lent','ឱ្យខ្ចី'),st.lent],
+      ['🔧',lb('維修中','Repair','ជួសជុល'),st.repair],['🗑',lb('已報廢','Scrapped','ជម្រះចោល'),st.disposed]
+    ],3);
+    txt+='\n🔁 '+lb('轉移','Transfer','ផ្ទេរ')+' · '+lb('待核','Pending','រង់ចាំ')+' <b>'+cnt(open,'transfer')+'</b> · '+lb('核可','Approved','អនុម័ត')+' <b>'+cnt(decided,'transfer','approved')+'</b> · '+lb('退件','Rejected','បដិសេធ')+' <b>'+cnt(decided,'transfer','rejected')+'</b>';
+    txt+='\n🗑 '+lb('報廢','Scrap','ជម្រះចោល')+' · '+lb('待核','Pending','រង់ចាំ')+' <b>'+cnt(open,'disposal')+'</b> · '+lb('核可','Approved','អនុម័ត')+' <b>'+cnt(decided,'disposal','approved')+'</b> · '+lb('退件','Rejected','បដិសេធ')+' <b>'+cnt(decided,'disposal','rejected')+'</b>';
+    if(day||period==='week')txt+='\n📆 '+lb('本月累計','Month to date','សរុបខែនេះ')+' · '+lb('新增','Added','បន្ថែម')+' <b>'+addedM.length+'</b> · '+lb('申請','Requests','សំណើ')+' <b>'+askedM.length+'</b> · '+lb('已決定','Decided','បានសម្រេច')+' <b>'+decidedM+'</b>';
+    const lines=[],sec=(icon,title)=>'\n<b>'+icon+' '+title+'</b>',byDate=(x,y)=>String(x.h.date||'').localeCompare(String(y.h.date||''));
+    if(open.length){lines.push(sec('⏳',lb('待核可','Pending approval','រង់ចាំអនុម័ត')+' · '+open.length));open.sort(byDate).forEach(x=>lines.push(assetTgRequestLine(x.a,x.h,langOpt,true)));}
+    if(repair.length){lines.push(sec('🔧',lb('維修中／損壞','Repair / damaged','ជួសជុល / ខូច')+' · '+repair.length));repair.forEach(a=>lines.push('• <b>'+G.esc(String(a.code||'—')+(a.name?' '+a.name:''))+'</b>'+(a.location?' · '+G.esc(a.location):'')+(a.user?' · 👤 '+G.esc(a.user):'')+(a.remark?' · 📝 '+G.esc(String(a.remark).replace(/[\r\n]+/g,' ')):'')));}
+    if(decided.length){lines.push(sec('✔',lb('本期已決定','Decided this period','បានសម្រេចក្នុងរយៈពេលនេះ')+' · '+decided.length));decided.sort(byDate).slice(0,8).forEach(x=>lines.push((x.h.type==='approved'?'• ✅ ':'• ❌ ')+G.d(String(x.h.date||'').slice(0,10))+' <b>'+G.esc(String(x.a.code||'—')+(x.a.name?' '+x.a.name:''))+'</b> · '+(((x.req||x.h).request||{}).type==='transfer'?lb('轉移','Transfer','ផ្ទេរ'):lb('報廢','Scrap','ជម្រះចោល'))+' '+(x.h.type==='approved'?lb('核可','approved','អនុម័ត'):lb('退件','rejected','បដិសេធ'))));if(decided.length>8)lines.push('… +'+(decided.length-8));}
+    if(!scoped.length)lines.push('\nℹ️ '+lb('沒有資產記錄','No asset records','គ្មានកំណត់ត្រាទ្រព្យ'));
+    const photos=[];
+    open.map(x=>x.a).concat(repair).forEach(a=>{const ph=assetPhotoValue(photos[a.code])||assetPhotoValue(a.photos);if(ph&&!photos.includes(ph)&&photos.length<5)photos.push(ph);});
+    const body=lines.length?'\n'+lines.join('\n'):'';
+    if((txt+body).length<=3000)return {text:txt+body,photos};
+    const pages=G.chunk('📦 <b>'+lb('VRT 資產管理','VRT Asset Management','VRT គ្រប់គ្រងទ្រព្យសម្បត្តិ')+'</b> · '+G.esc(assetTgPeriodLabel(period,ref,langOpt)),lines.map(l=>l.replace(/^\n+/,'')),2800);
+    pages[0]=txt+'\n\n'+pages[0].split('\n').slice(1).join('\n');
+    const numbered=G.number(pages);
+    return {text:numbered.join('\n\n'),pages:numbered,photos};
   };
   window.assetTelegramSent=async function(meta){meta=meta||{};const who=(meta.sender||storedActor()||'—'),all=assets.filter(r=>!r._deleted),rows=GC.telegram.filter(all,{dateField:'purchaseDate',scopeField:'zone'},meta.period,meta.ref,meta.scope,meta.slot),now=_localTS();const ids=new Set(rows.map(r=>r.code));assets=assets.map(a=>{if(!ids.has(a.code))return a;const h={type:'telegram_summary',date:now,actor:who};return Object.assign({},a,{lastSentBy:who,lastSentAt:now,lastTelegramMode:'summary',history:[...(a.history||[]),h].slice(-120),updatedAt:now});});saveLocal();};
 

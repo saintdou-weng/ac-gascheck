@@ -11,7 +11,7 @@ for(let id=10;id<13;id++)a.s.g.processGascheckTelegramUpdate_(update(a.s,a.r,id)
 assert.equal(count(a.s,'sendMessage'),before,'Three approval clicks must update the original card without adding success replies');
 let rows=a.s.g.readDormRecordForDecision_(base.id);assert.equal(rows.rows.length,1);assert.equal(rows.record.status,'已核可');
 const card=a.s.telegram.filter(t=>t.method==='editMessageText'&&String(t.payload.message_id)===String(a.r.approvalMessageId)).at(-1).payload;
-for(const content of ['Test Applicant','5833','A-106','Near factory','Reviewer：Phea','Approver：'+a.s.config.name,'已核可 / Approved'])assert(card.text.includes(content),content);
+for(const content of ['Test Applicant','5833','A-106','Near factory','Reviewer Phea','已核可/Approved</b> · '+a.s.config.name])assert(card.text.includes(content),content+' in '+card.text);
 assert(card.reply_markup.inline_keyboard.flat().some(b=>b.url&&b.url.endsWith('ac_gascheck_portal_v1.html')),'Keep Main Portal shortcut from user reference');
 assert(card.reply_markup.inline_keyboard.flat().every(b=>!b.callback_data),'Decision buttons removed');
 a.s.g.processGascheckTelegramUpdate_(update(a.s,a.r,13,'rej'));assert.equal(count(a.s,'sendMessage'),before);assert.equal(a.s.g.readDormRecordForDecision_(base.id).record.status,'已核可');

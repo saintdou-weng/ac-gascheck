@@ -227,7 +227,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=20260930-busyfix"></script>
+<script src="./gascheck-core.js?v=20261003a"></script>
 </head>
 <body>
 
@@ -2247,6 +2247,72 @@ function dormWriteLive(list){
   const tombs=(state.db().records||[]).filter(r=>r&&r._deleted&&!ids.has(String(r.id)));
   state.replaceRecords((list||[]).concat(tombs));dedupeDormRecords(false);dormScheduleSync('smart_import');dormRerenderAll();
 }
+/* 2026-10-03 群組摘要改為 GC.TG 精簡卡片（申請＋巡查＋違規）：狀態燈 → 重點數字 → 待核可申請／異常房間／違規逐筆列出。
+   同一房間多次巡查只列最新狀態（×n）；照片只附在有異常的巡查。每筆申請的 Telegram 核可卡（dormTelegramPayload／dorm_ok_／dorm_rej_）不變。 */
+function dormTgPeriodLabel(period,ref,lang){
+  const G=GC.TG,r=GC.period.range(period,ref);
+  if(period==='day')return r.fromYmd;
+  if(period==='week')return G.d(r.fromYmd)+' ~ '+G.d(r.toYmd);
+  if(period==='month')return r.fromYmd.slice(0,7);
+  if(period==='year')return r.fromYmd.slice(0,4);
+  return G.lbl(lang,'全部','All','ទាំងអស់');
+}
+function dormTgRoom(room,lang){const x=ROOM_LABELS[String(room)];return x?GC.TG.lbl(lang,String(room),x.en,x.km):String(room==null?'':room);}
+function dormTgAppLine(r,lang,withReason){
+  const G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),code=dormStatusCode(r.status),isIn=dormTypeCode(r.type)==='in';
+  let line='• <b>'+G.esc(r.name||'—')+'</b>'+(r.idNo?' · '+G.esc(r.idNo):'')+(r.roomNo?' · '+G.esc(r.roomNo):'')+' · '+(isIn?'🟢 '+lb('搬入','Move-in','ចូល'):'🔴 '+lb('搬出','Move-out','ចេញ'))+' · '+(G.d(r.date)||'—');
+  if(code==='rejected'&&r.rejectReason)line+=' · ❌ '+G.esc(r.rejectReason);
+  if(withReason&&(r.department||r.reason))line+='\n   '+[r.department?G.esc(r.department):'',r.reason?'📝 '+G.esc(String(r.reason).replace(/[\r\n]+/g,' ')):''].filter(Boolean).join(' · ');
+  return line;
+}
+function buildDormTelegram(opt){
+  opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode=opt.mode||'summary',ref=opt.ref||today_str(),scope=opt.scope||'all',slot=opt.slot||'all';
+  const lang=opt.lang||i18n.get()||'zh',G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),D=i18n.dict,K=k=>G.lbl(lang,D.zh[k],D.en[k],D.km[k]),day=period==='day';
+  const scopes=(Array.isArray(scope)?scope:[scope]).map(String).filter(Boolean),anyScope=!scopes.length||scopes.includes('all'),inScope=room=>anyScope||scopes.includes(String(room||''));
+  const appsAll=GC.telegram.filter((typeof cfg.read==='function'?cfg.read():dormLive(state.db().records))||[],cfg,'all',undefined,scope,slot);
+  const apps=GC.telegram.filter(appsAll,cfg,period,ref,scope,slot).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  const range=GC.period.range(period,ref),inP=d=>{d=String(d||'').slice(0,10);return !range||(d>=range.fromYmd&&d<=range.toYmd);};
+  const mRange=GC.period.range('month',ref),inM=d=>{d=String(d||'').slice(0,10);return d>=mRange.fromYmd&&d<=mRange.toYmd;};
+  const db=state.db(),inspAll=dormLive(db.inspections),violAll=dormLive(db.violations).filter(v=>inScope(v.roomNo));
+  const insps=inspAll.filter(r=>inP(r.date)).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.timestamp||'').localeCompare(String(b.timestamp||'')));
+  const viols=violAll.filter(v=>inP(v.date)).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  const st=c=>apps.filter(r=>dormStatusCode(r.status)===c).length;
+  const pending=appsAll.filter(r=>dormStatusCode(r.status)==='pending').sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  const moveIn=apps.filter(r=>dormTypeCode(r.type)==='in').length,moveOut=apps.length-moveIn;
+  /* 房間最新狀態：同一地點＋房號依巡查日期取最後一次；異常項目＝該次勾 ✗ 的欄位 */
+  const rooms=new Map();
+  insps.forEach(r=>{Object.keys(r.data||{}).forEach(room=>{if(!inScope(room))return;const rd=r.data[room]||{};if(!INSP_COLS.some(c=>rd[c.k])&&!String(rd.remarks||'').trim())return;const key=r.location+'|'+room,cur=rooms.get(key)||{room,location:r.location,n:0};cur.n++;cur.date=r.date;cur.bad=INSP_COLS.filter(c=>rd[c.k]==='X').map(c=>c.k);cur.remarks=rd.remarks||'';cur.photos=Array.isArray(r.photos)?r.photos:[];rooms.set(key,cur);});});
+  const roomList=Array.from(rooms.values()),badRooms=roomList.filter(x=>x.bad.length).sort((a,b)=>String(a.location).localeCompare(String(b.location))||String(a.room).localeCompare(String(b.room)));
+  const serious=viols.filter(v=>v.level==='Serious').length;
+  let txt=G.head('🏠',lb('VRT 宿舍管理','VRT Dormitory','VRT អន្តេវាសិកដ្ឋាន'),dormTgPeriodLabel(period,ref,lang),!anyScope?'🗂 '+G.esc(scopes.join(', ')):'');
+  txt+='\n'+G.verdict(serious||badRooms.length?'bad':pending.length||viols.length?'warn':'ok',pending.length?lb(pending.length+' 筆待核可',pending.length+' pending approval',pending.length+' រង់ចាំអនុម័ត'):lb('沒有待辦','Nothing pending','គ្មានការរង់ចាំ'))+(badRooms.length?' · ⚠️ '+lb('異常房間','Rooms to fix','បន្ទប់មានបញ្ហា')+' '+badRooms.length:'')+(serious?' · 🚫 '+lb('嚴重違規','Serious','ធ្ងន់ធ្ងរ')+' '+serious:'');
+  txt+='\n'+G.kpis([
+    ['📝',lb('申請','Applications','ពាក្យស្នើ'),apps.length],['🟢',lb('搬入','Move-in','ចូល'),moveIn],['🔴',lb('搬出','Move-out','ចេញ'),moveOut],
+    ['⏳',lb('待核可','Pending','រង់ចាំ'),pending.length],['✅',lb('核可','Approved','អនុម័ត'),st('approved')],['❌',lb('退件','Rejected','បដិសេធ'),st('rejected')],
+    ['🔍',lb('巡查','Inspections','ត្រួតពិនិត្យ'),insps.length],['🏠',lb('房間','Rooms','បន្ទប់'),roomList.length],['🚫',lb('違規','Violations','ល្មើស'),viols.length]
+  ],3);
+  if(day||period==='week'){
+    const mA=appsAll.filter(r=>inM(r.date)),mI=inspAll.filter(r=>inM(r.date)).length,mV=violAll.filter(v=>inM(v.date)).length;
+    txt+='\n📆 '+lb('本月累計','Month to date','សរុបខែនេះ')+' · '+lb('申請','Applications','ពាក្យស្នើ')+' <b>'+mA.length+'</b> · '+lb('核可','Approved','អនុម័ត')+' <b>'+mA.filter(r=>dormStatusCode(r.status)==='approved').length+'</b> · '+lb('巡查','Inspections','ត្រួតពិនិត្យ')+' <b>'+mI+'</b> · '+lb('違規','Violations','ល្មើស')+' <b>'+mV+'</b>';
+  }
+  if(mode==='review')txt+='\n⏳ Paul: '+lb('請在各申請的 Telegram 核可卡按 ✅／❌','approve / reject each application on its Telegram card','អនុម័ត / បដិសេធ ពាក្យនីមួយៗលើកាត Telegram');
+  const lines=[],sec=(icon,title)=>'\n<b>'+icon+' '+title+'</b>';
+  if(pending.length){lines.push(sec('⏳',lb('待核可','Pending approval','រង់ចាំអនុម័ត')+' · '+pending.length));pending.forEach(r=>lines.push(dormTgAppLine(r,lang,mode==='review')));}
+  if(badRooms.length){lines.push(sec('⚠️',lb('巡查異常','Inspection issues','បញ្ហាត្រួតពិនិត្យ')+' · '+badRooms.length));badRooms.forEach(x=>lines.push('• <b>'+G.esc(dormTgRoom(x.room,lang))+'</b> · '+G.esc(K('loc-'+x.location)||x.location)+' · ✗ '+x.bad.map(k=>K('col-'+k)||COL_LABELS[k]||k).join(', ')+' · '+G.d(x.date)+(x.n>1?' ×'+x.n:'')+(x.remarks?' · 📝 '+G.esc(String(x.remarks).replace(/[\r\n]+/g,' ')):'')));}
+  if(viols.length){lines.push(sec('🚫',lb('違規','Violations','ការល្មើស')+' · '+viols.length));viols.forEach(v=>lines.push('• <b>'+G.esc(v.name||'—')+'</b>'+(v.idNo?' · '+G.esc(v.idNo):'')+(v.roomNo?' · '+G.esc(v.roomNo):'')+' · '+G.esc(dormViolTypeCode(v.type)?K('vt-'+dormViolTypeCode(v.type)):String(v.type||''))+(v.level?' · '+(v.level==='Serious'?'🔴 ':v.level==='Moderate'?'🟠 ':'')+G.esc(['Minor','Moderate','Serious'].includes(v.level)?K('lv-'+v.level):v.level):'')+' · '+G.d(v.date)+(v.desc?' · 📝 '+G.esc(String(v.desc).replace(/[\r\n]+/g,' ')):'')));}
+  const decided=apps.filter(r=>/^(approved|rejected)$/.test(dormStatusCode(r.status)));
+  /* 已決定的只在日報或少量時逐筆列，否則只看上面的數字 */
+  if(decided.length&&(day||decided.length<=4)){lines.push(sec('✔',lb('本期已決定','Decided this period','បានសម្រេចក្នុងរយៈពេលនេះ')+' · '+decided.length));decided.forEach(r=>lines.push((dormStatusCode(r.status)==='approved'?'• ✅ ':'• ❌ ')+dormTgAppLine(r,lang,false).slice(2)));}
+  if(!apps.length&&!insps.length&&!viols.length&&!pending.length)lines.push('\nℹ️ '+lb('這段期間沒有紀錄','No records in this period','គ្មានកំណត់ត្រាក្នុងរយៈពេលនេះ'));
+  const photos=[];
+  badRooms.forEach(x=>x.photos.forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);}));
+  const body=lines.length?'\n'+lines.join('\n'):'';
+  if((txt+body).length<=3000)return {text:txt+body,photos};
+  const pages=G.chunk('🏠 <b>'+lb('VRT 宿舍管理','VRT Dormitory','VRT អន្តេវាសិកដ្ឋាន')+'</b> · '+G.esc(dormTgPeriodLabel(period,ref,lang)),lines.map(l=>l.replace(/^\n+/,'')),2800);
+  pages[0]=txt+'\n\n'+pages[0].split('\n').slice(1).join('\n');
+  const numbered=G.number(pages);
+  return {text:numbered.join('\n\n'),pages:numbered,photos};
+}
 (function(){
   let attached=false;
   function hookExport(tries){
@@ -2268,6 +2334,7 @@ function dormWriteLive(list){
       telegramAutoUpload:true,telegramRequireData:true,
       /* 宿舍核可只走每筆申請的 Telegram 核可卡；共用摘要不提供「核可」選項。 */
       telegramModes:['summary','review'],
+      telegramBuilder:buildDormTelegram,
       groupField:'roomNo',
       groupLabel:'Room',
       weather:false,

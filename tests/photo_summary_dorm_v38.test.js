@@ -11,7 +11,7 @@ const clean = read('ac_gascheck_cleaning_v2.html');
 const temp = read('ac_gascheck_temperature_v2.html');
 const dorm = read('ac_gascheck_dormitory_v2.html');
 const water = read('ac_gascheck_waterdrum_v2.html');
-const cache = 'gascheck-core.js?v=20260930-busyfix';
+const cache = 'gascheck-core.js?v=20261003a';
 
 assert(core.includes("GC.version = '3.16-key-water-daily-monthly'"));
 assert(core.includes('capture="environment"'));
@@ -29,7 +29,7 @@ assert(key.includes('keyEmbeddedPhotos') || key.includes('embedded photos'));
 
 for (const html of [asset, key, clean, temp, dorm]) assert(html.includes(cache));
 assert(!temp.includes('const compact='), 'temperature must not use the compact daily summary');
-assert(temp.includes('separate fixed-width tables for every area') && temp.includes('VRT 溫濕度'));
+assert(temp.includes("' · AM '+tempTgReading(am)+' → PM '+tempTgReading(pm)") && temp.includes("lb('溫濕度','Temperature & Humidity'"), 'day card keeps every zone reading');
 assert(clean.includes('const actualSlots=') && clean.includes('actualSlots.length?actualSlots.join'));
 assert(dorm.includes('const dormResult=await dormSubmitToGas'));
 assert(dorm.includes('gasSent=true'));

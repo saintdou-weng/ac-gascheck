@@ -78,7 +78,7 @@ for(const lang of LANGS){
 { // Legacy (no lang, GROUP_LANG unset) keeps the existing combined card.
   const s=setup();const r=s.g.handleDormSubmitGet_({data:copy(base)});assert(r.ok);
   const t=s.telegram.filter(t=>t.method==='sendMessage').at(-1).payload.text;
-  assert(t.includes('Reviewer：Phea')&&t.includes('待審核 / Pending'),'legacy card unchanged when no language is chosen');
+  assert(/Reviewer Phea/.test(t)&&t.includes('待核可/Pending'),'compact card (zh/en) when no language is chosen: '+t);
   s.props.GROUP_LANG='en';const r2=s.g.handleDormSubmitGet_({data:Object.assign(copy(base),{id:'dorm-group',idNo:'9999'})});assert(r2.ok,r2.error);
   expectLang('dorm card via GROUP_LANG',
     'en',s.telegram.filter(t=>t.method==='sendMessage').at(-1).payload.text,{userData:userData.concat(['9999'])});
@@ -145,7 +145,10 @@ for(const lang of LANGS){
 { // Unset GROUP_LANG keeps the trilingual legacy reminder.
   const s=setup(),g=s.g,mods=vmGet(g,'MONTHLY_REPORT_MODULES');
   const msg=g.buildMonthlyMissingMessage_({reportMonth:'2026-08',missing:[Object.assign({},mods[0],{cloud:false,telegram:false})]});
-  assert(CJK.test(msg)&&KM.test(msg)&&msg.includes('Previous-month report reminder'),'legacy trilingual reminder kept by default');
+  /* 2026-10-03: with no GROUP_LANG the reminders are English + Khmer in one message (owner: 英柬文一次就夠), no Chinese. */
+  assert(!CJK.test(msg)&&KM.test(msg)&&msg.includes('Previous-month report reminder'),'reminder is English + Khmer by default: '+msg);
+  const me=g.buildMonthEndMessage_({reportMonth:'2026-09',missing:[Object.assign({},mods[0],{cloud:false,telegram:false}),Object.assign({},mods[1],{cloud:true,telegram:false})]});
+  assert(!CJK.test(me)&&KM.test(me)&&/Month-end reminder/.test(me)&&/no data this month/.test(me)&&/monthly summary \/ approval not sent/.test(me),'month-end reminder en+km: '+me);
 }
 console.log('PASS reminders: monthly / recent-update / weekly-pending + buttons in zh/en/km (GROUP_LANG)');
 

@@ -175,7 +175,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=20260930-busyfix"></script>
+<script src="./gascheck-core.js?v=20261003a"></script>
 </head>
 <body>
 <div class="topbar">
@@ -1804,8 +1804,9 @@ var sixs = (() => {
     const score=calcScore();
     const loc=state.db().locations.find(l=>l.id===gv('s6-loc'));
     const grade=score>=90?'A':score>=75?'B':score>=60?'C':'D';
-    const lang=GCX.tgLangValue(),tx=(zh,en,km)=>cleaningTelegramText(zh,en,km,lang),e=cleaningTelegramEscape;
-    const msg=`⭐ <b>${tx('VRT 6S 檢查','VRT 6S Inspection','ការត្រួតពិនិត្យ 6S VRT')}</b>\n📍 ${e(loc?loc.name:'—')}  📅 ${e(gv('s6-date'))}\n👤 ${e(gv('s6-obs')||'—')}\n📊 ${tx('分數','Score','ពិន្ទុ')}: ${score}/100  ${tx('評級','Grade','កម្រិត')}: ${grade}`;
+    /* 6S 有自己的精簡卡片（不混進清潔巡檢統計）：狀態燈＝評級、進度條＝分數。 */
+    const lang=GCX.tgLangValue(),G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),e=cleaningTelegramEscape;
+    const msg=G.head('⭐',lb('6S 檢查','6S Inspection','ការត្រួតពិនិត្យ 6S'),gv('s6-date'),'📍 '+e(loc?loc.name:'—'))+'\n'+G.verdict(grade==='A'||grade==='B'?'ok':grade==='C'?'warn':'bad',lb('評級','Grade','កម្រិត')+' '+grade+' · '+score+'/100')+'\n'+G.bar(score,100)+'\n👤 '+e(gv('s6-obs')||'—');
     try { await api.tg(msg); ui.toast('📤 '+i18n.t('tg-sent')); }
     catch(err) { ui.toast('❌ Telegram: '+err.message); }
   },'btn-s6-tg');
@@ -2185,19 +2186,12 @@ if(typeof sv2==='function')         window.sv2=sv2;
 </script>
 
 <script>
-/* 清潔專用 Telegram 摘要：沿用 Temperature 的日／週／月／年與基準日期，
-   並把 Dashboard KPI、異常項目與照片一起交給共用 GAS 發送。 */
+/* 清潔專用 Telegram 摘要（2026-10-03 精簡卡片，見 docs/TG_FORMAT_GUIDE.md）：
+   狀態燈 → 進度條（正常區域／已檢查區域）→ 重點數字 → 有異常的區域（一區一行）→ 正常區域只算次數。
+   同一區域不重複出現；全部打勾就不附照片，只有有 ❌ 的記錄才附（最多 5 張）。 */
 function cleaningTelegramText(zh,en,km,lang){
   if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
   return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
-}
-function cleaningTelegramItem(k,lang){
-  const labels={
-    smell:['氣味','Smell','ក្លិន'], light:['燈光','Light','អំពូល'],
-    floor:['地板','Floor','កម្រាលឥដ្ឋ'], door:['門','Door','ទ្វារ'],
-    corner:['角落','Corner','ជ្រុង'], ceiling:['天花','Ceiling','ពិដាន']
-  }[k]||[k,k,k];
-  return cleaningTelegramText(labels[0],labels[1],labels[2],lang);
 }
 function cleaningTelegramEscape(v){
   if(typeof GC!=='undefined'&&GC.util&&GC.util.escapeHtml)return GC.util.escapeHtml(v);
@@ -2232,59 +2226,97 @@ function cleaningTelegramPhotos(r){
   const asArray=typeof GC!=='undefined'&&GC.util&&GC.util.asArray?GC.util.asArray:function(v){return Array.isArray(v)?v:(v==null||v===''?[]:[v]);};
   return asArray(r&&r.photos).filter(function(p){return typeof p==='string'&&(/^(?:data:image\/|https?:\/\/)/i.test(p));});
 }
-function formatCleaningTelegramRecord(r,lang,withTitle){
-  r=r||{};
-  const checks=r.checks||{};
-  const failed=CHK_ITEMS.filter(function(k){return checks[k]===false;});
-  const tx=function(zh,en,km){return cleaningTelegramText(zh,en,km,lang);};
-  const symbols=CHK_ITEMS.map(function(k){return CHK_ICONS[k]+' '+(checks[k]===false?'✗':checks[k]===true?'✓':'—');}).join('  ');
-  const slots=cleaningTelegramSlots(r);
-  const lines=[];
-  if(withTitle){
-    lines.push((failed.length?'⚠️':'✅')+' <b>'+tx('VRT 清潔記錄','VRT Cleaning Record','កំណត់ត្រាសម្អាត VRT')+'</b>');
-    lines.push('━━━━━━━━━━━━━━━━');
-  }
-  lines.push('📅 '+cleaningTelegramEscape(cleaningTelegramDate(r.date))+'  📍 '+cleaningTelegramEscape(typeof locName==='function'?locName(r.locId):(r.location||r.locId||'—')));
-  lines.push('👷 '+tx('清潔員','Cleaner','អ្នកសម្អាត')+': '+cleaningTelegramEscape(r.cleaner||'—')+'  🔎 '+tx('檢查員','Checker','អ្នកត្រួតពិនិត្យ')+': '+cleaningTelegramEscape(r.checker||'—'));
-  lines.push('⏰ '+tx('檢查時間','Check time','ម៉ោងត្រួតពិនិត្យ')+': '+cleaningTelegramEscape(slots.join(', ')||'—'));
-  lines.push(failed.length?'❌ '+tx('異常','Fail','ធ្លាក់')+': '+failed.map(function(k){return cleaningTelegramItem(k,lang);}).join(', '):'✅ '+tx('全部通過','All passed','ជាប់ទាំងអស់'));
-  lines.push(symbols);
-  if(r.note)lines.push('📝 '+cleaningTelegramEscape(r.note));
-  const photos=cleaningTelegramPhotos(r);
-  if(photos.length)lines.push('📷 '+photos.length+' '+tx('張照片','photo(s)','រូបថត'));
-  return {lines:lines,photos:photos};
-}
-function buildCleaningSelectedRecordsTelegram(records,lang,sender){
-  records=Array.isArray(records)?records:[];
-  lang=lang||'bi';
-  const tx=function(zh,en,km){return cleaningTelegramText(zh,en,km,lang);};
-  const allSlots=Array.from(new Set(records.reduce(function(out,r){return out.concat(cleaningTelegramSlots(r));},[])));
-  const allLocations=Array.from(new Set(records.map(function(r){return typeof locName==='function'?locName(r.locId):(r.location||r.locId||'—');})));
-  const lines=[
-    '🧹 <b>'+tx('VRT 清潔記錄','VRT Cleaning Records','កំណត់ត្រាសម្អាត VRT')+'</b>',
-    '📅 '+cleaningTelegramEscape(records.length?cleaningTelegramDate(records[0].date):'—'),
-    '📍 '+tx('地點','Locations','ទីតាំង')+': '+cleaningTelegramEscape(allLocations.join(', ')||'—'),
-    '⏰ '+tx('檢查時間','Check time','ម៉ោងត្រួតពិនិត្យ')+': '+cleaningTelegramEscape(allSlots.join(', ')||'—'),
-    '📋 '+tx('記錄','Records','កំណត់ត្រា')+': <b>'+records.length+'</b>'
-  ];
-  if(sender)lines.push('👤 '+tx('發送人','Sent by','អ្នកផ្ញើ')+': <b>'+cleaningTelegramEscape(sender)+'</b>');
-  const photos=[];
-  /* 同日再次更新時優先交付最新照片；GAS 會略過已送指紋，只送真正新增的照片。 */
-  records.slice().reverse().forEach(function(r){cleaningTelegramPhotos(r).forEach(function(p){if(!photos.includes(p)&&photos.length<5)photos.push(p);});});
-  records.forEach(function(r){
-    const detail=formatCleaningTelegramRecord(r,lang,false);
-    lines.push('━━━━━━━━━━━━━━━━');
-    Array.prototype.push.apply(lines,detail.lines);
-  });
-  lines.push('━━━━━━━━━━━━━━━━','⏰ '+(typeof _localTS==='function'?_localTS():new Date().toLocaleString()));
-  return {text:lines.join('\n'),photos:photos};
-}
 function cleaningTelegramSlotFilter(r,slot){
   if(!slot||slot==='all')return true;
   const slots=cleaningTelegramSlots(r).map(String);
   if(/^\d{1,2}:\d{2}$/.test(String(slot)))return slots.some(function(v){return v.padStart(5,'0')===String(slot).padStart(5,'0');});
   if(!slots.length)return slot==='morning'&&String(r&&r.shift||'').toLowerCase()==='day';
   return slots.some(function(v){const m=/^(\d{1,2})(?::(\d{2}))?/.exec(v.trim());if(!m)return false;const mins=+m[1]*60+(+(m[2]||0));if(slot==='morning')return mins<720;if(slot==='afternoon')return mins>=720&&mins<1080;return mins>=1080;});
+}
+function cleaningTelegramFailed(r){const c=r&&r.checks||{};return CHK_ITEMS.filter(function(k){return c[k]===false;});}
+function cleaningTelegramLocName(id){return typeof locName==='function'?locName(id):(id||'—');}
+/* 期間標籤：日＝日期、週＝起迄、月＝YYYY-MM、年＝YYYY。 */
+function cleaningTelegramPeriodLabel(period,ref,lang){
+  const lb=function(zh,en,km){return GC.TG.lbl(lang,zh,en,km);};
+  const range=(typeof GC!=='undefined'&&GC.period&&GC.period.range)?GC.period.range(period,ref):null;
+  if(period==='day')return range?range.fromYmd:cleaningTelegramDate(ref||new Date());
+  if(period==='week')return range?range.fromYmd+' ~ '+range.toYmd.slice(5):lb('本週','This week','សប្ដាហ៍នេះ');
+  if(period==='month')return range?range.fromYmd.slice(0,7):lb('本月','This month','ខែនេះ');
+  if(period==='year')return range?range.fromYmd.slice(0,4):lb('今年','This year','ឆ្នាំនេះ');
+  return lb('全部','All','ទាំងអស់');
+}
+/* 一區一筆統計：檢查次數＝時段數（沒填時段算 1）、有 ❌ 的記錄、清潔員／檢查員。 */
+function cleaningTelegramAreas(view){
+  const order=new Map(((typeof state!=='undefined'&&state.db&&state.db().locations)||[]).map(function(x,i){return [String(x.id),i];}));
+  const map=new Map();
+  (view||[]).forEach(function(r){
+    const id=String(r.locId||r.location||'—');
+    let a=map.get(id);
+    if(!a){a={id:id,name:cleaningTelegramLocName(id),checks:0,records:[],fails:[]};map.set(id,a);}
+    a.checks+=cleaningTelegramSlots(r).length||1;a.records.push(r);
+    if(cleaningTelegramFailed(r).length)a.fails.push(r);
+  });
+  return Array.from(map.values()).sort(function(a,b){return ((order.has(a.id)?order.get(a.id):999)-(order.has(b.id)?order.get(b.id):999))||a.name.localeCompare(b.name);});
+}
+function cleaningTelegramSortKey(r){return cleaningTelegramDate(r.date)+' '+(cleaningTelegramSlots(r)[0]||'');}
+/* 有異常的區域一行：區域 · 時間 · ❌ 項目圖示 · 📝 備註 · 檢查員 */
+function cleaningTelegramIssueLine(area,withDate){
+  const G=GC.TG,e=cleaningTelegramEscape;
+  const fails=area.fails.slice().sort(function(a,b){return cleaningTelegramSortKey(a).localeCompare(cleaningTelegramSortKey(b));});
+  const whens=[];fails.forEach(function(r){const t=cleaningTelegramSlots(r).map(G.time).filter(Boolean).join('/')||'—';whens.push((withDate?G.d(cleaningTelegramDate(r.date))+' ':'')+t);});
+  const when=whens.slice(0,3).join(', ')+(whens.length>3?' +'+(whens.length-3):'');
+  const items=CHK_ITEMS.filter(function(k){return fails.some(function(r){return (r.checks||{})[k]===false;});}).map(function(k){return CHK_ICONS[k];}).join(' ');
+  const notes=Array.from(new Set(fails.map(function(r){return String(r.note||'').replace(/\s+/g,' ').trim();}).filter(Boolean))).join(' / ');
+  const who=Array.from(new Set(fails.map(function(r){return String(r.checker||'').trim();}).filter(Boolean))).join(', ');
+  return '• <b>'+e(area.name)+'</b> · '+e(when)+' · ❌ '+items+(notes?' · 📝 '+e(notes.length>80?notes.slice(0,79)+'…':notes):'')+(who?' · '+e(who):'');
+}
+/* 共用卡片：period／ref 決定標題與是否顯示日期；all＝整個資料集（算本月累計用）。 */
+function cleaningTelegramReport(view,opt){
+  opt=opt||{};
+  const G=GC.TG,lang=opt.lang||'bi',period=opt.period||'month',lb=function(zh,en,km){return G.lbl(lang,zh,en,km);},e=cleaningTelegramEscape;
+  const areas=cleaningTelegramAreas(view),bad=areas.filter(function(a){return a.fails.length;}),ok=areas.filter(function(a){return !a.fails.length;});
+  const checks=areas.reduce(function(s,a){return s+a.checks;},0),issues=view.filter(function(r){return cleaningTelegramFailed(r).length;}).length;
+  const cleaners=new Set(view.map(function(r){return String(r.cleaner||'').trim();}).filter(Boolean));
+  const checkers=Array.from(new Set(view.map(function(r){return String(r.checker||'').trim();}).filter(Boolean)));
+  const photos=[];
+  view.filter(function(r){return cleaningTelegramFailed(r).length;}).sort(function(a,b){return String(b.updatedAt||b.timestamp||b.date||'').localeCompare(String(a.updatedAt||a.timestamp||a.date||''));})
+    .forEach(function(r){cleaningTelegramPhotos(r).forEach(function(p){if(!photos.includes(p)&&photos.length<5)photos.push(p);});});
+  const sub=[];
+  if(opt.scopeLabel)sub.push('🗂 '+e(opt.scopeLabel));
+  const actualSlots=Array.from(new Set(view.reduce(function(out,r){return out.concat(cleaningTelegramSlots(r));},[]))).filter(Boolean).sort();
+  const slotLabel=opt.slotLabel||(actualSlots.length?actualSlots.join(', '):'');
+  if(slotLabel)sub.push('⏱ '+e(slotLabel));
+  let txt=G.head('🧹',lb('清潔巡檢','Cleaning','ការសម្អាត'),cleaningTelegramPeriodLabel(period,opt.ref,lang),sub.join('\n'));
+  if(!view.length){
+    txt+='\n'+G.verdict('warn',lb('這段期間沒有清潔記錄','No cleaning records in this period','គ្មានកំណត់ត្រាសម្អាតក្នុងរយៈពេលនេះ'));
+  }else{
+    txt+='\n'+G.verdict(bad.length?'bad':'ok',bad.length?lb(bad.length+' 個區域有異常',bad.length+(bad.length===1?' area with issues':' areas with issues'),'តំបន់ '+bad.length+' មានបញ្ហា'):lb('全部通過','All passed','ជាប់ទាំងអស់'));
+    txt+='\n'+G.bar(ok.length,areas.length)+' '+lb('區域正常','areas OK','តំបន់ធម្មតា');
+    txt+='\n'+G.kpis([['📍',lb('區域','Areas','តំបន់'),areas.length],['🔎',lb('檢查','Checks','ការត្រួតពិនិត្យ'),checks],['👷',lb('清潔員','Cleaners','អ្នកសម្អាត'),cleaners.size]],3);
+    txt+='\n'+G.kpis([['❌',lb('異常','Issues','បញ្ហា'),issues]].concat(photos.length?[['📷',lb('照片','Photos','រូបថត'),photos.length]]:[]),2);
+  }
+  /* 日／週報加本月累計（同一地點／時段條件）。 */
+  if((period==='day'||period==='week')&&Array.isArray(opt.month)){
+    const m=cleaningTelegramAreas(opt.month),mIssues=opt.month.filter(function(r){return cleaningTelegramFailed(r).length;}).length;
+    txt+='\n📆 <b>'+lb('本月累計','Month to date','សរុបខែនេះ')+'</b> · 🔎 '+m.reduce(function(s,a){return s+a.checks;},0)+' · 📍 '+m.length+' · ❌ '+mIssues;
+  }
+  if(bad.length){
+    txt+=G.sec('⚠️',lb('需注意','Needs attention','ត្រូវយកចិត្តទុកដាក់'))+'\n'+bad.slice(0,12).map(function(a){return cleaningTelegramIssueLine(a,period!=='day');}).join('\n')+(bad.length>12?'\n… +'+(bad.length-12):'');
+  }
+  if(ok.length)txt+='\n\n✅ '+ok.map(function(a){return e(a.name)+' ×'+a.checks;}).join(' · ');
+  if(checkers.length&&view.length)txt+='\n🔎 '+e(checkers.slice(0,4).join(', '))+(checkers.length>4?' +'+(checkers.length-4):'');
+  if(opt.mode==='review'||opt.mode==='approval')txt+='\n⏳ '+lb('待審查／待核可','Pending review / approval','កំពុងរង់ចាំពិនិត្យ/អនុម័ត')+' <b>'+issues+'</b>';
+  const sender=String(opt.sender||'').trim();
+  txt+='\n'+(sender?'👤 '+lb('發送人','Sent by','អ្នកផ្ញើ')+' <b>'+e(sender)+'</b> · ':'')+'⏰ '+(typeof _localTS==='function'?_localTS():new Date().toLocaleString()).slice(0,16);
+  return {text:txt,photos:photos,recordCount:view.length};
+}
+/* 記錄頁「存檔＋送 Telegram」：當天全部記錄（下午再送會由 GAS 編輯同一則）。 */
+function buildCleaningSelectedRecordsTelegram(records,lang,sender){
+  records=Array.isArray(records)?records:[];
+  const date=records.length?cleaningTelegramDate(records[0].date):'';
+  const all=((typeof state!=='undefined'&&state.db)?(state.db().records||[]):records).filter(function(r){return r&&!r._deleted;});
+  const month=date?((typeof GC!=='undefined'&&GC.period&&GC.period.filter)?GC.period.filter(all,'month','date',date):all.filter(function(r){return cleaningTelegramDate(r.date).slice(0,7)===date.slice(0,7);})):[];
+  return cleaningTelegramReport(records,{period:'day',ref:date,lang:lang||'bi',sender:sender,month:month});
 }
 function buildCleaningTelegram(opt){
   opt=opt||{};
@@ -2293,35 +2325,14 @@ function buildCleaningTelegram(opt){
   const period=opt.period||'month', mode=opt.mode||'summary', ref=opt.ref, lang=opt.lang||'bi', sender=String(opt.sender||'').trim();
   /* 日報固定重建完整當日資料；下午再次送出時仍保留上午內容，並由 GAS 編輯同一訊息。 */
   const scope=period==='day'?'all':(opt.scope||'all'), slot=period==='day'?'all':(opt.slot||'all');
-  const view=(typeof GC!=='undefined'&&GC.telegram)?GC.telegram.filter(all,cfg,period,ref,scope,slot):((typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,period,'date',ref):all.slice());
-  const periodLabel={day:cleaningTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:cleaningTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:cleaningTelegramText('本月','This Month','ខែនេះ',lang),year:cleaningTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:cleaningTelegramText('全部','All','ទាំងអស់',lang)}[period]||period;
-  const modeLabel={summary:cleaningTelegramText('摘要','Summary','សង្ខេប',lang),review:cleaningTelegramText('審查','Review','ពិនិត្យ',lang),approval:cleaningTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
+  const pick=function(p){return (typeof GC!=='undefined'&&GC.telegram)?GC.telegram.filter(all,cfg,p,ref,scope,slot):((typeof GC!=='undefined'&&GC.period)?GC.period.filter(all,p,'date',ref):all.slice());};
+  const view=pick(period);
   const selectedSlots=(Array.isArray(slot)?slot:[slot]).filter(Boolean);
   const selectedScopes=(Array.isArray(scope)?scope:[scope]).filter(Boolean);
-  const actualSlots=Array.from(new Set(view.reduce(function(out,r){return out.concat(cleaningTelegramSlots(r));},[]))).filter(Boolean);
-  const slotLabel=selectedSlots.includes('all')?(actualSlots.length?actualSlots.join(', '):cleaningTelegramText('沒有已選時段','No selected slots','គ្មានពេលដែលបានជ្រើស',lang)):selectedSlots.join(', ');
-  const scopeLabel=selectedScopes.includes('all')?cleaningTelegramText('全部地點','All locations','គ្រប់ទីតាំង',lang):selectedScopes.map(function(id){return typeof locName==='function'?locName(id):id;}).join(', ');
-  const failed=view.filter(r=>Object.values(r.checks||{}).some(v=>v===false));
-  const passed=view.length-failed.length;
-  const lines=['🧹 <b>'+cleaningTelegramText('VRT 清潔','VRT Cleaning','VRT សម្អាត',lang)+'</b>','📅 '+periodLabel,'📍 '+cleaningTelegramText('地點','Locations','ទីតាំង',lang)+': '+cleaningTelegramEscape(scopeLabel),'⏱️ '+cleaningTelegramText('時段','Slots','ពេលវេលា',lang)+': '+cleaningTelegramEscape(slotLabel),'🧾 '+cleaningTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeLabel];
-  if(sender)lines.push('👤 '+cleaningTelegramText('發送人','Sent by','អ្នកផ្ញើ',lang)+': <b>'+cleaningTelegramEscape(sender)+'</b>');
-  lines.push('━━━━━━━━━━━━━━━━','📊 <b>'+cleaningTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+cleaningTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+view.length+'</b> | '+cleaningTelegramText('通過','Pass','ជាប់',lang)+': '+passed+' | '+cleaningTelegramText('異常','Fail','ធ្លាក់',lang)+': '+failed.length,'• '+cleaningTelegramText('地點','Locations','ទីតាំង',lang)+': '+new Set(view.map(r=>r.locId).filter(Boolean)).size);
-  const photos=[];
-  view.slice().sort(function(a,b){return String(b.updatedAt||b.timestamp||b.date||'').localeCompare(String(a.updatedAt||a.timestamp||a.date||''));}).forEach(function(r){cleaningTelegramPhotos(r).forEach(function(p){if(!photos.includes(p)&&photos.length<5)photos.push(p);});});
-  if(!view.length) lines.push('⚠️ '+cleaningTelegramText('該期間沒有清潔記錄','No cleaning records in selected period','គ្មានកំណត់ត្រាសម្អាតក្នុងរយៈពេលនេះ',lang));
-  let shown=0;
-  view.slice().sort(function(a,b){return (cleaningTelegramDate(a.date)+' '+(cleaningTelegramSlots(a)[0]||'')).localeCompare(cleaningTelegramDate(b.date)+' '+(cleaningTelegramSlots(b)[0]||''));}).forEach(function(r){
-    const detail=formatCleaningTelegramRecord(r,lang,true);
-    const block=['━━━━━━━━━━━━━━━━'].concat(detail.lines).join('\n');
-    if(lines.join('\n').length+block.length>3600)return;
-    lines.push('━━━━━━━━━━━━━━━━');
-    Array.prototype.push.apply(lines,detail.lines);
-    shown++;
-  });
-  if(view.length>shown)lines.push('… '+(view.length-shown)+' '+cleaningTelegramText('筆未展開','more record(s)','កំណត់ត្រាបន្ថែម',lang));
-  if(mode==='review'||mode==='approval')lines.push('━━━━━━━━━━━━━━━━','⏳ '+cleaningTelegramText('待審查／待核可','Pending review / approval','កំពុងរង់ចាំពិនិត្យ/អនុម័ត',lang)+': '+failed.length);
-  lines.push('━━━━━━━━━━━━━━━━','⏰ '+(typeof _localTS==='function'?_localTS():new Date().toLocaleString()));
-  return {text:lines.join('\n'),photos:photos,recordCount:view.length};
+  return cleaningTelegramReport(view,{period:period,ref:ref,mode:mode,lang:lang,sender:sender,
+    scopeLabel:selectedScopes.includes('all')?'':selectedScopes.map(cleaningTelegramLocName).join(', '),
+    slotLabel:selectedSlots.includes('all')?'':selectedSlots.join(', '),
+    month:(period==='day'||period==='week')?pick('month'):null});
 }
 
 function validateCleaningTelegramSelection(ctx){

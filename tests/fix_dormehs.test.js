@@ -26,7 +26,7 @@ function file(w){return new w.File([new Uint8Array([1,2,3])],'x.xlsx');}
   for(const [name,html] of [['dorm',dormSrc],['ehs',ehsSrc]]){
     for(const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi))assert.doesNotThrow(()=>new Function(m[1]),name+' script parses');
     assert(!/MutationObserver/.test(html),name+': no page-wide substring translation observer (B2)');
-    assert(html.includes('gascheck-core.js?v=20260930-busyfix'),name+' keeps core cache key');
+    assert(html.includes('gascheck-core.js?v=20261003a'),name+' keeps core cache key');
   }
   assert(!/5026942575/.test(dormSrc)&&!/approverId/.test(dormSrc)&&!/dormDecision/.test(dormSrc),'dorm: no web approval / hardcoded approver (C1)');
   assert(!/mode:'replace'/.test(dormSrc),'dorm: no replace push (merge only)');
@@ -171,7 +171,7 @@ function file(w){return new w.File([new Uint8Array([1,2,3])],'x.xlsx');}
       assert.deepStrictEqual([...leaks],[],'ehs '+lang+' CJK leaks');
       const pk=w.buildEhsTelegram({cfg:w.__ehsGcCfg,period:'month',ref:TODAY.slice(0,8)+'01',mode:'summary',scope:'all',slot:'all',lang});
       assert(!CJK.test(pk.text),'ehs Telegram '+lang+' single-language');
-      if(lang==='en')assert(pk.text.includes('Type: S=Solid · I=Industrial'),'type legend English only (B3)');
+      if(lang==='en')assert(pk.text.includes('Waste trips')&&pk.text.includes('K.S.W.M</b> · 1/4 trips')&&pk.text.includes('Month to date <b>1</b> trips / target 8'),'waste trips section English only (B3)');
       const tabB=w.document.querySelector('[data-tab="modB"]').textContent;assert(/Waste|សំណល់/.test(tabB)&&!/Recycling/.test(tabB),'Waste tab says Waste (B13)');
     }
     x.dom.window.close();

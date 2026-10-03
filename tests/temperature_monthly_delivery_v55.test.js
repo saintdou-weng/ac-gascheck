@@ -26,6 +26,7 @@ for(let day=1;day<=26;day++)for(const slot of ['morning','afternoon'])for(const 
   });
 }
 records[records.length-1].h=95;
+records[records.length-1].photos=['https://example.test/anomaly.jpg'];
 
 const threshold={t:{cold:18,cool:23,warm:32,hot:35},h:{dry:40,humid:80,vhum:90}};
 function tSt(v){const n=Number(v);if(n<threshold.t.cold)return{k:'cold'};if(n<threshold.t.cool)return{k:'cool'};if(n<threshold.t.warm)return{k:'ok'};if(n<threshold.t.hot)return{k:'warm'};return{k:'hot'};}
@@ -59,16 +60,27 @@ const window={document,localStorage,crypto:crypto.webcrypto,TextEncoder,addEvent
 const cctx={window,document,localStorage,console,setTimeout,clearTimeout,URLSearchParams,Blob:function(){},URL:{createObjectURL(){return'';},revokeObjectURL(){}},TextEncoder,CustomEvent:function(){}};
 vm.createContext(cctx);vm.runInContext(core,cctx,{filename:'gascheck-core.js'});
 
-tctx.GC.telegram.paginateRows=window.GC.telegram.paginateRows;
+tctx.GC.TG=window.GC.TG;
 const monthly=tctx.buildTGPeriodMsg('month','summary','2026-08-01','all','bi','all');
 assert.strictEqual(records.length,208);
-assert.strictEqual(monthly.pages.length,3);
-assert.strictEqual((monthly.text.match(/2026-08-\d{2} │/g)||[]).length,31);
-assert(monthly.text.includes('2026-08-26') && monthly.text.includes('28/95⚠'));
+// Compact card: one page, one line per zone, the anomaly listed from the END of the month (not only the first 20 rows).
+assert.strictEqual(monthly.pages.length,1);
+assert(!/│|padEnd/.test(monthly.text),'no padded tables');
+assert.equal((monthly.text.match(/^• /gm)||[]).length,5,'4 zone lines + 1 exception, never one row per reading');
+assert(monthly.text.includes('🔴 <b>1 筆超標/1 out of range</b>'));
+assert(monthly.text.includes('讀數/Readings <b>208</b>') && monthly.text.includes('區域/Zones <b>4</b>'));
+assert(monthly.text.includes('• 08-26 · PM · <b>Building B Warehouse / B廠倉庫</b> · 28°C/95% · 過濕 / Very humid'),'anomaly selected from the full month');
+assert(monthly.text.includes('• <b>Building B Warehouse / B廠倉庫</b> ⚠️ · 28°C · 70–95% · ×52 · ⚠️1'));
+assert(monthly.text.includes('有記錄天數/Days with readings <b>26</b> · 08-01~26'),'stub GC has no period.range → day count only');
 assert(monthly.pages.every(p=>p.length<3900));
-assert.deepStrictEqual(Array.from(monthly.photos),['https://example.test/photo.jpg']);
+// Photos follow only the out-of-range reading; the normal reading's photo is not sent.
+assert.deepStrictEqual(Array.from(monthly.photos),['https://example.test/anomaly.jpg']);
 const daily=tctx.buildTGPeriodMsg('day','summary','2026-08-01','all','bi','all');
-assert(daily.text.includes('AM 08:00–09:00')&&daily.text.includes('PM 15:30–16:30'),'daily AM/PM retained');assert(daily.text.length<1600);assert.equal((daily.text.match(/• /g)||[]).length,8);
+assert(daily.text.includes('AM 08:00–09:00')&&daily.text.includes('PM 15:30–16:30'),'daily AM/PM retained');assert(daily.text.length<1600);
+assert.equal((daily.text.match(/• /g)||[]).length,4,'one line per zone');assert.equal((daily.text.match(/28°C\/70%/g)||[]).length,8,'all eight readings shown as AM → PM');
+assert.deepStrictEqual(Array.from(daily.photos),[],'all in range → no photos');
+const en=tctx.buildTGPeriodMsg('month','summary','2026-08-01','all','en','all');assert(!/[\u4e00-\u9fff]/.test(en.text),'English report has no Chinese');
+const km=tctx.buildTGPeriodMsg('month','summary','2026-08-01','all','km','all');assert(!/[\u4e00-\u9fff]/.test(km.text),'Khmer report has no Chinese');
 
 (async()=>{
   window.GC.cloud.post=async()=>({ok:true});

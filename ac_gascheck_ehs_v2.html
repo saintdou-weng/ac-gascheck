@@ -164,7 +164,7 @@ select.bi{cursor:pointer}
 .rp-ok{border:0;background:#1A3E78;color:#fff;padding:8px 20px;border-radius:7px;
   font:600 13px/1 inherit;cursor:pointer}
 </style>
-<script src="./gascheck-core.js?v=20260930-busyfix"></script>
+<script src="./gascheck-core.js?v=20261003a"></script>
 </head>
 <body>
 <div class="topbar">
@@ -1774,86 +1774,135 @@ function ehsTelegramSlotFilter(r,slot){
   const h=ehsHour(r&&r.time_in||r&&r.time||'');if(isNaN(h))return false;
   return slot==='morning'?h<12:(slot==='afternoon'?h>=12&&h<18:h>=18);
 }
-/* v47 SEC-style fixed-width Telegram tables. Keep compact codes in the table and
-   print a Company Key below it so supplier/company names remain complete. */
-function ehsTgEsc(v){return String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function ehsTgClean(v){return String(v==null?'':v).replace(/\s+/g,' ').trim();}
-function ehsTgCell(v,w){let x=ehsTgClean(v);if(x.length>w)x=x.slice(0,Math.max(1,w-1))+'…';return x.padEnd(w,' ');}
-function ehsTgTable(headers,widths,rows){
-  const line=function(cols){return cols.map(function(v){return ehsTgClean(v);}).join(' │ ');};
-  const body=rows.map(line);
-  return '<blockquote><b>'+ehsTgEsc(line(headers))+'</b>'+(body.length?'\n'+ehsTgEsc(body.join('\n')):'')+'</blockquote>';
+/* 2026-10-03 精簡卡片格式（GC.TG）：狀態燈 → 累計趟數進度條 → 重點數字 → 每家供應商一行 → 只列需要注意的紀錄。
+   不再用空白補齊的表格（Telegram 引用區塊不是等寬字）。所有標籤走 GC.TG.lbl(lang, zh, en, km)。 */
+function ehsTgPeriodText(period,ref,lang){
+  const G=GC.TG,r=GC.period.range(period,ref);
+  const base={day:G.lbl(lang,'今日','Today','ថ្ងៃនេះ'),week:G.lbl(lang,'本週','This Week','សប្ដាហ៍នេះ'),month:G.lbl(lang,'本月','This Month','ខែនេះ'),year:G.lbl(lang,'今年','This Year','ឆ្នាំនេះ'),all:G.lbl(lang,'全部','All','ទាំងអស់')}[period]||period;
+  if(!r)return base;
+  if(period==='day')return base+' '+r.fromYmd;
+  if(period==='month')return base+' '+r.fromYmd.slice(0,7);
+  if(period==='year')return base+' '+r.fromYmd.slice(0,4);
+  return base+' '+G.d(r.fromYmd)+'~'+G.d(r.toYmd);
 }
-function ehsTgTime(v){const s=String(v||'').trim();const m=s.match(/(\d{1,2}:\d{2})/);return m?m[1]:(s||'—');}
-function ehsTgWasteKind(r){const a=[];if(r.solid_waste)a.push('S');if(r.industrial_waste)a.push('I');return a.join('+')||'W';}
+function ehsTgIsWaste(r){return !!r&&(r.sourceType==='waste'||r.module==='gate');}
+function ehsTgSupplier(r){return String(r&&(r.supplier||r.name)||'').trim();}
+/* '' | 'time_in' | 'time_out' | 'kg' | 'long'：進出時間沿用頁面的 ehsWasteTimeIssue 規則 */
+function ehsTgWasteIssue(r){
+  const t=ehsWasteTimeIssue(r);if(t)return t;
+  if(!String(r.time_out||'').trim())return 'time_out';
+  if(!kgNumber(r.weight_kg))return 'kg';
+  const d=calcDuration(r.time_in,r.time_out);if(d!=null&&d>180)return 'long';
+  return '';
+}
+function ehsTgWasteLine(r,lang,withDate){
+  const G=GC.TG,lb=function(zh,en,km){return G.lbl(lang,zh,en,km);},issue=ehsTgWasteIssue(r);
+  const sup=ehsTgSupplier(r)||lb('未填供應商','No supplier','គ្មានអ្នកផ្គត់ផ្គង់');
+  let s='• '+(withDate?G.d(r.date)+' ':'')+'<b>'+G.esc(sup)+'</b> · '+kgNumber(r.weight_kg).toLocaleString()+' kg · '+(G.time(r.time_in)||'—')+'→'+(G.time(r.time_out)||'—');
+  const dur=calcDuration(r.time_in,r.time_out);
+  if(dur&&!issue)s+=' ⏱'+G.dur(dur);
+  const why={time_in:lb('未填進廠時間','no time in','គ្មានម៉ោងចូល'),time_out:lb('出廠時間未填或早於進廠','time out missing / before time in','ម៉ោងចេញគ្មាន ឬមុនម៉ោងចូល'),kg:lb('重量 0','0 kg','0 kg'),long:lb('在廠超過 3 小時','inside over 3h','នៅក្នុងរោងចក្រលើស 3 ម៉ោង')}[issue];
+  if(why)s+=' ⚠️ '+why;
+  if(r.car_number)s+=' · 🚚 '+G.esc(r.car_number);
+  return s;
+}
+function ehsTgRecycleLine(r,lang,withDate){
+  const G=GC.TG,lb=function(zh,en,km){return G.lbl(lang,zh,en,km);},total=kgNumber(ehsRecycleRowTotal(r));
+  return '• '+(withDate?G.d(r.date)+' ':'')+lb('塑膠','Plastic','ប្លាស្ទិច')+' '+kgNumber(r.plastic_kg).toLocaleString()+' · '+lb('布','Fabric','ក្រណាត់')+' '+kgNumber(r.fabric_kg).toLocaleString()+' · '+lb('紙管','Core','ស្នូល')+' '+kgNumber(r.core_kg).toLocaleString()+' · <b>'+total.toLocaleString()+' kg</b>'+(total?'':' ⚠️ '+lb('總重 0','0 kg total','សរុប 0 kg'));
+}
+/* 供應商清單＝固定供應商（SUPPLIERS）∪ 期間內出現的；月／年報每家都列（0 趟也要看得到），日／週報只列有趟次的 */
+function ehsTgSupplierNames(wasteRows,includeFixed){
+  const names=includeFixed?SUPPLIERS.slice():[];
+  wasteRows.forEach(function(r){const n=ehsTgSupplier(r)||'—';if(names.indexOf(n)<0)names.push(n);});
+  return names;
+}
 function buildEhsTelegram(opt){
   opt=opt||{};
-  const cfg=opt.cfg||{};
+  const cfg=opt.cfg||{},G=GC.TG,period=opt.period||'month',scope=opt.scope||'all',slot=opt.slot||'all',lang=opt.lang||'bi';
+  const lb=function(zh,en,km){return G.lbl(lang,zh,en,km);};
   const all=typeof cfg.read==='function'?(cfg.read()||[]):[];
-  const scope=opt.scope||'all';
-  const slot=opt.slot||'all',lang=opt.lang||'bi';
-  let rows=typeof GC!=='undefined'&&GC.telegram?GC.telegram.filter(all,cfg,opt.period||'month',opt.ref,scope,slot):(typeof GC!=='undefined'&&GC.period?GC.period.filter(all,opt.period||'month','date',opt.ref):all.slice());
+  let rows=GC.telegram.filter(all,cfg,period,opt.ref,scope,slot);
   // v47 retains v46 duplicate protection before formatting/sending.
   rows=ehsUniqueWasteRows(rows);
-  const periodLabel={day:ehsTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:ehsTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:ehsTelegramText('本月','This Month','ខែនេះ',lang),year:ehsTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:ehsTelegramText('全部','All','ទាំងអស់',lang)}[opt.period||'month']||opt.period;
-  const modeLabel={summary:ehsTelegramText('摘要','Summary','សង្ខេប',lang),review:ehsTelegramText('審查','Review','ពិនិត្យ',lang),approval:ehsTelegramText('核可','Approval','អនុម័ត',lang)}[opt.mode||'summary']||opt.mode;
-  const dataLabel={all:ehsTelegramText('全部','All','ទាំងអស់',lang),recycle:ehsTelegramText('回收','Recycle','កែច្នៃ',lang),waste:ehsTelegramText('廢料','Waste','សំណល់',lang)}[scope]||scope;
-  const slotLabel={all:ehsTelegramText('全部時段','All slots','គ្រប់ពេល',lang),morning:ehsTelegramText('早上','Morning','ពេលព្រឹក',lang),afternoon:ehsTelegramText('下午','Afternoon','ពេលរសៀល',lang),night:ehsTelegramText('晚上','Night','ពេលយប់',lang)}[slot]||slot;
+  const byDate=function(a,b){return String(a.date||'').localeCompare(String(b.date||''))||String(a.time_in||'').localeCompare(String(b.time_in||''));};
+  const wasteRows=rows.filter(ehsTgIsWaste).sort(byDate),recycleRows=rows.filter(function(r){return !ehsTgIsWaste(r);}).sort(byDate);
+  const showWaste=scope!=='recycle',showRecycle=scope!=='waste',day=period==='day',longPeriod=period==='month'||period==='year';
+  const sum=function(list,f){return list.reduce(function(a,r){return a+kgNumber(typeof f==='function'?f(r):r[f]);},0);};
+  const wasteKg=sum(wasteRows,'weight_kg'),recycleKg=sum(recycleRows,ehsRecycleRowTotal),plastic=sum(recycleRows,'plastic_kg'),fabric=sum(recycleRows,'fabric_kg'),core=sum(recycleRows,'core_kg');
   const checkers=[...new Set(rows.map(function(r){return String(r.checked_by||r.checker||r.checkBy||'').trim();}).filter(Boolean))];
-  const wasteRows=rows.filter(function(r){return r.sourceType==='waste'||r.module==='gate';});
-  const recycleRows=rows.filter(function(r){return !(r.sourceType==='waste'||r.module==='gate');});
-  const pending=rows.filter(function(r){return typeof GC!=='undefined'&&GC.telegram&&GC.telegram.pending(r);});
-  const wasteKg=wasteRows.reduce(function(a,r){return a+kgNumber(r.weight_kg);},0);
-  const recycleKg=recycleRows.reduce(function(a,r){return a+kgNumber(ehsRecycleRowTotal(r));},0);
-  const photos=[];rows.slice().sort(function(a,b){return String(b.updatedAt||b.submitted_at||b.date||'').localeCompare(String(a.updatedAt||a.submitted_at||a.date||''));}).forEach(function(r){photoArray(r.photos).forEach(function(p){if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
-  const lines=[
-    '♻️ <b>'+ehsTelegramText('VRT 回收／廢料','VRT Recycle / Waste','VRT កែច្នៃ / សំណល់',lang)+'</b>',
-    '📅 '+ehsTgEsc(periodLabel),
-    '⏱️ '+ehsTelegramText('時段','Slot','ពេលវេលា',lang)+': '+ehsTgEsc(slotLabel),
-    '🏷️ '+ehsTelegramText('資料類型','Data type','ប្រភេទទិន្នន័យ',lang)+': '+ehsTgEsc(dataLabel),
-    '🧾 '+ehsTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+ehsTgEsc(modeLabel),
-    '🛡️ AC GASCheck · VRT Sihanoukville',
-    '━━━━━━━━━━━━━━━━',
-    '📊 <b>'+ehsTelegramText('總覽','Overview','ទិដ្ឋភាពទូទៅ',lang)+'</b>'
-  ];
-  const tl=function(zh,en,km){return lang==='bi'?en:ehsTelegramText(zh,en,km,lang);};
-  lines.push(ehsTgTable(['Item','Qty'],[17,10],[
-    [tl('記錄','Records','កំណត់ត្រា'),rows.length],[tl('廢料','Waste','សំណល់'),wasteRows.length],[tl('回收','Recycle','កែច្នៃ'),recycleRows.length],[tl('廢料 kg','Waste kg','សំណល់ kg'),kgNumber(wasteKg)],[tl('回收 kg','Recycle kg','កែច្នៃ kg'),kgNumber(recycleKg)],[tl('照片','Photos','រូបថត'),photos.length]
-  ]));
-  if(checkers.length)lines.push('👤 '+ehsTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+ehsTgEsc(checkers.join(', ')));
-  if(!rows.length){lines.push('━━━━━━━━━━━━━━━━',ehsTelegramText('暫無記錄','No records','គ្មានកំណត់ត្រា',lang),'⏰ '+_localTS());return {text:lines.join('\n'),photos:photos};}
+  const supNames=ehsTgSupplierNames(wasteRows,longPeriod),supTarget=period==='month'?SUP_TARGET:(period==='year'?SUP_TARGET*12:0);
+  const supCount=function(n){return wasteRows.filter(function(r){return (ehsTgSupplier(r)||'—')===n;});};
+  const below=showWaste&&supTarget?supNames.filter(function(n){return supCount(n).length<supTarget;}):[];
+  const wasteIssues=wasteRows.filter(function(r){return ehsTgWasteIssue(r);}),timeBad=wasteIssues.filter(function(r){return /^time_/.test(ehsTgWasteIssue(r));});
+  const recycleBad=recycleRows.filter(function(r){return !kgNumber(ehsRecycleRowTotal(r));});
+  /* 日／週報加一行本月累計（同 scope／slot，截至期間結束日） */
+  const range=GC.period.range(period,opt.ref);let mtd=null;
+  if((day||period==='week')&&range&&showWaste){
+    const mKey=range.toYmd.slice(0,7);
+    const mRows=ehsUniqueWasteRows(GC.telegram.filter(all,cfg,'month',mKey+'-01',scope,slot)).filter(function(r){return ehsTgIsWaste(r)&&ehsYmd(r.date)<=range.toYmd;});
+    mtd={n:mRows.length,target:SUP_TARGET*ehsTgSupplierNames(mRows,true).length,kg:sum(mRows,'weight_kg')};
+  }
+  /* 照片：廢料離廠證據（最新優先，最多 5 張）；回收紀錄只有異常（總重 0）才附 */
+  const photos=[];
+  wasteRows.concat(recycleBad).sort(function(a,b){return String(b.updatedAt||b.submitted_at||b.date||'').localeCompare(String(a.updatedAt||a.submitted_at||a.date||''));}).forEach(function(r){photoArray(r.photos).forEach(function(p){if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
 
-  const maxRows=28;
-  if(wasteRows.length){
-    const sorted=wasteRows.slice().sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''))||String(a.time_in||'').localeCompare(String(b.time_in||''));});
-    const companyNames=[...new Set(sorted.map(function(r){return String(r.supplier||r.name||'Waste').trim()||'Waste';}))];
-    const companyCode=new Map(companyNames.map(function(n,i){return [n,'C'+String(i+1).padStart(2,'0')];}));
-    const shown=sorted.slice(0,maxRows);
-    lines.push('━━━━━━━━━━━━━━━━','🗑️ <b>'+ehsTelegramText('廢料明細','Waste Details','ព័ត៌មានលម្អិតសំណល់',lang)+'</b>');
-    lines.push(ehsTgTable(['Date','Co','Type','Kg','In','Out'],[5,3,4,6,5,5],shown.map(function(r){const n=String(r.supplier||r.name||'Waste').trim()||'Waste';return [String(r.date||'').slice(5,10)||'—',companyCode.get(n),ehsTgWasteKind(r),kgNumber(r.weight_kg),ehsTgTime(r.time_in),ehsTgTime(r.time_out)];})));
-    lines.push('👤 <b>'+ehsTelegramText('廢料檢查資料','Waste Inspection','ការត្រួតពិនិត្យសំណល់',lang)+'</b>');
-    lines.push(ehsTgTable(['Date','Co','Dur','Inspector','Vehicle'],[5,3,5,13,10],shown.map(function(r){
-      const n=String(r.supplier||r.name||'Waste').trim()||'Waste';const dur=r.duration_min!=null&&r.duration_min!==''?r.duration_min:calcDuration(r.time_in,r.time_out);
-      return [String(r.date||'').slice(5,10)||'—',companyCode.get(n),dur!=null?String(dur)+'m':'—',r.checked_by||r.checker||'—',r.car_number||'—'];
-    })));
-    lines.push('🏢 <b>'+ehsTelegramText('公司對照','Company Key','លេខក្រុមហ៊ុន',lang)+'</b>');
-    companyNames.forEach(function(n){lines.push('• <b>'+ehsTgEsc(companyCode.get(n))+'</b> = '+ehsTgEsc(n));});
-    lines.push(ehsTgEsc(ehsTelegramText('類型：S=固體 · I=工業 · W=其他廢料','Type: S=Solid · I=Industrial · W=Other waste','ប្រភេទ៖ S=រឹង · I=ឧស្សាហកម្ម · W=សំណល់ផ្សេងៗ',lang)));
-    if(sorted.length>shown.length)lines.push('… '+ehsTgEsc(String(sorted.length-shown.length))+' '+ehsTelegramText('筆其餘 Waste 記錄略；完整資料請開啟平台','more Waste records; open dashboard for full data','កំណត់ត្រា Waste បន្ថែម; បើកផ្ទាំងគ្រប់គ្រងសម្រាប់ទិន្នន័យពេញ',lang));
+  const title=lb('VRT 回收／廢料','VRT Recycle / Waste','VRT កែច្នៃ / សំណល់');
+  const sub=[];
+  if(scope!=='all')sub.push('🗂 '+({recycle:lb('回收','Recycle','កែច្នៃ'),waste:lb('廢料','Waste','សំណល់')}[scope]||scope));
+  if(slot!=='all')sub.push('⏱ '+({morning:lb('早上','Morning','ពេលព្រឹក'),afternoon:lb('下午','Afternoon','ពេលរសៀល'),night:lb('晚上','Night','ពេលយប់')}[slot]||slot));
+  let txt=G.head('♻️',title,ehsTgPeriodText(period,opt.ref,lang),sub.join('  ·  '));
+  if(!rows.length){
+    txt+='\n'+G.verdict('warn',lb('沒有紀錄','No records','គ្មានកំណត់ត្រា'))+'\n\nℹ️ '+lb('這段期間沒有紀錄','No records in this period','គ្មានកំណត់ត្រាក្នុងរយៈពេលនេះ');
+    if(opt.mode==='approval')txt+='\n\n⏳ '+lb('Paul：請用下方按鈕核可／退件','Paul: approve / reject with the buttons below','Paul៖ អនុម័ត / បដិសេធ ដោយប៊ូតុងខាងក្រោម');
+    return {text:txt,photos:[]};
   }
-  if(recycleRows.length){
-    const sorted=recycleRows.slice().sort(function(a,b){return String(a.date||'').localeCompare(String(b.date||''));});const shown=sorted.slice(0,maxRows);
-    lines.push('━━━━━━━━━━━━━━━━','♻️ <b>'+ehsTelegramText('回收明細','Recycle Details','ព័ត៌មានលម្អិតកែច្នៃ',lang)+'</b>');
-    lines.push(ehsTgTable(['Date','Plastic','Fabric','Core','Total'],[5,7,7,6,7],shown.map(function(r){return [String(r.date||'').slice(5,10)||'—',kgNumber(r.plastic_kg),kgNumber(r.fabric_kg),kgNumber(r.core_kg),ehsRecycleRowTotal(r)];})));
-    lines.push('👤 <b>'+ehsTelegramText('回收檢查人','Recycle Inspector','អ្នកត្រួតពិនិត្យកែច្នៃ',lang)+'</b>');
-    lines.push(ehsTgTable(['Date','Inspector'],[5,20],shown.map(function(r){return [String(r.date||'').slice(5,10)||'—',r.checked_by||r.checker||'—'];})));
-    if(sorted.length>shown.length)lines.push('… '+ehsTgEsc(String(sorted.length-shown.length))+' '+ehsTelegramText('筆其餘 Recycle 記錄略；完整資料請開啟平台','more Recycle records; open dashboard for full data','កំណត់ត្រា Recycle បន្ថែម; បើកផ្ទាំងគ្រប់គ្រងសម្រាប់ទិន្នន័យពេញ',lang));
+  const warn=[];
+  if(timeBad.length)warn.push('⚠️ '+lb('時間有誤','Time to check','ម៉ោងត្រូវពិនិត្យ')+' <b>'+timeBad.length+'</b>');
+  if(wasteIssues.length>timeBad.length)warn.push('⚖️ '+lb('重量／停留異常','Weight / stay to check','ទម្ងន់ / រយៈពេលត្រូវពិនិត្យ')+' <b>'+(wasteIssues.length-timeBad.length)+'</b>');
+  if(below.length)warn.push('🎯 '+lb('未達目標','Below target','មិនដល់គោលដៅ')+' <b>'+below.length+'</b>');
+  if(recycleBad.length)warn.push('♻️ '+lb('回收總重 0','Recycle 0 kg','កែច្នៃ 0 kg')+' <b>'+recycleBad.length+'</b>');
+  txt+='\n'+G.verdict(timeBad.length?'bad':warn.length?'warn':'ok',warn.length?lb(warn.length+' 項需注意',warn.length+' to check',warn.length+' ត្រូវពិនិត្យ'):lb('一切正常','All clear','ធម្មតាទាំងអស់'));
+  /* 累計趟數＋進度條（月／年：對目標；日／週：本月累計） */
+  if(showWaste){
+    if(supTarget){
+      const total=supTarget*supNames.length;
+      txt+='\n🚛 '+(period==='year'?lb('今年累計','Year to date','សរុបឆ្នាំនេះ'):lb('本月累計','Month to date','សរុបខែនេះ'))+' <b>'+wasteRows.length+'</b> '+lb('趟','trips','ជើង')+' / '+lb('目標','target','គោលដៅ')+' '+total+' '+G.bar(wasteRows.length,total);
+    }else if(mtd){
+      txt+='\n📆 '+lb('本月累計','Month to date','សរុបខែនេះ')+' <b>'+mtd.n+'</b> '+lb('趟','trips','ជើង')+' / '+lb('目標','target','គោលដៅ')+' '+mtd.target+' '+G.bar(mtd.n,mtd.target)+' · '+mtd.kg.toLocaleString()+' kg';
+    }
   }
-  if(opt.mode==='approval'){
-    lines.push('━━━━━━━━━━━━━━━━','⏳ '+ehsTgEsc(ehsTelegramText('請 Paul 按下方按鈕核可或退件本月報告','Paul: please approve or reject this report with the buttons below','Paul៖ សូមអនុម័ត ឬបដិសេធរបាយការណ៍នេះ ដោយប៊ូតុងខាងក្រោម',lang)));
+  const k=[];
+  if(showWaste&&!supTarget)k.push(['🚛',lb('趟數','Trips','ជើង'),wasteRows.length]);
+  if(showWaste)k.push(['🗑️',lb('廢料','Waste','សំណល់'),wasteKg.toLocaleString()+' kg']);
+  if(showRecycle)k.push(['♻️',lb('回收','Recycle','កែច្នៃ'),recycleKg.toLocaleString()+' kg'+(recycleRows.length>1?' ('+recycleRows.length+')':'')]);
+  k.push(['📷',lb('照片','Photos','រូបថត'),photos.length]);
+  txt+='\n'+G.kpis(k,2);
+  if(checkers.length)txt+='\n👤 '+G.esc(checkers.slice(0,4).join(', '))+(checkers.length>4?' +'+(checkers.length-4):'');
+  if(warn.length)txt+='\n'+warn.join('  ·  ');
+  /* 每家供應商一行：趟數／目標 ✅、重量 */
+  if(showWaste&&!day&&supNames.length){
+    const fixed=supNames.filter(function(n){return SUPPLIERS.indexOf(n)>=0;}),others=supNames.filter(function(n){return SUPPLIERS.indexOf(n)<0;}).sort(function(a,b){return supCount(b).length-supCount(a).length;});
+    const shown=fixed.concat(others).slice(0,12);
+    txt+=G.sec('🚛',lb('廢料趟數','Waste trips','ជើងដឹកសំណល់'))+'\n'+shown.map(function(n){
+      const list=supCount(n),kg=sum(list,'weight_kg');
+      return '• <b>'+G.esc(n)+'</b> · '+(supTarget?list.length+'/'+supTarget+' '+lb('趟','trips','ជើង')+' '+(list.length>=supTarget?'✅':list.length?'🟠':'❌'):list.length+' '+lb('趟','trips','ជើង'))+' · '+kg.toLocaleString()+' kg';
+    }).join('\n')+(supNames.length>shown.length?'\n… +'+(supNames.length-shown.length):'');
   }
-  lines.push('━━━━━━━━━━━━━━━━','⏰ '+_localTS());
-  return {text:lines.join('\n'),photos:photos};
+  /* 回收：一行小計（日報就是當天那一筆） */
+  if(showRecycle&&recycleRows.length){
+    txt+=G.sec('♻️',lb('回收','Recycle','កែច្នៃ'))+'\n• '+lb('塑膠','Plastic','ប្លាស្ទិច')+' '+plastic.toLocaleString()+' · '+lb('布','Fabric','ក្រណាត់')+' '+fabric.toLocaleString()+' · '+lb('紙管','Core','ស្នូល')+' '+core.toLocaleString()+' · <b>'+recycleKg.toLocaleString()+' kg</b>'+(recycleRows.length>1?' · '+recycleRows.length+' '+lb('筆','records','កំណត់ត្រា'):'');
+  }
+  /* 日報：當天每趟都列；週／月／年：只列需要注意的 */
+  const limit=10;
+  if(showWaste&&day&&wasteRows.length){
+    txt+=G.sec('📋',lb('今日趟次','Today\'s trips','ជើងថ្ងៃនេះ'))+'\n'+wasteRows.slice(0,limit).map(function(r){return ehsTgWasteLine(r,lang,false);}).join('\n')+(wasteRows.length>limit?'\n… +'+(wasteRows.length-limit):'');
+    if(showRecycle&&recycleBad.length)txt+=G.sec('⚠️',lb('需注意','To check','ត្រូវពិនិត្យ'))+'\n'+recycleBad.map(function(r){return ehsTgRecycleLine(r,lang,false);}).join('\n');
+  }else{
+    const ex=wasteIssues.map(function(r){return ehsTgWasteLine(r,lang,true);}).concat(recycleBad.map(function(r){return ehsTgRecycleLine(r,lang,true);}));
+    if(ex.length)txt+=G.sec('⚠️',lb('需注意','To check','ត្រូវពិនិត្យ'))+'\n'+ex.slice(0,limit).join('\n')+(ex.length>limit?'\n… +'+(ex.length-limit):'');
+  }
+  if(opt.mode==='approval')txt+='\n\n⏳ '+lb('Paul：請用下方按鈕核可／退件本月報告','Paul: approve / reject this month\'s report with the buttons below','Paul៖ អនុម័ត / បដិសេធរបាយការណ៍ខែនេះ ដោយប៊ូតុងខាងក្រោម');
+  return {text:txt,photos:photos};
 }
 function mergeEhsImport(current,incoming){
   const normalize=function(r){const waste=r&&((r.sourceType==='waste')||(r.module==='gate'));const out=Object.assign({},r,{date:ehsYmd(r&&r.date),photos:photoArray(r&&r.photos),module:waste?'gate':'internal',sourceType:waste?'waste':'recycle'});if(waste)out.weight_kg=kgNumber(out.weight_kg);else{out.plastic_kg=kgNumber(out.plastic_kg);out.fabric_kg=kgNumber(out.fabric_kg);out.core_kg=kgNumber(out.core_kg);out.total_kg=kgNumber(out.total_kg)||out.plastic_kg+out.fabric_kg+out.core_kg;}return out;};

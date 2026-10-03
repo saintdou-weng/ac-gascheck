@@ -72,7 +72,7 @@ assert(!audit.missing.some(x=>x.tool==='temperature'),'year approval covers the 
 
 const msg=context.buildRecentUpdateMissingMessage_(audit,audit.missing);
 assert(msg.includes('Updated data report reminder'));
-assert(msg.includes('No summary or approval after update'));
+assert(/need a summary \/ approval/.test(msg),'tells what to send: '+msg);
 assert(msg.includes('ទិន្នន័យដែលបានកែប្រែ'));
 
 let sent=0,lastText='';
@@ -82,7 +82,8 @@ const second=context.sendRecentUpdateMissingReport_({now});
 assert.strictEqual(first.sent,true);
 assert.strictEqual(second.skipped,true);
 assert.strictEqual(sent,1,'same unchanged pending batch must notify once');
-assert(!lastText.includes('2026-10'),'future-month data must not appear in the current-month reminder');
+/* 訊息尾端的「發送時間」用真實時鐘，10 月後會出現 2026-10-xx hh:mm；只檢查業務資料，不檢查時間戳。 */
+assert(!lastText.replace(/\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}(:\d{2})?/g,'').includes('2026-10'),'future-month data must not appear in the current-month reminder');
 
 sheets.waterdrum.rows[1][2]='2026-08-24 11:00:00';
 const third=context.sendRecentUpdateMissingReport_({now});

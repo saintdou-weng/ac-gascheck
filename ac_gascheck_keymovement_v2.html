@@ -209,7 +209,7 @@ table tr:last-child td { border-bottom: none; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=20260930-busyfix"></script>
+<script src="./gascheck-core.js?v=20261003a"></script>
 </head>
 <body>
 
@@ -1529,28 +1529,79 @@ window.updateRecord = updateRecord;
 
 <script>
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
-function keyTelegramText(zh,en,km,lang){
-  if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
-  return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
+/* 2026-10-03 群組摘要改為 GC.TG 精簡卡片：狀態燈 → 歸還率進度條 → 重點數字 → 未歸還／遺失逐把列出（同一把鑰匙只列最新狀態）。
+   正常歸還只算數量；照片只附在未歸還／遺失／損壞的紀錄上。 */
+function keyPeriodLabel(period,ref,lang){
+  const G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),r=GC.period.range(period,ref);
+  if(period==='day')return r.fromYmd;
+  if(period==='week')return G.d(r.fromYmd)+' ~ '+G.d(r.toYmd);
+  if(period==='month')return r.fromYmd.slice(0,7);
+  if(period==='year')return r.fromYmd.slice(0,4);
+  return lb('全部','All','ទាំងអស់');
+}
+function keyTgDept(v,lang){const x=DEPT_LABEL[deptCode(v)];return x?GC.TG.lbl(lang,x[0],x[1],x[2]):String(v||'');}
+function keyTgState(r){return isLost(r)?'lost':(r.return_date?'returned':'out');}
+function keyTgToken(v){return window.KEY_V31&&KEY_V31.normalizeKeyNo?KEY_V31.normalizeKeyNo(v):String(v||'').trim().toUpperCase();}
+function keyTgStamp(r){return String(r.issue_date||'')+' '+String(r.issue_time||'00:00');}
+/* 每把鑰匙的最新一筆異動（借出時間最晚者） */
+function keyTgLatest(rows){
+  const by=new Map();
+  rows.forEach(r=>{const k=keyTgToken(r.key_no)||String(r.id);const cur=by.get(k);if(!cur||keyTgStamp(r)>keyTgStamp(cur)||(keyTgStamp(r)===keyTgStamp(cur)&&String(r.createdAt||'')>String(cur.createdAt||'')))by.set(k,r);});
+  return Array.from(by.values());
+}
+function keyTgLine(r,lang,withDate){
+  const G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),st=keyTgState(r),now=new Date();
+  const since=new Date(String(r.issue_date||'')+'T'+(G.time(r.issue_time)||'08:00')+':00'),mins=isNaN(since)?0:Math.round((now-since)/60000);
+  const held=st==='out'&&mins>0?(mins>=2880?Math.floor(mins/1440)+'d':G.dur(mins)):'';
+  let line='• '+(st==='lost'?'🚨 ':'')+'<b>'+G.esc(String(r.key_no||'—')+(r.key_name?' '+r.key_name:''))+'</b> · '+G.esc(r.recipient_name||'—')+(r.dept?' · '+G.esc(keyTgDept(r.dept,lang)):'');
+  if(st==='lost')line+=' · '+lb('遺失','Lost','បាត់')+' '+(G.d(r.return_date||r.issue_date)||'—');
+  else line+=' · '+lb('借出','Out','ខ្ចី')+' '+((withDate?G.d(r.issue_date)+' ':'')+(G.time(r.issue_time)||'—')).trim()+(held?' · ⏱'+held:'');
+  if(st==='returned'&&condCode(r.return_condition)==='damaged')line+=' · ⚠️ '+lb('歸還時損壞','Returned damaged','ប្រគល់វិញខូច');
+  if(r.remarks)line+=' · 📝 '+G.esc(String(r.remarks).replace(/[\r\n]+/g,' '));
+  return line;
 }
 function buildKeyTelegram(opt){
   /* 鑰匙模組沒有真正的 Telegram 核可：只發摘要；報告語言預設為目前介面語言 */
-  opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode='summary',lang=opt.lang||(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang)||'en';
+  opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',ref=opt.ref||_localYMD(),scope=opt.scope||'all',slot=opt.slot||'all';
+  const lang=opt.lang||(typeof GC!=='undefined'&&GC.i18n&&GC.i18n.lang)||'en',G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km);
   const all=(typeof cfg.read==='function'?(cfg.read()||[]):[]).filter(r=>r&&!r._deleted);
-  const rows=typeof GC!=='undefined'&&GC.telegram?GC.telegram.filter(all,cfg,period,opt.ref,opt.scope||'all',opt.slot||'all'):(typeof GC!=='undefined'&&GC.period?GC.period.filter(all,period,'issue_date',opt.ref):all.slice());
-  const esc=v=>String(v==null?'':v).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  const periodLabel={day:keyTelegramText('今日','Today','ថ្ងៃនេះ',lang),week:keyTelegramText('本週','This Week','សប្ដាហ៍នេះ',lang),month:keyTelegramText('本月','This Month','ខែនេះ',lang),year:keyTelegramText('今年','This Year','ឆ្នាំនេះ',lang),all:keyTelegramText('全部','All','ទាំងអស់',lang)}[period]||period;
-  const modeLabel={summary:keyTelegramText('摘要','Summary','សង្ខេប',lang),review:keyTelegramText('審查','Review','ពិនិត្យ',lang),approval:keyTelegramText('核可','Approval','អនុម័ត',lang)}[mode]||mode;
-  const checkers=[...new Set(rows.map(r=>String(r.checker||r.checked_by||r.checkBy||'').trim()).filter(Boolean))];
-  const lostOf=r=>typeof isLost==='function'?isLost(r):(r.return_condition==='遺失'||String(r.return_condition||'').toLowerCase()==='lost');
-  const lost=rows.filter(lostOf).length,returned=rows.filter(r=>r.return_date&&!lostOf(r)).length,outstanding=Math.max(0,rows.length-returned-lost);
-  const dept=v=>typeof deptLabelIn==='function'?deptLabelIn(v,lang):String(v||'');
-  const lines=['🔑 <b>'+keyTelegramText('VRT 鑰匙管理','VRT Key Management','VRT គ្រប់គ្រងសោ',lang)+'</b>','📅 '+periodLabel+(opt.ref?' · '+esc(opt.ref):''),'🧾 '+keyTelegramText('訊息類型','Message type','ប្រភេទសារ',lang)+': '+modeLabel,'━━━━━━━━━━━━━━━━','📊 <b>'+keyTelegramText('儀表板','Dashboard','ផ្ទាំងគ្រប់គ្រង',lang)+'</b>','• '+keyTelegramText('記錄','Records','កំណត់ត្រា',lang)+': <b>'+rows.length+'</b> | '+keyTelegramText('未歸還','Outstanding','មិនទាន់ប្រគល់',lang)+': '+outstanding,'• '+keyTelegramText('已歸還','Returned','បានប្រគល់',lang)+': '+returned+' | '+keyTelegramText('遺失','Lost','បាត់',lang)+': '+lost,'• '+keyTelegramText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ',lang)+': '+esc(checkers.join(', ')||'—')];
+  const scoped=GC.telegram.filter(all,cfg,'all',undefined,scope,slot);
+  const rows=GC.telegram.filter(scoped,cfg,period,ref,scope,slot).slice().sort((a,b)=>keyTgStamp(a).localeCompare(keyTgStamp(b)));
+  const today=_localYMD(),day=period==='day';
+  /* 未歸還＝該鑰匙最新一筆異動仍未歸還（不限期間，群組要看的是「現在誰還拿著」）；逾期＝不是今天借的 */
+  const outKeys=keyTgLatest(scoped).filter(r=>keyTgState(r)==='out').sort((a,b)=>keyTgStamp(a).localeCompare(keyTgStamp(b)));
+  const overdue=outKeys.filter(r=>String(r.issue_date||'')<today);
+  const lost=rows.filter(r=>keyTgState(r)==='lost'),damaged=rows.filter(r=>keyTgState(r)==='returned'&&condCode(r.return_condition)==='damaged');
+  const returned=rows.filter(r=>keyTgState(r)==='returned').length,keys=new Set(rows.map(r=>keyTgToken(r.key_no))).size;
+  const checkers=[...new Set(rows.map(r=>String(r.checker||r.checked_by||'').trim()).filter(Boolean))];
+  let txt=G.head('🔑',lb('VRT 鑰匙管理','VRT Key Management','VRT គ្រប់គ្រងសោ'),keyPeriodLabel(period,ref,lang));
+  const n=outKeys.length;
+  txt+='\n'+G.verdict(overdue.length||lost.length?'bad':n?'warn':'ok',n?lb(n+' 把未歸還',n+' not returned',n+' មិនទាន់ប្រគល់'):lb('全部歸還','All returned','បានប្រគល់ទាំងអស់'))+(lost.length?' · 🚨 '+lb('遺失','Lost','បាត់')+' '+lost.length:'');
+  if(rows.length)txt+='\n📥 '+lb('歸還率','Returned','អត្រាប្រគល់')+' '+G.bar(returned,rows.length);
+  txt+='\n'+G.kpis([
+    ['🔑',lb('鑰匙','Keys','សោ'),keys],['📤',lb('借出','Borrowed','ខ្ចី'),rows.length],['📥',lb('歸還','Returned','ប្រគល់'),returned],
+    ['⏳',lb('未歸還','Not returned','មិនទាន់ប្រគល់'),n],['⏰',lb('逾期','Overdue','ហួសកំណត់'),overdue.length],lost.length?['🚨',lb('遺失','Lost','បាត់'),lost.length]:null
+  ],3);
+  if(day||period==='week'){
+    const m=GC.telegram.filter(scoped,cfg,'month',ref,scope,slot),mr=m.filter(r=>keyTgState(r)==='returned').length,ml=m.filter(r=>keyTgState(r)==='lost').length;
+    txt+='\n📆 '+lb('本月累計','Month to date','សរុបខែនេះ')+' · '+lb('借出','Borrowed','ខ្ចី')+' <b>'+m.length+'</b> · '+lb('歸還','Returned','ប្រគល់')+' <b>'+mr+'</b>'+(ml?' · '+lb('遺失','Lost','បាត់')+' <b>'+ml+'</b>':'');
+  }
+  if(checkers.length)txt+='\n👤 '+lb('檢查人','Inspector','អ្នកត្រួតពិនិត្យ')+' '+G.esc(checkers.join(', '));
+  /* 區段標題只留一個空行；逐把一行 */
+  const lines=[],sec=(icon,title)=>'\n<b>'+icon+' '+title+'</b>';
+  if(outKeys.length){lines.push(sec('⏳',lb('未歸還','Not returned','មិនទាន់ប្រគល់')+' · '+outKeys.length));outKeys.forEach(r=>lines.push(keyTgLine(r,lang,!day||String(r.issue_date||'')!==ref)));}
+  if(lost.length){lines.push(sec('🚨',lb('遺失','Lost','បាត់')+' · '+lost.length));lost.forEach(r=>lines.push(keyTgLine(r,lang,!day)));}
+  if(damaged.length){lines.push(sec('⚠️',lb('歸還時損壞','Returned damaged','ប្រគល់វិញខូច')+' · '+damaged.length));damaged.forEach(r=>lines.push(keyTgLine(r,lang,!day)));}
+  if(!rows.length&&!outKeys.length)lines.push('\nℹ️ '+lb('這段期間沒有紀錄','No records in this period','គ្មានកំណត់ត្រាក្នុងរយៈពេលនេះ'));
   const photos=[];
-  if(rows.length){lines.push('━━━━━━━━━━━━━━━━');rows.slice(0,60).forEach(r=>{const lostRow=lostOf(r);const status=lostRow?keyTelegramText('遺失','Lost','បាត់',lang):(r.return_date?keyTelegramText('已歸還','Returned','បានប្រគល់',lang):keyTelegramText('未歸還','Outstanding','មិនទាន់ប្រគល់',lang));lines.push('🗝️ '+esc(r.issue_date||'—')+' '+esc(r.issue_time||'')+' | '+esc(r.key_no||'—')+' | '+esc(dept(r.dept)||'—')+' | '+esc(r.recipient_name||'—')+' | '+status+(r.checker||r.checked_by?' | 👤 '+esc(r.checker||r.checked_by):''));(Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});if(rows.length>60)lines.push('… +'+(rows.length-60)+' '+keyTelegramText('筆','more','ទៀត',lang));}
-  else lines.push('━━━━━━━━━━━━━━━━',keyTelegramText('暫無記錄','No records','គ្មានកំណត់ត្រា',lang));
-  lines.push('━━━━━━━━━━━━━━━━','⏰ '+(typeof _localTS==='function'?_localTS():new Date().toLocaleString('sv-SE')));
-  return {text:lines.join('\n'),photos};
+  outKeys.concat(lost,damaged).forEach(r=>(Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);}));
+  const body=lines.length?'\n'+lines.join('\n'):'';
+  if((txt+body).length<=3000)return {text:txt+body,photos};
+  /* 太長：第一頁放摘要＋前段清單，其餘分頁（每頁 ≤ 3000 字），頁首重複標題 */
+  const pages=G.chunk('🔑 <b>'+lb('VRT 鑰匙管理','VRT Key Management','VRT គ្រប់គ្រងសោ')+'</b> · '+G.esc(keyPeriodLabel(period,ref,lang)),lines.map(l=>l.replace(/^\n+/,'')),2800);
+  pages[0]=txt+'\n\n'+pages[0].split('\n').slice(1).join('\n');
+  const numbered=G.number(pages);
+  return {text:numbered.join('\n\n'),pages:numbered,photos};
 }
 /* A8：共用智慧匯入的列在頁面端轉換 Excel 序號日期／時間，並以 鑰匙編號＋日期＋時間 去重（重複匯入不再重複新增） */
 function keyMergeImport(cur,rows){

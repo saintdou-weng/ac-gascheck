@@ -273,7 +273,7 @@ async function section(name, fn) {
     assert.equal(String(cb.read().find(x => x.day === 2).sQty), '5', 'phone A edit survives phone B load/upload');
     // phone C opens offline AFTER phone A's entry (stale local month): its page-load save must not
     // stamp blank days as newer and wipe phone A's day when it comes back online.
-    const C = await phone(S, 'ac_gascheck_waterdrum_v2.html', { [key]: [{ day: 1, fQty: '4', fPrice: 2000, fTime: '08:00', checkBy: 'Phea', updatedAt: TODAY + ' 07:00:00' }] }, w => { w.fetch = async () => { throw new TypeError('Failed to fetch'); }; });
+    const C = await phone(S, 'ac_gascheck_waterdrum_v2.html', { [key]: [{ day: 1, fQty: '4', fPrice: 2000, fTime: '08:00', checkBy: 'Phea', updatedAt: (function(){const d=new Date(now.getTime()-3600000);return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes())+':00';})() /* an hour ago: the test must also pass when run before 07:00 */ }] }, w => { w.fetch = async () => { throw new TypeError('Failed to fetch'); }; });
     await wait(1000);
     C.w.fetch = S.fetch; C.w.confirm = () => true;
     await C.w.GC.sync.upload('waterdrum', { silent: true });

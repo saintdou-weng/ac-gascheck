@@ -480,7 +480,7 @@ document.addEventListener('click', function(e) {
 #main-table tr.wdr-flash td{animation:wdrFlash 1.6s ease-out}
 @keyframes wdrFlash{0%{background:#fde68a}100%{background:#eff6ff}}
 </style>
-<script src="./gascheck-core.js?v=20260930-busyfix"></script>
+<script src="./gascheck-core.js?v=20261003a"></script>
 </head>
 <body>
 <!-- Currency Settings Panel -->
@@ -2797,28 +2797,112 @@ function buildWaterTelegram(opt){
 
   window.waterTelegramSlotMatch = waterTelegramSlotMatch = function(time,slot){return !slot||slot==='all'||slotValue(time)===slot;};
 
+  /* 2026-10-03 精簡卡片格式（GC.TG）：狀態燈 → 送水天數進度條 → 重點數字 → 每個地點一行 → 只列需要注意的日子。
+     不再逐日列表、不再用空白補齊的表格。所有標籤走 GC.TG.lbl(lang, zh, en, km)。 */
+  function waterTgPeriodText(period,ref,lang){
+    const G=GC.TG,r=GC.period.range(period,ref);
+    const base={day:G.lbl(lang,'今日','Today','ថ្ងៃនេះ'),week:G.lbl(lang,'本週','This Week','សប្ដាហ៍នេះ'),month:G.lbl(lang,'本月','This Month','ខែនេះ'),year:G.lbl(lang,'今年','This Year','ឆ្នាំនេះ'),all:G.lbl(lang,'全部','All','ទាំងអស់')}[period]||period;
+    if(!r)return base;
+    if(period==='day')return base+' '+r.fromYmd;
+    if(period==='month')return base+' '+r.fromYmd.slice(0,7);
+    if(period==='year')return base+' '+r.fromYmd.slice(0,4);
+    return base+' '+G.d(r.fromYmd)+'~'+G.d(r.toYmd);
+  }
+  /* 期間內應送水的日子：週一～週六（週日不送），且不超過今天（當月進行中只算到今天） */
+  function waterExpectedDays(period,ref){
+    const r=GC.period.range(period,ref);if(!r)return [];
+    const today=_localYMD(),out=[];
+    for(let d=new Date(r.from);d<r.to;d.setDate(d.getDate()+1)){const ymd=_localYMD(d);if(ymd>today)break;if(d.getDay()!==0)out.push(ymd);}
+    return out;
+  }
+  /* 數量／單價異常：同地點平均的 1.5 倍以上或一半以下（單價只看偏高，與頁面表格相同） */
+  function waterTgOddEntries(entries,scope){
+    const out=[];
+    [['factory','fq','fPrice','fRecorded'],['staff','sq','sPrice','sRecorded']].forEach(function(k){
+      if((scope==='factory'&&k[0]==='staff')||(scope==='staff'&&k[0]==='factory'))return;
+      const list=entries.filter(function(r){return r[k[3]]&&r[k[1]]>0;});if(list.length<3)return;
+      const avgQ=list.reduce(function(a,r){return a+r[k[1]];},0)/list.length,avgP=list.reduce(function(a,r){return a+r[k[2]];},0)/list.length;
+      list.forEach(function(r){
+        const q=r[k[1]],p=r[k[2]];
+        if(q>avgQ*1.5||q<avgQ*0.5)out.push({date:r.date,kind:k[0],why:'qty',qty:q,avg:Math.round(avgQ)});
+        else if(avgP&&p>avgP*1.5)out.push({date:r.date,kind:k[0],why:'price',price:p,avg:Math.round(avgP)});
+      });
+    });
+    return out.sort(function(a,b){return a.date.localeCompare(b.date);});
+  }
+
   window.buildWaterTelegram = buildWaterTelegram = function(opt){
     opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode=opt.mode||'summary',slot=opt.slot||'all',scope=opt.scope||'all',lang=opt.lang||'bi';
+    const G=GC.TG,lb=function(zh,en,km){return G.lbl(lang,zh,en,km);},tr=(zh,en,km)=>waterTelegramText(zh,en,km||en,lang),escape=GC.util.escapeHtml;
     const all=typeof cfg.read==='function'?(cfg.read()||[]):allWaterRows();
     const rows=GC.telegram.filter(all,Object.assign({},cfg,{scopeField:null}),period,opt.ref,'all','all');
-    const entries=waterReportEntries(rows,scope,slot),tr=(zh,en,km)=>waterTelegramText(zh,en,km||en,lang),escape=GC.util.escapeHtml;
-    const totals=entries.reduce((a,r)=>({fq:a.fq+r.fq,sq:a.sq+r.sq,ft:a.ft+r.ft,st:a.st+r.st,usd:a.usd+(r.ft+r.st)/(+r.exchangeRate||4100)}),{fq:0,sq:0,ft:0,st:0,usd:0});
+    const entries=waterReportEntries(rows,scope,slot);
+    const totals=entries.reduce((a,r)=>({fq:a.fq+r.fq,sq:a.sq+r.sq,ft:a.ft+r.ft,st:a.st+r.st,usd:a.usd+(r.ft+r.st)/(+r.exchangeRate||4100),fd:a.fd+(r.fq>0?1:0),sd:a.sd+(r.sq>0?1:0)}),{fq:0,sq:0,ft:0,st:0,usd:0,fd:0,sd:0});
     const inspectors=[...new Set(entries.map(r=>String(r.checkBy||r.checker||r.checked_by||'').trim()).filter(Boolean))];
-    const dateLabel=period==='month'?String(opt.ref||'').slice(0,7):String(opt.ref||''),place=scope==='factory'?tr('工廠','Factory'):scope==='staff'?tr('宿舍','Staff House'):tr('全部地點','All locations');
-    const modeLabel=mode==='approval'?tr('月度費用核可申請','Monthly cost approval request'):tr('送水摘要','Delivery summary');
-    const title='💧 <b>'+escape(modeLabel)+'</b> · '+escape(dateLabel)+'\n'+escape(place)+' · '+escape(slot==='all'?tr('全部時段','All slots'):slot)+'\n'+tr('桶數','Drums')+': <b>'+(totals.fq+totals.sq)+'</b> · '+(totals.fq+totals.sq)*20+' L\n💰 <b>'+(totals.ft+totals.st).toLocaleString()+' KHR / $'+totals.usd.toFixed(2)+'</b>\n👤 '+escape(tr('檢查人','Inspector'))+': '+escape(inspectors.slice(0,6).map(v=>v.length>40?v.slice(0,39)+'…':v).join(', ')||'—')+(inspectors.length>6?' +'+(inspectors.length-6):'');
-    const daily=new Map(entries.map(r=>[r.date,r]));let dates=[...daily.keys()].sort();
-    if(period==='month'&&/^\d{4}-\d{2}$/.test(dateLabel)){const [y,m]=dateLabel.split('-').map(Number);dates=Array.from({length:new Date(y,m,0).getDate()},(_,i)=>dateLabel+'-'+String(i+1).padStart(2,'0'));}
-    const format=(q,p,total)=>q+' × '+p+' = '+total;
-    const detail=dates.map(date=>{const r=daily.get(date);if(!r)return date+' │ —';const columns=[];if(scope!=='staff')columns.push('F '+(r.fRecorded?format(r.fq,r.fPrice,r.ft):'—'));if(scope!=='factory')columns.push('S '+(r.sRecorded?format(r.sq,r.sPrice,r.st):'—'));return date+' │ '+columns.join(' · ')+' │ $'+((r.ft+r.st)/(+r.exchangeRate||4100)).toFixed(2);});
-    const photos=[...new Set(entries.flatMap(r=>rowPhotos(r,scope)).map(GC.photo.value).filter(Boolean))];
-    const footer=escape(tr('F 工廠；S 宿舍；桶數 × 單價 = 金額（KHR）；— 無送水記錄','F Factory; S Staff House; drums × unit price = amount (KHR); — no delivery recorded'))+'\n📷 '+photos.length+(photos.length>5?' · '+escape(tr('附前 5 張，完整照片請開啟平台','First 5 attached; all photos in dashboard')):'')+(mode==='approval'?'\n⏳ '+escape(tr('待核可，送出申請不代表已核可','Pending approval; sending a request does not approve it')):'');
-    const pages=GC.telegram.paginateRows(title,tr('日期 │ 每日桶數／金額 │ USD','Date │ Daily drums / amount │ USD'),detail,footer,12);
-    const packet={text:pages.join('\n\n'),pages,photos:photos.slice(0,5)};
+    const dateLabel=period==='month'?String(opt.ref||'').slice(0,7):String(opt.ref||'');
+    const place=scope==='factory'?lb('工廠','Factory','រោងចក្រ'):scope==='staff'?lb('宿舍','Staff House','ផ្ទះបុគ្គលិក'):'';
+    const slotText=slot==='morning'?lb('早上','Morning','ពេលព្រឹក'):slot==='afternoon'?lb('下午','Afternoon','ពេលរសៀល'):'';
+    const sub=[place?'🗂 '+place:'',slotText?'⏱ '+slotText:''].filter(Boolean).join('  ·  ');
+    const day=period==='day',drums=totals.fq+totals.sq,khr=totals.ft+totals.st;
+    let txt=G.head('💧',mode==='approval'?lb('VRT 飲用水 · 月度費用核可','VRT Drinking Water · Monthly cost approval','VRT ទឹកផឹក · អនុម័តចំណាយប្រចាំខែ'):lb('VRT 飲用水','VRT Drinking Water','VRT ទឹកផឹក'),waterTgPeriodText(period,opt.ref,lang),sub);
+    const photos=[...new Set(entries.slice().sort((a,b)=>b.date.localeCompare(a.date)).flatMap(r=>rowPhotos(r,scope)).map(GC.photo.value).filter(Boolean))];
+    const packet={photos:photos.slice(0,5)};
+    if(!entries.length){
+      txt+='\n'+G.verdict('warn',lb('沒有送水記錄','No deliveries','គ្មានការដឹកទឹក'))+'\n\nℹ️ '+lb('這段期間沒有送水記錄','No deliveries in this period','គ្មានការដឹកទឹកក្នុងរយៈពេលនេះ');
+      packet.text=txt;packet.pages=[txt];return packet;
+    }
+    /* 送水天數（有記錄的日子）對應應送天數；日報不畫進度條，改列本月累計 */
+    /* 宿舍不是每天送（一週兩次），只有全部／工廠才對應「應送天數」與漏送日 */
+    const dayW=n=>lb('天',n===1?'day':'days','ថ្ងៃ');
+    const delivered=new Set(entries.map(r=>r.date)),expected=scope==='staff'?[]:waterExpectedDays(period,opt.ref),missing=expected.filter(d=>!delivered.has(d));
+    const odd=waterTgOddEntries(entries,scope);
+    const warn=[];
+    if(missing.length)warn.push('📭 '+lb('未送水','No delivery','គ្មានការដឹក')+' <b>'+missing.length+'</b> '+dayW(missing.length));
+    if(odd.length)warn.push('📈 '+lb('數量／單價異常','Qty / price to check','បរិមាណ / តម្លៃត្រូវពិនិត្យ')+' <b>'+odd.length+'</b>');
+    txt+='\n'+G.verdict(odd.length?'bad':warn.length?'warn':'ok',warn.length?lb(warn.length+' 項需注意',warn.length+' to check',warn.length+' ត្រូវពិនិត្យ'):lb('一切正常','All clear','ធម្មតាទាំងអស់'));
+    if(!day&&expected.length)txt+='\n📆 '+lb('送水天數','Delivery days','ថ្ងៃដឹកទឹក')+' <b>'+delivered.size+'</b> / '+expected.length+' '+dayW(expected.length)+' '+G.bar(delivered.size,expected.length);
+    else if(!day)txt+='\n📆 '+lb('送水天數','Delivery days','ថ្ងៃដឹកទឹក')+' <b>'+delivered.size+'</b> '+dayW(delivered.size);
+    txt+='\n'+G.kpis([['🛢',lb('桶數','Drums','ធុង'),drums.toLocaleString()],['💧',lb('公升','Litres','លីត្រ'),(drums*20).toLocaleString()+' L']],2);
+    txt+='\n💰 <b>'+khr.toLocaleString()+' KHR / $'+totals.usd.toFixed(2)+'</b>';
+    const avgLine=[];
+    if(!day&&delivered.size)avgLine.push('📊 '+lb('日均','Avg/day','មធ្យម/ថ្ងៃ')+' <b>'+Math.round(drums/delivered.size)+'</b> '+lb('桶','drums','ធុង'));
+    if(inspectors.length)avgLine.push('👤 '+escape(inspectors.slice(0,4).join(', '))+(inspectors.length>4?' +'+(inspectors.length-4):''));
+    if(avgLine.length)txt+='\n'+avgLine.join('  ·  ');
+    /* 日／週報：本月累計（同地點／時段，截至期間結束日） */
+    const range=GC.period.range(period,opt.ref);
+    if((day||period==='week')&&range){
+      const mKey=range.toYmd.slice(0,7),mRows=GC.telegram.filter(all,Object.assign({},cfg,{scopeField:null}),'month',mKey+'-01','all','all');
+      const m=waterReportEntries(mRows,scope,slot).filter(r=>r.date<=range.toYmd),mDrums=m.reduce((a,r)=>a+r.fq+r.sq,0),mKhr=m.reduce((a,r)=>a+r.ft+r.st,0),mExp=waterExpectedDays('month',mKey+'-01').filter(d=>d<=range.toYmd);
+      txt+='\n📆 '+lb('本月累計','Month to date','សរុបខែនេះ')+' <b>'+mDrums.toLocaleString()+'</b> '+lb('桶','drums','ធុង')+' · '+mKhr.toLocaleString()+' KHR · '+m.length+(scope==='staff'?'':'/'+mExp.length)+' '+dayW(scope==='staff'?m.length:mExp.length);
+    }
+    if(warn.length)txt+='\n'+warn.join('  ·  ');
+    /* 每個地點一行 */
+    const locs=[];
+    if(scope!=='staff')locs.push('• <b>'+lb('工廠','Factory','រោងចក្រ')+'</b> · '+totals.fq.toLocaleString()+' '+lb('桶','drums','ធុង')+' · '+totals.ft.toLocaleString()+' KHR'+(!day?' · '+totals.fd+' '+dayW(totals.fd):''));
+    if(scope!=='factory')locs.push('• <b>'+lb('宿舍','Staff House','ផ្ទះបុគ្គលិក')+'</b> · '+totals.sq.toLocaleString()+' '+lb('桶','drums','ធុង')+' · '+totals.st.toLocaleString()+' KHR'+(!day?' · '+totals.sd+' '+dayW(totals.sd):''));
+    txt+=G.sec('📍',lb('地點','Locations','ទីតាំង'))+'\n'+locs.join('\n');
+    /* 日報：當天每筆都列（最多 2 個地點）；其餘只列需要注意的 */
+    if(day){
+      const r=entries[0],lines=[];
+      if(scope!=='staff'&&r.fRecorded)lines.push('• '+(G.time(r.fTime)||'—')+' '+lb('工廠','Factory','រោងចក្រ')+' · '+r.fq+' × '+r.fPrice.toLocaleString()+' = '+r.ft.toLocaleString()+' KHR');
+      if(scope!=='factory'&&r.sRecorded)lines.push('• '+(G.time(r.sTime)||'—')+' '+lb('宿舍','Staff House','ផ្ទះបុគ្គលិក')+' · '+r.sq+' × '+r.sPrice.toLocaleString()+' = '+r.st.toLocaleString()+' KHR');
+      if(lines.length)txt+=G.sec('📋',lb('今日送水','Today\'s deliveries','ការដឹកថ្ងៃនេះ'))+'\n'+lines.join('\n');
+    }
+    const ex=[];
+    /* 漏送日期只在日／週／月報逐一列出；年報只給天數（整年的日期清單太長） */
+    if(missing.length&&period!=='year'&&period!=='all')ex.push('• 📭 '+lb('未送水','No delivery','គ្មានការដឹក')+' · '+G.ranges(missing));
+    odd.slice(0,8).forEach(o=>{
+      const where=o.kind==='factory'?lb('工廠','Factory','រោងចក្រ'):lb('宿舍','Staff House','ផ្ទះបុគ្គលិក');
+      ex.push('• '+G.d(o.date)+' '+where+' · '+(o.why==='qty'?'<b>'+o.qty+'</b> '+lb('桶','drums','ធុង')+' ('+lb('平均','avg','មធ្យម')+' '+o.avg+') ⚠️ '+lb('數量異常','unusual quantity','បរិមាណខុសធម្មតា'):lb('單價','price','តម្លៃ')+' <b>'+o.price.toLocaleString()+'</b> ('+lb('平均','avg','មធ្យម')+' '+o.avg.toLocaleString()+') ⚠️ '+lb('單價偏高','price above usual','តម្លៃខ្ពស់ជាងធម្មតា')));
+    });
+    if(odd.length>8)ex.push('… +'+(odd.length-8));
+    if(ex.length)txt+=G.sec('⚠️',lb('需注意','To check','ត្រូវពិនិត្យ'))+'\n'+ex.join('\n');
+    if(photos.length>5)txt+='\n\n📷 '+photos.length+' · '+lb('附前 5 張，完整照片請開啟平台','First 5 attached; all photos in dashboard','ភ្ជាប់ 5 រូបដំបូង; រូបទាំងអស់នៅផ្ទាំងគ្រប់គ្រង');
+    if(mode==='approval')txt+='\n\n⏳ '+lb('Paul：請用下方按鈕核可／退件；送出申請不代表已核可','Paul: approve / reject with the buttons below; sending a request does not approve it','Paul៖ អនុម័ត / បដិសេធ ដោយប៊ូតុងខាងក្រោម; ការផ្ញើសំណើមិនមែនជាការអនុម័តទេ');
+    packet.text=txt;packet.pages=[txt];
     if(mode==='approval'&&period==='month'&&entries.length){const id=dateLabel+'_'+scope+'_'+slot+'_'+waterApprovalDigest(entries,scope,slot);packet.buttons=[[{text:'✅ '+tr('核可','Approve'),data:'wdr_ok_'+id},{text:'❌ '+tr('退件','Reject'),data:'wdr_rej_'+id}]];}
     return packet;
   };
-
 
   function renderWaterApprovalStatus(){
     let box=document.getElementById('wdr-approval-status');
