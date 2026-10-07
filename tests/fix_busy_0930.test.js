@@ -73,8 +73,8 @@ function tab() {
   /* 4. EHS: a failing legacy delete never blocks upload / Telegram; timeouts don't fan out to per-id deletes. */
   {
     const m = ehs.match(/beforeCloudSync:function\(\)\{[\s\S]*?\n\s*\},/);
-    assert(m && /ehsFlushTombstones\(\{silent:true\}\)\.catch/.test(m[0]), 'beforeCloudSync swallows flush errors');
-    const fn = new Function('ehsFlushTombstones', 'return {' + m[0].replace(/,\s*$/, '') + '};')(async () => { throw new Error('pending cloud deletes: 3'); });
+    assert(m && /return \{ok:true,deferred:true\}/.test(m[0]), 'beforeCloudSync defers legacy deletes');
+    const fn = new Function('ehsFlushTombstones', 'return {' + m[0].replace(/,\s*$/, '') + '};')(() => { throw new Error('legacy delete must not run before sync'); });
     const r = await fn.beforeCloudSync();
     assert(r && r.deferred, 'flush failure is deferred, not thrown');
     assert(/batchErr\.timeout\|\|\/busy\|retry\|timed out\|逾時\/i/.test(ehs), 'no per-id fan-out after batch timeout/busy');

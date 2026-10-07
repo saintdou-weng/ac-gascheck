@@ -73,12 +73,12 @@ assert(monthly.text.includes('• 08-26 · PM · <b>Building B Warehouse / B廠�
 assert(monthly.text.includes('• <b>Building B Warehouse / B廠倉庫</b> ⚠️ · 28°C · 70–95% · ×52 · ⚠️1'));
 assert(monthly.text.includes('有記錄天數/Days with readings <b>26</b> · 08-01~26'),'stub GC has no period.range → day count only');
 assert(monthly.pages.every(p=>p.length<3900));
-// Photos follow only the out-of-range reading; the normal reading's photo is not sent.
-assert.deepStrictEqual(Array.from(monthly.photos),['https://example.test/anomaly.jpg']);
+// Photos from normal and out-of-range readings both follow the selected report.
+assert.deepStrictEqual(Array.from(monthly.photos),['https://example.test/photo.jpg','https://example.test/anomaly.jpg']);
 const daily=tctx.buildTGPeriodMsg('day','summary','2026-08-01','all','bi','all');
 assert(daily.text.includes('AM 08:00–09:00')&&daily.text.includes('PM 15:30–16:30'),'daily AM/PM retained');assert(daily.text.length<1600);
 assert.equal((daily.text.match(/• /g)||[]).length,4,'one line per zone');assert.equal((daily.text.match(/28°C\/70%/g)||[]).length,8,'all eight readings shown as AM → PM');
-assert.deepStrictEqual(Array.from(daily.photos),[],'all in range → no photos');
+assert.deepStrictEqual(Array.from(daily.photos),['https://example.test/photo.jpg'],'normal daily photo retained');
 const en=tctx.buildTGPeriodMsg('month','summary','2026-08-01','all','en','all');assert(!/[\u4e00-\u9fff]/.test(en.text),'English report has no Chinese');
 const km=tctx.buildTGPeriodMsg('month','summary','2026-08-01','all','km','all');assert(!/[\u4e00-\u9fff]/.test(km.text),'Khmer report has no Chinese');
 

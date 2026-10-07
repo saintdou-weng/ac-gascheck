@@ -175,7 +175,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=20261003a"></script>
+<script src="./gascheck-core.js?v=20261006-v63"></script>
 </head>
 <body>
 <div class="topbar">
@@ -1144,6 +1144,7 @@ var api = (() => {
     const c=cfg(); if(!c.gasUrl) return {ok:false};
     if(typeof GC!=='undefined'&&typeof GC.withLang==='function')payload=GC.withLang(payload);
     const body=new URLSearchParams({payload:JSON.stringify(payload)});
+    if(typeof GC!=='undefined'&&GC.fetchJson)return GC.fetchJson(c.gasUrl,{method:'POST',body,headers:{'Content-Type':'application/x-www-form-urlencoded'}});
     const r=await fetch(c.gasUrl,{method:'POST',body,headers:{'Content-Type':'application/x-www-form-urlencoded'}});
     return r.json();
   };
@@ -1151,6 +1152,7 @@ var api = (() => {
     const c=cfg(); if(!c.gasUrl) return {ok:false};
     if(typeof GC!=='undefined'&&typeof GC.withLang==='function')params=GC.withLang(params);
     const qs=new URLSearchParams(params).toString();
+    if(typeof GC!=='undefined'&&GC.fetchJson)return GC.fetchJson(c.gasUrl+'?'+qs);
     const r=await fetch(c.gasUrl+'?'+qs);
     return r.json();
   };
@@ -1158,7 +1160,7 @@ var api = (() => {
     if(!msg || !String(msg).trim()) throw new Error(i18n.t('tg-empty'));
     const c=cfg();
     const keyboard=buttons||[[{text:i18n.t('open-dash'),url:'https://saintdou-weng.github.io/ac-gascheck/ac_gascheck_cleaning_v2.html'}]];
-    const packetPhotos=Array.isArray(photos)?photos.slice(0,5):[];
+    const packetPhotos=Array.isArray(photos)?photos.slice():[];
     /* 優先走共用 GAS，避免在 HTML 暴露 Bot Token，也避免舊 URL／CORS 問題。 */
     if(typeof GC!=='undefined'&&GC.telegram&&typeof GC.telegram.send==='function')
       return GC.telegram.send(String(msg),packetPhotos,keyboard,c.chatId,'cleaning',meta||{});
@@ -2188,7 +2190,7 @@ if(typeof sv2==='function')         window.sv2=sv2;
 <script>
 /* 清潔專用 Telegram 摘要（2026-10-03 精簡卡片，見 docs/TG_FORMAT_GUIDE.md）：
    狀態燈 → 進度條（正常區域／已檢查區域）→ 重點數字 → 有異常的區域（一區一行）→ 正常區域只算次數。
-   同一區域不重複出現；全部打勾就不附照片，只有有 ❌ 的記錄才附（最多 5 張）。 */
+   同一區域不重複出現；所選記錄的正常／異常照片均附，核心分批送出。 */
 function cleaningTelegramText(zh,en,km,lang){
   if(typeof GC!=='undefined'&&GC.telegram&&GC.telegram.text)return GC.telegram.text(zh,en,km,lang||'bi');
   return lang==='en'?en:(lang==='km'?(km||en):(lang==='zh'?zh:zh+' / '+en));
@@ -2279,8 +2281,8 @@ function cleaningTelegramReport(view,opt){
   const cleaners=new Set(view.map(function(r){return String(r.cleaner||'').trim();}).filter(Boolean));
   const checkers=Array.from(new Set(view.map(function(r){return String(r.checker||'').trim();}).filter(Boolean)));
   const photos=[];
-  view.filter(function(r){return cleaningTelegramFailed(r).length;}).sort(function(a,b){return String(b.updatedAt||b.timestamp||b.date||'').localeCompare(String(a.updatedAt||a.timestamp||a.date||''));})
-    .forEach(function(r){cleaningTelegramPhotos(r).forEach(function(p){if(!photos.includes(p)&&photos.length<5)photos.push(p);});});
+  view.slice().sort(function(a,b){return String(b.updatedAt||b.timestamp||b.date||'').localeCompare(String(a.updatedAt||a.timestamp||a.date||''));})
+    .forEach(function(r){cleaningTelegramPhotos(r).forEach(function(p){if(!photos.includes(p))photos.push(p);});});
   const sub=[];
   if(opt.scopeLabel)sub.push('🗂 '+e(opt.scopeLabel));
   const actualSlots=Array.from(new Set(view.reduce(function(out,r){return out.concat(cleaningTelegramSlots(r));},[]))).filter(Boolean).sort();

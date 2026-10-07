@@ -222,7 +222,7 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=20261003a"></script>
+<script src="./gascheck-core.js?v=20261006-v63"></script>
 </head>
 <body>
 <!-- HEADER -->
@@ -2454,9 +2454,9 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
   const checkers=[...new Set(view.map(r=>String(r.checker||r.checked_by||r.checkBy||'').trim()).filter(Boolean))];
   const slotsSeen=[...new Set(view.map(r=>String(r.p||'')).filter(Boolean))].sort(function(a,b){return (slotOrder[a]??9)-(slotOrder[b]??9);});
   const dates=[...new Set(view.map(r=>String(r.d||'').slice(0,10)).filter(Boolean))];
-  /* 照片只跟著超標的讀數（全部在範圍內就不附），最多 5 張。 */
+  /* 附上本次選取讀數的所有照片；共用核心分批送出並確認送達。 */
   const photos=[];
-  abnormal.forEach(r=>{(typeof GC!=='undefined'&&GC.util?GC.util.asArray(r.photos):Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
+  sorted.forEach(r=>{(typeof GC!=='undefined'&&GC.util?GC.util.asArray(r.photos):Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p))photos.push(p);});});
   const day=period==='day';
   const missing=day?reportZones.length*2-view.filter(r=>r.p==='morning'||r.p==='afternoon').length:0;
   const sub=[];

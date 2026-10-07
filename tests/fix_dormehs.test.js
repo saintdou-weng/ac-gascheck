@@ -26,7 +26,7 @@ function file(w){return new w.File([new Uint8Array([1,2,3])],'x.xlsx');}
   for(const [name,html] of [['dorm',dormSrc],['ehs',ehsSrc]]){
     for(const m of html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi))assert.doesNotThrow(()=>new Function(m[1]),name+' script parses');
     assert(!/MutationObserver/.test(html),name+': no page-wide substring translation observer (B2)');
-    assert(html.includes('gascheck-core.js?v=20261003a'),name+' keeps core cache key');
+    assert(html.includes('gascheck-core.js?v=20261006-v63'),name+' keeps core cache key');
   }
   assert(!/5026942575/.test(dormSrc)&&!/approverId/.test(dormSrc)&&!/dormDecision/.test(dormSrc),'dorm: no web approval / hardcoded approver (C1)');
   assert(!/mode:'replace'/.test(dormSrc),'dorm: no replace push (merge only)');
@@ -74,10 +74,11 @@ function file(w){return new w.File([new Uint8Array([1,2,3])],'x.xlsx');}
   {
     const x=await load('ac_gascheck_dormitory_v2.html',seed());await wait(700);const w=x.w,posts=[];
     assert.equal(w.state.db().records.find(r=>r.id==='old').date,'2026-09-03','legacy serial date repaired (A7)');
+    const response=data=>({ok:true,text:async()=>JSON.stringify(data),json:async()=>data});
     w.fetch=async(url,opt={})=>{let p={};try{p=JSON.parse(new URLSearchParams(String(opt.body)).get('payload')||'{}');}catch(e){}posts.push(p);
-      if(p.action==='dormSubmit'){const d=JSON.parse(p.data);return {ok:true,json:async()=>({ok:true,saved:true,record:Object.assign({},d,{items:JSON.parse(d.items),photos:JSON.parse(d.photos),approvalRevision:(d.expectedRevision||0)+1,approvalToken:'tok'+posts.length})})};}
-      if(p.action==='delete')return {ok:true,json:async()=>({ok:true})};
-      return {ok:true,json:async()=>({ok:false,error:'offline'})};};
+      if(p.action==='dormSubmit'){const d=JSON.parse(p.data);return response({ok:true,saved:true,record:Object.assign({},d,{items:JSON.parse(d.items),photos:JSON.parse(d.photos),approvalRevision:(d.expectedRevision||0)+1,approvalToken:'tok'+posts.length})});}
+      if(p.action==='delete')return response({ok:true});
+      return response({ok:false,error:'offline'});};
     // C1: no web approve / reject
     assert.equal(typeof w.records.approve,'undefined');assert.equal(typeof w.records.reject,'undefined');
     w.ui.tab('records');w.records.showAllPending();w.records.detail('appA');

@@ -115,7 +115,7 @@ assert.strictEqual(gasClean.removed[0].row.id, 'cloud-shadow');
 assert(ehs.includes('deleteSelectedWaste()'), 'multi-select delete action must be visible');
 assert(ehs.includes("selectWasteRows('noPhoto')"), 'no-photo selector must exist');
 assert(ehs.includes("selectWasteRows('badTime')"), 'invalid-time selector must exist');
-assert(/beforeCloudSync:function\(\)\{[\s\S]{0,400}ehsFlushTombstones\(\{silent:true\}\)\.catch/.test(ehs), 'cloud pull/upload must try to flush deletions first, without blocking on a busy server');
+assert(/beforeCloudSync:function\(\)\{[\s\S]{0,650}return \{ok:true,deferred:true\}/.test(ehs), 'cloud pull/upload must sync tombstones without waiting for legacy deletes');
 assert(core.includes("await opt.beforeSync({direction:'upload'"), 'core upload must run deletion preflight');
 assert(core.includes("await opt.beforeSync({direction:'download'"), 'core download must run deletion preflight');
 assert(gs.includes("case 'deleteBatch'"), 'GAS must expose batch delete');

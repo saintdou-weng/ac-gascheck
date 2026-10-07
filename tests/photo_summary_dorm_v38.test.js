@@ -11,7 +11,7 @@ const clean = read('ac_gascheck_cleaning_v2.html');
 const temp = read('ac_gascheck_temperature_v2.html');
 const dorm = read('ac_gascheck_dormitory_v2.html');
 const water = read('ac_gascheck_waterdrum_v2.html');
-const cache = 'gascheck-core.js?v=20261003a';
+const cache = 'gascheck-core.js?v=20261006-v63';
 
 assert(core.includes("GC.version = '3.16-key-water-daily-monthly'"));
 assert(core.includes('capture="environment"'));

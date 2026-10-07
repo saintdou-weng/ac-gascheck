@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>AC GASCHECK</title>
-<script src="./gascheck-core.js?v=20261003a"></script>
+<script src="./gascheck-core.js?v=20261006-v63"></script>
 <style>
 :root{--acc:#F97316;--nv:#0F1E3D;--nv2:#1A3458;--gold:#FCD34D;--w:#fff;--mt:rgba(255,255,255,.62);--r:12px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -441,6 +441,7 @@ function gasPost(payload) {
   payload=(window.GC&&typeof GC.withLang==='function')?GC.withLang(payload):Object.assign({lang:LANG},payload);
   var body=new URLSearchParams();
   body.append('payload', JSON.stringify(payload));
+  if(window.GC&&GC.fetchJson)return GC.fetchJson(GAS_URL,{method:'POST',body:body,redirect:'follow',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
   return fetch(GAS_URL, {
     method:'POST', body:body, redirect:'follow',
     headers:{'Content-Type':'application/x-www-form-urlencoded'}

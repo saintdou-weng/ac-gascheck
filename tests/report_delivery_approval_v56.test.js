@@ -38,7 +38,7 @@ ctx.tgEditResult_=()=>({ok:false,error:'Too Many Requests'});result=ctx.sendTele
  const pages=w.GC.telegram.paginateRows('Monthly report','Date | Value',Array.from({length:31},(_,i)=>'2026-08-'+String(i+1).padStart(2,'0')+' | 28/70'),'footer',12);
  assert.equal(pages.length,3);assert(pages.every(p=>p.length<3900));
  const posted=[],messages=new Map();let fail=true;
- w.GC.cloud.post=async body=>{posted.push(clone(body));if(fail&&body.messageKey.endsWith('page2'))throw new Error('Simulated network interruption');if(!messages.has(body.messageKey))messages.set(body.messageKey,messages.size+1);return {ok:true,messageId:messages.get(body.messageKey)}};
+ w.GC.cloud.post=async body=>{posted.push(clone(body));if(fail&&body.messageKey.endsWith('page2'))throw new Error('Simulated network interruption');if(!messages.has(body.messageKey))messages.set(body.messageKey,messages.size+1);return {ok:true,messageId:messages.get(body.messageKey),photosSent:(body.photos||[]).length}};
  const meta={reportPeriod:'month',reportRef:'2026-08-01',reportMonth:'2026-08',reportMode:'summary',reportScope:'all',reportSlot:'all'};
  await assert.rejects(()=>w.GC.telegram.send(pages,['https://example.test/photo.jpg'],[],null,'temperature',meta),/Page 2\/3|第 2\/3 頁/);
  assert(!posted.some(p=>p.reportMonth),'partial report cannot be marked complete');

@@ -480,7 +480,7 @@ document.addEventListener('click', function(e) {
 #main-table tr.wdr-flash td{animation:wdrFlash 1.6s ease-out}
 @keyframes wdrFlash{0%{background:#fde68a}100%{background:#eff6ff}}
 </style>
-<script src="./gascheck-core.js?v=20261003a"></script>
+<script src="./gascheck-core.js?v=20261006-v63"></script>
 </head>
 <body>
 <!-- Currency Settings Panel -->
@@ -2846,7 +2846,7 @@ function buildWaterTelegram(opt){
     const day=period==='day',drums=totals.fq+totals.sq,khr=totals.ft+totals.st;
     let txt=G.head('💧',mode==='approval'?lb('VRT 飲用水 · 月度費用核可','VRT Drinking Water · Monthly cost approval','VRT ទឹកផឹក · អនុម័តចំណាយប្រចាំខែ'):lb('VRT 飲用水','VRT Drinking Water','VRT ទឹកផឹក'),waterTgPeriodText(period,opt.ref,lang),sub);
     const photos=[...new Set(entries.slice().sort((a,b)=>b.date.localeCompare(a.date)).flatMap(r=>rowPhotos(r,scope)).map(GC.photo.value).filter(Boolean))];
-    const packet={photos:photos.slice(0,5)};
+    const packet={photos:photos};
     if(!entries.length){
       txt+='\n'+G.verdict('warn',lb('沒有送水記錄','No deliveries','គ្មានការដឹកទឹក'))+'\n\nℹ️ '+lb('這段期間沒有送水記錄','No deliveries in this period','គ្មានការដឹកទឹកក្នុងរយៈពេលនេះ');
       packet.text=txt;packet.pages=[txt];return packet;
@@ -2897,7 +2897,7 @@ function buildWaterTelegram(opt){
     });
     if(odd.length>8)ex.push('… +'+(odd.length-8));
     if(ex.length)txt+=G.sec('⚠️',lb('需注意','To check','ត្រូវពិនិត្យ'))+'\n'+ex.join('\n');
-    if(photos.length>5)txt+='\n\n📷 '+photos.length+' · '+lb('附前 5 張，完整照片請開啟平台','First 5 attached; all photos in dashboard','ភ្ជាប់ 5 រូបដំបូង; រូបទាំងអស់នៅផ្ទាំងគ្រប់គ្រង');
+    if(photos.length>5)txt+='\n\n📷 '+photos.length+' · '+lb('照片分批附上，全部送達才完成','Photos attached in batches; complete after all are delivered','រូបថតភ្ជាប់ជាបាច់; បញ្ចប់ពេលផ្ញើបានទាំងអស់');
     if(mode==='approval')txt+='\n\n⏳ '+lb('Paul：請用下方按鈕核可／退件；送出申請不代表已核可','Paul: approve / reject with the buttons below; sending a request does not approve it','Paul៖ អនុម័ត / បដិសេធ ដោយប៊ូតុងខាងក្រោម; ការផ្ញើសំណើមិនមែនជាការអនុម័តទេ');
     packet.text=txt;packet.pages=[txt];
     if(mode==='approval'&&period==='month'&&entries.length){const id=dateLabel+'_'+scope+'_'+slot+'_'+waterApprovalDigest(entries,scope,slot);packet.buttons=[[{text:'✅ '+tr('核可','Approve'),data:'wdr_ok_'+id},{text:'❌ '+tr('退件','Reject'),data:'wdr_rej_'+id}]];}

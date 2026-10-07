@@ -28,7 +28,7 @@ for (const name of [
     assert.doesNotThrow(() => new Function(match[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline JavaScript`);
-  assert(html.includes('gascheck-core.js?v=20261003a'), `${name} must load the current shared-core cache key`);
+  assert(html.includes('gascheck-core.js?v=20261006-v63'), `${name} must load the current shared-core cache key`);
 }
 
 assert(core.includes("GC.version = '3.16-key-water-daily-monthly'"));

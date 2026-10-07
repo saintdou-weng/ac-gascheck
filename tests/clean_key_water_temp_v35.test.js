@@ -17,7 +17,7 @@ for (const [name, html] of [['cleaning',cleaning],['key',key],['water',water],['
     assert.doesNotThrow(() => new Function(m[1]), `${name} inline script ${scripts} must parse`);
   }
   assert(scripts > 0, `${name} must contain inline scripts`);
-  assert(html.includes('gascheck-core.js?v=20261003a'));
+  assert(html.includes('gascheck-core.js?v=20261006-v63'));
 }
 assert(core.includes("GC.version = '3.16-key-water-daily-monthly'"));
 

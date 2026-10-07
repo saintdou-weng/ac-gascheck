@@ -69,7 +69,7 @@ function smart(s,tool='dormitory'){return s.g.readGcSmartAllRecords_(tool,s.g.re
  try{
   const w=browser.w,posts=[];
   w.fetch=async(url,opt={})=>{assert.equal(opt.method,'POST');const body=String(opt.body);posts.push(JSON.parse(new URLSearchParams(body).get('payload')));
-   const result=browserServer.g.doPost({postData:{contents:body}});return {ok:true,json:async()=>JSON.parse(result.text)};};
+   const result=browserServer.g.doPost({postData:{contents:body}});return {ok:true,text:async()=>result.text,json:async()=>JSON.parse(result.text)};};
   w.appForm.edit(br.id);
   for(const [id,val] of [['f-gender','Male'],['f-dept','Production'],['f-room','A-106']]){const el=w.document.getElementById(id);if(el.tagName==='SELECT'&&!Array.from(el.options).some(o=>o.value===val)){const o=w.document.createElement('option');o.value=val;o.textContent=val;el.appendChild(o);}el.value=val;}
   w.document.getElementById('f-reason').value='Edited in actual form';

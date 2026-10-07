@@ -164,7 +164,7 @@ select.bi{cursor:pointer}
 .rp-ok{border:0;background:#1A3E78;color:#fff;padding:8px 20px;border-radius:7px;
   font:600 13px/1 inherit;cursor:pointer}
 </style>
-<script src="./gascheck-core.js?v=20261003a"></script>
+<script src="./gascheck-core.js?v=20261006-v63"></script>
 </head>
 <body>
 <div class="topbar">
@@ -1713,6 +1713,7 @@ var gasPost = async (payload) => {
   if(typeof GC!=='undefined'&&typeof GC.withLang==='function')payload=GC.withLang(payload);
   const f=(typeof GC!=='undefined'&&typeof GC.fetch==='function')?GC.fetch:fetch;
   const body=new URLSearchParams({payload:JSON.stringify(payload)});
+  if(typeof GC!=='undefined'&&GC.fetchJson)return GC.fetchJson(EHS_GAS_URL,{method:'POST',body,redirect:'follow',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
   const r=await f(EHS_GAS_URL,{method:'POST',body,redirect:'follow',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
   return r.json();
 };
@@ -1842,9 +1843,9 @@ function buildEhsTelegram(opt){
     const mRows=ehsUniqueWasteRows(GC.telegram.filter(all,cfg,'month',mKey+'-01',scope,slot)).filter(function(r){return ehsTgIsWaste(r)&&ehsYmd(r.date)<=range.toYmd;});
     mtd={n:mRows.length,target:SUP_TARGET*ehsTgSupplierNames(mRows,true).length,kg:sum(mRows,'weight_kg')};
   }
-  /* 照片：廢料離廠證據（最新優先，最多 5 張）；回收紀錄只有異常（總重 0）才附 */
+  /* 本期回收與廢料照片（最新優先）；正常／異常皆附，核心分批確認送達。 */
   const photos=[];
-  wasteRows.concat(recycleBad).sort(function(a,b){return String(b.updatedAt||b.submitted_at||b.date||'').localeCompare(String(a.updatedAt||a.submitted_at||a.date||''));}).forEach(function(r){photoArray(r.photos).forEach(function(p){if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
+  wasteRows.concat(recycleRows).sort(function(a,b){return String(b.updatedAt||b.submitted_at||b.date||'').localeCompare(String(a.updatedAt||a.submitted_at||a.date||''));}).forEach(function(r){photoArray(r.photos).forEach(function(p){if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p))photos.push(p);});});
 
   const title=lb('VRT 回收／廢料','VRT Recycle / Waste','VRT កែច្នៃ / សំណល់');
   const sub=[];
@@ -1976,9 +1977,9 @@ function markEhsTelegramSent(ctx){
       mergeImport:mergeEhsImport,
       importSchema:{"date": ["日期", "date", "កាលបរិច្ឆេទ", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "recycle weight", "ទម្ងន់"], "supplier": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "weight_kg": ["重量", "kg", "weight", "ទម្ងន់"], "checked_by": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
       beforeCloudSync:function(){
-        /* 刪除紀錄（墓碑）已隨智慧同步一起上雲；舊版刪除 API 只是讓 Sheet 同步，改成背景補做，
-           失敗不再擋住上傳與 Telegram 發送。 */
-        return ehsFlushTombstones({silent:true}).catch(function(e){try{console.warn('[EHS] legacy cloud delete deferred:',e&&e.message||e);}catch(_){}return {ok:false,deferred:true};});
+        /* 刪除紀錄（墓碑）隨智慧同步上雲，下載也會套用本機墓碑。
+           不再在同步前等待舊刪除 API；手動刪除仍可確認雲端刪除登錄。 */
+        return {ok:true,deferred:true};
       },
       onSync:function(){setTimeout(refreshEhsAll,0);},
       onImport:function(){GC.sync.schedule('ehs','smart_import');setTimeout(refreshEhsAll,0);},
