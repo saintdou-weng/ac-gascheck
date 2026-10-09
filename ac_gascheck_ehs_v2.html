@@ -164,7 +164,7 @@ select.bi{cursor:pointer}
 .rp-ok{border:0;background:#1A3E78;color:#fff;padding:8px 20px;border-radius:7px;
   font:600 13px/1 inherit;cursor:pointer}
 </style>
-<script src="./gascheck-core.js?v=20261006-v63"></script>
+<script src="./gascheck-core.js?v=20261006a"></script>
 </head>
 <body>
 <div class="topbar">
@@ -1569,6 +1569,10 @@ function parseEhsSmartImport(file){
               if(m&&!month)month=monthNames[m[1]];
             }
           }
+          /* 分頁名稱「2026-09」「09-2026」「Sep 2025」：月份／年份也從名稱取 */
+          const nm=text(name),numYm=nm.match(/^(20\d{2})\s*[-_.\/ ]\s*(\d{1,2})$/)||nm.match(/^(\d{1,2})\s*[-_.\/ ]\s*(20\d{2})$/);
+          if(!month&&numYm){const a=+numYm[1],b=+numYm[2],mm=a>12?b:a;if(mm>=1&&mm<=12){month=mm;year=String(a>12?a:b);}}
+          if(!year){const yn=nm.match(/(20\d{2})/);if(yn)year=yn[1];}
           if(!year)year=String(new Date().getFullYear());
           return month?year+'-'+String(month).padStart(2,'0'):'';
         };
@@ -1591,7 +1595,7 @@ function parseEhsSmartImport(file){
           (row.photos||[]).forEach(function(p){if(!old.photos.includes(p))old.photos.push(p);});
           Object.keys(row).forEach(function(k){if((old[k]==null||old[k]==='')&&row[k]!=null&&row[k]!=='')old[k]=row[k];});
         };
-        const recycle=new Map(),waste=new Map(),sheets=[];
+        const recycle=new Map(),waste=new Map(),sheets=[],warnings0=[];
         let declaredRecycleKg=0;
         for(const sn of wb.SheetNames){
           const ws=wb.Sheets[sn];
@@ -1605,44 +1609,149 @@ function parseEhsSmartImport(file){
             }
             continue;
           }
+          /* 合併儲存格：SheetJS 只在左上角有值。把「表頭列」的合併範圍補回文字，讓 DATE 等標題不會變空白。 */
+          const merges=(ws&&ws['!merges'])||[];
+          const fillHeaderMerges=function(h){
+            merges.forEach(function(m){
+              if(m.s.r>h||m.e.r<h)return;
+              const v=(raw[m.s.r]||[])[m.s.c];if(text(v)==='')return;
+              for(let c=m.s.c;c<=Math.min(m.e.c,40);c++){if(!raw[h])raw[h]=[];if(text(raw[h][c])==='')raw[h][c]=v;}
+            });
+          };
+          /* 日：數字 1~31、1st/2nd、Excel 日期序號、或日期文字（01/09/2026、2026-09-01） */
+          const dayOf=function(cell){
+            if(typeof cell==='number'&&cell>31){const iso=isDate(cell);return iso?{day:+iso.slice(8,10),month:iso.slice(0,7)}:null;}
+            const tx=text(cell);if(!tx)return null;
+            const m=tx.match(/^(\d{1,2})(?:\.0+|st|nd|rd|th)?$/i);
+            if(m){const d=+m[1];return d>=1&&d<=31?{day:d,month:''}:null;}
+            if(/^\d{1,4}[\/\-.]\d{1,2}[\/\-.]\d{1,4}$/.test(tx)||/[a-z]{3}/i.test(tx)&&/\d/.test(tx)){const iso=isDate(tx);if(iso)return {day:+iso.slice(8,10),month:iso.slice(0,7)};}
+            return null;
+          };
+          const recycleItem=function(rowDate,plastic,fabric,core,total,photos){
+            if(!plastic&&!fabric&&!core&&!total)return;
+            if(!excelDateToISO(rowDate)){invalidDates++;return;}
+            const item={id:makeId('r'),module:'internal',sourceType:'recycle',date:rowDate,plastic_kg:plastic,fabric_kg:fabric,core_kg:core,total_kg:total||plastic+fabric+core,photos:photos||[],remark:'',submitted_at:_localTS(),updatedAt:_localTS()};
+            merge(recycle,[item.date,item.plastic_kg,item.fabric_kg,item.core_kg,item.total_kg].join('|'),item);
+          };
+          const recycleKind=function(h){
+            if(h.indexOf('core')>=0)return 'core';
+            if(h.indexOf('plastic')>=0)return 'plastic';
+            if(h.indexOf('fabric')>=0||h.indexOf('cutting')>=0)return 'fabric';
+            if(h.indexOf('total')>=0)return 'total';
+            return '';
+          };
+          let recycleDone=false;
           const recycleHead=findHeader(raw,function(j){return j.indexOf('plastic')>=0&&(j.indexOf('fabric')>=0||j.indexOf('cutting')>=0);});
           if(recycleHead>=0){
+            fillHeaderMerges(recycleHead);
             const month=sheetMonth(sn,raw,recycleHead+1);
             if(month){
+              /* 依表頭名稱找欄位（VRT monthly waste report 等欄位順序不同的表）；找不到時沿用舊範本：日｜Plastic｜Fabric｜Core｜Total */
+              const H=raw[recycleHead]||[],col={day:-1,plastic:-1,fabric:-1,core:-1,total:-1};
+              for(let c=0;c<Math.min(H.length,41);c++){
+                const h=norm(H[c]);if(!h)continue;
+                const k=recycleKind(h);
+                if(k&&col[k]<0)col[k]=c;
+                else if(!k&&col.day<0&&/^(date|日期|កាលបរិច្ឆេទ)$/.test(h))col.day=c;
+              }
+              if(col.plastic<0||(col.fabric<0&&col.core<0)){col.day=0;col.plastic=1;col.fabric=2;col.core=3;col.total=4;}
+              else if(col.plastic===1&&col.fabric===2&&col.core===3&&col.total<0&&text(H[4])==='')col.total=4;
+              const firstVal=Math.min.apply(null,[col.plastic,col.fabric,col.core].filter(function(c){return c>=0;}));
+              if(col.day<0){
+                /* 沒有 Date 標題：在數量欄左邊找最多「像日期／日」的那一欄 */
+                let best=-1,bestHits=0;
+                for(let c=0;c<firstVal;c++){
+                  let hits=0;for(let i=recycleHead+1;i<Math.min(raw.length,recycleHead+40);i++)if(dayOf((raw[i]||[])[c]))hits++;
+                  /* 流水號（No）也會是 1~31；有真正日期序號的欄優先 */
+                  let real=0;for(let i=recycleHead+1;i<Math.min(raw.length,recycleHead+40);i++){const dd=dayOf((raw[i]||[])[c]);if(dd&&dd.month)real++;}
+                  const score=hits+real*2;if(score>bestHits){bestHits=score;best=c;}
+                }
+                col.day=best>=0?best:0;
+              }
               let firstDay=-1;
-              /* 第一欄可能是「日」數字，也可能是真正的日期（序號）；兩種都支援。 */
-              const dayOf=function(cell){const iso=typeof cell==='number'&&cell>31?isDate(cell):'';if(iso)return {day:+iso.slice(8,10),month:iso.slice(0,7)};const d=parseInt(text(cell),10);return d>=1&&d<=31&&/^\s*\d{1,2}(\.0+)?\s*$/.test(text(cell))?{day:d,month:''}:null;};
-              for(let i=recycleHead+1;i<raw.length;i++){if(dayOf(raw[i][0])){firstDay=i;break;}}
+              for(let i=recycleHead+1;i<raw.length;i++){if(dayOf((raw[i]||[])[col.day])){firstDay=i;break;}}
               const photos=firstDay>=0?xlsxEmbeddedPhotos(wb,sheetPaths[sn],firstDay):{};
+              const val=function(row,c){return c>=0?num(row[c]):0;};
               if(firstDay>=0)for(let i=firstDay;i<raw.length;i++){
-                const row=raw[i],dd=dayOf(row[0]);
+                const row=raw[i]||[],dd=dayOf(row[col.day]);
                 if(!dd)continue;
                 const day=dd.day,rowDate=(dd.month||month)+'-'+String(day).padStart(2,'0');
-                const plastic=num(row[1]),fabric=num(row[2]),core=num(row[3]),total=num(row[4]);
-                if(!plastic&&!fabric&&!core&&!total)continue;
-                if(!excelDateToISO(rowDate)){invalidDates++;continue;}
-                const item={id:makeId('r'),module:'internal',sourceType:'recycle',date:rowDate,plastic_kg:plastic,fabric_kg:fabric,core_kg:core,total_kg:total||plastic+fabric+core,photos:photos[day]||[],remark:'',submitted_at:_localTS(),updatedAt:_localTS()};
-                merge(recycle,[item.date,item.plastic_kg,item.fabric_kg,item.core_kg,item.total_kg].join('|'),item);
+                recycleItem(rowDate,val(row,col.plastic),val(row,col.fabric),val(row,col.core),val(row,col.total),photos[day]);
               }
-              sheets.push('Recycle:'+sn);
+              sheets.push('Recycle:'+sn);recycleDone=true;
             }
           }
-          const wasteHead=findHeader(raw,function(j){
+          if(!recycleDone){
+            /* VRT monthly waste report（橫式）：一列是 1~31 日，下面幾列是 Plastic／Waste fabric／Fabric core（／Total）kg */
+            let dayRow=-1,dayCols={};
+            for(let i=0;i<Math.min(20,raw.length)&&dayRow<0;i++){
+              const dc={};(raw[i]||[]).forEach(function(v,c){const dd=dayOf(v);if(dd)dc[c]=dd;});
+              if(Object.keys(dc).length>=25)dayRow=i,dayCols=dc;
+            }
+            if(dayRow>=0){
+              const firstCol=Math.min.apply(null,Object.keys(dayCols).map(Number)),lines={};
+              for(let i=dayRow+1;i<Math.min(raw.length,dayRow+20);i++){
+                const lab=norm((raw[i]||[]).slice(0,firstCol).map(text).join(' ')),k=lab?recycleKind(lab):'';
+                if(k&&lines[k]===undefined)lines[k]=i;
+              }
+              const month=lines.plastic!==undefined&&(lines.fabric!==undefined||lines.core!==undefined)?sheetMonth(sn,raw,dayRow):'';
+              if(month){
+                const cell=function(k,c){return lines[k]===undefined?0:num((raw[lines[k]]||[])[c]);};
+                Object.keys(dayCols).forEach(function(c){
+                  const dd=dayCols[c],rowDate=(dd.month||month)+'-'+String(dd.day).padStart(2,'0');
+                  recycleItem(rowDate,cell('plastic',c),cell('fabric',c),cell('core',c),cell('total',c),[]);
+                });
+                sheets.push('Recycle:'+sn);recycleDone=true;
+              }
+            }
+          }
+          /* Waste 表頭：DATE 可能是合併儲存格（只有上一列有字，或整格空白）→ 只要有 SUPPLIERS + 廢料種類（+ NAME／kg）就認得 */
+          const wasteTest=function(j){
             const jj=j.replace(/\s+/g,'');
-            return jj.indexOf('date')>=0&&jj.indexOf('supplier')>=0&&
-              (jj.indexOf('solidwaste')>=0||jj.indexOf('industrialwaste')>=0)&&jj.indexOf('kg')>=0;
-          });
+            return jj.indexOf('supplier')>=0&&(jj.indexOf('solidwaste')>=0||jj.indexOf('industrialwaste')>=0)&&
+              (jj.indexOf('date')>=0||jj.indexOf('name')>=0||jj.indexOf('kg')>=0);
+          };
+          let wasteHead=findHeader(raw,wasteTest),wasteTwo=false;
+          if(wasteHead<0){
+            /* 兩列表頭（上列 DATE／NAME／SUPPLIERS，下列 Solid／Industrial／Kg）：合在一起判斷，資料從下列之後開始 */
+            for(let i=1;i<Math.min(16,raw.length)&&wasteHead<0;i++)if(wasteTest(((raw[i-1]||[]).map(text).join('|')+'|'+(raw[i]||[]).map(text).join('|')).toLowerCase()))wasteHead=i,wasteTwo=true;
+          }
           if(wasteHead>=0){
-            const hdrs=raw[wasteHead].map(text);
+            fillHeaderMerges(wasteHead);
+            const up=wasteTwo?(raw[wasteHead-1]||[]):[],cur=raw[wasteHead]||[];
+            const hdrs=Array.from({length:Math.max(up.length,cur.length)},function(_,c){return text(cur[c])||text(up[c]);});
             const idx=function(){
               const kws=Array.from(arguments).map(function(x){return norm(x);});
               for(let i=0;i<hdrs.length;i++){const h=norm(hdrs[i]);if(kws.some(function(k){return h.indexOf(k)>=0;}))return i;}
               return -1;
             };
-            const dateI=idx('date'),nameI=idx('name'),supplierI=idx('supplier'),idI=idx('id number'),carI=idx('car number'),visitorI=idx('visitor id'),solidI=idx('solid waste'),indI=idx('industrial waste'),weightI=idx('kg','weight'),maintainI=idx('maintain'),checkI=idx('checked','check'),inI=idx('time in','timein'),outI=idx('time out','timeout'),keeperI=idx('gate keeper');
-            for(let i=wasteHead+1;i<raw.length;i++){
-              const row=raw[i]||[],date=isDate(row[dateI]);
-              if(!date){if(text(row[dateI])&&(text(row[supplierI])||num(row[weightI])))invalidDates++;continue;}
+            let dateI=idx('date');
+            const nameI=idx('name'),supplierI=idx('supplier'),idI=idx('id number'),carI=idx('car number'),visitorI=idx('visitor id'),solidI=idx('solid waste'),indI=idx('industrial waste'),weightI=idx('kg','weight'),maintainI=idx('maintain'),checkI=idx('checked','check'),inI=idx('time in','timein'),outI=idx('time out','timeout'),keeperI=idx('gate keeper');
+            if(dateI<0){
+              /* 標題在上下列（直向合併）？ */
+              for(let r=Math.max(0,wasteHead-2);r<=Math.min(raw.length-1,wasteHead+1)&&dateI<0;r++)(raw[r]||[]).forEach(function(v,c){if(dateI<0&&/^(date|日期|កាលបរិច្ឆេទ)$/.test(norm(v)))dateI=c;});
+            }
+            if(dateI<0){
+              /* 還是沒有 → 用 NAME／SUPPLIERS 的位置推斷：在它們左邊找最多日期值的欄，沒有就取緊鄰左邊那欄 */
+              const anchor=Math.min.apply(null,[nameI,supplierI].filter(function(c){return c>=0;}));
+              let best=-1,hits=0;
+              for(let c=0;c<anchor;c++){
+                let h=0;for(let i=wasteHead+1;i<Math.min(raw.length,wasteHead+60);i++)if(isDate((raw[i]||[])[c]))h++;
+                if(h>hits){hits=h;best=c;}
+              }
+              dateI=best>=0?best:anchor-1;
+              if(dateI>=0)warnings0.push(ehsText('ℹ️ '+sn+'：DATE 標題是空白，已依 NAME／SUPPLIERS 位置使用第 '+(dateI+1)+' 欄當日期','ℹ️ '+sn+': DATE header is blank; column '+(dateI+1)+' (left of NAME / SUPPLIERS) used as the date','ℹ️ '+sn+': ក្បាល DATE ទទេ; ប្រើជួរឈរ '+(dateI+1)+' ជាកាលបរិច្ឆេទ'));
+            }
+            /* 資料列的日期也常合併（同一天多趟）：只在合併範圍內往下補日期 */
+            const dateFill={};
+            if(dateI>=0)merges.forEach(function(m){
+              if(m.s.c>dateI||m.e.c<dateI||m.e.r<=wasteHead)return;
+              const top=(raw[m.s.r]||[])[dateI];
+              for(let r=Math.max(m.s.r+1,wasteHead+1);r<=m.e.r;r++)dateFill[r]=top;
+            });
+            if(dateI>=0)for(let i=wasteHead+1;i<raw.length;i++){
+              const row=raw[i]||[],dcell=text(row[dateI])===''&&dateFill[i]!==undefined?dateFill[i]:row[dateI],date=isDate(dcell);
+              if(!date){if(text(dcell)&&(text(row[supplierI])||num(row[weightI])))invalidDates++;continue;}
               const supplier=text(row[supplierI]);
               const item={id:makeId('w'),module:'gate',sourceType:'waste',date:date,name:text(row[nameI]),id_number:text(row[idI]),supplier:supplier.toUpperCase().indexOf('K.S')>=0||supplier.toUpperCase().indexOf('KSWM')>=0?'K.S.W.M':supplier.toUpperCase().indexOf('SONY')>=0?'SONYAPICH':supplier,car_number:text(row[carI]),visitor_id:text(row[visitorI]),solid_waste:text(row[solidI])?'V':'',industrial_waste:text(row[indI])?'V':'',weight_kg:num(row[weightI]),maintain_by:text(row[maintainI]),checked_by:text(row[checkI]),time_in:ehsTimeText(row[inI]),time_out:ehsTimeText(row[outI]),gate_keeper:text(row[keeperI]),photos:[],submitted_at:_localTS(),updatedAt:_localTS()};
               if(!item.name&&!item.supplier&&!item.weight_kg&&!item.solid_waste&&!item.industrial_waste)continue;
@@ -1654,7 +1763,7 @@ function parseEhsSmartImport(file){
         const recycleRows=Array.from(recycle.values()),wasteRows=Array.from(waste.values());
         const objects=recycleRows.concat(wasteRows).sort(function(a,b){return String(a.date).localeCompare(String(b.date));});
         if(!objects.length)throw new Error(ehsText('找不到 Recycle 或 Waste 的有效欄位／資料','No valid Recycle or Waste columns / rows found','រកមិនឃើញជួរឈរ ឬទិន្នន័យ កែច្នៃ / សំណល់ ត្រឹមត្រូវ'));
-        const detailedRecycleKg=recycleRows.reduce(function(sum,row){return sum+num(row.total_kg);},0),warnings=[];
+        const detailedRecycleKg=recycleRows.reduce(function(sum,row){return sum+num(row.total_kg);},0),warnings=warnings0.slice();
         if(invalidDates)warnings.push(ehsText('已略過 '+invalidDates+' 筆日期無效的列（例如月份大於 12）','Skipped '+invalidDates+' row(s) with an invalid date (e.g. month above 12)','បានរំលង '+invalidDates+' ជួរដែលកាលបរិច្ឆេទមិនត្រឹមត្រូវ'));
         if(declaredRecycleKg&&detailedRecycleKg&&Math.abs(declaredRecycleKg-detailedRecycleKg)>.01){
           warnings.push(ehsText(
@@ -1713,7 +1822,6 @@ var gasPost = async (payload) => {
   if(typeof GC!=='undefined'&&typeof GC.withLang==='function')payload=GC.withLang(payload);
   const f=(typeof GC!=='undefined'&&typeof GC.fetch==='function')?GC.fetch:fetch;
   const body=new URLSearchParams({payload:JSON.stringify(payload)});
-  if(typeof GC!=='undefined'&&GC.fetchJson)return GC.fetchJson(EHS_GAS_URL,{method:'POST',body,redirect:'follow',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
   const r=await f(EHS_GAS_URL,{method:'POST',body,redirect:'follow',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
   return r.json();
 };
@@ -1843,9 +1951,9 @@ function buildEhsTelegram(opt){
     const mRows=ehsUniqueWasteRows(GC.telegram.filter(all,cfg,'month',mKey+'-01',scope,slot)).filter(function(r){return ehsTgIsWaste(r)&&ehsYmd(r.date)<=range.toYmd;});
     mtd={n:mRows.length,target:SUP_TARGET*ehsTgSupplierNames(mRows,true).length,kg:sum(mRows,'weight_kg')};
   }
-  /* 本期回收與廢料照片（最新優先）；正常／異常皆附，核心分批確認送達。 */
+  /* 照片：廢料離廠證據（最新優先，最多 5 張）；回收紀錄只有異常（總重 0）才附 */
   const photos=[];
-  wasteRows.concat(recycleRows).sort(function(a,b){return String(b.updatedAt||b.submitted_at||b.date||'').localeCompare(String(a.updatedAt||a.submitted_at||a.date||''));}).forEach(function(r){photoArray(r.photos).forEach(function(p){if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p))photos.push(p);});});
+  wasteRows.concat(recycleBad).sort(function(a,b){return String(b.updatedAt||b.submitted_at||b.date||'').localeCompare(String(a.updatedAt||a.submitted_at||a.date||''));}).forEach(function(r){photoArray(r.photos).forEach(function(p){if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
 
   const title=lb('VRT 回收／廢料','VRT Recycle / Waste','VRT កែច្នៃ / សំណល់');
   const sub=[];
@@ -1970,16 +2078,19 @@ function markEhsTelegramSent(ctx){
       telegramModes:['summary'],
       telegramLanguage:true,
       telegramPhotoDedupe:true,
-      telegramAutoUpload:true,telegramRequireData:true,
+      telegramAutoUpload:true,telegramRequireData:true,telegramSameDayUpdate:true,
       telegramBuilder:buildEhsTelegram,
       onTelegramSent:markEhsTelegramSent,
       importParser:parseEhsSmartImport,
       mergeImport:mergeEhsImport,
       importSchema:{"date": ["日期", "date", "កាលបរិច្ឆេទ", "ថ្ងៃ"], "plastic_kg": ["塑膠", "plastic", "ប្លាស្ទិច"], "fabric_kg": ["布", "fabric", "cloth", "ក្រណាត់"], "core_kg": ["紙管", "core", "paper", "ស្នូល"], "total_kg": ["總重", "total", "recycle weight", "ទម្ងន់"], "supplier": ["供應商", "supplier", "អ្នកផ្គត់ផ្គង់"], "weight_kg": ["重量", "kg", "weight", "ទម្ងន់"], "checked_by": ["檢查人", "inspector", "checker", "checked by", "អ្នកត្រួតពិនិត្យ"], "remark": ["備註", "remark", "note", "ចំណាំ"]},
       beforeCloudSync:function(){
-        /* 刪除紀錄（墓碑）隨智慧同步上雲，下載也會套用本機墓碑。
-           不再在同步前等待舊刪除 API；手動刪除仍可確認雲端刪除登錄。 */
-        return {ok:true,deferred:true};
+        /* 刪除紀錄（墓碑）已隨智慧同步一起上雲；舊版刪除 API 只是讓 Sheet 同步，改成背景補做，
+           失敗不再擋住上傳與 Telegram 發送。 */
+        /* 2026-10-06：舊版刪除 API 遇到雲端忙會等很久（每筆最長 5 分鐘），發 Telegram 前的上傳因此卡在「同步中…」。
+           最多等 8 秒，沒回來就讓它在背景繼續，先上傳、先發群組。 */
+        const flush=ehsFlushTombstones({silent:true}).catch(function(e){try{console.warn('[EHS] legacy cloud delete deferred:',e&&e.message||e);}catch(_){}return {ok:false,deferred:true};});
+        return Promise.race([flush,new Promise(function(resolve){setTimeout(function(){resolve({ok:false,deferred:true,timeout:true});},8000);})]);
       },
       onSync:function(){setTimeout(refreshEhsAll,0);},
       onImport:function(){GC.sync.schedule('ehs','smart_import');setTimeout(refreshEhsAll,0);},

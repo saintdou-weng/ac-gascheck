@@ -227,7 +227,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=20261006-v63"></script>
+<script src="./gascheck-core.js?v=20261006a"></script>
 </head>
 <body>
 
@@ -1144,7 +1144,6 @@ var gasGet = async (params) => {
   const url=cfg.get().gasUrl||DORM_GAS_URL;
   if(window.GC&&typeof GC.withLang==='function')params=GC.withLang(params);
   const qs=new URLSearchParams({...params,_t:Date.now()}).toString();
-  if(window.GC&&GC.fetchJson)return GC.fetchJson(url+'?'+qs,{redirect:'follow'});
   const f=(window.GC&&typeof GC.fetch==='function')?GC.fetch:fetch;
   const r=await f(url+'?'+qs,{redirect:'follow'});
   return r.json();
@@ -1154,7 +1153,6 @@ var gasPost = async (payload) => {
   const url=cfg.get().gasUrl||DORM_GAS_URL;
   if(window.GC&&typeof GC.withLang==='function')payload=GC.withLang(payload); // lang（也放進 dormSubmit 的 data）
   const body=new URLSearchParams({payload:JSON.stringify(payload)});
-  if(window.GC&&GC.fetchJson)return GC.fetchJson(url,{method:'POST',body,redirect:'follow',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
   const f=(window.GC&&typeof GC.fetch==='function')?GC.fetch:fetch;
   const r=await f(url,{method:'POST',body,redirect:'follow',headers:{'Content-Type':'application/x-www-form-urlencoded'}});
   return r.json();
@@ -1793,16 +1791,14 @@ var insp = (() => {
   });
 
   const sendTg = () => dormGuard('insp-tg', async () => {
-    const date=gv('insp-date'),loc=currentLoc();
+    const inspector=gv('insp-inspector').trim();
+    const date=gv('insp-date');
+    const abn=abnList(currentData());
+    const photos=currentPhotos();
+    const msg=`🔍 <b>${esc(T('tg-insp-title'))}</b>\n📍 ${esc(dormLocLabel(state.getInspLoc()))}\n📅 ${esc(date||'—')}\n👤 ${esc(inspector||'—')}\n✅ ${esc(T('rooms'))}: ${getRooms().length}\n⚠️ ${esc(T('th-anom'))}: ${abn.length}\n📷 ${esc(T('photos'))}: ${photos.length}${abn.length?'\n'+abn.slice(0,8).map(a=>'  • '+esc(a)).join('\n'):''}`;
     const btn=document.getElementById('insp-tg-btn');if(btn)btn.disabled=true;
     try{
-      if(hasContent(currentData())||currentPhotos().length){if(!await save())return;}
-      const reportCfg={dateField:'date',telegramRecordFilter:dormTgScopeMatch};
-      const selected=GC.telegram.filter(dormTelegramRows(),reportCfg,'day',date,'part:'+loc,'all');
-      if(!selected.length)throw new Error(T('no-data'));
-      await dormTelegramBeforeSend({records:selected});
-      const packet=buildDormTelegram({period:'day',ref:date,scope:'part:'+loc,lang:i18n.get(),cfg:reportCfg});
-      const res=await GC.telegram.send(packet.pages||packet.text,packet.photos,[],DORM_CHAT_ID,'dormitory',{reportMonth:date.slice(0,7),reportPeriod:'day',reportRef:date,reportScope:'part:'+loc,reportMode:'summary',reportLanguage:i18n.get()});
+      const res=await tgPost({text:msg,photos:photos.slice(0,PHOTO_LIMIT)});
       if(!dormTgOk(res))throw new Error((res&&res.error)||'Telegram');
       toast(T('tg-sent'),'success');
     }catch(e){toast(T('tg-fail')+e.message,'error');}
@@ -2074,25 +2070,15 @@ var dormExtraSync = (() => {
     const txt=status?T('xs-'+status):'';
     ['xsync-insp','xsync-viol'].forEach(id=>sv2(id,txt));
   };
-  const one = async (kind,sendOpt) => {
-    sendOpt=sendOpt||{};
+  const one = async kind => {
     const tool=TOOLS[kind],db=state.db();
     const before=(db[kind]||[]).slice();
-    const up=await GC.smartSync.upload(tool,before,Object.assign({},opt,{onProgress:sendOpt.onProgress}));
+    const up=await GC.smartSync.upload(tool,before,opt);
     if(!up||up.ok===false)throw new Error((up&&up.error)||'sync failed');
     const merged=new Map((Array.isArray(up.list)?up.list:before).map(r=>[String(r&&r.id),r]));
     (state.db()[kind]||[]).forEach(r=>{const k=String(r&&r.id),o=merged.get(k);if(!o||dormStamp(r)>dormStamp(o))merged.set(k,r);});
     state.db()[kind]=dormPrune(Array.from(merged.values()).map(kind==='inspections'?dormNormalizeInsp:dormNormalizeViol));
     state.save();
-    const failures=(up.photoFailures||[]).filter(f=>!sendOpt.ids||!f.id||sendOpt.ids.has(String(f.id)));
-    if(failures.length)throw new Error('Photos pending upload: '+failures.length+'; retry before sending');
-  };
-  const sendKinds = async (kinds,sendOpt) => {
-    clearTimeout(timer);
-    if(running)await running;
-    status='busy';render();
-    running=(async()=>{try{for(const kind of kinds)await one(kind,sendOpt);status='ok';return true;}catch(e){status='err';throw e;}finally{running=null;render();}})();
-    return running;
   };
   const run = () => {
     if(running)return running;
@@ -2118,7 +2104,7 @@ var dormExtraSync = (() => {
   };
   const schedule = (reason,delay) => {clearTimeout(timer);timer=setTimeout(run,delay==null?1500:delay);};
   window.addEventListener('online',()=>schedule('online',800));
-  return { run, sendKinds, schedule, render, status:()=>status };
+  return { run, schedule, render, status:()=>status };
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -2261,39 +2247,8 @@ function dormWriteLive(list){
   const tombs=(state.db().records||[]).filter(r=>r&&r._deleted&&!ids.has(String(r.id)));
   state.replaceRecords((list||[]).concat(tombs));dedupeDormRecords(false);dormScheduleSync('smart_import');dormRerenderAll();
 }
-/* 摘要資料源包含申請、巡查、違規；雲端申請表仍獨立保存。 */
-function dormTgRooms(loc){return cfg.get()['rooms_'+loc]||DEF_ROOMS_MAP[loc]||[];}
-function dormTelegramRows(){
-  const db=state.db();
-  return ['records','inspections','violations'].flatMap(kind=>dormLive(db[kind]).map(r=>Object.assign({},r,{_summaryKind:kind})));
-}
-function dormTgScopeMatch(row,scope){
-  const choices=(Array.isArray(scope)?scope:[scope]).map(String).filter(Boolean);
-  if(!choices.length||choices.includes('all'))return true;
-  const kind=row._summaryKind||'records',parts=choices.filter(x=>x.startsWith('part:')).map(x=>x.slice(5)),rooms=choices.filter(x=>!x.startsWith('part:')).map(x=>x.replace(/^room:/,''));
-  const matches=part=>part==='applications'?kind==='records':part==='in'||part==='out'?kind==='records'&&dormTypeCode(row.type)===part:part==='inspections'?kind==='inspections':part==='dorm'?kind==='inspections'&&['foreignDorm','localDorm'].includes(row.location):part==='violations'?kind==='violations':kind==='inspections'&&row.location===part;
-  if(parts.length&&!parts.some(matches))return false;
-  return !rooms.length||(kind==='inspections'?rooms.some(room=>Object.prototype.hasOwnProperty.call(row.data||{},room)):rooms.includes(String(row.roomNo||'')));
-}
-function dormTelegramScopes(){
-  return [
-    {value:'all',zh:'全部資料',en:'All records',km:'កំណត់ត្រាទាំងអស់'},
-    {value:'part:applications',zh:'人員入住／離開',en:'Move-in / Move-out',km:'ចូល / ចាកចេញ'},
-    {value:'part:in',zh:'人員入住',en:'Move-in only',km:'ចូលស្នាក់នៅ'},
-    {value:'part:out',zh:'人員離開',en:'Move-out only',km:'ចាកចេញ'},
-    {value:'part:inspections',zh:'所有設施檢查',en:'All inspections',km:'ការត្រួតពិនិត្យទាំងអស់'},
-    {value:'part:dorm',zh:'宿舍檢查',en:'Dorm inspections',km:'ត្រួតពិនិត្យអន្តេវាសិកដ្ឋាន'},
-    {value:'part:foreignDorm',zh:'外籍宿舍檢查',en:'Foreign dorm inspections',km:'ត្រួតពិនិត្យអន្តេវាសិកដ្ឋានជនបរទេស'},
-    {value:'part:localDorm',zh:'當地宿舍檢查',en:'Local dorm inspections',km:'ត្រួតពិនិត្យអន្តេវាសិកដ្ឋានក្នុងស្រុក'},
-    {value:'part:factory',zh:'工廠檢查',en:'Factory inspections',km:'ត្រួតពិនិត្យរោងចក្រ'},
-    {value:'part:office',zh:'辦公室檢查',en:'Office inspections',km:'ត្រួតពិនិត្យការិយាល័យ'},
-    {value:'part:violations',zh:'違規記錄',en:'Violations',km:'ការល្មើស'}
-  ].concat([...new Set([...(cfg.get().rooms||[]),...dormLive(state.db().records).map(r=>r.roomNo),...dormLive(state.db().inspections).flatMap(r=>Object.keys(r.data||{}))].filter(Boolean))].map(room=>({value:'room:'+room,zh:'房間 '+room,en:'Room '+room,km:'បន្ទប់ '+room})));
-}
-async function dormTelegramBeforeSend(ctx){
-  const kinds=[...new Set(ctx.records.map(r=>r._summaryKind).filter(k=>['inspections','violations'].includes(k)))];
-  if(kinds.length)await dormExtraSync.sendKinds(kinds,{ids:new Set(ctx.records.map(r=>String(r.id))),onProgress:ctx.onProgress});
-}
+/* 2026-10-03 群組摘要改為 GC.TG 精簡卡片（申請＋巡查＋違規）：狀態燈 → 重點數字 → 待核可申請／異常房間／違規逐筆列出。
+   同一房間多次巡查只列最新狀態（×n）；照片只附在有異常的巡查。每筆申請的 Telegram 核可卡（dormTelegramPayload／dorm_ok_／dorm_rej_）不變。 */
 function dormTgPeriodLabel(period,ref,lang){
   const G=GC.TG,r=GC.period.range(period,ref);
   if(period==='day')return r.fromYmd;
@@ -2313,13 +2268,12 @@ function dormTgAppLine(r,lang,withReason){
 function buildDormTelegram(opt){
   opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode=opt.mode||'summary',ref=opt.ref||today_str(),scope=opt.scope||'all',slot=opt.slot||'all';
   const lang=opt.lang||i18n.get()||'zh',G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),D=i18n.dict,K=k=>G.lbl(lang,D.zh[k],D.en[k],D.km[k]),day=period==='day';
-  const scopes=(Array.isArray(scope)?scope:[scope]).map(String).filter(Boolean),anyScope=!scopes.length||scopes.includes('all'),roomScopes=scopes.filter(x=>!x.startsWith('part:')).map(x=>x.replace(/^room:/,'')),inScope=room=>anyScope||!roomScopes.length||roomScopes.includes(String(room||''));
-  const reportCfg=Object.assign({},cfg,{scopeField:null,telegramRecordFilter:dormTgScopeMatch});
-  const appsAll=GC.telegram.filter(dormLive(state.db().records),reportCfg,'all',undefined,scope,slot);
-  const apps=GC.telegram.filter(appsAll,reportCfg,period,ref,scope,slot).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
+  const scopes=(Array.isArray(scope)?scope:[scope]).map(String).filter(Boolean),anyScope=!scopes.length||scopes.includes('all'),inScope=room=>anyScope||scopes.includes(String(room||''));
+  const appsAll=GC.telegram.filter((typeof cfg.read==='function'?cfg.read():dormLive(state.db().records))||[],cfg,'all',undefined,scope,slot);
+  const apps=GC.telegram.filter(appsAll,cfg,period,ref,scope,slot).slice().sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
   const range=GC.period.range(period,ref),inP=d=>{d=String(d||'').slice(0,10);return !range||(d>=range.fromYmd&&d<=range.toYmd);};
   const mRange=GC.period.range('month',ref),inM=d=>{d=String(d||'').slice(0,10);return d>=mRange.fromYmd&&d<=mRange.toYmd;};
-  const db=state.db(),inspAll=dormLive(db.inspections).filter(r=>dormTgScopeMatch(Object.assign({_summaryKind:'inspections'},r),scope)),violAll=dormLive(db.violations).filter(v=>dormTgScopeMatch(Object.assign({_summaryKind:'violations'},v),scope));
+  const db=state.db(),inspAll=dormLive(db.inspections),violAll=dormLive(db.violations).filter(v=>inScope(v.roomNo));
   const insps=inspAll.filter(r=>inP(r.date)).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||''))||String(a.timestamp||'').localeCompare(String(b.timestamp||'')));
   const viols=violAll.filter(v=>inP(v.date)).sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
   const st=c=>apps.filter(r=>dormStatusCode(r.status)===c).length;
@@ -2327,12 +2281,11 @@ function buildDormTelegram(opt){
   const moveIn=apps.filter(r=>dormTypeCode(r.type)==='in').length,moveOut=apps.length-moveIn;
   /* 房間最新狀態：同一地點＋房號依巡查日期取最後一次；異常項目＝該次勾 ✗ 的欄位 */
   const rooms=new Map();
-  insps.forEach(r=>{[...new Set([...dormTgRooms(r.location),...Object.keys(r.data||{})])].forEach(room=>{if(!inScope(room))return;const rd=(r.data||{})[room]||{},key=r.location+'|'+room,cur=rooms.get(key)||{room,location:r.location,n:0};cur.n++;cur.date=r.date;cur.inspector=r.inspector;cur.bad=INSP_COLS.filter(c=>rd[c.k]==='X').map(c=>c.k);cur.missing=INSP_COLS.filter(c=>!['N','X','-'].includes(rd[c.k])).length;cur.remarks=rd.remarks||'';rooms.set(key,cur);});});
-  const roomList=Array.from(rooms.values()).sort((a,b)=>String(a.location).localeCompare(String(b.location))||String(a.room).localeCompare(String(b.room))),badRooms=roomList.filter(x=>x.bad.length),unchecked=roomList.filter(x=>x.missing);
-
+  insps.forEach(r=>{Object.keys(r.data||{}).forEach(room=>{if(!inScope(room))return;const rd=r.data[room]||{};if(!INSP_COLS.some(c=>rd[c.k])&&!String(rd.remarks||'').trim())return;const key=r.location+'|'+room,cur=rooms.get(key)||{room,location:r.location,n:0};cur.n++;cur.date=r.date;cur.bad=INSP_COLS.filter(c=>rd[c.k]==='X').map(c=>c.k);cur.remarks=rd.remarks||'';cur.photos=Array.isArray(r.photos)?r.photos:[];rooms.set(key,cur);});});
+  const roomList=Array.from(rooms.values()),badRooms=roomList.filter(x=>x.bad.length).sort((a,b)=>String(a.location).localeCompare(String(b.location))||String(a.room).localeCompare(String(b.room)));
   const serious=viols.filter(v=>v.level==='Serious').length;
-  let txt=G.head('🏠',lb('VRT 宿舍管理','VRT Dormitory','VRT អន្តេវាសិកដ្ឋាន'),dormTgPeriodLabel(period,ref,lang),!anyScope?'🗂 '+G.esc(scopes.map(s=>{const item=dormTelegramScopes().find(x=>x.value===s);return item?lb(item.zh,item.en,item.km):s;}).join(', ')):'');
-  txt+='\n'+G.verdict(serious||badRooms.length?'bad':pending.length||viols.length||unchecked.length?'warn':'ok',pending.length?lb(pending.length+' 筆待核可',pending.length+' pending approval',pending.length+' រង់ចាំអនុម័ត'):lb('沒有待辦','Nothing pending','គ្មានការរង់ចាំ'))+(badRooms.length?' · ⚠️ '+lb('異常房間','Rooms to fix','បន្ទប់មានបញ្ហា')+' '+badRooms.length:'')+(unchecked.length?' · ❌ '+lb('未完成檢查','Incomplete checks','ការត្រួតពិនិត្យមិនទាន់ពេញលេញ')+' '+unchecked.length:'')+(serious?' · 🚫 '+lb('嚴重違規','Serious','ធ្ងន់ធ្ងរ')+' '+serious:'');
+  let txt=G.head('🏠',lb('VRT 宿舍管理','VRT Dormitory','VRT អន្តេវាសិកដ្ឋាន'),dormTgPeriodLabel(period,ref,lang),!anyScope?'🗂 '+G.esc(scopes.join(', ')):'');
+  txt+='\n'+G.verdict(serious||badRooms.length?'bad':pending.length||viols.length?'warn':'ok',pending.length?lb(pending.length+' 筆待核可',pending.length+' pending approval',pending.length+' រង់ចាំអនុម័ត'):lb('沒有待辦','Nothing pending','គ្មានការរង់ចាំ'))+(badRooms.length?' · ⚠️ '+lb('異常房間','Rooms to fix','បន្ទប់មានបញ្ហា')+' '+badRooms.length:'')+(serious?' · 🚫 '+lb('嚴重違規','Serious','ធ្ងន់ធ្ងរ')+' '+serious:'');
   txt+='\n'+G.kpis([
     ['📝',lb('申請','Applications','ពាក្យស្នើ'),apps.length],['🟢',lb('搬入','Move-in','ចូល'),moveIn],['🔴',lb('搬出','Move-out','ចេញ'),moveOut],
     ['⏳',lb('待核可','Pending','រង់ចាំ'),pending.length],['✅',lb('核可','Approved','អនុម័ត'),st('approved')],['❌',lb('退件','Rejected','បដិសេធ'),st('rejected')],
@@ -2345,14 +2298,14 @@ function buildDormTelegram(opt){
   if(mode==='review')txt+='\n⏳ Paul: '+lb('請在各申請的 Telegram 核可卡按 ✅／❌','approve / reject each application on its Telegram card','អនុម័ត / បដិសេធ ពាក្យនីមួយៗលើកាត Telegram');
   const lines=[],sec=(icon,title)=>'\n<b>'+icon+' '+title+'</b>';
   if(pending.length){lines.push(sec('⏳',lb('待核可','Pending approval','រង់ចាំអនុម័ត')+' · '+pending.length));pending.forEach(r=>lines.push(dormTgAppLine(r,lang,mode==='review')));}
-  if(roomList.length){lines.push(sec('🔍',lb('逐間檢查結果','Room inspection results','លទ្ធផលត្រួតពិនិត្យបន្ទប់')+' · '+roomList.length));roomList.forEach(x=>lines.push((x.bad.length||x.missing?'• ❌ ':'• ✅ ')+'<b>'+G.esc(dormTgRoom(x.room,lang))+'</b> · '+G.esc(K('loc-'+x.location)||x.location)+' · '+(x.bad.length?'✗ '+x.bad.map(k=>K('col-'+k)||COL_LABELS[k]||k).join(', '):x.missing?lb('未完成／未檢查','Incomplete / not checked','មិនទាន់ពេញលេញ / មិនបានត្រួតពិនិត្យ'):lb('全部通過','All passed','បានឆ្លងទាំងអស់'))+' · '+G.d(x.date)+(x.n>1?' ×'+x.n:'')+(x.inspector?' · 👤 '+G.esc(x.inspector):'')+(x.remarks?' · 📝 '+G.esc(String(x.remarks).replace(/[\r\n]+/g,' ')):'')));}
+  if(badRooms.length){lines.push(sec('⚠️',lb('巡查異常','Inspection issues','បញ្ហាត្រួតពិនិត្យ')+' · '+badRooms.length));badRooms.forEach(x=>lines.push('• <b>'+G.esc(dormTgRoom(x.room,lang))+'</b> · '+G.esc(K('loc-'+x.location)||x.location)+' · ✗ '+x.bad.map(k=>K('col-'+k)||COL_LABELS[k]||k).join(', ')+' · '+G.d(x.date)+(x.n>1?' ×'+x.n:'')+(x.remarks?' · 📝 '+G.esc(String(x.remarks).replace(/[\r\n]+/g,' ')):'')));}
   if(viols.length){lines.push(sec('🚫',lb('違規','Violations','ការល្មើស')+' · '+viols.length));viols.forEach(v=>lines.push('• <b>'+G.esc(v.name||'—')+'</b>'+(v.idNo?' · '+G.esc(v.idNo):'')+(v.roomNo?' · '+G.esc(v.roomNo):'')+' · '+G.esc(dormViolTypeCode(v.type)?K('vt-'+dormViolTypeCode(v.type)):String(v.type||''))+(v.level?' · '+(v.level==='Serious'?'🔴 ':v.level==='Moderate'?'🟠 ':'')+G.esc(['Minor','Moderate','Serious'].includes(v.level)?K('lv-'+v.level):v.level):'')+' · '+G.d(v.date)+(v.desc?' · 📝 '+G.esc(String(v.desc).replace(/[\r\n]+/g,' ')):'')));}
   const decided=apps.filter(r=>/^(approved|rejected)$/.test(dormStatusCode(r.status)));
   /* 已決定的只在日報或少量時逐筆列，否則只看上面的數字 */
   if(decided.length&&(day||decided.length<=4)){lines.push(sec('✔',lb('本期已決定','Decided this period','បានសម្រេចក្នុងរយៈពេលនេះ')+' · '+decided.length));decided.forEach(r=>lines.push((dormStatusCode(r.status)==='approved'?'• ✅ ':'• ❌ ')+dormTgAppLine(r,lang,false).slice(2)));}
   if(!apps.length&&!insps.length&&!viols.length&&!pending.length)lines.push('\nℹ️ '+lb('這段期間沒有紀錄','No records in this period','គ្មានកំណត់ត្រាក្នុងរយៈពេលនេះ'));
   const photos=[];
-  apps.concat(insps,viols).forEach(r=>GC.photo.list(r.photos).forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p))photos.push(p);}));
+  badRooms.forEach(x=>x.photos.forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);}));
   const body=lines.length?'\n'+lines.join('\n'):'';
   if((txt+body).length<=3000)return {text:txt+body,photos};
   const pages=G.chunk('🏠 <b>'+lb('VRT 宿舍管理','VRT Dormitory','VRT អន្តេវាសិកដ្ឋាន')+'</b> · '+G.esc(dormTgPeriodLabel(period,ref,lang)),lines.map(l=>l.replace(/^\n+/,'')),2800);
@@ -2378,16 +2331,11 @@ function buildDormTelegram(opt){
       dateField:'date',
       idField:'id',
       cloudKey:dormRecordKey,
-      telegramAutoUpload:true,telegramRequireData:true,
+      telegramAutoUpload:true,telegramRequireData:true,telegramSameDayUpdate:true,
       /* 宿舍核可只走每筆申請的 Telegram 核可卡；共用摘要不提供「核可」選項。 */
       telegramModes:['summary','review'],
       telegramBuilder:buildDormTelegram,
-      telegramRead:dormTelegramRows,
-      telegramScopes:dormTelegramScopes,
-      telegramScopeLabel:{zh:'發送部份／房間',en:'Report section / room',km:'ផ្នែករបាយការណ៍ / បន្ទប់'},
-      telegramRecordFilter:dormTgScopeMatch,
-      telegramBeforeSend:dormTelegramBeforeSend,
-      groupField:null,
+      groupField:'roomNo',
       groupLabel:'Room',
       weather:false,
       photo:true,

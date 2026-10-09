@@ -16,7 +16,7 @@ for (const [name, html] of [['dorm', dorm], ['key', key], ['water', water]]) {
     assert.doesNotThrow(() => new Function(match[1]), `${name} inline script ${count} must parse`);
   }
   assert(count > 0);
-  assert(html.includes('gascheck-core.js?v=20261006-v63'));
+  assert(html.includes('gascheck-core.js?v=20261006a'));
 }
 assert(core.includes("GC.version = '3.16-key-water-daily-monthly'"));
 

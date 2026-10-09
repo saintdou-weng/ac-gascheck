@@ -88,11 +88,11 @@ assert(/🟥🟥🟥🟥🟥⬜⬜⬜⬜⬜ 50%/.test(packet.text), 'bar = areas
 assert(packet.text.includes('發送人/Sent by <b>Paul</b>'));
 assert(!/padEnd|│/.test(packet.text));
 assert(packet.text.split('\n').length <= 25);
-// Photos from every selected record travel, including all-pass records.
-assert.deepStrictEqual(Array.from(packet.photos), ['data:image/png;base64,AAA','https://example.invalid/cleaning.jpg']);
+// Photos only travel with records that have a ❌ (Canteen), never with all-pass records (Office).
+assert.deepStrictEqual(Array.from(packet.photos), ['https://example.invalid/cleaning.jpg']);
 assert.strictEqual(packet.recordCount, 2);
 const allPass = context.buildCleaningTelegram({cfg, period:'all', ref:'2026-08-11', mode:'summary', lang:'en', scope:['loc_office','loc_factory'], slot:['all'], sender:'Paul'});
-assert.deepStrictEqual(Array.from(allPass.photos), ['data:image/png;base64,AAA'], 'all-pass photo is retained');
+assert.deepStrictEqual(Array.from(allPass.photos), [], 'everything ticked → no photos');
 assert(allPass.text.includes('🟢 <b>All passed</b>') && allPass.text.includes('✅ Office ×2 · Factory Floor ×1'));
 assert(!/[\u4e00-\u9fff]/.test(allPass.text), 'English report has no Chinese');
 const km = context.buildCleaningTelegram({cfg, period:'all', ref:'2026-08-11', mode:'summary', lang:'km', scope:['all'], slot:['all'], sender:'Paul'});
@@ -111,7 +111,7 @@ assert(formPacket.text.includes('• <b>Canteen</b> · 14:30 · ❌ 🧹 · Nin'
 assert(formPacket.text.includes('⏱ 10:30, 14:30'));
 assert(formPacket.text.includes('📆 <b>本月累計/Month to date</b> · 🔎 4 · 📍 3 · ❌ 1'), 'day card carries month-to-date totals');
 assert(!formPacket.text.includes('T00:00:00.000Z'));
-assert.deepStrictEqual(Array.from(formPacket.photos), ['data:image/png;base64,AAA','https://example.invalid/cleaning.jpg']);
+assert.deepStrictEqual(Array.from(formPacket.photos), ['https://example.invalid/cleaning.jpg']);
 
 const core = fs.readFileSync(path.join(root, 'gascheck-core.js'), 'utf8');
 assert(core.includes('telegramScopeMultiple: false'));
@@ -125,7 +125,7 @@ assert(html.includes('id="locs-wrap"'));
 assert(html.includes('state.getLocs()'));
 assert(html.includes('telegramScopeMultiple:true'));
 assert(html.includes('telegramSlotMultiple:true'));
-assert(html.includes('gascheck-core.js?v=20261006-v63'));
+assert(html.includes('gascheck-core.js?v=20261006a'));
 assert(html.includes('id="loc-cleaner-map"'));
 assert(html.includes('state.getLocCleaner(locId)'));
 assert(html.includes('missing-location-cleaner'));

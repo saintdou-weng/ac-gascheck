@@ -209,7 +209,7 @@ table tr:last-child td { border-bottom: none; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=20261006-v63"></script>
+<script src="./gascheck-core.js?v=20261006a"></script>
 </head>
 <body>
 
@@ -1594,7 +1594,7 @@ function buildKeyTelegram(opt){
   if(damaged.length){lines.push(sec('⚠️',lb('歸還時損壞','Returned damaged','ប្រគល់វិញខូច')+' · '+damaged.length));damaged.forEach(r=>lines.push(keyTgLine(r,lang,!day)));}
   if(!rows.length&&!outKeys.length)lines.push('\nℹ️ '+lb('這段期間沒有紀錄','No records in this period','គ្មានកំណត់ត្រាក្នុងរយៈពេលនេះ'));
   const photos=[];
-  rows.concat(outKeys).forEach(r=>(Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p))photos.push(p);}));
+  outKeys.concat(lost,damaged).forEach(r=>(Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);}));
   const body=lines.length?'\n'+lines.join('\n'):'';
   if((txt+body).length<=3000)return {text:txt+body,photos};
   /* 太長：第一頁放摘要＋前段清單，其餘分頁（每頁 ≤ 3000 字），頁首重複標題 */
@@ -1635,7 +1635,7 @@ function keyMergeImport(cur,rows){
       photo:true,
       periodRef:true,
       telegramLanguage:true,
-      telegramAutoUpload:true,telegramPhotoDedupe:true,telegramRequireData:true,
+      telegramAutoUpload:true,telegramPhotoDedupe:true,telegramRequireData:true,telegramSameDayUpdate:true,
       telegramBuilder:buildKeyTelegram,
       telegramModes:['summary'],
       mergeImport:keyMergeImport,

@@ -184,7 +184,7 @@ GC.parseTime = parseTimeValue;
 /* 讀取 90 秒；寫入等候伺服器完成（GAS 單次最長 6 分鐘，這裡 330 秒）。
    寫入逾時後伺服器其實仍在處理，若立刻重送只會排隊搶鎖、越來越慢（2026-09-30 實際發生）。 */
 const FETCH_TIMEOUT_MS = 90000, WRITE_TIMEOUT_MS = 330000;
-function fetchWithTimeout(url, init, ms, consume) {
+function fetchWithTimeout(url, init, ms) {
   ms = Number(ms) > 0 ? Number(ms) : FETCH_TIMEOUT_MS;
   const f = global.fetch || (typeof fetch === 'function' ? fetch : null);
   if (!f) return Promise.reject(new Error('fetch unavailable'));
@@ -195,26 +195,13 @@ function fetchWithTimeout(url, init, ms, consume) {
   const timeoutError = () => { const e = new Error(GC.L ? GC.L('雲端回應逾時，請稍後再試', 'Cloud request timed out; please retry', 'Cloud មិនឆ្លើយតបទាន់ពេល សូមព្យាយាមម្ដងទៀត') : 'Cloud request timed out'); e.timeout = true; e.code = 'TIMEOUT'; return e; };
   return new Promise(function (resolve, reject) {
     timer = setTimeout(function () { try { if (ctrl) ctrl.abort(); } catch (e) {} reject(timeoutError()); }, ms);
-    // A response can arrive while its body stalls. Keep the same deadline until
-    // the caller has consumed that body; otherwise .text() can wait forever.
-    Promise.resolve().then(function () { return f.call(global, url, opts); }).then(async function (r) {
-      return consume ? { response:r, body:await consume(r) } : r;
-    }).then(function (r) { clearTimeout(timer); resolve(r); }, function (err) {
+    Promise.resolve().then(function () { return f.call(global, url, opts); }).then(function (r) { clearTimeout(timer); resolve(r); }, function (err) {
       clearTimeout(timer);
       reject(err && err.name === 'AbortError' ? timeoutError() : err);
     });
   });
 }
 GC.fetch = fetchWithTimeout;
-// For native form-based endpoints, retain their payload format while protecting
-// the complete response body with the same deadline as the common cloud API.
-GC.fetchJson = async function (url, init, ms) {
-  const received = await fetchWithTimeout(url, init, ms || (String(init && init.method || 'GET').toUpperCase() === 'POST' ? WRITE_TIMEOUT_MS : FETCH_TIMEOUT_MS), r => r.text());
-  let data;
-  try { data = JSON.parse(received.body); } catch (e) { throw new Error(I18.t('gc.nonJson')); }
-  if (!received.response.ok || data && data.ok === false) throw new Error(data && data.error || 'HTTP ' + received.response.status);
-  return data;
-};
 
 /* ═══════════════════════════════════════════════════════════
    0.5 STORAGE — 業務資料放 IndexedDB；localStorage 只留小設定
@@ -1143,13 +1130,13 @@ const CLOUD = GC.cloud = {
     if (!CLOUD.gasUrl) throw new Error('GAS URL not set');
     // 後端回傳的錯誤／提示訊息依介面語言（單一語言）；呼叫端已指定 lang 則沿用。
     payload = GC.withLang(payload);
-    const received = await fetchWithTimeout(CLOUD.gasUrl, {
+    const r = await fetchWithTimeout(CLOUD.gasUrl, {
       method: 'POST',
       cache: 'no-store',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload)
-    }, (opt && opt.timeout) || WRITE_TIMEOUT_MS, r => r.text());
-    const r = received.response, txt = received.body;
+    }, (opt && opt.timeout) || WRITE_TIMEOUT_MS);
+    const txt = await r.text();
     let data;
     try { data = JSON.parse(txt); } catch (e) { throw new Error(I18.t('gc.nonJson') + ': ' + String(txt || '').slice(0, 120)); }
     if (!r.ok || (data && data.ok === false)) throw new Error((data && data.error) || ('HTTP ' + r.status));
@@ -1160,8 +1147,8 @@ const CLOUD = GC.cloud = {
     if (!CLOUD.gasUrl) throw new Error('GAS URL not set');
     const query = Object.assign({}, GC.withLang(params || {}), { _t:Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8) });
     const qs = new URLSearchParams(query).toString();
-    const received = await fetchWithTimeout(CLOUD.gasUrl + (qs ? '?' + qs : ''), { cache:'no-store' }, opt && opt.timeout, r => r.text());
-    const r = received.response, txt = received.body;
+    const r = await fetchWithTimeout(CLOUD.gasUrl + (qs ? '?' + qs : ''), { cache:'no-store' }, opt && opt.timeout);
+    const txt = await r.text();
     let data;
     try { data = JSON.parse(txt); } catch (e) { throw new Error(I18.t('gc.nonJson') + ': ' + String(txt || '').slice(0, 120)); }
     if (!r.ok || (data && data.ok === false)) throw new Error((data && data.error) || ('HTTP ' + r.status));
@@ -1658,17 +1645,12 @@ const SMART = GC.smartSync = (() => {
        上傳 Promise，避免同一張照片因多地點／多時段而重複寫入 Drive。 */
     const uploaded = new Map();
     const failures = [], localMap = new Map();
-    const totalPhotos = new Set((records || []).flatMap(row => fields.flatMap(field => PHOTO.list(row && row[field]))).filter(p => typeof p === 'string' && p.indexOf('data:image/') === 0)).size;
-    let finishedPhotos = 0;
-    if (totalPhotos && opt.onProgress) opt.onProgress({stage:'photos',done:0,total:totalPhotos});
     function isData(p) { return typeof p === 'string' && p.indexOf('data:image/') === 0; }
     function one(photo, recId, idx) {
       if (!uploaded.has(photo)) {
         uploaded.set(photo, CLOUD.uploadPhotoStrict(photo, tool, recId, idx).then(
           function (url) { return /^https?:\/\//i.test(String(url || '')) ? { url: String(url) } : { error: new Error('No Drive link') }; },
-          function (err) { return { error: err }; }).then(result => {
-            finishedPhotos++; if (opt.onProgress) opt.onProgress({stage:'photos',done:finishedPhotos,total:totalPhotos}); return result;
-          }));
+          function (err) { return { error: err }; }));
       }
       return uploaded.get(photo);
     }
@@ -1774,7 +1756,6 @@ const SMART = GC.smartSync = (() => {
     const altered = [], localHashOf = {};
     for (let i = 0; i < changed.length; i++) {
       const b = local[changed[i]];
-      if (opt.onProgress) opt.onProgress({stage:'records',done:i,total:changed.length});
       localHashOf[b.key] = b.hash;
       const r = await retryNetwork(function () {
         return CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records }, { timeout: WRITE_TIMEOUT_MS });
@@ -1804,7 +1785,6 @@ const SMART = GC.smartSync = (() => {
     /* compare-and-swap：baseHashes＝規劃這次上傳時讀到的雲端 hash。commit 時雲端 bucket
        已被別台改過 → 伺服器合併（mergedBuckets）或保留別台版本（keptBuckets），並回 needsPull。 */
     const baseHashes = Object.assign({}, realRemoteH);
-    if (opt.onProgress) opt.onProgress({stage:'commit'});
     const commit = await retryNetwork(function () { return CLOUD.post({ action:'smartCommit', tool:tool, uploadId:uploadId, hashes:hashes, counts:counts, baseHashes:baseHashes,
       recordCount:Object.keys(counts).reduce((n, k) => n + (Number(counts[k]) || 0), 0), meta:meta }, { timeout: WRITE_TIMEOUT_MS }); }, 3);
     if (!commit || commit.ok === false) throw new Error((commit && commit.error) || 'Smart commit failed');
@@ -1836,7 +1816,6 @@ const SMART = GC.smartSync = (() => {
   }
   async function upload(tool, localList, opt) {
     opt = opt || {};
-    if (opt.onProgress) opt.onProgress({stage:'checking'});
     const toCloud = typeof opt.toCloud === 'function' ? opt.toCloud : (r => r);
     const fromCloud = typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r);
     const pr = pruneTombstonesDetailed((localList || []).map(toCloud), opt);
@@ -1888,7 +1867,6 @@ const SMART = GC.smartSync = (() => {
   }
   async function download(tool, localList, opt) {
     opt = opt || {};
-    if (opt.onProgress) opt.onProgress({stage:'checking'});
     const toCloud = typeof opt.toCloud === 'function' ? opt.toCloud : (r => r);
     const fromCloud = typeof opt.fromCloud === 'function' ? opt.fromCloud : (r => r);
     let localRows = pruneTombstones(opt._cloudInput ? (localList || []) : (localList || []).map(toCloud), opt);
@@ -2834,17 +2812,6 @@ else document.addEventListener('DOMContentLoaded', injectCSS);
 /* ═══════════════════════════════════════════════════════════
    10. 雲端按鈕組（一行掛好上傳/下載）
    ═══════════════════════════════════════════════════════════ */
-GC.syncProgressLabel = function (info) {
-  info = info || {};
-  const stages = {
-    checking:['正在檢查雲端資料…','Checking cloud data…','កំពុងពិនិត្យទិន្នន័យ Cloud…'],
-    photos:['正在上傳照片','Uploading photos','កំពុងផ្ទុករូបថតឡើង'],
-    records:['正在上傳資料','Uploading records','កំពុងផ្ទុកកំណត់ត្រាឡើង'],
-    commit:['正在確認雲端儲存…','Confirming cloud save…','កំពុងបញ្ជាក់ការរក្សាទុក Cloud…']
-  };
-  const label = stages[info.stage] || stages.checking;
-  return I18.lang === 'en' ? label[1] + (info.total ? ' '+info.done+'/'+info.total : '') : I18.lang === 'km' ? label[2] + (info.total ? ' '+info.done+'/'+info.total : '') : label[0] + (info.total ? ' '+info.done+'/'+info.total : '');
-};
 GC.mountCloudButtons = function (mountEl, opt) {
   const el = typeof mountEl === 'string' ? document.querySelector(mountEl) : mountEl;
   if (!el) return null;
@@ -2866,7 +2833,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
     if (typeof opt.onState === 'function') opt.onState(kind, typeof text === 'function' ? text() : text, typeof text === 'function' ? text : null);
   }
   const pendingKey = 'ac_gc_auto_sync_v1_' + String(opt.tool || 'tool');
-  let running = null, downloading = null, reconcileRunning = null, retryTimer = 0, reconcileTimer = 0, queued = false, retryCount = 0, photoRetryCount = 0;
+  let running = null, reconcileRunning = null, retryTimer = 0, reconcileTimer = 0, queued = false, retryCount = 0, photoRetryCount = 0;
   function readPending() {
     try { return JSON.parse(localStorage.getItem(pendingKey) || 'null'); } catch (e) { return null; }
   }
@@ -2903,15 +2870,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
   }
   async function runUpload(runOpt) {
     runOpt = runOpt || {};
-    if (downloading) { await downloading; return runUpload(runOpt); }
-    if (running) {
-      const finished = await running;
-      // A report must include edits made after a background upload started.
-      // Wait for that write, then take a fresh snapshot rather than reusing its receipt.
-      if (!runOpt.auto && finished && finished.ok !== false) return runUpload(runOpt);
-      return finished;
-    }
-    clearTimeout(retryTimer);
+    if (running) return running;
     busy(true);
     state('busy', () => I18.t('gc.autoSyncing'));
     const startMarker = readPending();
@@ -2925,8 +2884,7 @@ GC.mountCloudButtons = function (mountEl, opt) {
         const result = await CLOUD.upload(opt.tool, local, {
           idKey:opt.idKey, tsKey:opt.tsKey, dateField:opt.dateField, photoField:opt.photoField, photoFields:opt.photoFields, keyFn:opt.keyFn,
           extra:opt.extra, toCloud:opt.toCloud, fromCloud:opt.fromCloud, onRemote:opt.onRemote,
-          allowDeletes:opt.allowDeletes !== false, confirmShrink:confirmShrinkFor(runOpt), tombstoneDays:opt.tombstoneDays,
-          onProgress:info => { state('busy', () => GC.syncProgressLabel(info)); if (runOpt.onProgress) runOpt.onProgress(info); }
+          allowDeletes:opt.allowDeletes !== false, confirmShrink:confirmShrinkFor(runOpt), tombstoneDays:opt.tombstoneDays
         });
         const res = result && result.res, uploadedList = result && result.list || local;
         if (res && res.ok === false) throw new Error(res.error || I18.t('gc.upFail'));
@@ -3009,9 +2967,6 @@ GC.mountCloudButtons = function (mountEl, opt) {
 
   async function runDownload(runOpt) {
     runOpt = runOpt || {};
-    if (running) { await running; return runDownload(runOpt); }
-    if (downloading) return downloading;
-    downloading = (async function () {
     busy(true);
     state('busy', () => I18.t('gc.sync'));
     try {
@@ -3064,10 +3019,8 @@ GC.mountCloudButtons = function (mountEl, opt) {
       state(!isOnline() ? 'offline' : (runOpt.auto ? 'local' : 'error'), msgFn);
       return {ok:false,error:e};
     } finally {
-      busy(false); downloading = null;
+      busy(false);
     }
-    })();
-    return downloading;
   }
 
   function scheduleAuto(reason, delay) {
@@ -3370,15 +3323,6 @@ GC.telegram = {
     return pages.map((p, i) => '[' + (i + 1) + '/' + pages.length + ']\n' + p);
   },
   async send(text, photos, buttons, chatId, tool, meta) {
-    meta = Object.assign({}, meta || {});
-    // Reuse a report card on retries (also after text succeeded but a photo failed).
-    // Existing module-specific message keys, including AM+PM daily cards, take priority.
-    if (!meta.messageKey && meta.reportPeriod && meta.reportRef && tool) {
-      meta.messageKey = [tool,meta.reportPeriod,meta.reportRef,meta.reportMode||'summary',meta.reportScope||'all',meta.reportSlot||'all',meta.reportLanguage||I18.lang].join('|');
-      meta.updateExisting = true;
-      meta.dedupePhotos = true;
-      meta.photoDedupeKey = meta.photoDedupeKey || meta.messageKey;
-    }
     if (!Array.isArray(text) && String(text || '').length > 3900) text = GC.telegram.paginateHtml(text);
     if(Array.isArray(text)){
       if(!text.length||text.some(page=>!String(page).trim()||String(page).length>3900))throw new Error('Invalid Telegram report pages');
@@ -3426,15 +3370,9 @@ GC.telegram = {
       if (buttonLang === 'bi') finalButtons.push([{ text: '🏠 Main Portal / 總平台', url: portalUrl }]);
       else finalButtons.push([{ text: GC.telegram.buttonText('portal', buttonLang), url: portalUrl }]);
     }
-    const allPhotos = [...new Set(PHOTO.list(photos))];
-    if (allPhotos.length > 5 && !meta.messageKey) {
-      let h=2166136261; for (const c of String(text)) {h^=c.charCodeAt(0);h=Math.imul(h,16777619);}
-      meta.messageKey=[tool,'photos',h>>>0].join('|');meta.updateExisting=true;meta.dedupePhotos=true;meta.photoDedupeKey=meta.messageKey;
-    }
     const res = await CLOUD.post(Object.assign({
       action: 'telegram', text: text,
-      photos: allPhotos.slice(0, 5),
-      deferReportCompletion: allPhotos.length > 5,
+      photos: PHOTO.list(photos).slice(0, 5),
       buttons: finalButtons,
       chatId: chatId || DEFAULT_CHAT_ID,
       tool: tool || ''
@@ -3444,16 +3382,6 @@ GC.telegram = {
     // 避免舊後端／中介層只回 ok:true，畫面顯示成功但群組實際沒有訊息。
     const confirmedMessage = res.notModified === true || (res.messageId !== undefined && res.messageId !== null && String(res.messageId) !== '');
     if (!confirmedMessage) throw new Error(I18.t('gc.noDelivery'));
-    const checkPhotos=(r,n)=>{if(n && (Number(r.photosSent||0)+Number(r.photosSkipped||0)!==n || Number(r.photosFailed||0)))throw new Error('Photo delivery not confirmed; retry to complete');};
-    checkPhotos(res,Math.min(5,allPhotos.length));
-    for(let i=5;i<allPhotos.length;i+=5){
-      const batch=allPhotos.slice(i,i+5);
-      await new Promise(resolve=>setTimeout(resolve,1100));
-      const r=await CLOUD.post(Object.assign({},meta,{action:'telegram',tool:tool||'',photosOnly:true,text:'',photos:batch,parentMessageId:res.messageId,chatId:chatId||DEFAULT_CHAT_ID,deferReportCompletion:i+5<allPhotos.length}));
-      if(!r||r.ok!==true)throw new Error((r&&r.error)||'Photo delivery failed; retry to complete');
-      checkPhotos(r,batch.length);
-    }
-    res.photosTotal=allPhotos.length;
     return res;
   }
 };
@@ -3588,6 +3516,8 @@ GC.attach = function (cfg) {
     if (C.telegramSameDayUpdate && period === 'day') {
       meta.updateExisting = true;
       meta.messageKey = String(C.tool || 'module') + '|' + String(ref).slice(0, 10);
+      /* 2026-10-06：同一天不同資料範圍（例如 EHS 回收 vs 廢料）各自一則，不互相覆蓋 */
+      if (scopeKey && scopeKey !== 'all') meta.messageKey += '|' + scopeKey;
     }
     /* 照片去重由 GAS 保存已送內容指紋；同一報告範圍再次發送時只傳新照片。 */
     if (C.telegramPhotoDedupe) {
@@ -3625,7 +3555,7 @@ GC.attach = function (cfg) {
     const shortText = shortCloudLabel(kind);
     if (short) short.textContent = shortText;
     label.removeAttribute('data-i');
-    const detail = String(message || '');
+    const detail = kind === 'busy' ? '' : String(message || '');
     // 詳細說明與短標籤相同時不重複顯示
     label.textContent = detail && detail.replace(/^[^\w\u0080-\uffff]+/, '') !== shortText.replace(/^[^\w\u0080-\uffff]+/, '') ? detail : '';
     state.title = [shortText, detail].filter(Boolean).join(' · ');
@@ -3984,10 +3914,9 @@ GC.attach = function (cfg) {
     if (p === 'all') return I18.t('gc.all');
     return ref;
   }
-  function telegramRows() { return (typeof C.telegramRead === 'function' ? C.telegramRead() : C.read()) || []; }
   function refreshPeriodOptions(choose) {
     const refs = new Set();
-    GC.telegram.filter(telegramRows(), C, 'all', null, scope, slot).forEach(function (r) {
+    GC.telegram.filter(C.read() || [], C, 'all', null, scope, slot).forEach(function (r) {
       const d = dateFromRecord(r && r[C.dateField]);
       if (d) refs.add(periodReference(d, period));
     });
@@ -4009,7 +3938,7 @@ GC.attach = function (cfg) {
   }
   function telegramSelectionContext() {
     return {
-      records: GC.telegram.filter(telegramRows(), C, period, periodRef, scope, slot),
+      records: GC.telegram.filter(C.read() || [], C, period, periodRef, scope, slot),
       period:period, mode:mode, ref:periodRef, scope:scope, slot:slot,
       lang:lang, sender:sender, cfg:C
     };
@@ -4027,11 +3956,11 @@ GC.attach = function (cfg) {
     return '';
   }
   function collectPhotos() {
-    const list = GC.telegram.filter(telegramRows(), C, period, periodRef, scope, slot);
+    const list = GC.telegram.filter(C.read() || [], C, period, periodRef, scope, slot);
     const out = [];
     list.forEach(function (r) {
       PHOTO.list(r && r[C.photoField]).forEach(function (p) {
-        if (/^(data:image\/|https?:\/\/)/i.test(p) && !out.includes(p)) out.push(p);
+        if (/^(data:image\/|https?:\/\/)/i.test(p) && !out.includes(p) && out.length < 5) out.push(p);
       });
     });
     return out;
@@ -4125,12 +4054,12 @@ GC.attach = function (cfg) {
     telegramSending=true;
     const lockedControls=Array.from(tgModal.querySelectorAll('input,select,button')).filter(el=>!el.hasAttribute('data-gc-close')).map(el=>({el,disabled:el.disabled}));lockedControls.forEach(x=>x.el.disabled=true);
     sendButton.disabled = true;
-    sendState.textContent = I18.t('gc.sync');
+    sendState.textContent = '☁ ' + I18.t('gc.upload') + '…';
     try {
       /* 需要即時保存的模組先等雲端確認，再送 Telegram。群組只要看得到
          訊息，Dashboard／History 就已能從雲端下載到同一批資料。 */
       if (cloudControl && C.telegramAutoUpload) {
-        const uploaded = await cloudControl.upload({silent:true,auto:false,reason:'telegram_preflight',onProgress:info => { sendState.textContent = GC.syncProgressLabel(info); }});
+        const uploaded = await cloudControl.upload({silent:true,auto:false,reason:'telegram_preflight'});
         if (!uploaded || uploaded.ok === false) {
           const why = (uploaded && uploaded.error && (uploaded.error.message || String(uploaded.error))) || I18.t('gc.upFail');
           // 中文介面保留英文對照（方便回報問題）；英文／高棉文介面只顯示單一語言。
@@ -4138,14 +4067,12 @@ GC.attach = function (cfg) {
           throw new Error(head + ': ' + why);
         }
         /* 記錄已上雲但有照片仍留在手機：不送出缺照片的報告，保留重試（A5）。 */
-        const selectedIds = new Set(telegramSelectionContext().records.map(row => String(row[C.idField || 'id'] || '')));
-        const pendingPhotos = (uploaded.photoFailures || []).filter(f => !f.id || selectedIds.has(String(f.id))).length;
+        const pendingPhotos = (uploaded.photoFailures || []).length;
         if (pendingPhotos) {
           const headP = I18.lang === 'zh' ? I18.t('gc.uploadBeforeSendFail') + ' / ' + BASE_DICT.en['gc.uploadBeforeSendFail'] : I18.t('gc.uploadBeforeSendFail');
           throw new Error(headP + ': ' + I18.f('gc.photoPending', { n: pendingPhotos }));
         }
       }
-      if (typeof C.telegramBeforeSend === 'function') await C.telegramBeforeSend(Object.assign(telegramSelectionContext(), {onProgress:info => {sendState.textContent=GC.syncProgressLabel(info);}}));
       const afterUploadError = telegramValidationError();
       if (afterUploadError) throw new Error(afterUploadError);
       const packet = await buildPacket();
@@ -4450,22 +4377,19 @@ GC.attachLegacy = function (cfg) {
 
   const sendTelegram = bar.querySelector('[data-gc-send]');
   const telegramState = bar.querySelector('#gcTelegramState');
-  let quickTelegramSending = false;
   async function sendCurrentTelegram() {
-    if (quickTelegramSending) return;
-    quickTelegramSending = true;
     if (sendTelegram) sendTelegram.disabled = true;
     if (telegramState) telegramState.textContent = I18.t('gc.sync');
     try {
-      /* 2026-10-03：這條快捷路徑也要先上雲再發群組（與視窗送出同一規則） */
-      if (cloudControl && C.telegramAutoUpload) {
-        const uploaded = await cloudControl.upload({silent:true,auto:false,reason:'telegram_preflight',onProgress:info => { if (telegramState) telegramState.textContent = GC.syncProgressLabel(info); }});
-        if (!uploaded || uploaded.ok === false) throw new Error(I18.t('gc.uploadBeforeSendFail') + ': ' + ((uploaded && uploaded.error && (uploaded.error.message || String(uploaded.error))) || I18.t('gc.upFail')));
-        if ((uploaded.photoFailures || []).length) throw new Error(I18.t('gc.uploadBeforeSendFail') + ': ' + I18.f('gc.photoPending', { n: uploaded.photoFailures.length }));
-      }
       const customText = typeof C.telegramBuilder === 'function'
         ? await C.telegramBuilder({ period, mode, ref: periodRef, scope, slot, lang, cfg: C })
         : null;
+      /* 2026-10-03：這條快捷路徑也要先上雲再發群組（與視窗送出同一規則） */
+      if (cloudControl && C.telegramAutoUpload) {
+        const uploaded = await cloudControl.upload({silent:true,auto:false,reason:'telegram_preflight'});
+        if (!uploaded || uploaded.ok === false) throw new Error(I18.t('gc.uploadBeforeSendFail') + ': ' + ((uploaded && uploaded.error && (uploaded.error.message || String(uploaded.error))) || I18.t('gc.upFail')));
+        if ((uploaded.photoFailures || []).length) throw new Error(I18.t('gc.uploadBeforeSendFail') + ': ' + I18.f('gc.photoPending', { n: uploaded.photoFailures.length }));
+      }
       const built = customText == null ? GC.telegram.buildText(C, period, mode, periodRef, scope, slot, lang) : customText;
       const packet = typeof built === 'string' ? { text: built, photos: [] } : (built || { text: '', photos: [] });
       const dashUrl = C.dashboardUrl || DASHBOARD_BASE_URL + (DASHBOARD_PATHS[C.tool] || 'ac_gascheck_portal_v1.html');
@@ -4483,7 +4407,6 @@ GC.attachLegacy = function (cfg) {
       GC.toast('❌ ' + e.message, 'error');
     }
     if (sendTelegram) sendTelegram.disabled = false;
-    quickTelegramSending = false;
   }
   if (sendTelegram) sendTelegram.onclick = sendCurrentTelegram;
 
@@ -4668,7 +4591,7 @@ const BAR_CSS = `
 
 /* ── 匯出 ── */
 GC.version = '3.16-key-water-daily-monthly';
-GC.release = '63-delivery-sync-1006';
+GC.release = '62-single-decision-card';
 GC.coreFix = 'fix-core-2026-09-29';
 global.GC = GC;
 global.GASCheckCore = GC;

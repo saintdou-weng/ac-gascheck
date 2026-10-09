@@ -34,12 +34,12 @@ zones.forEach((z,i)=>['morning','afternoon'].forEach((p,s)=>records.push({
     assert(!before.text.includes('Missing'),'All eight readings exist');
     assert.equal(before.notice,'');
     assert.equal((before.text.match(/• /g)||[]).length,4,'one line per zone');
-    assert.deepStrictEqual(Array.from(before.photos),['https://example.test/finishing-morning.jpg','https://example.test/finishing-afternoon.jpg'],'normal AM/PM photos retained');
+    assert.deepStrictEqual(Array.from(before.photos),[],'all in range → no photos');
     assert(before.text.includes('Finishing Warehouse'),'Summary uses the configured zone name');
     // A reading out of range carries its photo and is listed as an exception.
     cfg.write(cfg.read().map(r=>r.id==='zd-afternoon'?Object.assign({},r,{t:36}):r));
     const hot=w.buildTGPeriodMsg('day','summary','2026-09-15','all','en','all');
-    assert.equal(hot.photos.length,2,'normal and out-of-range photos both retained');assert(hot.photos.some(p=>p.includes('finishing-afternoon')));
+    assert.equal(hot.photos.length,1,'photo travels with the out-of-range reading');assert(hot.photos[0].includes('finishing-afternoon'));
     assert(hot.text.includes('🔴 <b>1 out of range</b>') && hot.text.includes('• PM · <b>Finishing Warehouse</b> · 36°C/73% · Too hot'));
     assert(hot.text.includes('→ PM 36°C/73%⚠️'));
     cfg.write(cfg.read().map(r=>r.id==='zd-afternoon'?Object.assign({},r,{t:32}):r));

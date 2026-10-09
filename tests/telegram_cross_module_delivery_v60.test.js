@@ -39,7 +39,7 @@ function validateHtml(text){
         }
         if(p.action==='telegram'){
           assert(p.text.length<=3900,tool+' page is within size limit');validateHtml(p.text);
-          return {ok:true,messageId:100+posts.length,photosSent:(p.photos||[]).length};
+          return {ok:true,messageId:100+posts.length};
         }
         throw new Error('Unexpected mock action: '+(p.action||p.type));
       };
@@ -89,7 +89,7 @@ function validateHtml(text){
           pages.forEach(p=>{assert(p.length<3900);validateHtml(p);});
           assert.equal(pages.map(p=>asText(p.replace(/^\[\d+\/\d+\]\n/,''))).join(''),asText(long),'Long single-line Unicode/HTML entities are preserved');
           const attempts=[];let rejectPage=true;
-          w.GC.cloud.post=async p=>{attempts.push(copy(p));if(rejectPage&&attempts.length===2)throw new Error('Simulated page failure');return{ok:true,messageId:200+attempts.length,photosSent:(p.photos||[]).length};};
+          w.GC.cloud.post=async p=>{attempts.push(copy(p));if(rejectPage&&attempts.length===2)throw new Error('Simulated page failure');return{ok:true,messageId:200+attempts.length};};
           const meta={reportPeriod:'month',reportRef:'2026-09-01',reportMode:'summary'};
           await assert.rejects(()=>w.GC.telegram.send(long,[],[],'test-chat','keymovement',meta),/Page 2|第 2\/4 頁/);
           assert(!attempts.some(p=>p.reportMode),'Partial delivery cannot record completion');
