@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>AC GASCHECK</title>
-<script src="./gascheck-core.js?v=20261006a"></script>
+<script src="./gascheck-core.js?v=20261022a"></script>
+<script src="./gc-import-hub.js?v=20261022a"></script>
 <style>
 :root{--acc:#F97316;--nv:#0F1E3D;--nv2:#1A3458;--gold:#FCD34D;--w:#fff;--mt:rgba(255,255,255,.62);--r:12px}
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
@@ -86,6 +87,7 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;
 #toast.err{background:#991b1b}
 .spin{display:inline-block;animation:sp .7s linear infinite}@keyframes sp{to{transform:rotate(360deg)}}
 @media(max-width:360px){.mb-zh{font-size:12px}.hdr-t1{font-size:14px}}
+.hub-box{background:#fff;color:#1E2A3B;border-color:rgba(255,255,255,.3)}.hub-box .sync-h{color:#0F1E3D}.hub-sub{font-size:10.5px;color:#6b8398;margin:-4px 0 2px 2px}
 /* 首頁雲端同步：全部同步／勾選同步（2026-10-15） */
 .sync-box{background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.12);border-radius:var(--r);padding:9px;display:flex;flex-direction:column;gap:7px}
 .sync-h{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:#fff;padding:0 2px}
@@ -133,6 +135,13 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;
     <button class="ha" id="hdrPull" onclick="syncScrollToPanel()">☑ <span id="ha-down">選擇</span></button>
     <button class="ha" id="hdrTg" onclick="sendTgMenu()">✈ <span id="ha-tg">Telegram</span></button>
   </div>
+</div>
+
+<!-- 智慧匯入（2026-10-22） -->
+<div class="sync-box hub-box" id="hubBox">
+  <div class="sync-h" style="color:#0F1E3D"><span id="hubTitle">⇧ 智慧匯入</span></div>
+  <div class="hub-sub" id="hubSub">msg／Excel／zip 丟同一個地方，自動分到各模組</div>
+  <div id="portalHub"></div>
 </div>
 
 <!-- Stats -->
@@ -246,6 +255,7 @@ var _logOpen = false;
 // ── i18n ─────────────────────────────────────────────────────
 var TXT = {
   zh:{
+    hub_title:'⇧ 智慧匯入', hub_sub:'msg／Excel／zip 丟同一個地方，自動分到各模組；匯完可直接發摘要',
     sync_up:'全部同步', sync_pick:'選擇', sync_title:'☁ 雲端同步（下載＋上傳）', sync_all:'全部同步', sync_sel:'同步勾選的', sync_none:'全不選', sync_every:'全選', sync_run:'同步中…', sync_wait:'排隊中', sync_never:'尚未同步', sync_pending:'待上傳', sync_done:'完成', sync_failed_hint:'已勾選失敗的，可再按「同步勾選的」', sync_toast_ok:'已與雲端同步', sync_toast_bad:'個失敗', sync_retry:'🔄 重試失敗的', sync_timeout:'逾時', sync_noload:'頁面載入失敗', sync_offline:'離線', sync_noreply:'雲端沒有回應', sync_mods:'個模組',
     title:'AC GASCHECK 平台', sec:'管理模組',
     sl_mods:'模組', sl_recs:'記錄', sl_sync:'有資料', sl_last:'上次',
@@ -264,6 +274,7 @@ var TXT = {
     s:{asset:'登記・標籤・異動',dorm:'入住・檢查・違規',clean:'區域清潔・6S',key:'借出・歸還',ehs:'廢料・環境',water:'送水・費用',temp:'溫濕度巡檢'},
   },
   en:{
+    hub_title:'⇧ Smart import', hub_sub:'Drop msg / Excel / zip here; routed to the right module, then send the summary',
     sync_up:'Sync all', sync_pick:'Select', sync_title:'☁ Cloud sync (download + upload)', sync_all:'Sync all', sync_sel:'Sync selected', sync_none:'Select none', sync_every:'Select all', sync_run:'Syncing…', sync_wait:'Queued', sync_never:'Not synced yet', sync_pending:'Waiting to upload', sync_done:'Done', sync_failed_hint:'failed ones are selected — tap "Sync selected" to retry', sync_toast_ok:'Synced with the cloud', sync_toast_bad:'failed', sync_retry:'🔄 Retry failed', sync_timeout:'Timed out', sync_noload:'Page did not load', sync_offline:'Offline', sync_noreply:'Cloud did not respond', sync_mods:'module(s)',
     title:'AC GASCHECK Platform', sec:'Modules',
     sl_mods:'Modules', sl_recs:'Records', sl_sync:'With data', sl_last:'Last',
@@ -282,6 +293,7 @@ var TXT = {
     s:{asset:'Register · labels · moves',dorm:'Move-in · inspections',clean:'Areas · 6S',key:'Issue · return',ehs:'Waste · environment',water:'Deliveries · cost',temp:'Temperature & humidity'},
   },
   km:{
+    hub_title:'⇧ នាំចូលឆ្លាតវៃ', hub_sub:'ទម្លាក់ msg / Excel / zip នៅទីនេះ',
     sync_up:'ធ្វើទាំងអស់', sync_pick:'ជ្រើស', sync_title:'☁ ធ្វើសមកាលកម្មពពក', sync_all:'ធ្វើទាំងអស់', sync_sel:'ធ្វើដែលបានជ្រើស', sync_none:'មិនជ្រើសទាំងអស់', sync_every:'ជ្រើសទាំងអស់', sync_run:'កំពុងធ្វើ…', sync_wait:'កំពុងរង់ចាំ', sync_never:'មិនទាន់', sync_pending:'រង់ចាំផ្ទុកឡើង', sync_done:'រួច', sync_failed_hint:'បានជ្រើសដែលបរាជ័យ — ចុចម្តងទៀត', sync_toast_ok:'បានធ្វើសមកាលកម្ម', sync_toast_bad:'បរាជ័យ', sync_retry:'🔄 ព្យាយាមម្តងទៀត', sync_timeout:'អស់ពេល', sync_noload:'ទំព័រមិនបានផ្ទុក', sync_offline:'គ្មានអ៊ីនធឺណិត', sync_noreply:'ពពកមិនឆ្លើយតប', sync_mods:'ម៉ូឌុល',
     title:'វេទិកា AC GASCHECK', sec:'ម៉ូឌុល',
     sl_mods:'ម៉ូឌុល', sl_recs:'កំណត់ត្រា', sl_sync:'មានទិន្នន័យ', sl_last:'ចុងក្រោយ',
@@ -319,6 +331,9 @@ function applyLang() {
   document.getElementById('sl-last').textContent   = d.sl_last;
   document.getElementById('bt-tg').textContent     = d.tg;
   document.getElementById('bt-log').textContent    = d.log;
+  document.getElementById('hubTitle').textContent  = t('hub_title');
+  document.getElementById('hubSub').textContent    = t('hub_sub');
+  if(window.PORTAL_HUB)PORTAL_HUB.render();
   document.getElementById('ha-up').textContent     = t('sync_up');
   document.getElementById('ha-down').textContent   = t('sync_pick');
   document.getElementById('ha-tg').textContent     = 'Telegram';
@@ -822,6 +837,9 @@ function toast(msg,dur,type){
 }
 function fmtTs(iso){try{var d=new Date(iso);return pad(d.getMonth()+1)+'/'+pad(d.getDate())+' '+pad(d.getHours())+':'+pad(d.getMinutes());}catch(e){return '—';}}
 function pad(n){return String(n).padStart(2,'0');}
+
+// ── 智慧匯入中心（首頁內嵌；匯完更新統計） ───────────────────
+var PORTAL_HUB=(window.GC&&GC.importHub)?GC.importHub.mount('#portalHub',{onDone:function(){try{updateStats(JSON.parse(localStorage.getItem(META_KEY)||'{}'));}catch(e){}}}):null;
 
 // ── Init ─────────────────────────────────────────────────────
 (function init(){

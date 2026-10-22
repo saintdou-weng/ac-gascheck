@@ -15,6 +15,10 @@
 'use strict';
 
 const GC = {};
+/* 智慧匯入／參考報告（2026-10-22）：每一頁 attach 完成後登記自己（GC.pages[tool]），首頁匯入中心用同一個匯入器 */
+GC.pages = {}; GC.syncState = {};
+GC.pageReady = new Promise(function (r) { GC.__pageReadyResolve = r; });
+GC.markPageReady = function () { if (GC.__pageReadyResolve) { GC.__pageReadyResolve(true); GC.__pageReadyResolve = null; } };
 
 /* 使用者指定的固定入口：頁面不再要求每個模組重填 GAS URL／Chat ID。 */
 const DEFAULT_GAS_URL = 'https://script.google.com/macros/s/AKfycbzRsf_DuYJu0kXxqefR8qbLWhO7uz2flCY7jkPQQ73ZMwptcHDwrtJnhBQFwxG_EM3v/exec';
@@ -843,6 +847,7 @@ const BASE_DICT = {
     'gc.pendingApproval':'待審查／待核可','gc.mode':'訊息類型','gc.dataType':'資料類型','gc.refDate':'基準日期',
     'gc.cloudReady':'雲端已設定','gc.targetGroup':'目標群組','gc.defaultGroup':'AC GASCHECK 群組',
     'gc.preview':'預覽','gc.send':'發送','gc.periodMode':'期間模式','gc.periodValue':'期間',
+    'gc.hubImport':'智慧匯入','gc.report':'產生報告','gc.reportTitle':'產生報告（Word，僅供參考）',
     'gc.telegramTitle':'發送到 Telegram','gc.importTitle':'智慧匯入資料','gc.noPeriodData':'此期間沒有資料',
     'gc.sender':'發送人','gc.senderPlaceholder':'請輸入發送人姓名','gc.senderRequired':'請先確認發送人姓名',
     'gc.confirmSender':'確認由 {name} 發送這份摘要？',
@@ -883,6 +888,7 @@ const BASE_DICT = {
     'gc.pendingApproval':'Pending review/approval','gc.mode':'Message type','gc.dataType':'Data type','gc.refDate':'As of',
     'gc.cloudReady':'Cloud configured','gc.targetGroup':'Target group','gc.defaultGroup':'AC GASCHECK Group',
     'gc.preview':'Preview','gc.send':'Send','gc.periodMode':'Period mode','gc.periodValue':'Period',
+    'gc.hubImport':'Smart import','gc.report':'Report','gc.reportTitle':'Generate report (Word, reference only)',
     'gc.telegramTitle':'Send to Telegram','gc.importTitle':'Smart Import Data','gc.noPeriodData':'No data in this period',
     'gc.sender':'Sent by','gc.senderPlaceholder':'Enter sender name','gc.senderRequired':'Confirm the sender name first',
     'gc.confirmSender':'Send this report as {name}?',
@@ -923,6 +929,7 @@ const BASE_DICT = {
     'gc.pendingApproval':'កំពុងរង់ចាំពិនិត្យ/អនុម័ត','gc.mode':'ប្រភេទសារ','gc.dataType':'ប្រភេទទិន្នន័យ','gc.refDate':'កាលបរិច្ឆេទយោង',
     'gc.cloudReady':'បានកំណត់ Cloud','gc.targetGroup':'ក្រុមគោលដៅ','gc.defaultGroup':'ក្រុម AC GASCHECK',
     'gc.preview':'មើលជាមុន','gc.send':'ផ្ញើ','gc.periodMode':'របៀបរយៈពេល','gc.periodValue':'រយៈពេល',
+    'gc.hubImport':'នាំចូលឆ្លាតវៃ','gc.report':'របាយការណ៍','gc.reportTitle':'បង្កើតរបាយការណ៍ (Word)',
     'gc.telegramTitle':'ផ្ញើទៅ Telegram','gc.importTitle':'នាំចូលទិន្នន័យឆ្លាតវៃ','gc.noPeriodData':'គ្មានទិន្នន័យក្នុងរយៈពេលនេះ',
     'gc.sender':'អ្នកផ្ញើ','gc.senderPlaceholder':'បញ្ចូលឈ្មោះអ្នកផ្ញើ','gc.senderRequired':'សូមបញ្ជាក់ឈ្មោះអ្នកផ្ញើជាមុន',
     'gc.confirmSender':'បញ្ជាក់ថាផ្ញើរបាយការណ៍នេះដោយ {name}?',
@@ -2428,7 +2435,7 @@ const IMPORT = GC.import = {
 
     async function handle(files) {
       const list = Array.isArray(files) ? files.filter(Boolean) : (files ? [files] : []);
-      if (!list.length) return;
+      if (!list.length) return null;
       status(I18.t('gc.importing') + ' 0/' + list.length, 'busy');
       const allObjects = [];
       const metas = [];
@@ -2464,7 +2471,7 @@ const IMPORT = GC.import = {
       }
       if (!allObjects.length && errors.length) {
         status('❌ ' + I18.t('gc.importFail') + ': ' + errors.join(' | '), 'err');
-        return;
+        return { ok:false, imported:0, files:0, errors:errors, warnings:[], status:st.textContent };
       }
       const fileNames = metas.map(m => m.fileName).join(', ');
       const warnings = [];
@@ -2491,13 +2498,15 @@ const IMPORT = GC.import = {
           }));
         } catch (err) {
           status('❌ ' + I18.t('gc.importFail') + ': ' + (err && err.message ? err.message : err), 'err');
-          return;
+          return { ok:false, imported:0, files:metas.length, errors:[String(err && err.message || err)], warnings:warnings, status:st.textContent };
         }
         if (extra && typeof extra === 'object' && extra.skipped) {
           warnings.push(extra.skipped + ' ' + I18.t('gc.dupSkipped'));
           status(statusText(), 'warning');
         }
+        return { ok:true, imported:allObjects.length, files:metas.length, errors:errors, warnings:warnings, status:st.textContent, extra:extra || null };
       }
+      return { ok:true, imported:allObjects.length, files:metas.length, errors:errors, warnings:warnings, status:st.textContent };
     }
 
     dz.onclick = () => input.click();
@@ -2511,7 +2520,7 @@ const IMPORT = GC.import = {
       if (files.length) handle(files);
     });
 
-    return { status, reset: () => status('') };
+    return { status, reset: () => status(''), importFiles: handle };
   }
 };
 
@@ -3436,8 +3445,10 @@ GC.attach = function (cfg) {
     '<span class="gc-toolbar-title">☁️ <span data-i="gc.quickActions">' + U.escapeHtml(I18.t('gc.quickActions')) + '</span></span>',
     '<span class="gc-cloud-state" role="status" aria-live="polite"><i></i><span class="gc-state-short">' + U.escapeHtml(I18.t('gc.stChecking')) + '</span><span class="gc-state-label gc-state-detail"></span></span>',
     '<span class="gc-head-cloud"></span>',
+    '<button type="button" class="gc-head-btn gc-head-hub" data-gc-open-hub title="' + U.escapeHtml(I18.t('gc.hubImport')) + '"><span class="gc-btn-ico">⇧</span><span class="gc-btn-label" data-i="gc.hubImport">' + U.escapeHtml(I18.t('gc.hubImport')) + '</span></button>',
     '<button type="button" class="gc-head-btn gc-head-tg" data-gc-open-tg title="' + U.escapeHtml(I18.t('gc.telegramTitle')) + '"><span class="gc-btn-ico">✈️</span><span class="gc-btn-label" data-i="gc.telegram">' + U.escapeHtml(I18.t('gc.telegram')) + '</span></button>',
     C.importSchema ? '<button type="button" class="gc-head-btn gc-head-import" data-gc-open-import title="' + U.escapeHtml(I18.t('gc.importTitle')) + '"><span class="gc-btn-ico">📥</span><span class="gc-btn-label" data-i="gc.smartImport">' + U.escapeHtml(I18.t('gc.smartImport')) + '</span></button>' : '',
+    '<button type="button" class="gc-head-btn gc-head-report" data-gc-report title="' + U.escapeHtml(I18.t('gc.reportTitle')) + '"><span class="gc-btn-ico">📝</span><span class="gc-btn-label" data-i="gc.report">' + U.escapeHtml(I18.t('gc.report')) + '</span></button>',
     '<button type="button" class="gc-head-btn gc-head-export" data-gc-export title="' + U.escapeHtml(I18.t('gc.export')) + '"><span class="gc-btn-ico">💾</span><span class="gc-btn-label" data-i="gc.export">' + U.escapeHtml(I18.t('gc.export')) + '</span></button>',
     '<span class="gc-head-langs" aria-label="' + U.escapeHtml(I18.t('gc.menuLanguage')) + '">',
       '<button type="button" data-gc-ui-lang="zh">中</button>',
@@ -3550,6 +3561,7 @@ GC.attach = function (cfg) {
     const short = state && state.querySelector('.gc-state-short');
     if (!state || !label) return;
     cloudStateKind = kind || ''; cloudStateRender = typeof render === 'function' ? render : null; cloudStateText = message || '';
+    GC.syncState[C.tool] = { kind:kind || '', text:String(message || ''), at:Date.now() };
     state.classList.remove('ok', 'busy', 'warning', 'error', 'local', 'offline');
     if (kind) state.classList.add(kind);
     const shortText = shortCloudLabel(kind);
@@ -3699,7 +3711,7 @@ GC.attach = function (cfg) {
   document.body.appendChild(tgModal);
   tgModal.querySelectorAll('[data-gc-mode]').forEach(function (b) { const off = !telegramModes.includes(b.dataset.gcMode); b.hidden = off; b.style.display = off ? 'none' : ''; });
 
-  let importModal = null;
+  let importModal = null, importHandle = null;
   if (C.importSchema) {
     importModal = document.createElement('div');
     importModal.className = 'gc-common-modal';
@@ -3741,7 +3753,7 @@ GC.attach = function (cfg) {
       });
       return { list: out, added, updated, skipped };
     }
-    GC.import.mount(importModal.querySelector('.gc-import-mount'), {
+    importHandle = GC.import.mount(importModal.querySelector('.gc-import-mount'), {
       schema: C.importSchema,
       parse: C.importParser,
       dateFields: C.importDateFields, timeFields: C.importTimeFields,
@@ -4188,6 +4200,62 @@ GC.attach = function (cfg) {
 
   applyModuleLanguage(I18.lang);
   refreshPeriodOptions();
+  /* ═══ 智慧匯入／參考報告用的頁面 API（2026-10-22）═══ */
+  function knownRefs(p) {
+    const refs = new Set();
+    GC.telegram.filter(C.read() || [], C, 'all', null, C.telegramScopeMultiple ? ['all'] : 'all', C.telegramSlotMultiple ? ['all'] : 'all').forEach(function (r) { const d = dateFromRecord(r && r[C.dateField]); if (d) refs.add(periodReference(d, p)); });
+    return Array.from(refs).sort().reverse();
+  }
+  function refFromKey(p, key) {
+    const k = String(key || '');
+    if (p === 'month' && /^\d{4}-\d{2}$/.test(k)) return k + '-01';
+    if (p === 'year' && /^\d{4}$/.test(k)) return k + '-01-01';
+    const d = dateFromRecord(k); return d ? periodReference(d, p) : '';
+  }
+  GC.pages[C.tool] = {
+    tool:C.tool, cfg:C, read:function () { return C.read() || []; }, modes:telegramModes.slice(),
+    refs:knownRefs, refLabel:refLabel, refFromKey:refFromKey, periodReference:periodReference,
+    openTelegram:function (preset) {
+      preset = preset || {};
+      if (preset.period) { period = preset.period; periodRef = ''; }
+      if (preset.ref) periodRef = preset.ref;
+      if (preset.mode && telegramModes.includes(preset.mode)) mode = preset.mode;
+      openTelegram();
+      if (preset.ref) { try { tgModal.querySelector('[data-gc-ref]').value = preset.ref; } catch (e) {} }
+    },
+    /* 用與 Telegram 完全相同的建構器產生某期間／語言的摘要文字（不送出） */
+    buildText:async function (o) {
+      o = o || {};
+      const saved = { period:period, periodRef:periodRef, mode:mode, scope:scope, slot:slot, lang:lang };
+      try {
+        if (o.period) period = o.period; if (o.ref) periodRef = o.ref; mode = o.mode || 'summary';
+        if (o.scope !== undefined) scope = o.scope; if (o.slot !== undefined) slot = o.slot; if (o.lang) lang = o.lang;
+        const packet = await buildPacket();
+        return String(packet && packet.text || '');
+      } finally { period = saved.period; periodRef = saved.periodRef; mode = saved.mode; scope = saved.scope; slot = saved.slot; lang = saved.lang; }
+    },
+    importFiles:function (files) { if (!importHandle) return Promise.reject(new Error(I18.t('gc.importTitle') + ' ✕')); I18.apply(importModal); return importHandle.importFiles(Array.from(files || [])); },
+    hasImport:!!importHandle, control:cloudControl,
+    /* 某期間的紀錄（與 Telegram 同一個篩選）與匯出欄位（與 💾 匯出相同的欄位／標籤／儲存格文字） */
+    records:function (p, ref, o) { o = o || {}; return GC.telegram.filter(C.read() || [], C, p || 'month', ref, o.scope !== undefined ? o.scope : (C.telegramScopeMultiple ? ['all'] : 'all'), o.slot !== undefined ? o.slot : (C.telegramSlotMultiple ? ['all'] : 'all')); },
+    exportTable:function (rows) {
+      const cols = exportColumnList(rows || []);
+      return { head:cols.map(function (c) { const lbl = c.label != null ? c.label : ((c.zh || c.en || c.km) ? { zh:c.zh, en:c.en, km:c.km } : (C.fieldLabels && C.fieldLabels[c.key])); return lbl && typeof lbl === 'object' ? [lbl.zh || lbl.en || '', lbl.en || lbl.zh || '', lbl.km || lbl.en || lbl.zh || ''] : String(lbl != null && lbl !== '' ? lbl : (c.key || '')); }),
+        rows:(rows || []).map(function (r) { return cols.map(function (c) { return exportCell(typeof c.value === 'function' ? c.value(r, I18.lang) : r[c.key], c.key, r); }); }) };
+    }
+  };
+  GC.markPageReady();
+  tools.querySelector('[data-gc-open-hub]').onclick = function () { if (GC.importHub) GC.importHub.open({ tool:C.tool }); else GC.toast('⚠ ' + I18.t('gc.hubImport') + ' ✕', 'warning'); };
+  tools.querySelector('[data-gc-report]').onclick = function () { if (GC.report) GC.report.open({ tool:C.tool }); else GC.toast('⚠ ' + I18.t('gc.report') + ' ✕', 'warning'); };
+  /* 網址 ?tg=summary|approval&ptype=month&period=2026-09：資料載好後直接開 Telegram 視窗（智慧匯入「發摘要／核可」用） */
+  try {
+    const qs = new URLSearchParams(global.location.search), tgq = qs.get('tg');
+    if (tgq) {
+      const p = qs.get('ptype') || 'month', ref = refFromKey(p, qs.get('period') || '');
+      try { global.history.replaceState(null, '', global.location.pathname); } catch (e) {}
+      setTimeout(function () { refreshPeriodOptions(); GC.pages[C.tool].openTelegram({ period:p, ref:ref, mode:tgq === 'approval' ? 'approval' : 'summary' }); }, 900);
+    }
+  } catch (e) {}
   return {
     refresh: refreshPeriodOptions,
     getPeriod: function () { return period; },
