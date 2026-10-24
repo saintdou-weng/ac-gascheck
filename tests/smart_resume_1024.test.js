@@ -30,6 +30,12 @@ vm.createContext(ctx);vm.runInContext(core,ctx,{filename:'gascheck-core.js'});
   store['ac_gc_smart_stage_v1_dormitory']=JSON.stringify({uploadId:committed,at:Date.now(),buckets:{'m:2026-02':{local:'x',res:{hash:'x'}}}});
   rows[1].v=55;const before=posts.length;await GC.cloud.upload('dormitory',rows,opt);
   assert.equal(posts.length,before+1,'changed bucket posted');assert.notEqual(posts[posts.length-1].split('|')[0],committed,'stale stage of a committed upload is not reused');
+  // interrupted again, but meanwhile another device commits → the old staged uploadId must not be reused
+  failCommit=1;rows[2].v=77;await assert.rejects(()=>GC.cloud.upload('dormitory',rows,opt),/timed out/);
+  const stuck=JSON.parse(store['ac_gc_smart_stage_v1_dormitory']).uploadId;
+  remote.buckets['m:2026-06']=Object.assign({},remote.buckets['m:2026-06'],{hash:'other-device'});remote.lastUploadId='gc_other';
+  const n0=posts.length;await GC.cloud.upload('dormitory',rows,opt).catch(()=>{});
+  assert(posts.slice(n0).every(x=>x.split('|')[0]!==stuck),'stage discarded after cloud changed');
   // GAS patch markers
   const gs=fs.readFileSync(path.join(__dirname,'..','ac_gascheck_core_v3_fixed.gs'),'utf8');
   assert(/GC_SMART_FOLDER_ID/.test(gs)&&/gcsf1:/.test(gs)&&/lastUploadId:m.lastUploadId/.test(gs),'gas fast drive + lastUploadId');
