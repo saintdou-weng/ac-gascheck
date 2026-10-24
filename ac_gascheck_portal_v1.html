@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
 <title>AC GASCHECK</title>
-<script src="./gascheck-core.js?v=20261022a"></script>
+<script src="./gascheck-core.js?v=20261024a"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <style>
 :root{--acc:#F97316;--nv:#0F1E3D;--nv2:#1A3458;--gold:#FCD34D;--w:#fff;--mt:rgba(255,255,255,.62);--r:12px}
@@ -613,7 +613,7 @@ var SYNC_MODS=[
   {id:'waterdrum',   n:'water', ic:'💧', u:'ac_gascheck_waterdrum_v2.html'},
   {id:'temperature', n:'temp',  ic:'🌡️', u:'ac_gascheck_temperature_v2.html'}
 ];
-var SYNC_SEL_KEY='ac_gc_portal_sync_sel_v1', SYNC_TIME_KEY='ac_gc_portal_sync_time_v1', SYNC_BUSY=false, SYNC_ST={}, SYNC_RESULT=null, SYNC_TIMEOUT=120000;
+var SYNC_SEL_KEY='ac_gc_portal_sync_sel_v1', SYNC_TIME_KEY='ac_gc_portal_sync_time_v1', SYNC_BUSY=false, SYNC_ST={}, SYNC_RESULT=null, SYNC_TIMEOUT=120000, SYNC_IDLE=150000, SYNC_MAX=1200000;
 function portalSyncIds(){return SYNC_MODS.map(function(m){return m.id;});}
 function syncRead(k,d){try{var v=JSON.parse(localStorage.getItem(k)||'null');return v==null?d:v;}catch(e){return d;}}
 function syncWrite(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch(e){}}
@@ -628,7 +628,7 @@ function paintSync(){
   document.getElementById('syncTitle').textContent=t('sync_title');
   box.innerHTML=SYNC_MODS.map(function(m){
     var st=SYNC_ST[m.id]||{},on=SYNC_SEL.indexOf(m.id)>=0,sub;
-    if(st.state==='run')sub='⏳ '+t('sync_run');
+    if(st.state==='run')sub='⏳ '+(st.msg||t('sync_run'));
     else if(st.state==='wait')sub='… '+t('sync_wait');
     else if(st.state==='ok')sub='✅ '+(st.msg||syncTimeText(times[m.id]));
     else if(st.state==='err')sub='❌ '+(st.msg||'');
@@ -665,12 +665,21 @@ function syncOne(m){
     var f=document.createElement('iframe'),done=false,started=false;
     f.setAttribute('aria-hidden','true');f.tabIndex=-1;f.title='sync '+m.id;
     f.style.cssText='position:fixed;left:-12000px;top:0;width:400px;height:820px;border:0;opacity:0;pointer-events:none';
-    var timer=setTimeout(function(){finish({ok:false,msg:t('sync_timeout')});},SYNC_TIMEOUT);
-    function finish(r){if(done)return;done=true;clearTimeout(timer);try{f.src='about:blank';}catch(e){}if(f.parentNode)f.parentNode.removeChild(f);resolve(r);}
+    /* 2026-10-24：不再固定 2 分鐘就判逾時。模組還在傳（進度或網路請求有動）就繼續等，
+       超過 SYNC_IDLE 毫秒沒有任何進展、或總共超過 SYNC_MAX 才算逾時。 */
+    var startAt=Date.now(),lastAct=Date.now(),lastSig='';
+    var timer=setInterval(function(){
+      var w=null,sig='';try{w=f.contentWindow;var p=w&&w.GC&&w.GC.syncProgress&&w.GC.syncProgress[m.id];var n=w&&w.performance&&w.performance.getEntriesByType?w.performance.getEntriesByType('resource').length:0;sig=(p?p.phase+':'+p.done+'/'+p.total+'@'+p.at:'')+'|'+n;
+        if(p&&p.total){SYNC_ST[m.id]={state:'run',msg:(p.phase==='download'?'⬇ ':'⬆ ')+p.done+'/'+p.total};paintSync();}}catch(e){}
+      if(sig&&sig!==lastSig){lastSig=sig;lastAct=Date.now();}
+      if(Date.now()-lastAct>SYNC_IDLE||Date.now()-startAt>SYNC_MAX)finish({ok:false,msg:t('sync_timeout')});
+    },2000);
+    function finish(r){if(done)return;done=true;clearInterval(timer);try{f.src='about:blank';}catch(e){}if(f.parentNode)f.parentNode.removeChild(f);resolve(r);}
     f.onload=async function(){
       if(started||done)return;started=true;
       try{
         var w=f.contentWindow,d=f.contentDocument;
+        try{w.performance.setResourceTimingBufferSize(20000);}catch(e){}
         if(!(await syncWaitFor(function(){return w.GC&&w.GC.sync&&typeof w.GC.sync.reconcile==='function';},20000)))throw new Error(t('sync_noload'));
         /* 頁面開啟時自己會先做一次同步；稍等讓它開始，這次就會接在同一輪，不重複 */
         await syncSleep(900);
@@ -679,7 +688,7 @@ function syncOne(m){
         if(res&&res.unmounted)throw new Error(t('sync_noload'));
         /* 等背景的後續上傳（例如同步途中又排入的一輪）跑完再關頁 */
         await syncSleep(700);
-        await syncWaitFor(function(){return !d.querySelector('[aria-busy="true"]');},30000);
+        await syncWaitFor(function(){return done||!d.querySelector('[aria-busy="true"]');},SYNC_MAX);
         if(res&&res.ok!==false)finish({ok:true});
         else{var e=res&&res.error,msg=res&&res.offline?t('sync_offline'):(e&&(e.message||String(e)))||t('sync_noreply');finish({ok:false,msg:msg});}
       }catch(e){finish({ok:false,msg:String(e&&e.message||e)});}

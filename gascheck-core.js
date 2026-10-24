@@ -1437,8 +1437,25 @@ const PHOTO_UPLOAD = GC.photoUpload = (() => {
    · sync state / pending marker 都是小設定，可留 localStorage
    ═══════════════════════════════════════════════════════════ */
 const SMART = GC.smartSync = (() => {
-  const VERSION = '1.1-hra-portal-autosync';
+  const VERSION = '1.2-resumable-20261024';
   const STATE_PREFIX = 'ac_gc_smart_sync_v1_';
+  /* v2026-10-24 續傳：上傳到一半被中斷（首頁同步逾時、關頁）時，已送到雲端暫存的 bucket 記在本機，
+     下一輪沿用同一個 uploadId、相同內容的 bucket 不再重送，進度會累積而不是每次從頭來。 */
+  const STAGE_PREFIX = 'ac_gc_smart_stage_v1_', STAGE_MAX_AGE = 36 * 3600000;
+  function readStage(tool) {
+    try { const st = JSON.parse(localStorage.getItem(STAGE_PREFIX + tool) || 'null'); if (st && st.uploadId && st.buckets && Date.now() - Number(st.at || 0) < STAGE_MAX_AGE) return st; } catch (e) {}
+    return null;
+  }
+  function writeStage(tool, st) { try { localStorage.setItem(STAGE_PREFIX + tool, JSON.stringify(st)); } catch (e) {} }
+  function clearStage(tool) { try { localStorage.removeItem(STAGE_PREFIX + tool); } catch (e) {} }
+  /* 同步進度（首頁同步看這個判斷「還在動」，不會在 2 分鐘時誤判逾時）。 */
+  function progress(tool, phase, done, total) {
+    try {
+      const all = global.GC.syncProgress || (global.GC.syncProgress = {});
+      all[tool] = { phase: phase, done: done, total: total, at: Date.now() };
+      if (global.dispatchEvent && typeof global.CustomEvent === 'function') global.dispatchEvent(new global.CustomEvent('gc-sync-progress', { detail: Object.assign({ tool: tool }, all[tool]) }));
+    } catch (e) {}
+  }
   const DATE_FIELDS = ['_syncPeriod','period','periodKey','date','d','recordDate','reportDate','purchase_date','issue_date','datetime','return_date','ts','yearMonth','month'];
 
   function text(v) { return String(v == null ? '' : v); }
@@ -1756,19 +1773,31 @@ const SMART = GC.smartSync = (() => {
         }
       }
     }
-    const uploadId = 'gc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+    let stage = readStage(tool);
+    if (stage && remote && remote.lastUploadId && String(remote.lastUploadId) === String(stage.uploadId)) { clearStage(tool); stage = null; } // 上次其實已提交
+    if (!stage) stage = { uploadId: 'gc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8), at: Date.now(), buckets: {} };
+    const uploadId = stage.uploadId;
     let uploaded = 0;
+    progress(tool, 'upload', 0, changed.length);
     /* 伺服器改動過內容（去重、還原核可欄位…）的 bucket：commit 後立刻重新下載，
        手機才會與雲端一致，下次同步不會把舊內容再傳上去（altered:true）。 */
     const altered = [], localHashOf = {};
     for (let i = 0; i < changed.length; i++) {
       const b = local[changed[i]];
       localHashOf[b.key] = b.hash;
-      const r = await retryNetwork(function () {
-        return CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records }, { timeout: WRITE_TIMEOUT_MS });
-      }, 3);
-      if (!r || r.ok === false) throw new Error((r && r.error) || 'Smart bucket upload failed');
-      const saved=dataOf(r)||{};
+      let saved = null;
+      const prior = stage.buckets[b.key];
+      if (prior && prior.local === b.hash && prior.res) saved = prior.res;   // 上一輪已送達雲端暫存：不重送
+      else {
+        const r = await retryNetwork(function () {
+          return CLOUD.post({ action:'smartBucket', tool:tool, uploadId:uploadId, bucket:b.key, hash:b.hash, count:b.count, records:b.records }, { timeout: WRITE_TIMEOUT_MS });
+        }, 3);
+        if (!r || r.ok === false) throw new Error((r && r.error) || 'Smart bucket upload failed');
+        saved = dataOf(r) || {};
+        stage.buckets[b.key] = { local: b.hash, res: { hash: saved.hash || '', count: saved.count, altered: saved.altered === true } };
+        writeStage(tool, stage);
+      }
+      progress(tool, 'upload', i + 1, changed.length);
       if (saved.altered === true) altered.push(b.key);
       if (saved.hash) b.hash=String(saved.hash);
       if (saved.count!==undefined) b.count=Math.max(0,Number(saved.count)||0);
@@ -1786,15 +1815,19 @@ const SMART = GC.smartSync = (() => {
     });
     const metaChanged = migrated || changed.length || deleted.length || meta._smartMetaHash !== (remote.metaHash || '');
     if (!metaChanged) {
+      clearStage(tool);
       writeState(tool, { hashes:realRemoteH, counts:remote.counts || {}, metaHash:remote.metaHash || '', alias:nextAlias, updatedAt:U.now() });
       return { ok:true, skipped:true, uploaded:0, unchanged:records.length, changedBuckets:0, records:records };
     }
     /* compare-and-swap：baseHashes＝規劃這次上傳時讀到的雲端 hash。commit 時雲端 bucket
        已被別台改過 → 伺服器合併（mergedBuckets）或保留別台版本（keptBuckets），並回 needsPull。 */
     const baseHashes = Object.assign({}, realRemoteH);
-    const commit = await retryNetwork(function () { return CLOUD.post({ action:'smartCommit', tool:tool, uploadId:uploadId, hashes:hashes, counts:counts, baseHashes:baseHashes,
+    let commit;
+    try { commit = await retryNetwork(function () { return CLOUD.post({ action:'smartCommit', tool:tool, uploadId:uploadId, hashes:hashes, counts:counts, baseHashes:baseHashes,
       recordCount:Object.keys(counts).reduce((n, k) => n + (Number(counts[k]) || 0), 0), meta:meta }, { timeout: WRITE_TIMEOUT_MS }); }, 3);
+    } catch (e) { if (/Missing staged smart bucket|Invalid staged smart bucket/i.test(String(e && e.message || ''))) clearStage(tool); throw e; }
     if (!commit || commit.ok === false) throw new Error((commit && commit.error) || 'Smart commit failed');
+    clearStage(tool); progress(tool, 'commit', changed.length, changed.length);
     const cd = dataOf(commit) || {};
     const ts = (cd.timestamp || cd.updatedAt) || U.now();
     const refetch = [];
@@ -1893,7 +1926,9 @@ const SMART = GC.smartSync = (() => {
     let downloaded = 0, unchanged = 0, pending = 0, removed = 0;
     const conflicts = [];
     const keys = Array.from(new Set(Object.keys(remoteH).concat(Object.keys(local)))).sort();
+    progress(tool, 'download', 0, keys.length);
     for (let i = 0; i < keys.length; i++) {
+      if (i % 4 === 0) progress(tool, 'download', i, keys.length);
       const k = keys[i], lb = local[k], rh = remoteH[k] || '', base = lastH[k] || '';
       if (lb && rh && lb.hash === rh) { out[k] = lb.records; unchanged += lb.count; continue; }
       if (lb && !rh) {

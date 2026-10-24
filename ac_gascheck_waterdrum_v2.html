@@ -20,7 +20,7 @@ function toggleCurrencyPanel() {
     var cp = document.getElementById('cp-currency');
     if (fp) fp.value = getDefaultFacPrice();
     if (sp) sp.value = getDefaultStaPrice();
-    var rate = (typeof WDR_CURRENCY !== 'undefined') ? WDR_CURRENCY.getRate() : 4100;
+    var rate = (typeof WDR_CURRENCY !== 'undefined') ? WDR_CURRENCY.getRate() : 4000;
     if (rp) rp.value = rate;
     if (cp) cp.value = (typeof WDR_CURRENCY !== 'undefined') ? WDR_CURRENCY.getDefault() : 'KHR';
     var prev = document.getElementById('cpanel-preview');
@@ -29,7 +29,7 @@ function toggleCurrencyPanel() {
 }
 
 function updateCurrencyRate(val) {
-  var rate = parseInt(val) || 4100;
+  var rate = parseInt(val) || 4000;
   var prev = document.getElementById('cpanel-preview');
   if (prev) prev.textContent = '1 USD = ' + rate.toLocaleString() + ' KHR';
 }
@@ -45,7 +45,7 @@ function applyAndCloseCurrency() {
   localStorage.setItem('wdr_default_fac_price', String(fp));
   localStorage.setItem('wdr_default_sta_price', String(sp));
   // Save rate
-  var rate = parseInt((document.getElementById('cp-rate') || {value:'4100'}).value || 4100);
+  var rate = parseInt((document.getElementById('cp-rate') || {value:'4000'}).value || 4000);
   if (typeof WDR_CURRENCY !== 'undefined') WDR_CURRENCY.setRate(rate);
   else localStorage.setItem('wdr_exchange_rate', String(rate));
   // Save currency
@@ -480,7 +480,7 @@ document.addEventListener('click', function(e) {
 #main-table tr.wdr-flash td{animation:wdrFlash 1.6s ease-out}
 @keyframes wdrFlash{0%{background:#fde68a}100%{background:#eff6ff}}
 </style>
-<script src="./gascheck-core.js?v=20261022a"></script>
+<script src="./gascheck-core.js?v=20261024a"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -502,9 +502,9 @@ document.addEventListener('click', function(e) {
   </div>
   <div class="cpanel-row">
     <label class="cpanel-label">💱 <span data-key="exchange_rate">匯率（1 USD = ? KHR）</span></label>
-    <input class="cpanel-input" id="cp-rate" type="number" min="1" placeholder="4100"
+    <input class="cpanel-input" id="cp-rate" type="number" min="1" placeholder="4000"
       oninput="updateCurrencyRate(this.value)">
-    <div id="cpanel-preview">1 USD = 4,100 KHR</div>
+    <div id="cpanel-preview">1 USD = 4,000 KHR</div>
   </div>
   <div class="cpanel-row">
     <label class="cpanel-label">💲 <span data-key="display_currency">顯示貨幣</span></label>
@@ -739,12 +739,12 @@ document.addEventListener('click', function(e) {
           </div>
           <div>
             <label class="form-label">匯率 Exchange Rate (1 USD = ? KHR)</label>
-            <input class="form-input" id="wdr-exchange-rate" type="number" value="4100" min="1" placeholder="4100"
-              oninput="WDR_CURRENCY.setRate(this.value);document.getElementById('wdr-rate-preview').textContent='1 USD = '+parseFloat(this.value||4100).toLocaleString()+' KHR'">
+            <input class="form-input" id="wdr-exchange-rate" type="number" value="4000" min="1" placeholder="4000"
+              oninput="WDR_CURRENCY.setRate(this.value);document.getElementById('wdr-rate-preview').textContent='1 USD = '+parseFloat(this.value||4000).toLocaleString()+' KHR'">
           </div>
         </div>
         <div style="background:#dcfce7;border:1px solid #86efac;border-radius:6px;padding:6px 10px;font-size:11px;color:#166534" id="wdr-rate-preview">
-          1 USD = 4,100 KHR
+          1 USD = 4,000 KHR
         </div>
       </div>
       <!-- ── END CURRENCY ──────────────────────────────────── -->
@@ -1283,7 +1283,7 @@ function renderTable() {
   const months = T('month_names');
   const now = new Date();
   const todayDay = (now.getFullYear()===currentYear && now.getMonth()+1===currentMonth) ? now.getDate() : -1;
-  const _rate = typeof WDR_CURRENCY!=='undefined' ? WDR_CURRENCY.getRate() : 4100;
+  const _rate = typeof WDR_CURRENCY!=='undefined' ? WDR_CURRENCY.getRate() : 4000;
 
   // Compute averages for anomaly detection
   const fPrices = currentRows.filter(r => r.fPrice).map(r => parseFloat(r.fPrice));
@@ -1353,7 +1353,7 @@ function updateRow(idx, field, value) {
   }
   currentRows[idx].fTtl = calcTtl(currentRows[idx].fQty, currentRows[idx].fPrice);
   currentRows[idx].sTtl = calcTtl(currentRows[idx].sQty, currentRows[idx].sPrice);
-  var rate = (typeof WDR_CURRENCY !== 'undefined' && WDR_CURRENCY.getRate) ? WDR_CURRENCY.getRate() : 4100;
+  var rate = (typeof WDR_CURRENCY !== 'undefined' && WDR_CURRENCY.getRate) ? WDR_CURRENCY.getRate() : 4000;
   var fttl  = document.getElementById('fttl-'+idx);
   var sttl  = document.getElementById('sttl-'+idx);
   var fusd  = document.getElementById('fusd-'+idx);
@@ -1399,9 +1399,9 @@ function renderSummaryCards() {
   var sQty = currentRows.reduce(function(a,r){ return a + (parseFloat(r.sQty)||0); }, 0);
   var sTtl = currentRows.reduce(function(a,r){ return a + (r.sTtl||0); }, 0);
   var grand = fTtl + sTtl;
-  var _exchRate = (typeof WDR_CURRENCY !== 'undefined' && WDR_CURRENCY && WDR_CURRENCY.getRate) ? WDR_CURRENCY.getRate() : 4100;
+  var _exchRate = (typeof WDR_CURRENCY !== 'undefined' && WDR_CURRENCY && WDR_CURRENCY.getRate) ? WDR_CURRENCY.getRate() : 4000;
   function khrFmt(n)  { return (n||0).toLocaleString() + ' ៛'; }
-  function usdFmt(n)  { return '$' + ((n||0) / (_exchRate || 4100)).toFixed(2); }
+  function usdFmt(n)  { return '$' + ((n||0) / (_exchRate || 4000)).toFixed(2); }
   function cardVal(khr) {
     if (!khr) return '<span style="font-size:1.1em">0.0K ៛</span><div style="font-size:12px;color:#94a3b8;margin-top:2px">$0.00</div>';
     return '<span style="font-size:1.1em">' + (khr/1000).toFixed(1) + 'K ៛</span>' +
@@ -1854,7 +1854,7 @@ function processExcelImport(file) {
       // Store results globally to avoid JSON-in-onclick issues
       window._wdrImportResults = allResults;
 
-      var rate   = (typeof WDR_CURRENCY!=='undefined') ? WDR_CURRENCY.getRate() : 4100;
+      var rate   = (typeof WDR_CURRENCY!=='undefined') ? WDR_CURRENCY.getRate() : 4000;
       var months = T('month_names');
       var parts  = [];
 
@@ -2207,7 +2207,7 @@ function loadTgConfig() {
   const ri = document.getElementById('wdr-exchange-rate');
   const ci = document.getElementById('wdr-currency-default');
   const rp = document.getElementById('wdr-rate-preview');
-  var _wdrC = (typeof WDR_CURRENCY !== 'undefined') ? WDR_CURRENCY : {getRate:function(){return 4100;},getDefault:function(){return 'KHR';}};
+  var _wdrC = (typeof WDR_CURRENCY !== 'undefined') ? WDR_CURRENCY : {getRate:function(){return 4000;},getDefault:function(){return 'KHR';}};
   if(ri){ ri.value = _wdrC.getRate(); }
   if(ci){ ci.value = _wdrC.getDefault(); }
   if(rp){ rp.textContent = '1 USD = ' + _wdrC.getRate().toLocaleString() + ' KHR'; }
@@ -2311,7 +2311,7 @@ function applyAndCloseCurrency() {
   var sp=parseFloat((document.getElementById('cp-sta-price')||{value:'2000'}).value||2000);
   localStorage.setItem('wdr_default_fac_price',String(fp));
   localStorage.setItem('wdr_default_sta_price',String(sp));
-  var r=parseInt((document.getElementById('cp-rate')||{value:'4100'}).value||4100);
+  var r=parseInt((document.getElementById('cp-rate')||{value:'4000'}).value||4000);
   if(typeof WDR_CURRENCY!=='undefined'){WDR_CURRENCY.setRate(r);}
   var p=document.getElementById('currency-panel');
   if(p) p.classList.remove('open');
@@ -2453,7 +2453,7 @@ function waterReportEntries(rows,scope,slot){
   }).filter(r=>r.fRecorded||r.sRecorded);
 }
 function waterApprovalDigest(entries,scope,slot){
-  const data=JSON.stringify([scope||'all',slot||'all',(entries||[]).map(r=>[r.date,r.fq,r.fq?r.fPrice:0,r.sq,r.sq?r.sPrice:0,+r.exchangeRate||4100])]);
+  const data=JSON.stringify([scope||'all',slot||'all',(entries||[]).map(r=>[r.date,r.fq,r.fq?r.fPrice:0,r.sq,r.sq?r.sPrice:0,+r.exchangeRate||4000])]);
   let hash=2166136261;for(let i=0;i<data.length;i++){hash^=data.charCodeAt(i);hash=Math.imul(hash,16777619);}return (hash>>>0).toString(16);
 }
 function waterTelegramText(zh,en,km,lang){
@@ -2512,7 +2512,7 @@ function buildWaterTelegram(opt){
       facPrice:+old.facPrice || +(localStorage.getItem('wdr_default_fac_price')||2000),
       staPrice:+old.staPrice || +(localStorage.getItem('wdr_default_sta_price')||2000),
       inspector:String(old.inspector || localStorage.getItem('wdr_default_inspector') || ''),
-      exchangeRate:+old.exchangeRate || +(localStorage.getItem('wdr_exchange_rate')||4100),
+      exchangeRate:+old.exchangeRate || +(localStorage.getItem('wdr_exchange_rate')||4000),
       drumLiters:20,
       morningTime:String(old.morningTime||'08:00'),
       afternoonTime:String(old.afternoonTime||'15:30'),
@@ -2545,12 +2545,12 @@ function buildWaterTelegram(opt){
       const m=k.match(/^wdr_(\d{4})_(\d{2})$/),key=cfgKey(+m[1],+m[2]);
       if(localStorage.getItem(key))return;
       let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(e){}
-      const cfg=Object.assign({},base,{facPrice:first(rows,'fPrice')||base.facPrice,staPrice:first(rows,'sPrice')||base.staPrice,inspector:String(((rows||[]).find(r=>r.checkBy)||{}).checkBy||base.inspector||''),exchangeRate:+base.exchangeRate||4100,drumLiters:20,effectiveFrom:m[1]+'-'+m[2]});
+      const cfg=Object.assign({},base,{facPrice:first(rows,'fPrice')||base.facPrice,staPrice:first(rows,'sPrice')||base.staPrice,inspector:String(((rows||[]).find(r=>r.checkBy)||{}).checkBy||base.inspector||''),exchangeRate:+base.exchangeRate||4000,drumLiters:20,effectiveFrom:m[1]+'-'+m[2]});
       setMonthCfg(+m[1],+m[2],cfg);
     });
   }
-  function rate(){ return +monthCfg(currentYear,currentMonth).exchangeRate || 4100; }
-  function usd(khr,r){ return '$'+((+khr||0)/(+r||4100)).toFixed(2); }
+  function rate(){ return +monthCfg(currentYear,currentMonth).exchangeRate || 4000; }
+  function usd(khr,r){ return '$'+((+khr||0)/(+r||4000)).toFixed(2); }
   function slotValue(v){
     const s=String(v||'').toLowerCase();
     if(s==='morning'||s==='afternoon')return s;
@@ -2787,13 +2787,13 @@ function buildWaterTelegram(opt){
   };
 
   function allWaterRows(){
-    const out=[];getAllKeys().forEach(k=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/);if(!m)return;let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(e){}const cfg=monthCfg(+m[1],+m[2]);(rows||[]).filter(r=>r&&r._deleted!==true).forEach(r=>out.push(Object.assign({},r,{date:m[1]+'-'+m[2]+'-'+String(r.day).padStart(2,'0'),exchangeRate:cfg.exchangeRate||4100})));});return out;
+    const out=[];getAllKeys().forEach(k=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/);if(!m)return;let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(e){}const cfg=monthCfg(+m[1],+m[2]);(rows||[]).filter(r=>r&&r._deleted!==true).forEach(r=>out.push(Object.assign({},r,{date:m[1]+'-'+m[2]+'-'+String(r.day).padStart(2,'0'),exchangeRate:cfg.exchangeRate||4000})));});return out;
   }
   window.setAnalysisPeriod = setAnalysisPeriod = function(p){analysisPeriod=p;document.querySelectorAll('#panel-analysis .period-btn').forEach(b=>b.classList.toggle('active',b.dataset.wdrPeriod===p));renderAnalysis();};
   window.renderAnalysis = renderAnalysis = function(){
     const y=+(document.getElementById('an-year')||{}).value||currentYear,m=+(document.getElementById('an-month')||{}).value||currentMonth,ref=(document.getElementById('wdr-analysis-ref')||{}).value||_localYMD();let rows=allWaterRows();
     if(analysisPeriod==='day')rows=rows.filter(r=>r.date===ref);else if(analysisPeriod==='week'){const d=new Date(ref+'T00:00:00'),s=new Date(d);s.setDate(d.getDate()-((d.getDay()+6)%7));const e=new Date(s);e.setDate(s.getDate()+6);rows=rows.filter(r=>{const x=new Date(r.date+'T00:00:00');return x>=s&&x<=e;});}else if(analysisPeriod==='month')rows=rows.filter(r=>r.date.startsWith(y+'-'+String(m).padStart(2,'0')));else rows=rows.filter(r=>r.date.startsWith(y+'-'));
-    const drums=rows.reduce((a,r)=>a+(+r.fQty||0)+(+r.sQty||0),0),liters=drums*20,att=attendanceStats(rows),persons=att.headcount,khr=rows.reduce((a,r)=>a+calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice),0),rr=rows.length?(+rows[rows.length-1].exchangeRate||4100):rate(),by={};rows.forEach(r=>{const key=analysisPeriod==='year'?r.date.slice(0,7):(analysisPeriod==='month'?r.date.slice(0,7)+' · W'+Math.min(5,Math.floor(((+r.date.slice(8,10)||1)-1)/7)+1):r.date);(by[key]||(by[key]={drums:0,liters:0,attendance:[],khr:0}));by[key].drums+=(+r.fQty||0)+(+r.sQty||0);by[key].liters=by[key].drums*20;if(+r.headcount>0)by[key].attendance.push(+r.headcount);by[key].khr+=calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice);});
+    const drums=rows.reduce((a,r)=>a+(+r.fQty||0)+(+r.sQty||0),0),liters=drums*20,att=attendanceStats(rows),persons=att.headcount,khr=rows.reduce((a,r)=>a+calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice),0),rr=rows.length?(+rows[rows.length-1].exchangeRate||4000):rate(),by={};rows.forEach(r=>{const key=analysisPeriod==='year'?r.date.slice(0,7):(analysisPeriod==='month'?r.date.slice(0,7)+' · W'+Math.min(5,Math.floor(((+r.date.slice(8,10)||1)-1)/7)+1):r.date);(by[key]||(by[key]={drums:0,liters:0,attendance:[],khr:0}));by[key].drums+=(+r.fQty||0)+(+r.sQty||0);by[key].liters=by[key].drums*20;if(+r.headcount>0)by[key].attendance.push(+r.headcount);by[key].khr+=calcTtl(r.fQty,r.fPrice)+calcTtl(r.sQty,r.sPrice);});
     const attOk=att.available&&persons>=20,attCards=attOk?'<div class="summary-card green"><div class="card-label">'+waterTelegramText('平均每日出勤','Avg daily attendance','វត្តមានមធ្យមប្រចាំថ្ងៃ',currentLang)+'</div><div class="card-value">'+persons+'</div></div><div class="summary-card amber"><div class="card-label">L / person</div><div class="card-value">'+(liters/persons).toFixed(1)+'</div></div>':'';
     document.getElementById('analysis-content').innerHTML='<div class="summary-grid"><div class="summary-card blue"><div class="card-label">'+wtx('桶數','Drums','ធុង')+'</div><div class="card-value">'+drums+'</div></div><div class="summary-card teal"><div class="card-label">'+wtx('公升','Liters','លីត្រ')+'</div><div class="card-value">'+liters.toLocaleString()+' L</div></div>'+attCards+'<div class="summary-card red"><div class="card-label">'+wtx('合計','Total','សរុប')+'</div><div class="card-value">'+khr.toLocaleString()+' ៛</div><div class="card-sub">'+usd(khr,rr)+'</div></div></div><div class="chart-card" style="margin-top:16px;overflow:auto"><table style="width:100%;border-collapse:collapse"><thead><tr><th>'+wtx('期間','Period','រយៈពេល')+'</th><th>'+wtx('桶數','Drums','ធុង')+'</th><th>'+wtx('公升','Liters','លីត្រ')+'</th>'+(attOk?'<th>'+wtx('出勤','Attendance','វត្តមាន')+'</th><th>L/person</th>':'')+'<th>'+wtx('合計','Total','សរុប')+' KHR / USD</th></tr></thead><tbody>'+Object.keys(by).sort().map(k=>{const hc=by[k].attendance.length?Math.round(by[k].attendance.reduce((a,n)=>a+n,0)/by[k].attendance.length):0;return '<tr><td>'+k+'</td><td>'+by[k].drums+'</td><td>'+by[k].liters.toLocaleString()+' L</td>'+(attOk?'<td>'+hc+'</td><td>'+(hc?by[k].liters/hc:0).toFixed(1)+'</td>':'')+'<td>'+by[k].khr.toLocaleString()+' ៛ / '+usd(by[k].khr,rr)+'</td></tr>';}).join('')+'</tbody></table></div>';
   };
@@ -2840,7 +2840,7 @@ function buildWaterTelegram(opt){
     const all=typeof cfg.read==='function'?(cfg.read()||[]):allWaterRows();
     const rows=GC.telegram.filter(all,Object.assign({},cfg,{scopeField:null}),period,opt.ref,'all','all');
     const entries=waterReportEntries(rows,scope,slot);
-    const totals=entries.reduce((a,r)=>({fq:a.fq+r.fq,sq:a.sq+r.sq,ft:a.ft+r.ft,st:a.st+r.st,usd:a.usd+(r.ft+r.st)/(+r.exchangeRate||4100),fd:a.fd+(r.fq>0?1:0),sd:a.sd+(r.sq>0?1:0)}),{fq:0,sq:0,ft:0,st:0,usd:0,fd:0,sd:0});
+    const totals=entries.reduce((a,r)=>({fq:a.fq+r.fq,sq:a.sq+r.sq,ft:a.ft+r.ft,st:a.st+r.st,usd:a.usd+(r.ft+r.st)/(+r.exchangeRate||4000),fd:a.fd+(r.fq>0?1:0),sd:a.sd+(r.sq>0?1:0)}),{fq:0,sq:0,ft:0,st:0,usd:0,fd:0,sd:0});
     const inspectors=[...new Set(entries.map(r=>String(r.checkBy||r.checker||r.checked_by||'').trim()).filter(Boolean))];
     const dateLabel=period==='month'?String(opt.ref||'').slice(0,7):String(opt.ref||'');
     const place=scope==='factory'?lb('工廠','Factory','រោងចក្រ'):scope==='staff'?lb('宿舍','Staff House','ផ្ទះបុគ្គលិក'):'';
@@ -2934,14 +2934,29 @@ function buildWaterTelegram(opt){
   }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureUI);else ensureUI();
   function repairAttendanceOnLoad(){setTimeout(function(){currentRows.forEach(r=>{if(!/^hra-attendance$|^attendance-gas/.test(String(r.headcountSource||''))){r.headcount='';r.headcountSource='';}});setAttendanceVisibility(false);if(window.GC&&GC.attendance)syncAttendanceHeadcount(true);else{renderTable();renderSummaryCards();}},900);}
-  if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(function(){migrateMonthConfigs();repairAttendanceOnLoad();});else{migrateMonthConfigs();repairAttendanceOnLoad();}
+  /* 2026-10-24 Paul：送水匯率固定 1 USD = 4,000 KHR。舊版預設 4,100 存在每月設定、預設設定、生效排程與每日資料，
+     載入時一律改成 4,000（只改正好 4,100 的值；之後自行設定的其他匯率不動），有改到的月份排入雲端同步。 */
+  function fixRate4000(){
+    const OLD=4100,NEW=4000;let changedRows=0;const stamp=(typeof _localTS==='function')?_localTS():new Date().toISOString();
+    const fixObj=k=>{try{const v=JSON.parse(localStorage.getItem(k)||'null');if(v&&typeof v==='object'&&!Array.isArray(v)&&+v.exchangeRate===OLD){v.exchangeRate=NEW;localStorage.setItem(k,JSON.stringify(v));return 1;}}catch(e){}return 0;};
+    ((window.GC&&GC.storage&&GC.storage.keys)?GC.storage.keys('wdr_'):Object.keys(localStorage)).forEach(k=>{
+      if(/^wdr_cfg_\d{4}_\d{2}$/.test(k)||k==='wdr_default_cfg'){fixObj(k);return;}
+      if(/^wdr_\d{4}_\d{2}$/.test(k)){try{const rows=JSON.parse(localStorage.getItem(k)||'[]');if(!Array.isArray(rows))return;let n=0;rows.forEach(r=>{if(r&&+r.exchangeRate===OLD){r.exchangeRate=NEW;r.updatedAt=stamp;n++;}});if(n){localStorage.setItem(k,JSON.stringify(rows));changedRows+=n;}}catch(e){}}
+    });
+    if(+localStorage.getItem('wdr_exchange_rate')===OLD)localStorage.setItem('wdr_exchange_rate',String(NEW));
+    try{const list=JSON.parse(localStorage.getItem(scheduleKey)||'[]');if(Array.isArray(list)&&list.some(x=>x&&+x.exchangeRate===OLD)){list.forEach(x=>{if(x&&+x.exchangeRate===OLD)x.exchangeRate=NEW;});localStorage.setItem(scheduleKey,JSON.stringify(list));}}catch(e){}
+    if(changedRows&&window.GC&&GC.sync&&GC.sync.schedule)setTimeout(()=>{try{GC.sync.schedule('waterdrum','rate_4000',1500);}catch(e){}},1200);
+    return changedRows;
+  }
+  V.fixRate4000=fixRate4000;
+  if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(function(){fixRate4000();migrateMonthConfigs();repairAttendanceOnLoad();});else{fixRate4000();migrateMonthConfigs();repairAttendanceOnLoad();}
 })();
 </script>
 
 <script>
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
 function waterCloudRows(){ try{
-    return getAllKeys().reduce((out,k)=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/);if(!m)return out;let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(ignore){return out;}if(!Array.isArray(rows))return out;const mc=window.WDR_V29?WDR_V29.monthCfg(+m[1],+m[2]):{exchangeRate:4100};return out.concat(rows.filter(row=>row&&(row._deleted===true||row.updatedAt||waterRowKeep(row))).map(row=>Object.assign({},row,{id:'wdr_'+m[1]+'_'+m[2]+'_'+row.day,date:m[1]+'-'+m[2]+'-'+String(row.day).padStart(2,'0'),year:+m[1],month:+m[2],exchangeRate:+mc.exchangeRate||4100,updatedAt:row.updatedAt||localStorage.getItem('wdr_last_saved')||''})));},[]);
+    return getAllKeys().reduce((out,k)=>{const m=k.match(/^wdr_(\d{4})_(\d{2})$/);if(!m)return out;let rows=[];try{rows=JSON.parse(localStorage.getItem(k)||'[]');}catch(ignore){return out;}if(!Array.isArray(rows))return out;const mc=window.WDR_V29?WDR_V29.monthCfg(+m[1],+m[2]):{exchangeRate:4000};return out.concat(rows.filter(row=>row&&(row._deleted===true||row.updatedAt||waterRowKeep(row))).map(row=>Object.assign({},row,{id:'wdr_'+m[1]+'_'+m[2]+'_'+row.day,date:m[1]+'-'+m[2]+'-'+String(row.day).padStart(2,'0'),year:+m[1],month:+m[2],exchangeRate:+mc.exchangeRate||4000,updatedAt:row.updatedAt||localStorage.getItem('wdr_last_saved')||''})));},[]);
   }catch(e){ return []; } }
 /* 寫回本機：同月份以「日」合併；清單沒帶到的本機刪除標記保留（不因匯入／部分清單而消失）。
    A5：核心逐張上傳照片後寫回的 Drive 連結（或保留的原圖）照單全收，不會在這裡被丟掉。 */
