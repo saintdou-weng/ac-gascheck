@@ -1773,9 +1773,12 @@ const SMART = GC.smartSync = (() => {
         }
       }
     }
+    /* 只有在「雲端從暫存開始後完全沒變」時才沿用：別台或自己其實已提交過 → 雲端 hash 會變 → 換新的 uploadId，
+       絕不覆寫已成為正式資料的暫存檔。 */
+    const remoteSig = stable(realRemoteH);
     let stage = readStage(tool);
-    if (stage && remote && remote.lastUploadId && String(remote.lastUploadId) === String(stage.uploadId)) { clearStage(tool); stage = null; } // 上次其實已提交
-    if (!stage) stage = { uploadId: 'gc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8), at: Date.now(), buckets: {} };
+    if (stage && ((remote && remote.lastUploadId && String(remote.lastUploadId) === String(stage.uploadId)) || stage.base !== remoteSig)) { clearStage(tool); stage = null; }
+    if (!stage) stage = { uploadId: 'gc_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8), at: Date.now(), base: remoteSig, buckets: {} };
     const uploadId = stage.uploadId;
     let uploaded = 0;
     progress(tool, 'upload', 0, changed.length);
