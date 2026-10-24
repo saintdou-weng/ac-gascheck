@@ -1929,9 +1929,31 @@ const SMART = GC.smartSync = (() => {
     let downloaded = 0, unchanged = 0, pending = 0, removed = 0;
     const conflicts = [];
     const keys = Array.from(new Set(Object.keys(remoteH).concat(Object.keys(local)))).sort();
-    progress(tool, 'download', 0, keys.length);
+    /* 2026-10-24：先算出要下載的包，最多 3 包同時下載（原本一包一包，58 包要 4 分鐘）。判斷規則與下面迴圈相同。 */
+    const needGet = keys.filter(function (k) {
+      const lb = local[k], rh = remoteH[k] || '', base = lastH[k] || '';
+      if (lb && rh && lb.hash === rh) return false;
+      if (lb && !rh) return false;
+      if (!rh) return false;
+      const localChanged = !!(lb && base && lb.hash !== base), remoteChanged = !!(rh && base && rh !== base);
+      if (lb && localChanged && !remoteChanged && !force.has(k)) return false;
+      return true;
+    });
+    const fetched = {};
+    let doneGets = 0;
+    progress(tool, 'download', 0, needGet.length);
+    await (async function pool() {
+      let next = 0;
+      async function worker() {
+        while (next < needGet.length) {
+          const k = needGet[next++];
+          fetched[k] = await retryNetwork(function () { return CLOUD.get({ action:'smartBucket', tool:tool, bucket:k }); }, 3);
+          doneGets++; progress(tool, 'download', doneGets, needGet.length);
+        }
+      }
+      await Promise.all([worker(), worker(), worker()]);
+    })();
     for (let i = 0; i < keys.length; i++) {
-      if (i % 4 === 0) progress(tool, 'download', i, keys.length);
       const k = keys[i], lb = local[k], rh = remoteH[k] || '', base = lastH[k] || '';
       if (lb && rh && lb.hash === rh) { out[k] = lb.records; unchanged += lb.count; continue; }
       if (lb && !rh) {
@@ -1945,7 +1967,7 @@ const SMART = GC.smartSync = (() => {
       if (firstDivergence) conflicts.push(k);
       if (lb && localChanged && !remoteChanged && !force.has(k)) { out[k] = lb.records; pending += lb.count; continue; }
       if (lb && localChanged && remoteChanged && lb.hash !== rh) conflicts.push(k);
-      const bd = dataOf(await retryNetwork(function () { return CLOUD.get({ action:'smartBucket', tool:tool, bucket:k }); }, 3)) || {};
+      const bd = dataOf(fetched[k] || await retryNetwork(function () { return CLOUD.get({ action:'smartBucket', tool:tool, bucket:k }); }, 3)) || {};
       const rows = Array.isArray(bd.records) ? bd.records : [];
       downloaded += rows.length;
       const mergedHere = lb && (firstDivergence || force.has(k) || (localChanged && remoteChanged && lb.hash !== rh));
