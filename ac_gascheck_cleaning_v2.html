@@ -83,6 +83,8 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 .loc-cleaner-row .fi{border:1px solid var(--bdr);border-radius:6px;background:#fff;padding:6px 7px}
 .loc-rule-card{grid-template-columns:1fr;align-items:stretch}.loc-rule-head{display:grid;grid-template-columns:minmax(105px,1fr) minmax(125px,1.2fr);align-items:center;gap:7px}.loc-rule-block{border-top:1px solid var(--bdr2);padding-top:7px}.loc-rule-label{display:block;margin-bottom:5px;color:var(--dim);font-size:9px;letter-spacing:.3px}.loc-rule-chips{display:flex;gap:5px;flex-wrap:wrap}.loc-rule-chip{border:1.5px solid var(--bdr);border-radius:17px;background:#fff;color:var(--dim);padding:5px 8px;font:700 9px/1.2 inherit;cursor:pointer}.loc-rule-chip.on{background:var(--abg);border-color:var(--acc);color:var(--acc)}.loc-rule-chip.pass{background:var(--gl);border-color:var(--grn);color:var(--grn)}.loc-rule-chip.fail{background:var(--rl);border-color:var(--red);color:var(--red)}
 .loc-cleaner-empty{padding:9px;color:var(--dim);font-size:10px}
+.loc-idle{opacity:.62;background:#FAFBFA}.loc-idle-tag{font-weight:600;color:var(--dim);font-size:9px}.loc-allok{border-style:dashed}.loc-allok.pass{border-style:solid}
+.chk-allok{margin-left:auto;border:1.5px solid var(--grn);background:var(--gl);color:var(--grn);border-radius:17px;padding:5px 11px;font:700 10px/1.2 inherit;cursor:pointer}
 @media(max-width:640px){.loc-cleaner-map{grid-template-columns:1fr}.loc-rule-head{grid-template-columns:1fr}.loc-rule-chip{padding:7px 9px;font-size:10px}}
 /* Buttons */
 .br{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:10px}
@@ -175,7 +177,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=20261024b"></script>
+<script src="./gascheck-core.js?v=20261028a"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -252,9 +254,8 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
     <div class="fgrid c3">
       <div class="fg"><div class="fl"><span data-i="f-date">日期</span> <span style="color:var(--red)">*</span></div><div class="date-nav"><button type="button" onclick="shiftCleanDate('r-date',-1)">◀</button><input class="fi" type="date" id="r-date"><button type="button" onclick="shiftCleanDate('r-date',1)">▶</button></div></div>
       <div class="fg" style="grid-column:span 2"><div class="fl"><span data-i="f-loc">地點（可多選）</span> <span style="color:var(--red)">*</span><span id="sel-loc-count" style="float:right">0 已選</span></div><div class="sw" id="locs-wrap"></div></div>
-      <div class="fg"><div class="fl"><span data-i="f-shift">班次</span></div><select class="fi" id="r-shift"><option value="Day">Day 日班</option><option value="Night">Night 夜班</option></select></div>
       <div class="fg"><div class="fl"><span data-i="f-default-cleaner">預設清潔員（套用全部）</span></div><select class="fi" id="r-cleaner" onchange="state.applyDefaultCleaner(this.value)"><option value="">— 選擇 —</option></select></div>
-      <div class="fg"><div class="fl"><span data-i="f-checker">檢查員</span> <span style="color:var(--red)">*</span></div><select class="fi" id="r-checker"><option value="">— 選擇 —</option></select></div>
+      <div class="fg"><div class="fl"><span data-i="f-checker">檢查員</span> <span style="color:var(--red)">*</span></div><select class="fi" id="r-checker" onchange="cleaningMemoSet(m=>{m.checker=this.value;})"><option value="">— 選擇 —</option></select></div>
       <div class="fg" style="grid-column:1/-1"><div class="fl"><span data-i="f-cleaner-by-location">各地點清潔員、時段與項目</span> <span style="color:var(--red)">*</span></div><div id="loc-cleaner-map" class="loc-cleaner-map"></div></div>
       <div class="fg" style="grid-column:1/-1"><div class="fl" data-i="f-photo">📷 照片 Photos</div><div id="r-photos"></div></div>
       <input type="hidden" id="r-photo-n" value="0">
@@ -263,7 +264,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
   <div class="card"><div class="ch"><span class="ch-icon">⏰</span><span class="ch-title" data-i="slots-title">清潔時段</span><span class="ch-note" id="sel-slot-count">0 已選</span></div>
     <div class="sw" id="slots-wrap"></div>
   </div>
-  <div class="card"><div class="ch"><span class="ch-icon">🔍</span><span class="ch-title" data-i="chk-title">巡查項目</span><span class="ch-note" data-i="chk-hint">點擊切換</span></div>
+  <div class="card"><div class="ch"><span class="ch-icon">🔍</span><span class="ch-title" data-i="chk-title">巡查項目</span><span class="ch-note" data-i="chk-hint">點擊切換</span><button type="button" class="chk-allok" id="btn-all-ok" onclick="state.allOk()">✅ 全部 OK</button></div>
     <div class="cig" id="check-grid"></div>
   </div>
   <div class="card"><div class="ch"><span class="ch-icon">📝</span><span class="ch-title" data-i="note-title">備注 / 異常</span></div>
@@ -749,7 +750,7 @@ const CLEAN_STATIC_PARTS = [
   ['日期','Date','កាលបរិច្ឆេទ'],['地點','Location','ទីតាំង'],['清潔員','Cleaner','អ្នកសម្អាត'],['檢查員','Checker','អ្នកត្រួតពិនិត្យ'],
   ['時段','Slots','ពេលវេលា'],['檢查項目','Check Items','ចំណុចត្រួតពិនិត្យ'],['狀態','Status','ស្ថានភាព'],['備注','Note','កំណត់សម្គាល់'],['備註','Notes','កំណត់សម្គាល់'],
   ['暫無記錄','No records','រកមិនឃើញកំណត់ត្រា'],['新增清潔記錄','New Cleaning Record','កត់ត្រាការសម្អាតថ្មី'],['帶 * 為必填','* Required','* ត្រូវបំពេញ'],
-  ['班次','Shift','វេន'],['— 選擇 —','— Select —','— ជ្រើស —'],['Day 日班','Day shift','វេនថ្ងៃ'],['Night 夜班','Night shift','វេនយប់'],
+  ['✅ 全部 OK','✅ All OK','✅ ល្អទាំងអស់'],['班次','Shift','វេន'],['— 選擇 —','— Select —','— ជ្រើស —'],['Day 日班','Day shift','វេនថ្ងៃ'],['Night 夜班','Night shift','វេនយប់'],
   ['照片 Photos','Photos','រូបថត'],['清潔時段','Time Slots','ពេលវេលាសម្អាត'],['巡查項目','Check Items','ចំណុចត្រួតពិនិត្យ'],['點擊切換','Click to toggle','ចុចដើម្បីប្តូរ'],
   ['備注 / 異常','Notes / Anomaly','កំណត់សម្គាល់ / ភាពមិនប្រក្រតី'],['請填寫異常情況或補充說明...','Enter anomaly or additional notes...','បញ្ចូលភាពមិនប្រក្រតី ឬកំណត់សម្គាល់បន្ថែម...'],
   ['儲存記錄','Save Record','រក្សាទុកកំណត់ត្រា'],['清除','Clear','លុប'],['全部','All','ទាំងអស់'],['月份','Month','ខែ'],['搜尋','Search','ស្វែងរក'],['查詢','Query','ស្វែងរក'],
@@ -870,7 +871,25 @@ var de = (() => {
 
 /* ═══ STATE MODULE ═══ */
 const SK = 'vrt_clean_hub_v2';
-const DEF_SLOTS = ['07:30','08:30','09:30','10:30','12:30','13:30','14:30','15:30','16:30'];
+/* 2026-10-28 Paul：時段只要 9／11／1／3／4 點；舊的 07:30、16:30 與半點時段不再出現在選項（舊記錄照常保留）。
+   不分日夜班，班次欄位已拿掉。 */
+const DEF_SLOTS = ['09:00','11:00','13:00','15:00','16:00'];
+const RETIRED_SLOTS = ['07:30','08:30','09:30','10:30','12:30','13:30','14:30','15:30','16:30'];
+function cleaningSlotOptions(list){
+  const out=Array.from(new Set((Array.isArray(list)?list:[]).map(x=>String(x||'').trim()).filter(x=>x&&!RETIRED_SLOTS.includes(x)))).sort();
+  return out.length?out:DEF_SLOTS.slice();
+}
+/* 地點圖示（記錄頁晶片、各地點卡片、Telegram 摘要共用）。 */
+function cleaningLocIcon(loc){
+  if(!loc)return '📍';
+  const code=cleaningLocTypeCode(loc.type),marker=String(loc.name||'').toLowerCase();
+  const key=code!=='other'?code:/toilet|廁所|បង្គន់/.test(marker)?'toilet':/factory|floor|廠|រោងចក្រ/.test(marker)?'factory':/office|辦公|ការិយាល័យ/.test(marker)?'office':/canteen|飯堂|食堂|អាហារដ្ឋាន/.test(marker)?'canteen':/warehouse|倉|ឃ្លាំង/.test(marker)?'warehouse':/entrance|入口|ច្រកចូល/.test(marker)?'entrance':'other';
+  return LOC_ICONS[key]||LOC_ICONS.other||'📍';
+}
+/* 記住上次選的清潔員（每個地點）與檢查員：選一次，下次自動帶出。 */
+const CLEAN_MEMO_KEY='ac_gc_clean_memo_v1';
+function cleaningMemo(){try{const m=JSON.parse(localStorage.getItem(CLEAN_MEMO_KEY)||'{}');return m&&typeof m==='object'?m:{};}catch(e){return {};}}
+function cleaningMemoSet(fn){try{const m=cleaningMemo();if(!m.cleaners||typeof m.cleaners!=='object')m.cleaners={};fn(m);localStorage.setItem(CLEAN_MEMO_KEY,JSON.stringify(m));}catch(e){}}
 const CHK_ITEMS = ['smell','light','floor','door','corner','ceiling'];
 const CHK_ICONS = {smell:'👃',light:'💡',floor:'🧹',door:'🚪',corner:'📐',ceiling:'🏠'};
 const BIN_COLORS = {general:'#3B82F6',fabric:'#22C55E',plastic:'#F97316',metal:'#8B5CF6',paper:'#06B6D4',hazard:'#EF4444'};
@@ -1032,6 +1051,18 @@ function mergeCleaningSmartImport(current,incoming){
 var state = (() => {
   let _db = {records:[],sixsRecords:[],locations:[],bins:[],cleaners:[],checkers:[],slots:[...DEF_SLOTS],cfg:{},configUpdatedAt:''};
   let _selLocs = [], _selSlots = [], _chkState = {}, _sixsState = {}, _locCleaners = {}, _locSlots = {}, _locChecks = {};
+  /* 2026-10-28：設定好的地點全部自動放進記錄頁（不用再一個個點選）；使用者手動取消某地點後就不再自動補回。 */
+  let _autoLocs = true;
+  const memoCleaner = (id) => { const m=cleaningMemo(); return (m.cleaners&&m.cleaners[id])||''; };
+  const addLoc = (id) => {
+    if(_selLocs.includes(id)) return;
+    _selLocs.push(id);
+    const loc=_db.locations.find(x=>x.id===id), fallback=memoCleaner(id)||gv('r-cleaner')||(loc&&personName(loc.resp))||'';
+    if(!_locCleaners[id]) _locCleaners[id]=fallback;
+    _locSlots[id]=_selSlots.slice();
+    _locChecks[id]=copyChecks(_chkState);
+  };
+  const ensureAllLocs = () => { if(!_autoLocs) return; (_db.locations||[]).forEach(l=>addLoc(l.id)); _selLocs=_selLocs.filter(id=>(_db.locations||[]).some(l=>l.id===id)); };
   const copyChecks = src => { const out={}; CHK_ITEMS.forEach(k=>out[k]=src&&Object.prototype.hasOwnProperty.call(src,k)?src[k]:null); return out; };
 
   const load = () => {
@@ -1053,7 +1084,7 @@ var state = (() => {
     if(!_db.bins) _db.bins=[];
     if(!_db.cleaners) _db.cleaners=[];
     if(!_db.checkers) _db.checkers=[];
-    if(!_db.slots||!_db.slots.length) _db.slots=[...DEF_SLOTS];
+    _db.slots=cleaningSlotOptions(_db.slots);
     if(!_db.cfg) _db.cfg={};
   };
   const save = (opt) => {
@@ -1077,22 +1108,23 @@ var state = (() => {
   const getLocs = () => _selLocs.slice();
   const toggleLoc = (id) => {
     const i=_selLocs.indexOf(id);
+    _autoLocs=false;
     if(i>=0){ _selLocs.splice(i,1); delete _locCleaners[id]; delete _locSlots[id]; delete _locChecks[id]; }
-    else {
-      _selLocs.push(id);
-      const loc=_db.locations.find(x=>x.id===id), fallback=gv('r-cleaner')||(loc&&personName(loc.resp))||'';
-      if(!_locCleaners[id]) _locCleaners[id]=fallback;
-      _locSlots[id]=_selSlots.slice();
-      _locChecks[id]=copyChecks(_chkState);
-    }
+    else addLoc(id);
     renderRecordLocations();
   };
-  const resetLocs = () => { _selLocs=[]; _locCleaners={}; _locSlots={}; _locChecks={}; renderRecordLocations(); };
+  const resetLocs = () => { _selLocs=[]; _locCleaners={}; _locSlots={}; _locChecks={}; _autoLocs=true; ensureAllLocs(); renderRecordLocations(); };
   const getLocCleaner = id => _locCleaners[id] || '';
-  const setLocCleaner = (id,value) => { _locCleaners[id]=String(value||''); renderLocationCleanerAssignments(); };
-  const applyDefaultCleaner = value => { _selLocs.forEach(id=>{_locCleaners[id]=String(value||'');}); renderLocationCleanerAssignments(); };
+  const setLocCleaner = (id,value) => { _locCleaners[id]=String(value||''); cleaningMemoSet(m=>{if(value)m.cleaners[id]=String(value);}); renderLocationCleanerAssignments(); };
+  const applyDefaultCleaner = value => { _selLocs.forEach(id=>{_locCleaners[id]=String(value||'');}); cleaningMemoSet(m=>{m.defaultCleaner=String(value||'');if(value)_selLocs.forEach(id=>{m.cleaners[id]=String(value);});}); renderLocationCleanerAssignments(); };
+  /* 跟 SEC 一樣：全部 OK 按一次就全勾（id 空白＝所有地點）。 */
+  const allOk = (id) => {
+    if(id){ _locChecks[id]=copyChecks({}); CHK_ITEMS.forEach(k=>{_locChecks[id][k]=true;}); renderLocationCleanerAssignments(); return; }
+    CHK_ITEMS.forEach(k=>{_chkState[k]=true;}); _selLocs.forEach(x=>{_locChecks[x]=copyChecks(_chkState);});
+    renderCheckGrid(); renderLocationCleanerAssignments();
+  };
   const getLocSlots = id => (_locSlots[id]||[]).slice();
-  const toggleLocSlot = (id,s) => { const list=_locSlots[id]||(_locSlots[id]=[]),i=list.indexOf(s);if(i>=0)list.splice(i,1);else list.push(s);list.sort();renderLocationCleanerAssignments(); };
+  const toggleLocSlot = (id,s) => { const list=_locSlots[id]||(_locSlots[id]=[]),i=list.indexOf(s);if(i>=0)list.splice(i,1);else list.push(s);list.sort();renderLocationCleanerAssignments();const c=document.getElementById('sel-slot-count');if(c)c.textContent=_selSlots.length+' '+i18n.t('selected'); };
   const getLocChecks = id => copyChecks(_locChecks[id]||_chkState);
   const cycleLocCheck = (id,k) => { if(!_locChecks[id])_locChecks[id]=copyChecks(_chkState);const v=_locChecks[id][k];_locChecks[id][k]=v===null?true:v===true?false:null;renderLocationCleanerAssignments(); };
   const getSlots = () => _selSlots;
@@ -1126,11 +1158,22 @@ var state = (() => {
       el.value=cur;
     };
     fillPeople('r-cleaner',_db.cleaners);fillPeople('s6-obs',_db.cleaners);fillPeople('r-checker',_db.checkers);
+    applyPeopleMemo();
+    ensureAllLocs();
     renderRecordLocations();
     renderSlots();
     renderCheckGrid();
   };
-  return { load, save, db, touchConfig, replaceRecords, upsertRecords, resetChk, getChk, setChk, getLocs, toggleLoc, resetLocs, getLocCleaner, setLocCleaner, applyDefaultCleaner, getLocSlots, toggleLocSlot, getLocChecks, cycleLocCheck, getSlots, toggleSlot, resetSlots, resetSixs, getSixs, setSixs, populate };
+  /* 檢查員／預設清潔員：上次選誰，下次就帶出誰（名單暫時沒有此人也保留）。 */
+  const applyPeopleMemo = () => {
+    const m=cleaningMemo();
+    [['r-checker',m.checker],['r-cleaner',m.defaultCleaner]].forEach(([id,name])=>{
+      const el=document.getElementById(id); if(!el||el.value||!name) return;
+      if(![...el.options].some(o=>o.value===name)){const o=document.createElement('option');o.value=name;o.textContent=name;el.appendChild(o);}
+      el.value=name;
+    });
+  };
+  return { load, save, db, touchConfig, replaceRecords, upsertRecords, resetChk, getChk, setChk, getLocs, toggleLoc, resetLocs, getLocCleaner, setLocCleaner, applyDefaultCleaner, allOk, applyPeopleMemo, getLocSlots, toggleLocSlot, getLocChecks, cycleLocCheck, getSlots, toggleSlot, resetSlots, resetSixs, getSixs, setSixs, populate };
 })();
 
 /* ═══ API MODULE ═══ */
@@ -1305,9 +1348,12 @@ var rec = (() => {
   const fail = (msg,el) => {ui.toast('⚠️ '+msg,4500);if(el)GCX.invalid(el);return [];};
   const makeRecords = () => {
     GCX.clearInvalid(document.getElementById('pane-rec'));
-    const date=gv('r-date'),locIds=state.getLocs();
+    const date=gv('r-date');
     if(!date)return fail(i18n.t('missing-date'),'r-date');
-    if(!locIds.length)return fail(i18n.t('select-location-first'),'locs-wrap');
+    if(!state.getLocs().length)return fail(i18n.t('select-location-first'),'locs-wrap');
+    /* 所有地點都會列出來；沒選時段的地點＝這次沒巡，略過不存。 */
+    const locIds=state.getLocs().filter(id=>state.getLocSlots(id).length);
+    if(!locIds.length)return fail(i18n.t('select-slot-warning'),'loc-cleaner-map');
     const missingLoc=locIds.find(id=>!state.getLocCleaner(id));
     if(missingLoc)return fail(i18n.t('missing-location-cleaner')+': '+locName(missingLoc),document.querySelector('#loc-cleaner-map select')||'loc-cleaner-map');
     const missingSlotLoc=locIds.find(id=>!state.getLocSlots(id).length);
@@ -1322,7 +1368,7 @@ var rec = (() => {
     return locIds.map(function(locId,index){
       const out={
         id:batchId+'_'+index, batchId:batchId,
-        timestamp:now, updatedAt:now, date:date, locId:locId, shift:gv('r-shift'),
+        timestamp:now, updatedAt:now, date:date, locId:locId, shift:'',
         cleaner:state.getLocCleaner(locId), checker:gv('r-checker'), slots:state.getLocSlots(locId),
         checks:state.getLocChecks(locId), note:gv('r-note'),
         photos:photos.slice(), photoCount:photos.length, synced:false
@@ -1373,11 +1419,11 @@ var rec = (() => {
     } finally {setSubmitting(false);}
   };
   const clear = () => {
-    ['r-date','r-shift','r-cleaner','r-note','r-photo-n'].forEach(id=>sv(id,''));
+    ['r-date','r-note','r-photo-n'].forEach(id=>sv(id,''));
     if(window._phCtl) window._phCtl.clear();
     /* 日期回到今天、班次依現在時間；檢查員通常整天同一人，保留以免重選。 */
-    sv('r-date',de.fmt(new Date()));sv('r-shift',new Date().getHours()>=18||new Date().getHours()<6?'Night':'Day');
-    state.resetChk(); state.resetLocs(); state.resetSlots();
+    sv('r-date',de.fmt(new Date()));
+    state.resetChk(); state.resetSlots(); state.resetLocs(); state.applyPeopleMemo();
     renderCheckGrid(); renderRecordLocations(); renderSlots();
     GCX.clearInvalid(document.getElementById('pane-rec'));
   };
@@ -1491,6 +1537,7 @@ function applyCleaningCloudMeta(payload){
     if(Array.isArray(meta.bins))db.bins=byId(db.bins,meta.bins);
   }
   db.locations=normalizeCleaningLocations(db.locations);
+  db.slots=cleaningSlotOptions(db.slots);
   if(meta.cfg&&typeof meta.cfg==='object')db.cfg=Object.assign({},db.cfg||{},meta.cfg);
   window._cleaningCloudApplying=true;
   try{ state.save(); }finally{ window._cleaningCloudApplying=false; }
@@ -1936,7 +1983,7 @@ var dataMgmt = (() => {
     const names=(a,b)=>{const out=[];(a||[]).concat(b||[]).forEach(v=>{const n=personName(v);if(n&&!out.includes(n))out.push(n);});return out;};
     if(Array.isArray(d.cleaners))db.cleaners=names(db.cleaners,d.cleaners);
     if(Array.isArray(d.checkers))db.checkers=names(db.checkers,d.checkers);
-    if(Array.isArray(d.slots))db.slots=Array.from(new Set((db.slots||[]).concat(d.slots.map(String)))).sort();
+    if(Array.isArray(d.slots))db.slots=cleaningSlotOptions((db.slots||[]).concat(d.slots.map(String)));
     if(Array.isArray(d.mapZones))db.mapZones=byIdNewer(db.mapZones,d.mapZones);
     if(Array.isArray(d.bins))db.bins=byIdNewer(db.bins,d.bins);
     cfgChanged=before!==JSON.stringify([db.locations,db.cleaners,db.checkers,db.slots,db.mapZones,db.bins]);
@@ -2001,9 +2048,7 @@ function renderRecordLocations(){
   const wrap=document.getElementById('locs-wrap');if(!wrap)return;
   const selected=state.getLocs();
   wrap.innerHTML=(state.db().locations||[]).map(function(loc){
-    const code=cleaningLocTypeCode(loc.type),marker=String(loc.name||'').toLowerCase();
-    const key=code!=='other'?code:/toilet|廁所|បង្គន់/.test(marker)?'toilet':/factory|floor|廠|រោងចក្រ/.test(marker)?'factory':/office|辦公|ការិយាល័យ/.test(marker)?'office':/canteen|飯堂|食堂|អាហារដ្ឋាន/.test(marker)?'canteen':/warehouse|倉|ឃ្លាំង/.test(marker)?'warehouse':/entrance|入口|ច្រកចូល/.test(marker)?'entrance':'other';
-    const icon=LOC_ICONS[key]||LOC_ICONS.other||'📍';
+    const icon=cleaningLocIcon(loc);
     return `<div class="sl ${selected.includes(loc.id)?'sel':'none'}" onclick="state.toggleLoc('${esc(loc.id)}')">${icon} ${esc(loc.name)}</div>`;
   }).join('')||`<span style="padding:8px;color:var(--dim)">${i18n.t('no-data')}</span>`;
   const cnt=document.getElementById('sel-loc-count');if(cnt)cnt.textContent=selected.length+' '+i18n.t('selected');
@@ -2021,15 +2066,17 @@ function renderLocationCleanerAssignments(){
     const loc=db.locations.find(x=>x.id===id), current=state.getLocCleaner(id);
     const opts=['<option value="">'+esc(i18n.t('select'))+'</option>'].concat(names.map(n=>`<option value="${esc(n)}"${n===current?' selected':''}>${esc(n)}</option>`)).join('');
     const locSlots=state.getLocSlots(id),locChecks=state.getLocChecks(id);
-    const slotChips=(db.slots||DEF_SLOTS).map(s=>`<button type="button" class="loc-rule-chip ${locSlots.includes(s)?'on':''}" onclick="state.toggleLocSlot('${esc(id)}','${esc(s)}')">${esc(s)}</button>`).join('');
+    const slotChips=cleaningSlotOptions(db.slots).map(s=>`<button type="button" class="loc-rule-chip ${locSlots.includes(s)?'on':''}" onclick="state.toggleLocSlot('${esc(id)}','${esc(s)}')">${esc(s)}</button>`).join('');
     const itemChips=CHK_ITEMS.map(k=>{const v=locChecks[k],cls=v===true?'pass':v===false?'fail':'';return `<button type="button" class="loc-rule-chip ${cls}" onclick="state.cycleLocCheck('${esc(id)}','${esc(k)}')">${CHK_ICONS[k]} ${esc(i18n.t('ci-'+k))} ${v===true?'✓':v===false?'✗':'—'}</button>`;}).join('');
-    return `<div class="loc-cleaner-row loc-rule-card"><div class="loc-rule-head"><span>📍 ${esc(loc?loc.name:id)}</span><select class="fi" onchange="state.setLocCleaner('${esc(id)}',this.value)">${opts}</select></div><div class="loc-rule-block"><span class="loc-rule-label">⏰ ${esc(i18n.t('location-slots'))}</span><div class="loc-rule-chips">${slotChips}</div></div><div class="loc-rule-block"><span class="loc-rule-label">🔍 ${esc(i18n.t('location-items'))}</span><div class="loc-rule-chips">${itemChips}</div></div></div>`;
+    const allOk=CHK_ITEMS.every(k=>locChecks[k]===true),idle=!locSlots.length;
+    const okBtn=`<button type="button" class="loc-rule-chip loc-allok ${allOk?'pass':''}" onclick="state.allOk('${esc(id)}')">✅ ${esc(GCX.L('全部 OK','All OK','ល្អទាំងអស់'))}</button>`;
+    return `<div class="loc-cleaner-row loc-rule-card${idle?' loc-idle':''}"><div class="loc-rule-head"><span>${cleaningLocIcon(loc)} ${esc(loc?loc.name:id)}${idle?` <small class="loc-idle-tag">${esc(GCX.L('未選時段＝這次不存','No slot = skipped','គ្មានម៉ោង = រំលង'))}</small>`:''}</span><select class="fi" onchange="state.setLocCleaner('${esc(id)}',this.value)">${opts}</select></div><div class="loc-rule-block"><span class="loc-rule-label">⏰ ${esc(i18n.t('location-slots'))}</span><div class="loc-rule-chips">${slotChips}</div></div><div class="loc-rule-block"><span class="loc-rule-label">🔍 ${esc(i18n.t('location-items'))}</span><div class="loc-rule-chips">${okBtn}${itemChips}</div></div></div>`;
   }).join('');
 }
 
 function renderSlots(){
   const wrap=document.getElementById('slots-wrap');if(!wrap)return;
-  const slots=state.db().slots||DEF_SLOTS;
+  const slots=cleaningSlotOptions(state.db().slots);
   const sel=state.getSlots();
   wrap.innerHTML=slots.map(s=>`<div class="sl ${sel.includes(s)?'sel':'none'}" onclick="state.toggleSlot('${s}')">${s}</div>`).join('');
   const cnt=document.getElementById('sel-slot-count');if(cnt)cnt.textContent=sel.length+' '+i18n.t('selected');
@@ -2134,7 +2181,6 @@ window.i18n=i18n; window.de=de; window.dash=dash; window.chs=chs;
       i18n.set(initialLang);
       state.resetChk(); updateTs(); setInterval(updateTs,1000);
       const today=de.fmt(new Date()); sv('r-date',today); sv('s6-date',today);
-      sv('r-shift',new Date().getHours()>=18||new Date().getHours()<6?'Night':'Day');
       const q=document.getElementById('insp-quarter'); if(q){const m=new Date().getMonth()+1;q.value=m<=3?'Q1':m<=6?'Q2':m<=9?'Q3':'Q4';}
       state.populate(); renderStaff();renderSlotTags();
       try{de.init();}catch(e){console.warn('Cleaning overview init skipped:',e);}
@@ -2238,6 +2284,14 @@ function cleaningTelegramSlotFilter(r,slot){
 }
 function cleaningTelegramFailed(r){const c=r&&r.checks||{};return CHK_ITEMS.filter(function(k){return c[k]===false;});}
 function cleaningTelegramLocName(id){return typeof locName==='function'?locName(id):(id||'—');}
+function cleaningTelegramLocIcon(id){const loc=(typeof state!=='undefined'&&state.db)?(state.db().locations||[]).find(function(x){return String(x.id)===String(id);}):null;return loc&&typeof cleaningLocIcon==='function'?cleaningLocIcon(loc):'📍';}
+/* 2026-10-28：摘要也顯示巡查項目圖示（跟記錄頁一樣 👃💡🧹🚪📐🏠），一區一行。 */
+function cleaningTelegramOkLine(area){
+  const e=cleaningTelegramEscape;
+  const icons=CHK_ITEMS.filter(function(k){return area.records.some(function(r){return (r.checks||{})[k]===true;});}).map(function(k){return CHK_ICONS[k];}).join('');
+  const who=Array.from(new Set(area.records.map(function(r){return String(r.cleaner||'').trim();}).filter(Boolean)));
+  return '✅ '+cleaningTelegramLocIcon(area.id)+' '+e(area.name)+' ×'+area.checks+(icons?' · '+icons:'')+(who.length?' · 👷 '+e(who.slice(0,3).join(', '))+(who.length>3?' +'+(who.length-3):''):'');
+}
 /* 期間標籤：日＝日期、週＝起迄、月＝YYYY-MM、年＝YYYY。 */
 function cleaningTelegramPeriodLabel(period,ref,lang){
   const lb=function(zh,en,km){return GC.TG.lbl(lang,zh,en,km);};
@@ -2271,7 +2325,7 @@ function cleaningTelegramIssueLine(area,withDate){
   const items=CHK_ITEMS.filter(function(k){return fails.some(function(r){return (r.checks||{})[k]===false;});}).map(function(k){return CHK_ICONS[k];}).join(' ');
   const notes=Array.from(new Set(fails.map(function(r){return String(r.note||'').replace(/\s+/g,' ').trim();}).filter(Boolean))).join(' / ');
   const who=Array.from(new Set(fails.map(function(r){return String(r.checker||'').trim();}).filter(Boolean))).join(', ');
-  return '• <b>'+e(area.name)+'</b> · '+e(when)+' · ❌ '+items+(notes?' · 📝 '+e(notes.length>80?notes.slice(0,79)+'…':notes):'')+(who?' · '+e(who):'');
+  return '• '+cleaningTelegramLocIcon(area.id)+' <b>'+e(area.name)+'</b> · '+e(when)+' · ❌ '+items+(notes?' · 📝 '+e(notes.length>80?notes.slice(0,79)+'…':notes):'')+(who?' · '+e(who):'');
 }
 /* 共用卡片：period／ref 決定標題與是否顯示日期；all＝整個資料集（算本月累計用）。 */
 function cleaningTelegramReport(view,opt){
@@ -2306,7 +2360,7 @@ function cleaningTelegramReport(view,opt){
   if(bad.length){
     txt+=G.sec('⚠️',lb('需注意','Needs attention','ត្រូវយកចិត្តទុកដាក់'))+'\n'+bad.slice(0,12).map(function(a){return cleaningTelegramIssueLine(a,period!=='day');}).join('\n')+(bad.length>12?'\n… +'+(bad.length-12):'');
   }
-  if(ok.length)txt+='\n\n✅ '+ok.map(function(a){return e(a.name)+' ×'+a.checks;}).join(' · ');
+  if(ok.length)txt+='\n\n'+ok.slice(0,12).map(cleaningTelegramOkLine).join('\n')+(ok.length>12?'\n✅ … +'+(ok.length-12):'');
   if(checkers.length&&view.length)txt+='\n🔎 '+e(checkers.slice(0,4).join(', '))+(checkers.length>4?' +'+(checkers.length-4):'');
   if(opt.mode==='review'||opt.mode==='approval')txt+='\n⏳ '+lb('待審查／待核可','Pending review / approval','កំពុងរង់ចាំពិនិត្យ/អនុម័ត')+' <b>'+issues+'</b>';
   const sender=String(opt.sender||'').trim();
@@ -2368,7 +2422,7 @@ function validateCleaningTelegramSelection(ctx){
       telegramScopeLabel:{zh:'選擇地點（可多選）',en:'Locations (multi-select)',km:'ទីតាំង (អាចជ្រើសច្រើន)'},
       telegramScopes:function(){return [{value:'all',zh:'全部地點',en:'All locations',km:'គ្រប់ទីតាំង'}].concat((state.db().locations||[]).map(function(x){return {value:x.id,zh:x.name,en:x.name,km:x.name};}));},
       telegramScopeMultiple:true,
-      telegramSlots:function(){return [{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'}].concat((state.db().slots||DEF_SLOTS).map(function(x){return {value:x,zh:x,en:x,km:x};}));},
+      telegramSlots:function(){return [{value:'all',zh:'全部時段',en:'All slots',km:'គ្រប់ពេល'}].concat(cleaningSlotOptions(state.db().slots).map(function(x){return {value:x,zh:x,en:x,km:x};}));},
       telegramSlotMultiple:true,
       telegramSlotFilter:cleaningTelegramSlotFilter,
       telegramLanguage:true,

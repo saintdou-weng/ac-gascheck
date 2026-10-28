@@ -840,7 +840,7 @@ const BASE_DICT = {
     'gc.heavyRain':'大雨','gc.storm':'雷雨','gc.hot':'酷熱','gc.humid':'潮濕',
     'gc.confirm':'確認','gc.cancel':'取消','gc.save':'儲存','gc.delete':'刪除','gc.close':'關閉',
     'gc.cloudTools':'雲端工具','gc.indexedDb':'資料庫：IndexedDB',
-    'gc.telegram':'Telegram','gc.sendTelegram':'發送 Telegram','gc.period':'摘要期間','gc.slot':'發送時段','gc.allSlots':'全部時段','gc.reportLanguage':'摘要語言','gc.bilingual':'中英雙語','gc.chinese':'中文','gc.english':'English','gc.khmer':'ខ្មែរ',
+    'gc.telegram':'Telegram','gc.sendTelegram':'發送 Telegram','gc.period':'摘要期間','gc.slot':'發送時段','gc.allSlots':'全部時段','gc.reportLanguage':'摘要語言','gc.bilingual':'中英雙語','gc.chinese':'中文','gc.english':'English','gc.khmer':'English + ខ្មែរ',
     'gc.summary':'摘要','gc.review':'審查','gc.approval':'核可','gc.quickActions':'快速操作',
     'gc.directHint':'上方按鈕可直接同步、匯入與發送，不需填網址／Token／Chat ID',
     'gc.sentTelegram':'Telegram 已發送','gc.noApproval':'沒有待審查／待核可資料',
@@ -881,7 +881,7 @@ const BASE_DICT = {
     'gc.heavyRain':'Heavy Rain','gc.storm':'Storm','gc.hot':'Hot','gc.humid':'Humid',
     'gc.confirm':'Confirm','gc.cancel':'Cancel','gc.save':'Save','gc.delete':'Delete','gc.close':'Close',
     'gc.cloudTools':'Cloud Tools','gc.indexedDb':'Storage: IndexedDB',
-    'gc.telegram':'Telegram','gc.sendTelegram':'Send to Telegram','gc.period':'Summary period','gc.slot':'Send time slot','gc.allSlots':'All slots','gc.reportLanguage':'Report language','gc.bilingual':'Chinese + English','gc.chinese':'Chinese','gc.english':'English','gc.khmer':'Khmer',
+    'gc.telegram':'Telegram','gc.sendTelegram':'Send to Telegram','gc.period':'Summary period','gc.slot':'Send time slot','gc.allSlots':'All slots','gc.reportLanguage':'Report language','gc.bilingual':'Chinese + English','gc.chinese':'Chinese','gc.english':'English','gc.khmer':'English + Khmer',
     'gc.summary':'Summary','gc.review':'Review','gc.approval':'Approval','gc.quickActions':'Quick actions',
     'gc.directHint':'Use the buttons above to sync, import and send; no URL/token/chat ID entry is needed',
     'gc.sentTelegram':'Telegram sent','gc.noApproval':'No pending review/approval records',
@@ -922,7 +922,7 @@ const BASE_DICT = {
     'gc.heavyRain':'ភ្លៀងខ្លាំង','gc.storm':'ព្យុះ','gc.hot':'ក្ដៅ','gc.humid':'សើម',
     'gc.confirm':'បញ្ជាក់','gc.cancel':'បោះបង់','gc.save':'រក្សាទុក','gc.delete':'លុប','gc.close':'បិទ',
     'gc.cloudTools':'ឧបករណ៍ Cloud','gc.indexedDb':'ការផ្ទុក៖ IndexedDB',
-    'gc.telegram':'Telegram','gc.sendTelegram':'ផ្ញើទៅ Telegram','gc.period':'រយៈពេលសង្ខេប','gc.slot':'ពេលវេលាផ្ញើ','gc.allSlots':'គ្រប់ពេល','gc.reportLanguage':'ភាសាសង្ខេប','gc.bilingual':'ចិន + អង់គ្លេស','gc.chinese':'ភាសាចិន','gc.english':'អង់គ្លេស','gc.khmer':'ខ្មែរ',
+    'gc.telegram':'Telegram','gc.sendTelegram':'ផ្ញើទៅ Telegram','gc.period':'រយៈពេលសង្ខេប','gc.slot':'ពេលវេលាផ្ញើ','gc.allSlots':'គ្រប់ពេល','gc.reportLanguage':'ភាសាសង្ខេប','gc.bilingual':'ចិន + អង់គ្លេស','gc.chinese':'ភាសាចិន','gc.english':'អង់គ្លេស','gc.khmer':'English + ខ្មែរ',
     'gc.summary':'សង្ខេប','gc.review':'ពិនិត្យ','gc.approval':'អនុម័ត','gc.quickActions':'សកម្មភាពរហ័ស',
     'gc.directHint':'ប្រើប៊ូតុងខាងលើដើម្បីធ្វើសមកាលកម្ម នាំចូល និងផ្ញើ ដោយមិនចាំបាច់បញ្ចូល URL/token/chat ID',
     'gc.sentTelegram':'បានផ្ញើ Telegram','gc.noApproval':'គ្មានទិន្នន័យកំពុងរង់ចាំពិនិត្យ/អនុម័ត',
@@ -3163,11 +3163,19 @@ GC.sync = (() => {
    ═══════════════════════════════════════════════════════════ */
 GC.TG = (function () {
   const esc = s => U.escapeHtml(String(s == null ? '' : s));
+  /* 柬文摘要＝English + ខ្មែរ（同一字只出現一次；沒有柬文就只用英文）。 */
+  function enKm(en, km, sep) {
+    en = en == null ? '' : String(en); km = km == null ? '' : String(km);
+    if (!km || km === en) return en;
+    if (!en) return km;
+    return en + (sep || ' / ') + km;
+  }
   function lbl(lang, zh, en, km) {
     lang = lang || 'bi';
     if (lang === 'zh') return zh;
     if (lang === 'en') return en;
-    if (lang === 'km') return km || en;
+    /* 2026-10-28 Paul：選柬文發摘要一律英柬雙語（柬籍同仁常懶得切英文）；中文／英文不變。 */
+    if (lang === 'km') return enKm(en, km, '/');
     return zh === en ? zh : zh + '/' + en;
   }
   function d(v) { v = String(v || ''); return /^\d{4}-\d{2}-\d{2}/.test(v) ? v.slice(5, 10) : v; }
@@ -3210,8 +3218,9 @@ GC.TG = (function () {
   }
   /* 多頁：每頁前面加【1/3】，給 GC.telegram.send 的 pages 用 */
   function number(pages) { return pages.length > 1 ? pages.map((p, i) => '【' + (i + 1) + '/' + pages.length + '】\n' + p) : pages; }
-  return { lbl, esc, d, time, mins, dur, ranges, head, verdict, bar, kpis, sec, fold, chunk, number };
+  return { lbl, enKm, esc, d, time, mins, dur, ranges, head, verdict, bar, kpis, sec, fold, chunk, number };
 })();
+GC.enKm = GC.TG.enKm;
 
 /* 送出成功動畫（只在網頁上） */
 GC.sentFx = function (text) {
@@ -3230,7 +3239,7 @@ GC.telegram = {
     lang = lang || 'bi';
     if (lang === 'zh') return zh;
     if (lang === 'en') return en;
-    if (lang === 'km') return km || en;
+    if (lang === 'km') return GC.TG.enKm(en, km, ' / ');
     return zh + ' / ' + en;
   },
   /** Telegram 按鈕文字依報表語言：'dashboard' | 'portal'；lang='bi' 時中英並列。 */
@@ -3240,6 +3249,7 @@ GC.telegram = {
     lang = lang || I18.lang;
     const pick = l => (BASE_DICT[l] && BASE_DICT[l][key]) || BASE_DICT.en[key];
     if (lang === 'bi') return icon + pick('en') + ' / ' + pick('zh');
+    if (lang === 'km') return icon + GC.TG.enKm(pick('en'), pick('km'), ' / ');
     return icon + pick(BASE_DICT[lang] ? lang : 'en');
   },
   slotText(item, lang) {
