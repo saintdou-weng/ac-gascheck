@@ -73,15 +73,15 @@ const packet = context.buildCleaningTelegram({
 });
 
 // Compact card: one line per area, exceptions first, OK areas counted once, no padded tables.
-assert(packet.text.includes('✅ Office ×2'), 'all-pass area appears once with its check count');
-assert(packet.text.includes('• <b>Canteen</b> · 08-11 14:30 · ❌ 🧹 · Nin'), 'failed area line: area · when · failed items · checker');
+assert(/✅ \S+ Office ×2 · [👃💡🧹🚪📐🏠]+/u.test(packet.text), 'all-pass area: one line with check count and item icons (2026-10-28)');
+assert(/• \S+ <b>Canteen<\/b> · 08-11 14:30 · ❌ 🧹 · Nin/u.test(packet.text), 'failed area line: icon · area · when · failed items · checker');
 assert(packet.text.includes('🗂 Office, Canteen'), 'selected locations shown in the header');
 assert.strictEqual(packet.text.split('\n').filter(l => /Office ×|<b>Office<\/b>/.test(l)).length, 1, 'same area is not repeated');
 assert(!packet.text.includes('Factory Floor'));
 assert(packet.text.includes('08-11'));
 assert(!packet.text.includes('T00:00:00.000Z'));
 assert(packet.text.includes('⏱ 10:30, 14:30'), 'selected slots shown');
-for (const icon of ['👃','💡','🚪','📐','🏠']) assert(!packet.text.includes(icon), 'passed items are not listed item by item');
+assert.strictEqual(packet.text.split('\n').filter(l => /👃|💡|🚪|📐|🏠/u.test(l)).length, 1, 'item icons only on the OK-area line, not one line per item');
 assert(packet.text.includes('區域/Areas <b>2</b>') && packet.text.includes('檢查/Checks <b>3</b>') && packet.text.includes('清潔員/Cleaners <b>2</b>'));
 assert(packet.text.includes('🔴 <b>1 個區域有異常/1 area with issues</b>'));
 assert(/🟥🟥🟥🟥🟥⬜⬜⬜⬜⬜ 50%/.test(packet.text), 'bar = areas OK / areas checked');
@@ -93,11 +93,12 @@ assert.deepStrictEqual(Array.from(packet.photos), ['https://example.invalid/clea
 assert.strictEqual(packet.recordCount, 2);
 const allPass = context.buildCleaningTelegram({cfg, period:'all', ref:'2026-08-11', mode:'summary', lang:'en', scope:['loc_office','loc_factory'], slot:['all'], sender:'Paul'});
 assert.deepStrictEqual(Array.from(allPass.photos), [], 'everything ticked → no photos');
-assert(allPass.text.includes('🟢 <b>All passed</b>') && allPass.text.includes('✅ Office ×2 · Factory Floor ×1'));
+assert(allPass.text.includes('🟢 <b>All passed</b>') && /✅ \S+ Office ×2/u.test(allPass.text) && /✅ \S+ Factory Floor ×1/u.test(allPass.text), 'one line per OK area');
 assert(!/[\u4e00-\u9fff]/.test(allPass.text), 'English report has no Chinese');
 const km = context.buildCleaningTelegram({cfg, period:'all', ref:'2026-08-11', mode:'summary', lang:'km', scope:['all'], slot:['all'], sender:'Paul'});
 assert(!/[\u4e00-\u9fff]/.test(km.text), 'Khmer report has no Chinese');
 assert(km.text.includes('Canteen') && km.text.includes('Office'));
+// 2026-10-28：選柬文＝英柬雙語（GC.telegram.text 的 km 由核心決定，這裡只驗不出現中文）
 
 assert(context.validateCleaningTelegramSelection({records:[],lang:'en'}).includes('No cleaning records'));
 assert(context.validateCleaningTelegramSelection({records:[{slots:[],checks:{smell:true}}],lang:'en'}).includes('no check time'));
@@ -106,8 +107,8 @@ assert.strictEqual(context.validateCleaningTelegramSelection({records:[records[0
 
 const formPacket = context.buildCleaningSelectedRecordsTelegram(records.slice(0, 2), 'bi', 'Paul');
 assert(formPacket.text.includes('📅 2026-08-11'), 'form quick-send is the day card');
-assert(formPacket.text.includes('✅ Office ×2'));
-assert(formPacket.text.includes('• <b>Canteen</b> · 14:30 · ❌ 🧹 · Nin'));
+assert(/✅ \S+ Office ×2/u.test(formPacket.text));
+assert(/• \S+ <b>Canteen<\/b> · 14:30 · ❌ 🧹 · Nin/u.test(formPacket.text));
 assert(formPacket.text.includes('⏱ 10:30, 14:30'));
 assert(formPacket.text.includes('📆 <b>本月累計/Month to date</b> · 🔎 4 · 📍 3 · ❌ 1'), 'day card carries month-to-date totals');
 assert(!formPacket.text.includes('T00:00:00.000Z'));
@@ -125,7 +126,7 @@ assert(html.includes('id="locs-wrap"'));
 assert(html.includes('state.getLocs()'));
 assert(html.includes('telegramScopeMultiple:true'));
 assert(html.includes('telegramSlotMultiple:true'));
-assert(html.includes('gascheck-core.js?v=20261022a'));
+assert(html.includes('gascheck-core.js?v=20261028a'));
 assert(html.includes('id="loc-cleaner-map"'));
 assert(html.includes('state.getLocCleaner(locId)'));
 assert(html.includes('missing-location-cleaner'));
