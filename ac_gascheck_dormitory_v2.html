@@ -143,6 +143,8 @@ select.fi{cursor:pointer}
 .sc:active{transform:scale(.85)}
 .rm-input{border:none;width:100%;padding:5px 6px;font-size:10px;font-family:inherit;outline:none;background:transparent;color:var(--tx);min-width:70px}
 .rm-input:focus{background:#FFFDE7}
+.rm-date{display:block;min-width:104px;padding:2px 4px;font-size:9px;color:var(--dim)}
+.rm-date:first-child{border-bottom:1px dashed var(--bdr2)}
 .insp-quick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px;padding:10px;border:1px solid var(--bdr2);border-radius:10px;background:var(--alt)}
 .insp-quick .btn{min-height:36px}
 .insp-room-ok{display:block;width:100%;min-height:28px;margin:4px auto 2px;border:1px solid #2f8f62;border-radius:7px;background:#e8f8ee;color:#17643f;font-size:10px;font-weight:800;padding:4px 5px;cursor:pointer;white-space:nowrap}
@@ -227,7 +229,9 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=20261028a"></script>
+<script src="./gascheck-core.js?v=20261103a"></script>
+<script src="./ac-holidays.js?v=20261103a"></script>
+<script src="./ac-tg-chart.js?v=20261103a"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -647,7 +651,7 @@ const DORM_TEXT = [
   ['col-water','排水','Drain','ទឹក'],['col-elec','電源','Power','អគ្គិសនី'],['col-ceil','天花板','Ceiling','ពិដាន'],['col-door','門','Door','ទ្វារ'],['col-win','窗','Window','បង្អួច'],
   ['col-spray','噴槍','Sprayer','បាញ់ទឹក'],['col-flush','沖水','Flush','ចាក់ទឹក'],['col-heater','熱水器','Heater','ម៉ាស៊ីនកម្ដៅទឹក'],['col-sink','洗手台','Sink','អាងលាងដៃ'],
   ['col-shower','淋浴','Shower','ផ្កាឈូក'],['col-other','其他','Other','ផ្សេងៗ'],
-  ['room','房號','Room','បន្ទប់'],['remarks','備註','Remarks','កំណត់សម្គាល់'],['no-rooms','此地點無房間設定','No rooms set for this location','គ្មានបន្ទប់សម្រាប់ទីតាំងនេះ'],
+  ['room','房號','Room','បន្ទប់'],['remarks','備註','Remarks','កំណត់សម្គាល់'],['insp-due','⏰ 期限','⏰ Due','⏰ កំណត់'],['insp-fixed','✅ 完成','✅ Fixed','✅ បានជួសជុល'],['insp-due-fixed','期限 / 完成','Due / Fixed','កំណត់ / បានជួសជុល'],['no-rooms','此地點無房間設定','No rooms set for this location','គ្មានបន្ទប់សម្រាប់ទីតាំងនេះ'],
   ['abn-n','⚠️ 異常 {n} 項：','⚠️ {n} anomalies:','⚠️ មិនប្រក្រតី {n}៖'],
   ['insp-saved','✅ 巡查已儲存（異常 {n} 項）','✅ Inspection saved ({n} anomalies)','✅ បានរក្សាទុក ({n} មិនប្រក្រតី)'],
   ['insp-need','⚠️ 請填寫巡查員和日期','⚠️ Enter the inspector and date','⚠️ សូមបញ្ចូលអ្នកត្រួតពិនិត្យ និងកាលបរិច្ឆេទ'],
@@ -1676,7 +1680,8 @@ var insp = (() => {
     let html=`<table class="insp-tbl">
       <thead><tr><th rowspan="2" class="room-cell">${esc(T('room'))}</th>
         ${grps.map(g=>`<th colspan="${g.cols.length}" class="grp-hd ${g.cls}">${esc(T('g-'+g.k))}</th>`).join('')}
-        <th rowspan="2" style="min-width:80px;font-size:9px">${esc(T('remarks'))}</th></tr>
+        <th rowspan="2" style="min-width:80px;font-size:9px">${esc(T('remarks'))}</th>
+        <th rowspan="2" style="min-width:112px;font-size:9px">${esc(T('insp-due-fixed'))}</th></tr>
         <tr>${INSP_COLS.map(c=>`<th>${esc(dormColLabel(c.k))}</th>`).join('')}</tr>
       </thead><tbody>`;
     const data=currentData();
@@ -1687,7 +1692,9 @@ var insp = (() => {
         const v=data[room][col.k]||'';
         html+=`<td><div class="sc ${SCLS[v]||'sc-empty'}" onclick="insp.tap(${qa(room)},'${col.k}')">${SYM[v]||''}</div></td>`;
       });
-      html+=`<td><input class="rm-input" value="${esc(data[room].remarks||'')}" oninput="insp.setRemark(${qa(room)},this.value)" placeholder="—"></td></tr>`;
+      html+=`<td><input class="rm-input" value="${esc(data[room].remarks||'')}" oninput="insp.setRemark(${qa(room)},this.value)" placeholder="—"></td>`;
+      /* 2026-11-03 異常房間的「處理期限／完成日」（選填，舊紀錄沒有也沒關係）；摘要會提醒沒填期限的異常。 */
+      html+=`<td><input type="date" class="rm-input rm-date" value="${esc(data[room].dueDate||'')}" title="${esc(T('insp-due'))}" onchange="insp.setDue(${qa(room)},this.value)"><input type="date" class="rm-input rm-date" value="${esc(data[room].fixedAt||'')}" title="${esc(T('insp-fixed'))}" onchange="insp.setFixed(${qa(room)},this.value)"></td></tr>`;
     });
     html+=`</tbody></table>`;
     wrap.innerHTML=html;
@@ -1715,6 +1722,14 @@ var insp = (() => {
     if(!data[room]) data[room]={};
     data[room].remarks=val;
   };
+  const setDateField = (room, key, val) => {
+    const data=currentData();
+    if(!data[room]) data[room]={};
+    val=String(val||'').trim();
+    if(/^\d{4}-\d{2}-\d{2}$/.test(val))data[room][key]=val;else delete data[room][key];
+  };
+  const setDue = (room, val) => setDateField(room,'dueDate',val);
+  const setFixed = (room, val) => setDateField(room,'fixedAt',val);
 
   const roomOk = room => {
     const data=currentData();if(!data[room])data[room]={};
@@ -1811,8 +1826,8 @@ var insp = (() => {
   const exportXL = () => {
     const data=currentData(),rooms=Object.keys(data).filter(r=>data[r]&&(INSP_COLS.some(c=>data[r][c.k])||data[r].remarks));
     if(!rooms.length){toast(T('no-data'),'warning');return;}
-    const aoa=[[T('room')].concat(INSP_COLS.map(c=>dormColLabel(c.k))).concat([T('remarks')])]
-      .concat(rooms.map(room=>[dormRoomLabel(room)].concat(INSP_COLS.map(c=>SYM[data[room][c.k]||'']||'')).concat([data[room].remarks||''])));
+    const aoa=[[T('room')].concat(INSP_COLS.map(c=>dormColLabel(c.k))).concat([T('remarks'),T('insp-due'),T('insp-fixed')])]
+      .concat(rooms.map(room=>[dormRoomLabel(room)].concat(INSP_COLS.map(c=>SYM[data[room][c.k]||'']||'')).concat([data[room].remarks||'',data[room].dueDate||'',data[room].fixedAt||''])));
     dormWriteXlsx(aoa,'Inspection','VRT_Dorm_Inspection_'+(gv('insp-date')||today_str())+'.xlsx');
   };
 
@@ -1847,7 +1862,7 @@ var insp = (() => {
 
   const viewRecordPhotos = id => {const r=dormLive(state.db().inspections).find(x=>String(x.id)===String(id)),photos=r&&Array.isArray(r.photos)?r.photos:[];if(photos.length&&window.GC&&GC.photo)GC.photo.lightbox(photos,0);};
 
-  return { setLoc, renderTable, tap, setRemark, roomOk, allOk, clearAll, pickPhotos, removePhoto, viewPhoto, renderPhotos, save, sendTg, exportXL, queryHist, delRecord, viewRecordPhotos, histQueried:()=>_histQueried };
+  return { setLoc, renderTable, tap, setRemark, setDue, setFixed, roomOk, allOk, clearAll, pickPhotos, removePhoto, viewPhoto, renderPhotos, save, sendTg, exportXL, queryHist, delRecord, viewRecordPhotos, histQueried:()=>_histQueried };
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -2268,6 +2283,69 @@ function dormTgAppLine(r,lang,withReason){
   if(withReason&&(r.department||r.reason))line+='\n   '+[r.department?G.esc(r.department):'',r.reason?'📝 '+G.esc(String(r.reason).replace(/[\r\n]+/g,' ')):''].filter(Boolean).join(' · ');
   return line;
 }
+/* 巡查分類：沿用表格的三個群組（冷氣／房間／廁所），圖示固定；分類名稱用 i18n g-ac／g-room／g-wc。 */
+const DORM_INSP_GROUPS=[{k:'ac',icon:'❄️'},{k:'room',icon:'🚪'},{k:'wc',icon:'🚿'}];
+function dormAllRooms(){
+  const c=(typeof cfg!=='undefined'&&cfg&&typeof cfg.get==='function')?cfg.get():{},out=[];
+  Object.keys(DEF_ROOMS_MAP).forEach(loc=>{const list=Array.isArray(c['rooms_'+loc])?c['rooms_'+loc]:DEF_ROOMS_MAP[loc]||[];list.forEach(room=>out.push({location:loc,room:String(room)}));});
+  return out;
+}
+/* 彙整巡查數字：各分類 ✅／⚠️、房間 正常／異常／未巡查、每個巡查日的異常數、照片數、已完成／逾期／未填期限 */
+function dormInspStats(o){
+  const {roomList,badRooms,insps,inScope,ref,period,range}=o,byKey=new Set(roomList.map(x=>x.location+'|'+x.room));
+  const groups=DORM_INSP_GROUPS.map(g=>{const cols=INSP_COLS.filter(c=>c.g===g.k).map(c=>c.k);let ok=0,bad=0;const rows=[];roomList.forEach(x=>{ok+=x.ok.filter(k=>cols.includes(k)).length;const b=x.bad.filter(k=>cols.includes(k));bad+=b.length;if(b.length)rows.push({room:x,bad:b});});return {k:g.k,icon:g.icon,cols,ok,bad,rows};});
+  const notChecked=insps.length?dormAllRooms().filter(x=>inScope(x.room)&&!byKey.has(x.location+'|'+x.room)):[];
+  const byDate={};insps.forEach(r=>{const d=String(r.date||'').slice(0,10);if(!d)return;let n=0;Object.keys(r.data||{}).forEach(room=>{if(!inScope(room))return;const rd=r.data[room]||{};INSP_COLS.forEach(c=>{if(rd[c.k]==='X')n++;});});byDate[d]=(byDate[d]||0)+n;});
+  const photos=insps.reduce((s,r)=>s+(Array.isArray(r.photos)?r.photos.length:0),0);
+  const today=String(ref||today_str()).slice(0,10);
+  let fixed=0,overdue=0,noDue=0;badRooms.forEach(x=>{if(x.fixedAt)fixed++;else if(!x.dueDate)noDue++;else if(x.dueDate<today)overdue++;});
+  return {groups,roomList,badRooms,okRooms:roomList.filter(x=>!x.bad.length),notChecked,byDate,photos,issues:badRooms.reduce((s,x)=>s+x.bad.length,0),fixed,overdue,noDue,inspections:insps.length,period,range};
+}
+/* 異常一行：房號 · 地點 · ✗ 項目 · 日期 · 👤 巡查員 · 📷 n／無照片 · ✅ 完成／⏰ 期限／🔴 逾期／⏰ 請填期限 */
+function dormInspDueText(x,lang,ref){
+  const G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),today=String(ref||today_str()).slice(0,10);
+  if(x.fixedAt)return '✅ '+lb('完成','fixed','បានជួសជុល')+' '+G.d(x.fixedAt);
+  if(!x.dueDate)return '⏰ '+lb('請填期限','set due date','សូមបំពេញកំណត់');
+  return (x.dueDate<today?'🔴 '+lb('逾期','overdue','ហួសកំណត់'):'⏰ '+lb('期限','due','កំណត់'))+' '+G.d(x.dueDate);
+}
+function dormInspIssueLine(x,bad,lang,K,ref){
+  const G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),n=x.photos.filter(p=>/^(data:image\/|https?:\/\/)/i.test(String(p))).length;
+  return '• <b>'+G.esc(dormTgRoom(x.room,lang))+'</b> · '+G.esc(K('loc-'+x.location)||x.location)+' · ✗ '+bad.map(k=>K('col-'+k)||COL_LABELS[k]||k).join(', ')+' · '+G.d(x.date)+(x.n>1?' ×'+x.n:'')+' · 👤 '+G.esc(x.inspector||'—')+' · '+(n?'📷 '+n:'📷 '+lb('無照片','no photo','គ្មានរូបថត'))+' · '+dormInspDueText(x,lang,ref)+(x.remarks?' · 📝 '+G.esc(String(x.remarks).replace(/[\r\n]+/g,' ')):'');
+}
+function dormInspLines(lines,sec,S,lang,K,ref){
+  const G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km);
+  lines.push(sec('🔍',lb('設施巡查','Inspection','ត្រួតពិនិត្យ')+' · ✅ '+S.okRooms.length+' · ⚠️ '+S.badRooms.length+(S.notChecked.length?' · ⏳ '+S.notChecked.length:'')));
+  if(S.roomList.length)lines.push(G.bar(S.okRooms.length,S.roomList.length,10)+' '+lb('房間正常','rooms OK','បន្ទប់ល្អ')+(S.fixed||S.overdue||S.noDue?' · '+[S.fixed?'✅ '+lb('已完成','fixed','បានជួសជុល')+' '+S.fixed:'',S.overdue?'🔴 '+lb('逾期','overdue','ហួសកំណត់')+' '+S.overdue:'',S.noDue?'⏰ '+lb('未填期限','no due date','គ្មានកំណត់')+' '+S.noDue:''].filter(Boolean).join(' · '):''));
+  S.groups.forEach(g=>{
+    const total=g.ok+g.bad;
+    lines.push(g.icon+' <b>'+G.esc(K('g-'+g.k)||g.k)+'</b> · ✅ '+g.ok+' · ⚠️ '+g.bad+(total?' · '+G.bar(g.ok,total,8):' · —'));
+    g.rows.forEach(r=>lines.push(dormInspIssueLine(r.room,r.bad,lang,K,ref)));
+  });
+  if(S.notChecked.length)lines.push('⏳ '+lb('未巡查','Not checked','មិនទាន់ពិនិត្យ')+' · '+S.notChecked.length+G.fold([S.notChecked.map(x=>G.esc(dormTgRoom(x.room,lang))+' ('+G.esc(K('loc-'+x.location)||x.location)+')').join(', ')]));
+}
+/* 2026-11-03 摘要附圖（ac-tg-chart.js）：分類 ✅／⚠️ 橫條、房間圓環、指標列、每個巡查日的異常數。沒有 ACChart 或畫不出來回傳 ''（摘要照常送，只是沒圖）。 */
+function dormSummaryChart(S,lang,periodLabel){
+  if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
+  try{
+    const D=i18n.dict,t=(zh,en,km)=>lang==='bi'?zh+' · '+en:lang==='en'?en:lang==='km'?en+(km?' · '+km:''):zh,P=ACChart.PALETTE||[];
+    const C={ok:P[1]||'#2e9c6a',bad:P[3]||'#e35d5b',na:P[7]||'#6c8ea4',info:P[0]||'#2b8fbd',warn:P[2]||'#f2a93b'};
+    const bars=[];S.groups.forEach(g=>{const name=t(D.zh['g-'+g.k],D.en['g-'+g.k],D.km['g-'+g.k]);bars.push({label:'✅ '+name,value:g.ok,color:C.ok});bars.push({label:'⚠️ '+name,value:g.bad,color:C.bad});});
+    const blocks=[
+      {type:'bars',title:t('各分類檢查結果','Checks by category','តាមប្រភេទ'),items:bars},
+      {type:'donut',title:t('房間','Rooms','បន្ទប់'),center:String(S.roomList.length),centerSub:lang==='en'?'rooms':lang==='km'?'បន្ទប់':'房間',items:[{label:t('正常','OK','ល្អ'),value:S.okRooms.length,color:C.ok},{label:t('有異常','Issues','មានបញ្ហា'),value:S.badRooms.length,color:C.bad},{label:t('未巡查','Not checked','មិនទាន់ពិនិត្យ'),value:S.notChecked.length,color:C.na}]},
+      {type:'stats',items:[{label:t('已巡查房間','Rooms checked','បន្ទប់បានពិនិត្យ'),value:String(S.roomList.length),color:C.info},{label:t('異常項目','Issues','បញ្ហា'),value:String(S.issues),color:S.issues?C.bad:C.na},{label:t('照片','Photos','រូបថត'),value:String(S.photos),color:C.warn}]}
+    ];
+    const dates=Object.keys(S.byDate).sort();
+    /* 只有一個巡查日就不畫直條（一根柱子沒意義，指標列改成整排） */
+    if(dates.length>1){
+      let cols;
+      if(S.period==='year'){const byM={};dates.forEach(d=>{const m=d.slice(5,7);byM[m]=(byM[m]||0)+S.byDate[d];});cols=[];for(let i=1;i<=12;i++){const k=(i<10?'0':'')+i;cols.push({label:String(i),value:byM[k]||0});}}
+      else cols=dates.map(d=>({label:GC.TG.d(d),value:S.byDate[d]}));
+      blocks.push({type:'columns',title:S.period==='year'?t('每月異常數','Issues per month','បញ្ហាក្នុងមួយខែ'):t('各巡查日異常數','Issues per inspection date','បញ្ហាតាមថ្ងៃពិនិត្យ'),items:cols,color:C.bad});
+    }
+    return ACChart.render({title:t('VRT 宿舍設施巡查','VRT Dormitory inspection','ការត្រួតពិនិត្យអន្តេវាសិកដ្ឋាន VRT'),subtitle:String(periodLabel||''),theme:'green',width:1080,blocks,footer:'AC GASCheck · '+t('宿舍管理','Dormitory','អន្តេវាសិកដ្ឋាន')})||'';
+  }catch(e){return '';}
+}
 function buildDormTelegram(opt){
   opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode=opt.mode||'summary',ref=opt.ref||today_str(),scope=opt.scope||'all',slot=opt.slot||'all';
   const lang=opt.lang||i18n.get()||'zh',G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),D=i18n.dict,K=k=>G.lbl(lang,D.zh[k],D.en[k],D.km[k]),day=period==='day';
@@ -2282,10 +2360,12 @@ function buildDormTelegram(opt){
   const st=c=>apps.filter(r=>dormStatusCode(r.status)===c).length;
   const pending=appsAll.filter(r=>dormStatusCode(r.status)==='pending').sort((a,b)=>String(a.date||'').localeCompare(String(b.date||'')));
   const moveIn=apps.filter(r=>dormTypeCode(r.type)==='in').length,moveOut=apps.length-moveIn;
-  /* 房間最新狀態：同一地點＋房號依巡查日期取最後一次；異常項目＝該次勾 ✗ 的欄位 */
+  /* 房間最新狀態：同一地點＋房號依巡查日期取最後一次；異常項目＝該次勾 ✗ 的欄位。
+     2026-11-03 Paul：摘要跟消防一樣「依檢查分類分組＋每項異常一行（房號、問題、日期、巡查員、📷、期限／完成）＋附圖」，所以多記巡查員、ok 欄位與 dueDate／fixedAt。 */
   const rooms=new Map();
-  insps.forEach(r=>{Object.keys(r.data||{}).forEach(room=>{if(!inScope(room))return;const rd=r.data[room]||{};if(!INSP_COLS.some(c=>rd[c.k])&&!String(rd.remarks||'').trim())return;const key=r.location+'|'+room,cur=rooms.get(key)||{room,location:r.location,n:0};cur.n++;cur.date=r.date;cur.bad=INSP_COLS.filter(c=>rd[c.k]==='X').map(c=>c.k);cur.remarks=rd.remarks||'';cur.photos=Array.isArray(r.photos)?r.photos:[];rooms.set(key,cur);});});
+  insps.forEach(r=>{Object.keys(r.data||{}).forEach(room=>{if(!inScope(room))return;const rd=r.data[room]||{};if(!INSP_COLS.some(c=>rd[c.k])&&!String(rd.remarks||'').trim())return;const key=r.location+'|'+room,cur=rooms.get(key)||{room,location:r.location,n:0};cur.n++;cur.date=r.date;cur.inspector=r.inspector||'';cur.bad=INSP_COLS.filter(c=>rd[c.k]==='X').map(c=>c.k);cur.ok=INSP_COLS.filter(c=>rd[c.k]==='N').map(c=>c.k);cur.remarks=rd.remarks||'';cur.dueDate=rd.dueDate||'';cur.fixedAt=rd.fixedAt||'';cur.photos=Array.isArray(r.photos)?r.photos:[];rooms.set(key,cur);});});
   const roomList=Array.from(rooms.values()),badRooms=roomList.filter(x=>x.bad.length).sort((a,b)=>String(a.location).localeCompare(String(b.location))||String(a.room).localeCompare(String(b.room)));
+  const inspStats=dormInspStats({roomList,badRooms,insps,inScope,ref,period,range});
   const serious=viols.filter(v=>v.level==='Serious').length;
   let txt=G.head('🏠',lb('VRT 宿舍管理','VRT Dormitory','VRT អន្តេវាសិកដ្ឋាន'),dormTgPeriodLabel(period,ref,lang),!anyScope?'🗂 '+G.esc(scopes.join(', ')):'');
   txt+='\n'+G.verdict(serious||badRooms.length?'bad':pending.length||viols.length?'warn':'ok',pending.length?lb(pending.length+' 筆待核可',pending.length+' pending approval',pending.length+' រង់ចាំអនុម័ត'):lb('沒有待辦','Nothing pending','គ្មានការរង់ចាំ'))+(badRooms.length?' · ⚠️ '+lb('異常房間','Rooms to fix','បន្ទប់មានបញ្ហា')+' '+badRooms.length:'')+(serious?' · 🚫 '+lb('嚴重違規','Serious','ធ្ងន់ធ្ងរ')+' '+serious:'');
@@ -2301,13 +2381,16 @@ function buildDormTelegram(opt){
   if(mode==='review')txt+='\n⏳ Paul: '+lb('請在各申請的 Telegram 核可卡按 ✅／❌','approve / reject each application on its Telegram card','អនុម័ត / បដិសេធ ពាក្យនីមួយៗលើកាត Telegram');
   const lines=[],sec=(icon,title)=>'\n<b>'+icon+' '+title+'</b>';
   if(pending.length){lines.push(sec('⏳',lb('待核可','Pending approval','រង់ចាំអនុម័ត')+' · '+pending.length));pending.forEach(r=>lines.push(dormTgAppLine(r,lang,mode==='review')));}
-  if(badRooms.length){lines.push(sec('⚠️',lb('巡查異常','Inspection issues','បញ្ហាត្រួតពិនិត្យ')+' · '+badRooms.length));badRooms.forEach(x=>lines.push('• <b>'+G.esc(dormTgRoom(x.room,lang))+'</b> · '+G.esc(K('loc-'+x.location)||x.location)+' · ✗ '+x.bad.map(k=>K('col-'+k)||COL_LABELS[k]||k).join(', ')+' · '+G.d(x.date)+(x.n>1?' ×'+x.n:'')+(x.remarks?' · 📝 '+G.esc(String(x.remarks).replace(/[\r\n]+/g,' ')):'')));}
+  if(roomList.length||inspStats.notChecked.length)dormInspLines(lines,sec,inspStats,lang,K,ref);
   if(viols.length){lines.push(sec('🚫',lb('違規','Violations','ការល្មើស')+' · '+viols.length));viols.forEach(v=>lines.push('• <b>'+G.esc(v.name||'—')+'</b>'+(v.idNo?' · '+G.esc(v.idNo):'')+(v.roomNo?' · '+G.esc(v.roomNo):'')+' · '+G.esc(dormViolTypeCode(v.type)?K('vt-'+dormViolTypeCode(v.type)):String(v.type||''))+(v.level?' · '+(v.level==='Serious'?'🔴 ':v.level==='Moderate'?'🟠 ':'')+G.esc(['Minor','Moderate','Serious'].includes(v.level)?K('lv-'+v.level):v.level):'')+' · '+G.d(v.date)+(v.desc?' · 📝 '+G.esc(String(v.desc).replace(/[\r\n]+/g,' ')):'')));}
   const decided=apps.filter(r=>/^(approved|rejected)$/.test(dormStatusCode(r.status)));
   /* 已決定的只在日報或少量時逐筆列，否則只看上面的數字 */
   if(decided.length&&(day||decided.length<=4)){lines.push(sec('✔',lb('本期已決定','Decided this period','បានសម្រេចក្នុងរយៈពេលនេះ')+' · '+decided.length));decided.forEach(r=>lines.push((dormStatusCode(r.status)==='approved'?'• ✅ ':'• ❌ ')+dormTgAppLine(r,lang,false).slice(2)));}
   if(!apps.length&&!insps.length&&!viols.length&&!pending.length)lines.push('\nℹ️ '+lb('這段期間沒有紀錄','No records in this period','គ្មានកំណត់ត្រាក្នុងរយៈពេលនេះ'));
   const photos=[];
+  /* 第 1 張＝摘要圖（有巡查才畫，畫不出來就跳過），之後接異常房間照片，合計 ≤ 5 張 */
+  const chart=insps.length?dormSummaryChart(inspStats,lang,dormTgPeriodLabel(period,ref,lang)):'';
+  if(chart)photos.push(chart);
   badRooms.forEach(x=>x.photos.forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);}));
   const body=lines.length?'\n'+lines.join('\n'):'';
   if((txt+body).length<=3000)return {text:txt+body,photos};

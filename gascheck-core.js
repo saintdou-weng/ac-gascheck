@@ -3195,10 +3195,11 @@ GC.TG = (function () {
   }
   function head(icon, title, period, sub) { return icon + ' <b>' + title + '</b>' + (period ? '\n📅 ' + esc(period) : '') + (sub ? '\n' + sub : '') + '\n━━━━━━━━━━━━'; }
   function verdict(level, text) { return (level === 'bad' ? '🔴' : level === 'warn' ? '🟠' : '🟢') + ' <b>' + String(text == null ? '' : text) + '</b>'; }
-  function bar(value, total, width) {
+  function bar(value, total, width, tone) {
     width = width || 10; total = Number(total) || 0; value = Number(value) || 0;
     if (total <= 0) return '';
-    const r = Math.max(0, Math.min(1, value / total)), n = Math.round(r * width), block = r >= 0.9 ? '🟩' : r >= 0.7 ? '🟨' : '🟥';
+    /* tone 'neutral'：純資訊比例（送水天數等），不用紅黃綠評分（2026-11-03 Paul：送水是按用量叫車，不是漏送） */
+    const r = Math.max(0, Math.min(1, value / total)), n = Math.round(r * width), block = tone === 'neutral' ? '🟦' : r >= 0.9 ? '🟩' : r >= 0.7 ? '🟨' : '🟥';
     let out = ''; for (let i = 0; i < width; i++) out += i < n ? block : '⬜';
     return out + ' ' + Math.round(r * 100) + '%';
   }
@@ -4119,7 +4120,7 @@ GC.attach = function (cfg) {
     sendState.textContent = '';
     setModalOpen(tgModal, true);
   }
-  let telegramSending=false;
+  let telegramSending=false, autosendRun=false;
   async function sendCurrentTelegram() {
     if(telegramSending)return;
     const validationError = telegramValidationError();
@@ -4129,7 +4130,7 @@ GC.attach = function (cfg) {
       if (C.telegramRequireSender && !sender && senderInput) senderInput.focus();
       return;
     }
-    if (C.telegramConfirmSender) {
+    if (C.telegramConfirmSender && !autosendRun) {
       const question = I18.t('gc.confirmSender').replace('{name}', sender);
       if (!global.confirm(question)) return;
     }
@@ -4290,8 +4291,22 @@ GC.attach = function (cfg) {
       if (preset.period) { period = preset.period; periodRef = ''; }
       if (preset.ref) periodRef = preset.ref;
       if (preset.mode && telegramModes.includes(preset.mode)) mode = preset.mode;
+      if (preset.lang && ['bi', 'zh', 'en', 'km'].includes(preset.lang)) { lang = preset.lang; langTouched = true; }
       openTelegram();
       if (preset.ref) { try { tgModal.querySelector('[data-gc-ref]').value = preset.ref; } catch (e) {} }
+      if (preset.lang) { try { langSelect.value = lang; } catch (e) {} }
+      /* 2026-11-03 代發排程：?autosend=1 → 預覽建好後自動按「發送」，結果放在 window.__AC_AUTOSEND 給排程讀 */
+      if (preset.autosend) {
+        global.__AC_AUTOSEND = { state:'pending', tool:C.tool, period:period, ref:periodRef, mode:mode, lang:lang };
+        setTimeout(async function () {
+          const err = telegramValidationError();
+          if (err) { global.__AC_AUTOSEND = Object.assign(global.__AC_AUTOSEND, { state:'skipped', reason:err }); return; }
+          global.__AC_AUTOSEND.state = 'sending'; autosendRun = true;
+          try { await sendCurrentTelegram(); } finally { autosendRun = false; }
+          const txt = String(sendState.textContent || '');
+          global.__AC_AUTOSEND = Object.assign(global.__AC_AUTOSEND, txt.charAt(0) === '✓' ? { state:'sent' } : { state:'error', reason:txt.replace(/^✕\s*/, '') });
+        }, 1500);
+      }
     },
     /* 用與 Telegram 完全相同的建構器產生某期間／語言的摘要文字（不送出） */
     buildText:async function (o) {
@@ -4321,9 +4336,9 @@ GC.attach = function (cfg) {
   try {
     const qs = new URLSearchParams(global.location.search), tgq = qs.get('tg');
     if (tgq) {
-      const p = qs.get('ptype') || 'month', ref = refFromKey(p, qs.get('period') || '');
+      const p = qs.get('ptype') || 'month', ref = refFromKey(p, qs.get('period') || ''), lq = qs.get('lang') || '', auto = qs.get('autosend') === '1';
       try { global.history.replaceState(null, '', global.location.pathname); } catch (e) {}
-      setTimeout(function () { refreshPeriodOptions(); GC.pages[C.tool].openTelegram({ period:p, ref:ref, mode:tgq === 'approval' ? 'approval' : 'summary' }); }, 900);
+      setTimeout(function () { refreshPeriodOptions(); GC.pages[C.tool].openTelegram({ period:p, ref:ref, mode:tgq === 'approval' ? 'approval' : 'summary', lang:lq === 'both' ? 'bi' : lq, autosend:auto }); }, 900);
     }
   } catch (e) {}
   return {
