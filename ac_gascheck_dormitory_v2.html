@@ -2430,7 +2430,17 @@ function dormInspLines(lines,sec,S,lang,K,ref){
   if(S.notChecked.length)lines.push('⏳ '+lb('未巡查','Not checked','មិនទាន់ពិនិត្យ')+' · '+S.notChecked.length+G.fold([S.notChecked.map(x=>G.esc(dormTgRoom(x.room,lang))+' ('+G.esc(K('loc-'+x.location)||x.location)+')').join(', ')]));
 }
 /* 2026-11-03 摘要附圖（ac-tg-chart.js）：分類 ✅／⚠️ 橫條、房間圓環、指標列、每個巡查日的異常數。沒有 ACChart 或畫不出來回傳 ''（摘要照常送，只是沒圖）。 */
+/* 2026-11-04 畫圖約 1.5 秒；面板每換一個選項就重算預覽 → 同樣的數字只畫一次（快取最近 8 張） */
+const _dormChartCache=new Map();
 function dormSummaryChart(S,lang,periodLabel){
+  let key='';
+  try{key=JSON.stringify([lang,String(periodLabel||''),S.period,S.groups.map(g=>[g.k,g.ok,g.bad]),S.okRooms.length,S.badRooms.length,S.notChecked.length,S.roomList.length,S.issues,S.photos,S.byDate]);}catch(e){key='';}
+  if(key&&_dormChartCache.has(key))return _dormChartCache.get(key);
+  const out=dormSummaryChartDraw(S,lang,periodLabel);
+  if(key){_dormChartCache.set(key,out);if(_dormChartCache.size>8)_dormChartCache.delete(_dormChartCache.keys().next().value);}
+  return out;
+}
+function dormSummaryChartDraw(S,lang,periodLabel){
   if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
   try{
     const D=i18n.dict,t=(zh,en,km)=>lang==='bi'?zh+' · '+en:lang==='en'?en:lang==='km'?en+(km?' · '+km:''):zh,P=ACChart.PALETTE||[];
