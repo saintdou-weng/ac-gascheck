@@ -147,6 +147,14 @@ select.fi{cursor:pointer}
 .rm-date:first-child{border-bottom:1px dashed var(--bdr2)}
 .insp-quick{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 10px;padding:10px;border:1px solid var(--bdr2);border-radius:10px;background:var(--alt)}
 .insp-quick .btn{min-height:36px}
+.insp-loaded{margin:0 0 8px;padding:8px 12px;border-radius:8px;background:var(--bl,#EAF2FB);border:1px solid var(--bdr2);font-size:11px;font-weight:600;color:var(--acc2,#2C5282)}
+.ih-notes{padding:8px 10px 2px}
+.ih-title{font-size:12px;font-weight:700;margin:2px 0 6px}
+.ih-verdict{padding:7px 10px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:6px}
+.ih-ok{background:#E7F6EE;color:#1E6B45}.ih-warn{background:#FFF4E0;color:#8A5A0B}.ih-bad{background:#FDECEC;color:#A12A2A}
+.ih-miss{font-size:10px;color:var(--dim);margin-top:2px;white-space:normal}
+.ih-open{background:none;border:none;padding:0;color:var(--acc,#2563EB);font-weight:700;text-decoration:underline;cursor:pointer;font:inherit}
+@media (prefers-color-scheme:dark){.ih-ok{background:#123326;color:#9BE3BD}.ih-warn{background:#3A2A0C;color:#F5C979}.ih-bad{background:#3A1515;color:#F4A3A3}}
 .insp-room-ok{display:block;width:100%;min-height:28px;margin:4px auto 2px;border:1px solid #2f8f62;border-radius:7px;background:#e8f8ee;color:#17643f;font-size:10px;font-weight:800;padding:4px 5px;cursor:pointer;white-space:nowrap}
 .insp-room-ok:active{background:#bdeecf;transform:scale(.97)}
 .insp-photo-count{font-size:11px;font-weight:700;color:var(--acc2)}
@@ -229,7 +237,7 @@ select.fi{cursor:pointer}
 }
 @media print{.topbar,.tabs,.br,.fb,.dn,.lang-grp{display:none!important}body{background:#fff}}
 </style>
-<script src="./gascheck-core.js?v=20261103a"></script>
+<script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
 <script src="./ac-tg-chart.js?v=20261103a"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
@@ -378,8 +386,7 @@ select.fi{cursor:pointer}
     <div class="cb">
       <div class="fb" style="border:none;border-radius:0;margin-bottom:0">
         <div class="fbg"><div class="fbl"><span data-i="f-inspector">巡查員</span> *</div><input class="fbi" id="insp-inspector" placeholder="Phea" style="min-width:110px"></div>
-        <div class="fbg"><div class="fbl"><span data-i="f-date">日期</span> *</div><input class="fbi" type="date" id="insp-date"></div>
-        <div class="fbg"><div class="fbl" data-i="f-quarter">季度</div><select class="fbi" id="insp-q"><option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option></select></div>
+        <div class="fbg"><div class="fbl"><span data-i="f-date">日期</span> *</div><input class="fbi" type="date" id="insp-date" onchange="insp.loadForDate(true)"></div>
         <button class="btn bp" id="insp-save-btn" style="padding:7px 12px;font-size:11px" onclick="insp.save()" data-i="btn-save-insp">💾 儲存巡查</button>
         <button class="btn bg2" id="insp-tg-btn" style="padding:7px 12px;font-size:11px" onclick="insp.sendTg()">📤 Telegram</button>
         <button class="btn bo" style="padding:7px 12px;font-size:11px" onclick="insp.exportXL()">📥 Excel</button>
@@ -399,18 +406,33 @@ select.fi{cursor:pointer}
         <span class="insp-photo-count" id="insp-photo-count">0 / 8</span>
         <div class="insp-photo-grid" id="insp-photo-grid"></div>
       </div>
+      <div class="insp-loaded" id="insp-loaded" hidden></div>
       <div id="insp-abn" style="display:none;background:var(--rl);border:1px solid #E8A0A0;border-radius:8px;padding:8px 12px;font-size:11px;color:var(--red);margin-bottom:8px"></div>
       <div class="insp-wrap" id="insp-tbl-wrap"></div>
       <div style="margin-top:6px;font-size:10px;color:var(--dim)" data-i="cycle-hint">點擊單格循環：空白 → ✓N 正常 → ✗X 異常 → − N/A → 空白</div>
     </div>
   </div>
   <div class="card"><div class="ch"><span class="ch-ic">📊</span><span class="ch-tl" data-i="hist-title">巡查歷史</span></div>
+    <div class="dn" style="margin:8px 10px 0">
+      <div class="dn-periods">
+        <button class="dnp" data-p="day" onclick="ihDE.set('day',this)" data-i="p-day">日</button>
+        <button class="dnp" data-p="week" onclick="ihDE.set('week',this)" data-i="p-week">週</button>
+        <button class="dnp on" data-p="month" onclick="ihDE.set('month',this)" data-i="p-month">月</button>
+        <button class="dnp" data-p="year" onclick="ihDE.set('year',this)" data-i="p-year">年</button>
+      </div>
+      <div class="dn-nav">
+        <button class="dn-btn" onclick="ihDE.prev()" aria-label="Previous">◀</button>
+        <span class="dn-label" id="dn-ih-label">—</span>
+        <button class="dn-btn" onclick="ihDE.next()" aria-label="Next">▶</button>
+      </div>
+      <button class="dn-today" onclick="ihDE.today()" data-i="btn-today">今天</button>
+    </div>
     <div class="fb" style="border:none;border-radius:0;border-bottom:1px solid var(--bdr2);padding-bottom:9px">
-      <div class="fbg"><div class="fbl" data-i="fl-loc">地點</div><select class="fbi" id="ih-loc"><option value="" data-i="all">全部</option><option value="foreignDorm" data-i="loc-foreignDorm">外籍宿舍</option><option value="localDorm" data-i="loc-localDorm">當地宿舍</option><option value="factory" data-i="loc-factory">工廠</option><option value="office" data-i="loc-office">辦公室</option></select></div>
-      <div class="fbg"><div class="fbl" data-i="fl-status">狀態</div><select class="fbi" id="ih-status"><option value="" data-i="all">全部</option><option value="abn" data-i="has-abn">有異常</option><option value="ok" data-i="all-normal">全正常</option></select></div>
-      <div class="fbg"><div class="fbl" data-i="fl-month">月份</div><input type="month" class="fbi" id="ih-month"></div>
+      <div class="fbg"><div class="fbl" data-i="fl-loc">地點</div><select class="fbi" id="ih-loc" onchange="insp.queryHist()"><option value="" data-i="all">全部</option><option value="foreignDorm" data-i="loc-foreignDorm">外籍宿舍</option><option value="localDorm" data-i="loc-localDorm">當地宿舍</option><option value="factory" data-i="loc-factory">工廠</option><option value="office" data-i="loc-office">辦公室</option></select></div>
+      <div class="fbg"><div class="fbl" data-i="fl-status">狀態</div><select class="fbi" id="ih-status" onchange="insp.queryHist()"><option value="" data-i="all">全部</option><option value="abn" data-i="has-abn">有異常</option><option value="ok" data-i="all-normal">全正常</option></select></div>
       <button class="btn bp" style="padding:6px 12px;font-size:11px" onclick="insp.queryHist()" data-i="btn-query">🔍 查詢</button>
     </div>
+    <div class="ih-notes" id="insp-keynote"></div>
     <div id="insp-hist"></div>
     <div class="xsync" id="xsync-insp"></div>
   </div>
@@ -484,8 +506,7 @@ select.fi{cursor:pointer}
     <div class="cb">
       <div class="fgrid c3" style="margin-bottom:8px">
         <div class="fg"><div class="fl" data-i="cfg-dorm-name">宿舍名稱</div><input class="fi" id="cfg-dorm-name" placeholder="VRT Dormitory"></div>
-        <div class="fg"><div class="fl" data-i="cfg-quarter">預設季度</div><select class="fi" id="cfg-quarter"><option>Q1</option><option>Q2</option><option>Q3</option><option>Q4</option></select></div>
-        <div class="fg"><div class="fl" data-i="cfg-refresh">Dashboard 刷新（秒）</div><input class="fi" type="number" id="cfg-refresh" value="0" min="0" data-i-ph="ph-refresh" placeholder="0=關閉"></div>
+                <div class="fg"><div class="fl" data-i="cfg-refresh">Dashboard 刷新（秒）</div><input class="fi" type="number" id="cfg-refresh" value="0" min="0" data-i-ph="ph-refresh" placeholder="0=關閉"></div>
       </div>
       <div style="margin-bottom:10px">
         <div class="fbl" style="margin-bottom:4px" data-i="cfg-room-list">房號清單</div>
@@ -654,6 +675,21 @@ const DORM_TEXT = [
   ['room','房號','Room','បន្ទប់'],['remarks','備註','Remarks','កំណត់សម្គាល់'],['insp-due','⏰ 期限','⏰ Due','⏰ កំណត់'],['insp-fixed','✅ 完成','✅ Fixed','✅ បានជួសជុល'],['insp-due-fixed','期限 / 完成','Due / Fixed','កំណត់ / បានជួសជុល'],['no-rooms','此地點無房間設定','No rooms set for this location','គ្មានបន្ទប់សម្រាប់ទីតាំងនេះ'],
   ['abn-n','⚠️ 異常 {n} 項：','⚠️ {n} anomalies:','⚠️ មិនប្រក្រតី {n}៖'],
   ['insp-saved','✅ 巡查已儲存（異常 {n} 項）','✅ Inspection saved ({n} anomalies)','✅ បានរក្សាទុក ({n} មិនប្រក្រតី)'],
+  ['insp-loaded','📂 已顯示 {date} {loc} 的巡查紀錄（巡查員 {who}），可直接修改後按「儲存巡查」更新','📂 Showing the {date} {loc} inspection (inspector {who}). Edit and press Save to update it','📂 កំពុងបង្ហាញការត្រួតពិនិត្យ {date} {loc} (អ្នកត្រួតពិនិត្យ {who})។ កែ ហើយចុចរក្សាទុក ដើម្បីធ្វើបច្ចុប្បន្នភាព'],
+  ['insp-unsaved','✏️ 已修改，尚未儲存','✏️ Changed, not saved yet','✏️ បានកែ មិនទាន់រក្សាទុក'],
+  ['insp-none-day','🗓 {date} {loc} 還沒有巡查紀錄','🗓 No inspection yet for {loc} on {date}','🗓 មិនទាន់មានការត្រួតពិនិត្យ {loc} នៅ {date}'],
+  ['insp-updated','✅ 已更新這天的巡查（異常 {n} 項）','✅ Inspection for this day updated ({n} anomalies)','✅ បានធ្វើបច្ចុប្បន្នភាព ({n} មិនប្រក្រតី)'],
+  ['kn-title','巡查重點','Key notes','ចំណុចសំខាន់'],
+  ['kn-done','這段期間巡查 {n} 次 · {d} 天有巡查（共 {t} 天）','{n} inspections · inspected on {d} of {t} days','ត្រួតពិនិត្យ {n} ដង · {d} ថ្ងៃ ក្នុង {t} ថ្ងៃ'],
+  ['kn-none','這段期間沒有任何巡查','No inspection in this period','គ្មានការត្រួតពិនិត្យក្នុងរយៈពេលនេះ'],
+  ['kn-anom','異常 {n} 項','{n} issues','បញ្ហា {n}'],
+  ['kn-times','{n} 次','{n} times','{n} ដង'],
+  ['kn-not-yet','未巡查','Not inspected','មិនទាន់ពិនិត្យ'],
+  ['kn-overdue','逾期','Overdue','ហួសកំណត់'],['kn-nodue','未填期限','No due date','គ្មានកំណត់'],
+  ['kn-col-times','巡查次數','Inspections','ចំនួនដង'],['kn-col-last','最後巡查','Last inspected','ពិនិត្យចុងក្រោយ'],['kn-col-rooms','已巡查房間','Rooms checked','បន្ទប់បានពិនិត្យ'],
+  ['kn-open','點日期看這筆巡查','Tap the date to open this inspection','ចុចកាលបរិច្ឆេទ ដើម្បីបើក'],
+  ['viol-save-first','⚠️ 這筆違規還沒儲存，請先按「儲存違規」再發 Telegram','⚠️ Save this violation first, then send Telegram','⚠️ សូមរក្សាទុកការល្មើសនេះជាមុនសិន'],
+  ['tg-no-period','這段期間沒有申請、巡查或違規','No applications, inspections or violations in this period','គ្មានពាក្យស្នើ ការត្រួតពិនិត្យ ឬការល្មើស'],
   ['insp-need','⚠️ 請填寫巡查員和日期','⚠️ Enter the inspector and date','⚠️ សូមបញ្ចូលអ្នកត្រួតពិនិត្យ និងកាលបរិច្ឆេទ'],
   ['insp-empty','⚠️ 尚未勾選任何項目，未儲存','⚠️ Nothing is checked yet; not saved','⚠️ មិនទាន់បានគូសអ្វីទេ; មិនបានរក្សាទុក'],
   ['all-set-ok','✅ 本區已全部設為正常','✅ All rooms in this area set to OK','✅ បន្ទប់ទាំងអស់ក្នុងតំបន់នេះល្អ'],['cleared-area','↺ 已清除本區勾選','↺ This area was cleared','↺ បានសម្អាតតំបន់នេះ'],
@@ -909,6 +945,8 @@ function makeDateEngine(labelId, onChange) {
 }
 var de = makeDateEngine('dn-label',    () => dash.render());
 var recDE = makeDateEngine('dn-rec-label',  () => {window._dormPendingAllDates=false;records.query();});
+/* 2026-11-04 巡查歷史：日／週／月／年＋重點摘要（是否有巡查） */
+var ihDE = makeDateEngine('dn-ih-label', () => { if(typeof insp!=='undefined') insp.queryHist(); });
 
 // ═══════════════════════════════════════════════════════════════
 // STATE
@@ -992,9 +1030,8 @@ var cfg = (() => {
     if(!_cfg.reviewers) _cfg.reviewers=['Phea'];
     _cfg.approvers=['Paul Weng'];
     if(!_cfg.inspectors)_cfg.inspectors=['Phea','Nin'];
-    if(!_cfg.quarter)   _cfg.quarter='Q1';
     if(!_cfg.refresh)   _cfg.refresh=0;
-    sv('cfg-dorm-name',_cfg.dormName); sv('cfg-quarter',_cfg.quarter); sv('cfg-refresh',_cfg.refresh);
+    sv('cfg-dorm-name',_cfg.dormName); sv('cfg-refresh',_cfg.refresh);
     settings.renderAll();
     settings.renderIRRooms();
   };
@@ -1022,8 +1059,6 @@ var settings = (() => {
     }
     const fr = document.getElementById('f-reviewer');
     if(fr && !fr.value && c.reviewers&&c.reviewers.length) fr.value = c.reviewers[0];
-    const iq = document.getElementById('insp-q');
-    if(iq && !iq.dataset.touched) iq.value = c.quarter||'Q1';
   };
   const renderTags = (id, arr, type) => {
     const el=document.getElementById(id); if(!el) return;
@@ -1075,7 +1110,6 @@ var settings = (() => {
   const save = () => {
     const c=cfg.get();
     c.dormName = gv('cfg-dorm-name');
-    c.quarter  = gv('cfg-quarter');
     c.refresh  = parseInt(gv('cfg-refresh'))||0;
     cfg.persist();
     renderAll(); renderIRRooms(); insp.renderTable(); toast(T('dorm-saved'));
@@ -1219,7 +1253,7 @@ var ui = (() => {
     const pn=document.getElementById(`pane-${t}`); if(pn)pn.classList.add('active');
     if(t==='dash')    dash.render();
     if(t==='roster')  roster.load();
-    if(t==='insp')    { insp.renderTable(); insp.queryHist(); }
+    if(t==='insp')    { insp.loadForDate(false); insp.queryHist(); }
     if(t==='records'){records.query();setTimeout(function(){records.refreshStatus(false);},80);}
     if(t==='viol')    viol.renderList();
     if(t==='settings'){ cfg.load(); }
@@ -1645,6 +1679,10 @@ var insp = (() => {
   let _dataByLoc = {};   // { [location]: { [room]: values } }
   let _photosByLoc = {}; // each facility keeps its own inspection photos
   let _histQueried = false;
+  /* 2026-11-04 選日期就顯示該日、該地點已存的巡查（Paul：點日期要看到該分頁資料）。
+     _loadedByLoc[loc] = {date, id}：目前表格是從哪一筆紀錄載入；_dirtyByLoc[loc]：載入後有沒有改過。 */
+  let _loadedByLoc = {};
+  let _dirtyByLoc = {};
 
   const currentLoc = () => state.getInspLoc();
   const currentData = () => (_dataByLoc[currentLoc()] || (_dataByLoc[currentLoc()]={}));
@@ -1664,8 +1702,44 @@ var insp = (() => {
     state.setInspLoc(loc);
     document.querySelectorAll('#insp-locs .loc-tab').forEach(t=>t.classList.remove('active'));
     if(el) el.classList.add('active');
-    renderTable();
-    renderPhotos();
+    loadForDate(false);
+  };
+
+  /* 同日同地點的巡查紀錄（舊資料可能一天存了好幾筆：依時間先後合併，後面的蓋前面的） */
+  const recordsFor = (date, loc) => dormLive(state.db().inspections)
+    .filter(r=>r&&String(r.date||'').slice(0,10)===date&&r.location===loc)
+    .sort((a,b)=>String(a.updatedAt||a.timestamp||'').localeCompare(String(b.updatedAt||b.timestamp||'')));
+  const markDirty = () => { _dirtyByLoc[currentLoc()]=true; };
+  const loadForDate = (fromPicker) => {
+    const loc=currentLoc(),date=gv('insp-date'),loaded=_loadedByLoc[loc];
+    const recs=date?recordsFor(date,loc):[];
+    if(loaded&&loaded.date===date&&_dirtyByLoc[loc]){ renderTable(); renderPhotos(); showLoaded(); return; }
+    if(recs.length){
+      const merged={},photos=[];
+      recs.forEach(r=>{
+        Object.keys(r.data||{}).forEach(room=>{merged[room]=Object.assign(merged[room]||{},JSON.parse(JSON.stringify(r.data[room]||{})));});
+        (Array.isArray(r.photos)?r.photos:[]).forEach(ph=>{if(ph&&!photos.includes(ph)&&photos.length<PHOTO_LIMIT)photos.push(ph);});
+      });
+      const last=recs[recs.length-1];
+      _dataByLoc[loc]=merged;_photosByLoc[loc]=photos;
+      _loadedByLoc[loc]={date,id:last.id,n:recs.length,inspector:last.inspector||''};_dirtyByLoc[loc]=false;
+      if(fromPicker&&last.inspector&&!gv('insp-inspector').trim())sv('insp-inspector',last.inspector);
+    } else if(loaded){
+      /* 換到沒有紀錄的日期：清掉剛才載入的內容（使用者自己還沒存的草稿不動） */
+      if(!_dirtyByLoc[loc]){_dataByLoc[loc]={};_photosByLoc[loc]=[];}
+      delete _loadedByLoc[loc];
+    }
+    renderTable(); renderPhotos(); showLoaded();
+  };
+  const showLoaded = () => {
+    const el=document.getElementById('insp-loaded');if(!el)return;
+    const L=_loadedByLoc[currentLoc()],date=gv('insp-date');
+    if(L&&L.date===date){
+      el.hidden=false;
+      el.textContent=T('insp-loaded',{date:L.date,loc:dormLocLabel(currentLoc()),who:L.inspector||'—'})+(_dirtyByLoc[currentLoc()]?' · '+T('insp-unsaved'):'');
+    } else if(date){
+      el.hidden=false;el.textContent=T('insp-none-day',{date,loc:dormLocLabel(currentLoc())});
+    } else el.hidden=true;
   };
 
   const renderTable = () => {
@@ -1706,7 +1780,7 @@ var insp = (() => {
     if(!data[room]) data[room]={};
     const cur=data[room][col]||'';
     const next=CYCLE[cur]!==undefined?CYCLE[cur]:'N';
-    data[room][col]=next;
+    data[room][col]=next;markDirty();
     document.querySelectorAll('.insp-tbl .room-cell').forEach(roomCell=>{
       if(roomCell.dataset.room!==String(room))return;
       const tds=roomCell.parentElement.querySelectorAll('td');
@@ -1720,30 +1794,31 @@ var insp = (() => {
   const setRemark = (room, val) => {
     const data=currentData();
     if(!data[room]) data[room]={};
-    data[room].remarks=val;
+    data[room].remarks=val;markDirty();
   };
   const setDateField = (room, key, val) => {
     const data=currentData();
     if(!data[room]) data[room]={};
     val=String(val||'').trim();
     if(/^\d{4}-\d{2}-\d{2}$/.test(val))data[room][key]=val;else delete data[room][key];
+    markDirty();
   };
   const setDue = (room, val) => setDateField(room,'dueDate',val);
   const setFixed = (room, val) => setDateField(room,'fixedAt',val);
 
   const roomOk = room => {
     const data=currentData();if(!data[room])data[room]={};
-    INSP_COLS.forEach(c=>data[room][c.k]='N');renderTable();
+    INSP_COLS.forEach(c=>data[room][c.k]='N');markDirty();renderTable();
   };
 
   const allOk = () => {
     const data=currentData();getRooms().forEach(room=>{if(!data[room])data[room]={};INSP_COLS.forEach(c=>data[room][c.k]='N');});
-    renderTable();toast(T('all-set-ok'));
+    markDirty();renderTable();toast(T('all-set-ok'));
   };
 
   const clearAll = () => {
     const data=currentData(); getRooms().forEach(room=>{if(data[room])INSP_COLS.forEach(c=>{data[room][c.k]='';});});
-    renderTable(); toast(T('cleared-area'));
+    markDirty();renderTable(); toast(T('cleared-area'));
   };
 
   const countAnomalies = (data) => {
@@ -1779,49 +1854,50 @@ var insp = (() => {
     const photos=currentPhotos(),files=Array.from(input&&input.files||[]),remaining=PHOTO_LIMIT-photos.length;
     if(input)input.value='';if(!files.length)return;if(remaining<=0){toast(T('photo-limit'),'warning');return;}
     for(const file of files.slice(0,remaining)){try{photos.push(await compressPhoto(file));}catch(e){toast(T('photo-fail'),'warning');}}
-    renderPhotos();if(files.length>remaining)toast(T('photo-kept8'),'warning');
+    markDirty();renderPhotos();if(files.length>remaining)toast(T('photo-kept8'),'warning');
   };
-  const removePhoto = i => {currentPhotos().splice(i,1);renderPhotos();};
+  const removePhoto = i => {currentPhotos().splice(i,1);markDirty();renderPhotos();};
   const viewPhoto = i => {const photos=currentPhotos();if(window.GC&&GC.photo)GC.photo.lightbox(photos,i||0);else if(photos[i])window.open(photos[i],'_blank');};
 
   const save = () => dormGuard('insp-save', () => {
     const inspector=gv('insp-inspector').trim();
     const date=gv('insp-date');
-    const q=gv('insp-q');
     const miss=[];if(!inspector)miss.push('insp-inspector');if(!date)miss.push('insp-date');
     if(miss.length){dormMarkInvalid(miss);toast(T('insp-need'),'warning');return;}
-    const data=currentData();
+    const loc=currentLoc(),data=currentData();
     if(!hasContent(data)&&!currentPhotos().length){toast(T('insp-empty'),'warning');return;}
-    const ts=_localTS();
-    const record={
-      id:'insp'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),timestamp:ts,updatedAt:ts,
-      date,quarter:q,location:state.getInspLoc(),inspector,
-      data:JSON.parse(JSON.stringify(data)),photos:currentPhotos().slice(0,PHOTO_LIMIT),anomalies:countAnomalies(data)
-    };
-    state.db().inspections.push(record);
+    const ts=_localTS(),db=state.db();
+    /* 同日同地點已有紀錄 → 更新那一筆（不另存一筆重複的）；舊資料同日多筆的，其餘併入後標成刪除。 */
+    const same=recordsFor(date,loc),keep=same[same.length-1];
+    const payload={date,location:loc,inspector,data:JSON.parse(JSON.stringify(data)),photos:currentPhotos().slice(0,PHOTO_LIMIT),anomalies:countAnomalies(data),updatedAt:ts};
+    let record;
+    if(keep){
+      const extra=new Set(same.slice(0,-1).map(r=>String(r.id)));
+      db.inspections=db.inspections.map(r=>{
+        if(!r||r._deleted)return r;
+        if(String(r.id)===String(keep.id)){const n=Object.assign({},r,payload);delete n.quarter;record=n;return n;}
+        if(extra.has(String(r.id)))return dormTomb(r,['date','location']);
+        return r;
+      });
+    } else {
+      record=Object.assign({id:'insp'+Date.now().toString(36)+Math.random().toString(36).slice(2,5),timestamp:ts},payload);
+      db.inspections.push(record);
+    }
     if(!state.save())return;
-    toast(T('insp-saved',{n:record.anomalies}),'success');
-    /* 儲存後清空本區勾選與照片（巡查員、日期保留），避免重複儲存同一份。 */
-    _dataByLoc[currentLoc()]={};_photosByLoc[currentLoc()]=[];
-    renderTable();renderPhotos();
-    dash.render();queryHist();dormExtraSync.schedule('inspection_save');
+    toast(T(keep?'insp-updated':'insp-saved',{n:record.anomalies}),'success');
+    _loadedByLoc[loc]={date,id:record.id,n:1,inspector};_dirtyByLoc[loc]=false;
+    renderTable();renderPhotos();showLoaded();
+    dash.render();queryHist();dormExtraSync.schedule(keep?'inspection_update':'inspection_save');
     return true;
   });
 
-  const sendTg = () => dormGuard('insp-tg', async () => {
-    const inspector=gv('insp-inspector').trim();
-    const date=gv('insp-date');
-    const abn=abnList(currentData());
-    const photos=currentPhotos();
-    const msg=`🔍 <b>${esc(T('tg-insp-title'))}</b>\n📍 ${esc(dormLocLabel(state.getInspLoc()))}\n📅 ${esc(date||'—')}\n👤 ${esc(inspector||'—')}\n✅ ${esc(T('rooms'))}: ${getRooms().length}\n⚠️ ${esc(T('th-anom'))}: ${abn.length}\n📷 ${esc(T('photos'))}: ${photos.length}${abn.length?'\n'+abn.slice(0,8).map(a=>'  • '+esc(a)).join('\n'):''}`;
-    const btn=document.getElementById('insp-tg-btn');if(btn)btn.disabled=true;
-    try{
-      const res=await tgPost({text:msg,photos:photos.slice(0,PHOTO_LIMIT)});
-      if(!dormTgOk(res))throw new Error((res&&res.error)||'Telegram');
-      toast(T('tg-sent'),'success');
-    }catch(e){toast(T('tg-fail')+e.message,'error');}
-    finally{if(btn)btn.disabled=false;}
-  });
+  /* 2026-11-04 Telegram 一律走共用面板（模式／日週月年／語言／群組／預覽），不再直接發簡易版。
+     預設選巡查日期的「日」摘要；表格有改過還沒存，先存再開。 */
+  const sendTg = async () => {
+    const loc=currentLoc(),date=gv('insp-date')||today_str();
+    if(_dirtyByLoc[loc]&&(hasContent(currentData())||currentPhotos().length)){ const ok=await save(); if(ok!==true)return; }
+    dormOpenTelegram('day',date);
+  };
 
   const exportXL = () => {
     const data=currentData(),rooms=Object.keys(data).filter(r=>data[r]&&(INSP_COLS.some(c=>data[r][c.k])||data[r].remarks));
@@ -1831,38 +1907,70 @@ var insp = (() => {
     dormWriteXlsx(aoa,'Inspection','VRT_Dorm_Inspection_'+(gv('insp-date')||today_str())+'.xlsx');
   };
 
+  /* 巡查歷史：依上方 日／週／月／年 篩選，先列「重點」(有沒有巡查、各地點最後巡查、未巡查房間、異常／逾期)，再列明細。 */
+  const keyNotes = (all, range, loc) => {
+    const locs=loc?[loc]:Object.keys(DEF_ROOMS_MAP);
+    const today=today_str(),days=new Set(all.map(r=>String(r.date||'').slice(0,10)));
+    const lines=[];
+    const totalDays=(()=>{const a=new Date(range.from+'T00:00:00'),b=new Date((range.to<today?range.to:today)+'T00:00:00');return b<a?0:Math.round((b-a)/864e5)+1;})();
+    const anomalies=all.reduce((s,r)=>s+(Number(r.anomalies)||0),0);
+    const verdict=!all.length?'bad':anomalies?'warn':'ok';
+    const icon={ok:'🟢',warn:'🟠',bad:'🔴'}[verdict];
+    lines.push(`<div class="ih-verdict ih-${verdict}">${icon} ${esc(all.length?T('kn-done',{n:all.length,d:days.size,t:totalDays}):T('kn-none'))}${anomalies?' · ⚠️ '+esc(T('kn-anom',{n:anomalies})):''}</div>`);
+    const rows=locs.map(L=>{
+      const recs=all.filter(r=>r.location===L),last=recs.map(r=>String(r.date||'').slice(0,10)).sort().pop()||'';
+      const c=cfg.get(),rooms=(Array.isArray(c['rooms_'+L])?c['rooms_'+L]:DEF_ROOMS_MAP[L]||[]).map(String);
+      const checked=new Set();let bad=0,overdue=0,noDue=0;
+      recs.forEach(r=>Object.keys(r.data||{}).forEach(room=>{const rd=r.data[room]||{};if(INSP_COLS.some(k=>rd[k.k])){checked.add(String(room));const x=INSP_COLS.filter(k=>rd[k.k]==='X').length;if(x){bad+=x;if(!rd.fixedAt){if(!rd.dueDate)noDue++;else if(rd.dueDate<today)overdue++;}}}}));
+      const missing=rooms.filter(x=>!checked.has(x));
+      const st=!recs.length?'🔴':bad||missing.length?'🟠':'🟢';
+      return `<tr><td>${st} ${esc(dormLocLabel(L))}</td><td>${recs.length?esc(T('kn-times',{n:recs.length})):'<b style="color:var(--red)">'+esc(T('kn-not-yet'))+'</b>'}</td><td>${esc(last||'—')}</td><td>${rooms.length?checked.size+' / '+rooms.length:'—'}${missing.length&&recs.length?'<div class="ih-miss">⏳ '+esc(missing.slice(0,12).map(dormRoomLabel).join(', '))+(missing.length>12?' …':'')+'</div>':''}</td><td>${bad?'⚠️ '+bad:'✅ 0'}${overdue?' · 🔴 '+esc(T('kn-overdue'))+' '+overdue:''}${noDue?' · ⏰ '+esc(T('kn-nodue'))+' '+noDue:''}</td></tr>`;
+    }).join('');
+    lines.push(`<div class="tw"><table class="rt"><thead><tr><th>${esc(T('fl-loc'))}</th><th>${esc(T('kn-col-times'))}</th><th>${esc(T('kn-col-last'))}</th><th>${esc(T('kn-col-rooms'))}</th><th>${esc(T('th-anom'))}</th></tr></thead><tbody>${rows}</tbody></table></div>`);
+    return lines.join('');
+  };
   const queryHist = () => {
     _histQueried=true;
-    const loc=gv('ih-loc'), status=gv('ih-status'), month=gv('ih-month');
-    const recs=dormLive(state.db().inspections).filter(r=>{
-      if(loc&&r.location!==loc)return false;
-      if(month&&!String(r.date||'').startsWith(month))return false;
+    const loc=gv('ih-loc'), status=gv('ih-status'), range=ihDE.getRange();
+    const inR=r=>{const d=String(r.date||'').slice(0,10);return d>=range.from&&d<=range.to;};
+    const all=dormLive(state.db().inspections).filter(r=>inR(r)&&(!loc||r.location===loc));
+    const recs=all.filter(r=>{
       if(status==='abn'&&!(Number(r.anomalies)>0))return false;
       if(status==='ok'&&Number(r.anomalies)>0)return false;
       return true;
     }).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||''))||String(b.timestamp||'').localeCompare(String(a.timestamp||'')));
+    const kn=document.getElementById('insp-keynote');if(kn)kn.innerHTML=`<div class="ih-title">📌 ${esc(T('kn-title'))} · ${esc(ihDE.getLabel())}</div>`+keyNotes(all,range,loc);
     const el=document.getElementById('insp-hist');if(!el)return;
     if(!recs.length){ el.innerHTML=`<div class="es"><span class="esi">🔍</span>${esc(T('hist-empty'))}</div>`; return; }
     el.innerHTML=`<div style="padding:6px 12px;font-size:10px;color:var(--dim)">${esc(T('count-n',{n:recs.length}))}</div>
-      <div class="tw"><table class="rt"><thead><tr><th>${esc(T('th-date'))}</th><th>${esc(T('fl-loc'))}</th><th>${esc(T('th-inspector'))}</th><th>${esc(T('th-quarter'))}</th><th>${esc(T('th-anom'))}</th><th>${esc(T('th-photos'))}</th><th></th></tr></thead>
+      <div class="tw"><table class="rt"><thead><tr><th>${esc(T('th-date'))}</th><th>${esc(T('fl-loc'))}</th><th>${esc(T('th-inspector'))}</th><th>${esc(T('th-anom'))}</th><th>${esc(T('th-photos'))}</th><th></th></tr></thead>
       <tbody>${recs.map(r=>`<tr>
-        <td>${esc(r.date||'')}</td><td>${esc(dormLocLabel(r.location))}</td><td>${esc(r.inspector||'')}</td><td>${esc(r.quarter||'')}</td>
+        <td><button class="ih-open" onclick="insp.openRecord(${qa(r.id)})" title="${esc(T('kn-open'))}">${esc(r.date||'')}</button></td><td>${esc(dormLocLabel(r.location))}</td><td>${esc(r.inspector||'')}</td>
         <td>${Number(r.anomalies)>0?`<span class="badge b-pend">⚠️ ${Number(r.anomalies)}</span>`:'✅ 0'}</td>
         <td>${(r.photos||[]).length?`<button class="btn bo" style="padding:3px 7px;font-size:10px" onclick="insp.viewRecordPhotos(${qa(r.id)})">📷 ${(r.photos||[]).length}</button>`:'—'}</td>
         <td><button onclick="insp.delRecord(${qa(r.id)})" style="background:none;border:none;color:var(--red);cursor:pointer;padding:6px" aria-label="Delete">✕</button></td>
       </tr>`).join('')}</tbody></table></div>`;
+  };
+  /* 點歷史的日期 → 上方切到那天、那個地點，直接顯示該筆巡查 */
+  const openRecord = id => {
+    const r=dormLive(state.db().inspections).find(x=>String(x.id)===String(id));if(!r)return;
+    sv('insp-date',String(r.date||'').slice(0,10));
+    const tab=document.querySelector(`#insp-locs .loc-tab[data-loc="${r.location}"]`);
+    _dirtyByLoc[r.location]=false;delete _loadedByLoc[r.location];
+    setLoc(r.location,tab);
+    const top=document.getElementById('pane-insp');if(top&&top.scrollIntoView)top.scrollIntoView({behavior:'smooth',block:'start'});
   };
 
   const delRecord = (id) => {
     if(!confirm(T('del-insp-q')))return;
     const db=state.db();
     db.inspections=db.inspections.map(r=>String(r&&r.id)===String(id)&&!r._deleted?dormTomb(r,['date','location']):r);
-    state.save(); queryHist(); dash.render(); dormExtraSync.schedule('inspection_delete'); toast(T('deleted'));
+    state.save(); if(_loadedByLoc[currentLoc()]&&String(_loadedByLoc[currentLoc()].id)===String(id)){delete _loadedByLoc[currentLoc()];_dirtyByLoc[currentLoc()]=false;loadForDate(false);} queryHist(); dash.render(); dormExtraSync.schedule('inspection_delete'); toast(T('deleted'));
   };
 
   const viewRecordPhotos = id => {const r=dormLive(state.db().inspections).find(x=>String(x.id)===String(id)),photos=r&&Array.isArray(r.photos)?r.photos:[];if(photos.length&&window.GC&&GC.photo)GC.photo.lightbox(photos,0);};
 
-  return { setLoc, renderTable, tap, setRemark, setDue, setFixed, roomOk, allOk, clearAll, pickPhotos, removePhoto, viewPhoto, renderPhotos, save, sendTg, exportXL, queryHist, delRecord, viewRecordPhotos, histQueried:()=>_histQueried };
+  return { setLoc, loadForDate, openRecord, renderTable, tap, setRemark, setDue, setFixed, roomOk, allOk, clearAll, pickPhotos, removePhoto, viewPhoto, renderPhotos, save, sendTg, exportXL, queryHist, delRecord, viewRecordPhotos, histQueried:()=>_histQueried };
 })();
 
 // ═══════════════════════════════════════════════════════════════
@@ -1905,15 +2013,11 @@ var viol = (() => {
     db.violations=db.violations.map(r=>String(r&&r.id)===String(id)&&!r._deleted?dormTomb(r,['date','name']):r);
     state.save(); renderList(); dash.render(); dormExtraSync.schedule('violation_delete'); toast(T('deleted'));
   };
-  const sendTg = () => dormGuard('viol-tg', async () => {
-    const name=gv('vf-name').trim();
-    if(!name){dormMarkInvalid(['vf-name']);toast(T('required')+T('th-name'),'warning');return;}
-    const msg=`🚫 <b>${esc(T('tg-viol-title'))}</b>\n👤 ${esc(name)} (${esc(gv('vf-room')||'—')})\n📌 ${esc(dormViolTypeLabel(gv('vf-type'))||'—')}\n⚠️ ${esc(dormLevelLabel(gv('vf-level')))}\n📋 ${esc(gv('vf-desc')||'—')}`;
-    const btn=document.getElementById('viol-tg-btn');if(btn)btn.disabled=true;
-    try{const res=await tgPost({text:msg});if(!dormTgOk(res))throw new Error((res&&res.error)||'Telegram');toast(T('tg-sent'),'success');}
-    catch(e){toast(T('tg-fail')+e.message,'error');}
-    finally{if(btn)btn.disabled=false;}
-  });
+  /* 2026-11-04 違規的 Telegram 也走共用面板（可選日週月年、語言、群組，先預覽）；表單填了還沒存要先存。 */
+  const sendTg = () => {
+    if(gv('vf-name').trim()){toast(T('viol-save-first'),'warning');return;}
+    dormOpenTelegram('day',gv('vf-date')||today_str());
+  };
   const exportXL = () => {
     const rows=dormLive(state.db().violations); if(!rows.length){toast(T('no-data'),'warning');return;}
     const aoa=[[T('th-date'),T('th-name'),T('th-id'),T('th-room'),T('f-viol-type'),T('f-viol-level'),T('f-viol-desc'),T('f-viol-by'),T('f-viol-action')]]
@@ -2108,7 +2212,7 @@ var dormExtraSync = (() => {
       try{
         await one('inspections');await one('violations');
         status='ok';
-        if(ui.current()==='insp'&&insp.histQueried())insp.queryHist();
+        if(ui.current()==='insp'){insp.loadForDate(false);if(insp.histQueried())insp.queryHist();}
         if(ui.current()==='viol')viol.renderList();
         dash.render();
         return true;
@@ -2188,8 +2292,8 @@ function dormRerenderAll(){
     state.applyFormType();renderItems();settings.renderAll();settings.renderIRRooms();
     appForm.renderBanner();
     if(_lastApvRecordId&&document.getElementById('apv-card-wrap').innerHTML){const r=state.db().records.find(x=>String(x.id)===_lastApvRecordId);if(r)showApvCard(r);}
-    de.refreshLabel();recDE.refreshLabel();
-    dash.render();records.query();roster.load();viol.renderList();insp.renderTable();insp.renderPhotos();
+    de.refreshLabel();recDE.refreshLabel();if(typeof ihDE!=='undefined')ihDE.refreshLabel();
+    dash.render();records.query();roster.load();viol.renderList();insp.loadForDate(false);
     if(insp.histQueried())insp.queryHist();
     updateDbInfo();dormExtraSync.render();
   }catch(e){console.warn('[dorm] rerender',e);}
@@ -2215,12 +2319,11 @@ function goApply(t) {
     state.applyFormType();
     sv('f-date',today_str()); sv('f-applydate',today_str()); sv('f-reviewer',(cfg.get().reviewers||[])[0]||'Phea');
     sv('vf-date',today_str()); sv('insp-date',today_str());
-    const iq=document.getElementById('insp-q');if(iq){iq.value=cfg.get().quarter||'Q1';iq.addEventListener('change',()=>{iq.dataset.touched='1';});}
     try {
       const draft=JSON.parse(localStorage.getItem('vrt_dorm_draft'));
       if(draft){state.setFType(draft.type||'in');[['name','f-name'],['gender','f-gender'],['id','f-id'],['dept','f-dept'],['pos','f-pos'],['phone','f-phone'],['reason','f-reason'],['applicant','f-applicant'],['note','f-app-note']].forEach(([k,id])=>{if(draft[k])sv(id,draft[k]);});if(draft.room)sv('f-room',draft.room);if(draft.date)sv('f-date',draft.date);if(Array.isArray(draft.items)&&draft.items.length)state.setItems(draft.items);}
     } catch(e){}
-    insp.renderTable(); insp.renderPhotos();
+    insp.loadForDate(false);
     de.set('month',document.querySelector('#pane-dash .dnp[data-p="month"]'));
     recDE.set('month',document.querySelector('#pane-records .dnp[data-p="month"]'));
     updateDbInfo(); settings.renderIRRooms();
@@ -2346,6 +2449,24 @@ function dormSummaryChart(S,lang,periodLabel){
     return ACChart.render({title:t('VRT 宿舍設施巡查','VRT Dormitory inspection','ការត្រួតពិនិត្យអន្តេវាសិកដ្ឋាន VRT'),subtitle:String(periodLabel||''),theme:'green',width:1080,blocks,footer:'AC GASCheck · '+t('宿舍管理','Dormitory','អន្តេវាសិកដ្ឋាន')})||'';
   }catch(e){return '';}
 }
+/* 2026-11-04 巡查／違規頁的 📤 Telegram 打開共用面板（不再直接發簡易版） */
+function dormOpenTelegram(period,ref){
+  const pg=window.GC&&GC.pages&&GC.pages.dormitory;
+  if(pg&&typeof pg.openTelegram==='function'){pg.openTelegram({period:period||'day',ref:String(ref||today_str()).slice(0,10)});return;}
+  const b=document.querySelector('.gc-head-tools[data-gc-tool="dormitory"] [data-gc-open-tg]');if(b)b.click();
+}
+/* 面板的「期間」清單與「這段期間有沒有資料」要算進巡查和違規，不是只看申請 */
+function dormTelegramDates(){
+  const db=state.db();
+  return dormLive(db.inspections).map(r=>r.date).concat(dormLive(db.violations).map(v=>v.date)).filter(Boolean);
+}
+function dormTelegramHasData(ctx){
+  if(ctx&&ctx.records&&ctx.records.length)return true;
+  const r=GC.period.range(ctx.period,ctx.ref),inP=d=>{d=String(d||'').slice(0,10);return !r||(d>=r.fromYmd&&d<=r.toYmd);};
+  const db=state.db();
+  if(dormLive(db.inspections).some(x=>inP(x.date))||dormLive(db.violations).some(x=>inP(x.date)))return true;
+  return dormLive(db.records).some(x=>dormStatusCode(x.status)==='pending')?true:T('tg-no-period');
+}
 function buildDormTelegram(opt){
   opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',mode=opt.mode||'summary',ref=opt.ref||today_str(),scope=opt.scope||'all',slot=opt.slot||'all';
   const lang=opt.lang||i18n.get()||'zh',G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),D=i18n.dict,K=k=>G.lbl(lang,D.zh[k],D.en[k],D.km[k]),day=period==='day';
@@ -2417,7 +2538,8 @@ function buildDormTelegram(opt){
       dateField:'date',
       idField:'id',
       cloudKey:dormRecordKey,
-      telegramAutoUpload:true,telegramRequireData:true,telegramSameDayUpdate:true,
+      telegramAutoUpload:true,telegramRequireData:false,telegramSameDayUpdate:true,
+      telegramExtraDates:dormTelegramDates,telegramValidator:dormTelegramHasData,
       /* 宿舍核可只走每筆申請的 Telegram 核可卡；共用摘要不提供「核可」選項。 */
       telegramModes:['summary','review'],
       telegramBuilder:buildDormTelegram,

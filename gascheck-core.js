@@ -3997,12 +3997,19 @@ GC.attach = function (cfg) {
     if (p === 'all') return I18.t('gc.all');
     return ref;
   }
+  function extraDates() {
+    if (typeof C.telegramExtraDates !== 'function') return [];
+    try { return (C.telegramExtraDates() || []).map(function (x) { return dateFromRecord(x); }).filter(Boolean); }
+    catch (e) { return []; }
+  }
   function refreshPeriodOptions(choose) {
     const refs = new Set();
     GC.telegram.filter(C.read() || [], C, 'all', null, scope, slot).forEach(function (r) {
       const d = dateFromRecord(r && r[C.dateField]);
       if (d) refs.add(periodReference(d, period));
     });
+    /* 2026-11-04 模組可補充其他資料的日期（例：宿舍的巡查／違規），期間清單才找得到那些日子 */
+    extraDates().forEach(function (d) { refs.add(periodReference(d, period)); });
     const anchor = periodReference(dateFromRecord(periodAnchor) || new Date(), period);
     if (!periodRef || choose === true) {
       // Changing Month to Week keeps the real reference day, not the latest
@@ -4275,6 +4282,7 @@ GC.attach = function (cfg) {
   function knownRefs(p) {
     const refs = new Set();
     GC.telegram.filter(C.read() || [], C, 'all', null, C.telegramScopeMultiple ? ['all'] : 'all', C.telegramSlotMultiple ? ['all'] : 'all').forEach(function (r) { const d = dateFromRecord(r && r[C.dateField]); if (d) refs.add(periodReference(d, p)); });
+    extraDates().forEach(function (d) { refs.add(periodReference(d, p)); });
     return Array.from(refs).sort().reverse();
   }
   function refFromKey(p, key) {
