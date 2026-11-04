@@ -1922,9 +1922,11 @@ var insp = (() => {
       const c=cfg.get(),rooms=(Array.isArray(c['rooms_'+L])?c['rooms_'+L]:DEF_ROOMS_MAP[L]||[]).map(String);
       const checked=new Set();let bad=0,overdue=0,noDue=0;
       recs.forEach(r=>Object.keys(r.data||{}).forEach(room=>{const rd=r.data[room]||{};if(INSP_COLS.some(k=>rd[k.k])){checked.add(String(room));const x=INSP_COLS.filter(k=>rd[k.k]==='X').length;if(x){bad+=x;if(!rd.fixedAt){if(!rd.dueDate)noDue++;else if(rd.dueDate<today)overdue++;}}}}));
-      const missing=rooms.filter(x=>!checked.has(x));
+      /* 舊紀錄房號可能沒有 #（501 vs #501）：比對時去掉 #，且只算設定裡的房間 */
+      const nk=v=>String(v).replace(/^#/,'').trim(),done=new Set(Array.from(checked).map(nk));
+      const missing=rooms.filter(x=>!done.has(nk(x))),checkedN=rooms.length-missing.length;
       const st=!recs.length?'🔴':bad||missing.length?'🟠':'🟢';
-      return `<tr><td>${st} ${esc(dormLocLabel(L))}</td><td>${recs.length?esc(T('kn-times',{n:recs.length})):'<b style="color:var(--red)">'+esc(T('kn-not-yet'))+'</b>'}</td><td>${esc(last||'—')}</td><td>${rooms.length?checked.size+' / '+rooms.length:'—'}${missing.length&&recs.length?'<div class="ih-miss">⏳ '+esc(missing.slice(0,12).map(dormRoomLabel).join(', '))+(missing.length>12?' …':'')+'</div>':''}</td><td>${bad?'⚠️ '+bad:'✅ 0'}${overdue?' · 🔴 '+esc(T('kn-overdue'))+' '+overdue:''}${noDue?' · ⏰ '+esc(T('kn-nodue'))+' '+noDue:''}</td></tr>`;
+      return `<tr><td>${st} ${esc(dormLocLabel(L))}</td><td>${recs.length?esc(T('kn-times',{n:recs.length})):'<b style="color:var(--red)">'+esc(T('kn-not-yet'))+'</b>'}</td><td>${esc(last||'—')}</td><td>${rooms.length?checkedN+' / '+rooms.length:'—'}${missing.length&&recs.length?'<div class="ih-miss">⏳ '+esc(missing.slice(0,12).map(dormRoomLabel).join(', '))+(missing.length>12?' …':'')+'</div>':''}</td><td>${bad?'⚠️ '+bad:'✅ 0'}${overdue?' · 🔴 '+esc(T('kn-overdue'))+' '+overdue:''}${noDue?' · ⏰ '+esc(T('kn-nodue'))+' '+noDue:''}</td></tr>`;
     }).join('');
     lines.push(`<div class="tw"><table class="rt"><thead><tr><th>${esc(T('fl-loc'))}</th><th>${esc(T('kn-col-times'))}</th><th>${esc(T('kn-col-last'))}</th><th>${esc(T('kn-col-rooms'))}</th><th>${esc(T('th-anom'))}</th></tr></thead><tbody>${rows}</tbody></table></div>`);
     return lines.join('');
