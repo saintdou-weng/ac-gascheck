@@ -4297,6 +4297,7 @@ GC.attach = function (cfg) {
     openTelegram:function (preset) {
       preset = preset || {};
       if (preset.period) { period = preset.period; periodRef = ''; }
+      if (preset.scope !== undefined) scope = C.telegramScopeMultiple ? (Array.isArray(preset.scope) ? preset.scope : [preset.scope]) : preset.scope;
       if (preset.ref) periodRef = preset.ref;
       if (preset.mode && telegramModes.includes(preset.mode)) mode = preset.mode;
       if (preset.lang && ['bi', 'zh', 'en', 'km'].includes(preset.lang)) { lang = preset.lang; langTouched = true; }

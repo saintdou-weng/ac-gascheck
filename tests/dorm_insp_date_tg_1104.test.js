@@ -50,12 +50,30 @@ function setup(w){const R=w.Date;w.Date=class extends R{constructor(...a){super(
   assert(modal.classList.contains('open'),'Telegram options panel opened');
   assert.equal(modal.querySelector('[data-gc-period]').value,'day');
   assert.equal(modal.querySelector('[data-gc-ref]').value,D);
+  assert.equal(modal.querySelector('[data-gc-scope]').value,'insp:foreignDorm','inspection scope preselected');
+  const scopes=Array.from(modal.querySelector('[data-gc-scope]').options).map(o=>o.value);
+  for(const v of ['all','insp','insp:foreignDorm','insp:localDorm','insp:factory','insp:office','apps','viol'])assert(scopes.includes(v),v);
+  const pv=modal.querySelector('[data-gc-preview]').textContent;
+  assert(/Facility Inspection|設施巡查/.test(pv),'preview is the inspection report');
+  // 詳細內容：異常逐間、正常房間、未巡查
+  db.inspections.push({id:'i9',date:D,location:'localDorm',inspector:'Nin',timestamp:D+' 09:00:00',updatedAt:D+' 09:00:00',data:{'L1':{...normal,[cols[1]]:'X',remarks:'leak'}},photos:[],anomalies:1});w.state.save();
+  let rep=w.buildDormTelegram({cfg:w.__configs.dormitory,period:'day',ref:D,lang:'zh',scope:'insp'});
+  assert(rep.text.includes('外籍宿舍')&&rep.text.includes('當地宿舍'),'per location');
+  assert(rep.text.includes('L1')&&rep.text.includes('leak'),'issue room with remark');
+  assert(rep.text.includes('Nin')&&rep.text.includes('Phea'),'inspectors');
+  assert(/工廠.*未巡查/.test(rep.text),'uninspected location flagged');
+  rep=w.buildDormTelegram({cfg:w.__configs.dormitory,period:'day',ref:D,lang:'zh',scope:'insp:localDorm'});
+  assert(rep.text.includes('L1')&&!rep.text.includes('外籍宿舍 ·'),'single location');
+  rep=w.buildDormTelegram({cfg:w.__configs.dormitory,period:'month',ref:D,lang:'zh',scope:'insp'});
+  assert(rep.text.includes('巡查日誌'),'log for month');
+  console.log('---- sample ----\n'+w.buildDormTelegram({cfg:w.__configs.dormitory,period:'day',ref:D,lang:'zh',scope:'insp'}).text);
   assert(Array.from(modal.querySelector('[data-gc-ref]').options).some(o=>o.value===D),'inspection date listed');
   const cfg=w.__configs.dormitory;assert.strictEqual(cfg.telegramValidator({records:[],period:'day',ref:D}),true,'inspection-only day can send');
   assert.notStrictEqual(cfg.telegramValidator({records:[],period:'day',ref:'2026-01-01'}),true);
   modal.classList.remove('open');
   doc.getElementById('vf-name').value='';w.viol.sendTg();await pause();
   assert(modal.classList.contains('open'),'violation Telegram opens panel');
+  assert.equal(modal.querySelector('[data-gc-scope]').value,'viol');
   console.log('dorm inspection date/history/telegram ok');
  }catch(e){console.error(e);process.exitCode=1;}
  finally{x.dom.window.close();}
