@@ -224,7 +224,7 @@ tbody tr:hover{background:var(--bg);}
   <!-- AC_GASCHECK Shared System -->
 <script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
-<script src="./ac-tg-chart.js?v=20261106a"></script>
+<script src="./ac-tg-chart.js?v=20261106b"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -2441,6 +2441,20 @@ function tempTgPeriodLabel(period,ref,lang){
 }
 /* 2026-11-06 週報附圖：一週溫濕度表（橫列＝週一到週六，直行＝各區域）。
    格子上行＝AM 讀數、下行＝PM 讀數（溫度°／濕度%）；綠＝在範圍內、紅＝有超標、灰＝當天沒記錄。週日有資料才顯示。 */
+/* 2026-11-06 當天天氣（記錄頁選的天氣 wx）：AM／PM 一樣就一個圖示，不一樣顯示 AM 圖示＋PM 圖示。
+   chart＝圖表欄位用（圖示＋文字，雙語含英文），text＝摘要文字用（圖示＋英文／柬文）。 */
+const TEMP_WX={sunny:['☀️','晴','Sunny','មេឃស្រឡះ'],cloudy:['⛅','多雲','Cloudy','មានពពក'],rain:['🌧️','雨','Rain','ភ្លៀង'],heavyRain:['⛈️','大雨','Heavy rain','ភ្លៀងខ្លាំង'],storm:['🌩️','雷雨','Storm','ព្យុះ'],hot:['🔥','酷熱','Hot','ក្ដៅ'],humid:['💧','潮濕','Humid','សើម']};
+function tempWeekWeather(view,ymd,lang){
+  const recs=view.filter(function(r){return String(r.d||'').slice(0,10)===ymd&&TEMP_WX[r.wx];});
+  if(!recs.length)return null;
+  const pick=function(p){const r=recs.find(function(x){return x.p===p;});return r?r.wx:'';};
+  const am=pick('morning'),pm=pick('afternoon'),keys=[];
+  [am,pm].concat(recs.map(function(r){return r.wx;})).forEach(function(k){if(k&&keys.indexOf(k)<0&&keys.length<2)keys.push(k);});
+  const lb=function(k){const w=TEMP_WX[k];return lang==='bi'?w[1]+' '+w[2]:lang==='km'?w[2]:lang==='en'?w[2]:w[1];};
+  const icons=keys.map(function(k){return TEMP_WX[k][0];});
+  if(keys.length===1)return {chart:icons[0]+' '+lb(keys[0]),text:icons[0]+(lang==='zh'||lang==='bi'?lb(keys[0]):TEMP_WX[keys[0]][2])};
+  return {chart:'AM '+icons[0]+'  PM '+icons[1],text:'AM'+icons[0]+' PM'+icons[1]};
+}
 function tempWeekGridChart(view,zones,ref,lang){
   if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
   try{
@@ -2460,7 +2474,7 @@ function tempWeekGridChart(view,zones,ref,lang){
     const rd=function(r){if(!r)return '—';const tv=tempTgNum(r.t),hv=tempTgNum(r.h);return (tv?tv+'°':'—')+'/'+(hv?hv+'%':'—');};
     const nameOf=function(z){return lang==='bi'?(z.zh||z.en||z.id):tempTgZoneName(z,lang);};
     const rows=zones.map(function(z){
-      return {label:nameOf(z),cells:days.map(function(day){
+      return {label:nameOf(z),sub:lang==='bi'&&z.en&&z.en!==z.zh?z.en:'',cells:days.map(function(day){
         const recs=view.filter(function(r){return String(r.z)===String(z.id)&&ymdOf(r.d)===day.ymd;});
         if(!recs.length)return {text:'—',color:NONE,light:true};
         const am=recs.find(function(r){return r.p==='morning';}),pm=recs.find(function(r){return r.p==='afternoon';});
@@ -2471,11 +2485,12 @@ function tempWeekGridChart(view,zones,ref,lang){
         return {text:(am?'AM ':(top&&top.p==='afternoon'?'PM ':''))+rd(top),sub:sub,color:bad?BAD:OK};
       })};
     });
-    const cols=days.map(function(day){return {label:short('週'+WD[day.wd][0],WD[day.wd][1]),sub:day.ymd.slice(5)};});
+    const wxOf=function(ymd){return tempWeekWeather(view,ymd,lang);};
+    const cols=days.map(function(day){const w=wxOf(day.ymd);return {label:lang==='bi'?'週'+WD[day.wd][0]+' '+WD[day.wd][1]:short('週'+WD[day.wd][0],WD[day.wd][1]),sub:day.ymd.slice(5),wx:w?w.chart:''};});
     const temps=view.map(function(r){return Number(r.t);}).filter(Number.isFinite),hums=view.map(function(r){return Number(r.h);}).filter(Number.isFinite),bad=view.filter(isAnom).length;
     const blocks=[
       {type:'stats',items:[{label:t('讀數','Readings','ការអាន'),value:String(view.length),color:P[0]||'#2b8fbd'},{label:t('溫度','Temp','សីតុណ្ហភាព'),value:tempTgRange(temps,'°C'),color:P[2]||'#f2a93b'},{label:t('濕度','Humidity','សំណើម'),value:tempTgRange(hums,'%'),color:P[5]||'#3fb9c9'},{label:t('超標','Out of range','ហួសកំណត់'),value:String(bad),color:bad?BAD:(P[7]||'#6c8ea4')}]},
-      {type:'grid',title:t('每日溫濕度表','Daily readings','ការអានប្រចាំថ្ងៃ'),cols:cols,rows:rows,
+      {type:'grid',title:t('每日溫濕度表','Daily readings','ការអានប្រចាំថ្ងៃ'),cols:cols,rows:rows,wxLabel:cols.some(function(c){return c.wx;})?t('天氣','Weather','អាកាសធាតុ'):'',
         legend:[{label:t('在範圍內','In range','ក្នុងកំណត់'),color:OK},{label:t('超標','Out of range','ហួសកំណត់'),color:BAD},{label:t('沒記錄','No reading','គ្មានការអាន'),color:NONE}]}
     ];
     return ACChart.render({title:t('溫濕度 週報','Temperature & Humidity · Weekly','សីតុណ្ហភាព និងសំណើម · ប្រចាំសប្ដាហ៍'),subtitle:range.fromYmd+' ~ '+range.toYmd,theme:'green',width:1080,blocks:blocks,footer:'AC GASCheck · '+t('溫濕度','Temperature','សីតុណ្ហភាព')})||'';
@@ -2525,6 +2540,11 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
     const range=(typeof GC!=='undefined'&&GC.period&&GC.period.range)?GC.period.range(period,ref):null;
     const total=range?Math.round((range.to-range.from)/86400000):0;
     txt+='\n📆 '+lb('有記錄天數','Days with readings','ថ្ងៃមានកំណត់ត្រា')+' <b>'+dates.length+(total?' / '+total:'')+'</b>'+(dates.length>1?' · '+e(G.ranges(dates)):'');
+    if(period==='week'){
+      const WDN=[['日','Sun','អា'],['一','Mon','ច'],['二','Tue','អ'],['三','Wed','ពុ'],['四','Thu','ព្រ'],['五','Fri','សុ'],['六','Sat','ស']];
+      const wl=dates.slice().sort().map(function(ymd){const w=tempWeekWeather(view,ymd,lang);if(!w)return '';const wd=new Date(ymd+'T00:00:00').getDay();return lb(WDN[wd][0],WDN[wd][1],WDN[wd][2])+' '+w.text;}).filter(Boolean);
+      if(wl.length)txt+='\n🌤 '+lb('天氣','Weather','អាកាសធាតុ')+' · '+wl.join(' · ');
+    }
   }
   if(checkers.length)txt+='\n👤 '+e(checkers.slice(0,4).join(', '))+(checkers.length>4?' +'+(checkers.length-4):'');
   if(day){

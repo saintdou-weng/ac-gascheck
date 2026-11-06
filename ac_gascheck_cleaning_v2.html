@@ -179,7 +179,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
   <!-- AC_GASCHECK Shared System -->
 <script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
-<script src="./ac-tg-chart.js?v=20261106a"></script>
+<script src="./ac-tg-chart.js?v=20261106b"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -2338,7 +2338,7 @@ function cleaningWeekGridChart(view,ref,lang){
     const range=(typeof GC!=='undefined'&&GC.period&&GC.period.range)?GC.period.range('week',ref):null;
     if(!range||!view.length)return '';
     const t=function(zh,en,km){return lang==='bi'?zh+' · '+en:lang==='en'?en:lang==='km'?en+(km?' · '+km:''):zh;};
-    const short=function(zh,en){return lang==='en'||lang==='km'?en:zh;};
+    const short=function(zh,en){return lang==='en'||lang==='km'?en:lang==='bi'?zh+' '+en:zh;};
     const ITEM={smell:['氣味','Smell'],light:['燈光','Light'],floor:['地板','Floor'],door:['門','Door'],corner:['角落','Corner'],ceiling:['天花','Ceiling']};
     const WD=[['日','Sun'],['一','Mon'],['二','Tue'],['三','Wed'],['四','Thu'],['五','Fri'],['六','Sat']];
     const P=ACChart.PALETTE||[],OK=P[1]||'#2e9c6a',BAD=P[3]||'#e35d5b',NONE='#eef2f5';
