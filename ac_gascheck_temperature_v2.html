@@ -224,7 +224,7 @@ tbody tr:hover{background:var(--bg);}
   <!-- AC_GASCHECK Shared System -->
 <script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
-<script src="./ac-tg-chart.js?v=20261103a"></script>
+<script src="./ac-tg-chart.js?v=20261106a"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -2439,6 +2439,48 @@ function tempTgPeriodLabel(period,ref,lang){
   if(period==='year')return range?range.fromYmd.slice(0,4):key.slice(0,4);
   return lb('全部','All','ទាំងអស់');
 }
+/* 2026-11-06 週報附圖：一週溫濕度表（橫列＝週一到週六，直行＝各區域）。
+   格子上行＝AM 讀數、下行＝PM 讀數（溫度°／濕度%）；綠＝在範圍內、紅＝有超標、灰＝當天沒記錄。週日有資料才顯示。 */
+function tempWeekGridChart(view,zones,ref,lang){
+  if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
+  try{
+    const range=(typeof GC!=='undefined'&&GC.period&&GC.period.range)?GC.period.range('week',ref):null;
+    if(!range||!view.length)return '';
+    const t=function(zh,en,km){return lang==='bi'?zh+' · '+en:lang==='en'?en:lang==='km'?en+(km?' · '+km:''):zh;};
+    const short=function(zh,en){return lang==='en'||lang==='km'?en:zh;};
+    const WD=[['日','Sun'],['一','Mon'],['二','Tue'],['三','Wed'],['四','Thu'],['五','Fri'],['六','Sat']];
+    const P=ACChart.PALETTE||[],OK=P[1]||'#2e9c6a',BAD=P[3]||'#e35d5b',NONE='#eef2f5';
+    const ymdOf=function(v){return String(v||'').slice(0,10);};
+    const days=[];
+    for(let d=new Date(range.from);d<range.to;d.setDate(d.getDate()+1)){
+      const ymd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      if(d.getDay()===0&&!view.some(function(r){return ymdOf(r.d)===ymd;}))continue;
+      days.push({ymd:ymd,wd:d.getDay()});
+    }
+    const rd=function(r){if(!r)return '—';const tv=tempTgNum(r.t),hv=tempTgNum(r.h);return (tv?tv+'°':'—')+'/'+(hv?hv+'%':'—');};
+    const nameOf=function(z){return lang==='bi'?(z.zh||z.en||z.id):tempTgZoneName(z,lang);};
+    const rows=zones.map(function(z){
+      return {label:nameOf(z),cells:days.map(function(day){
+        const recs=view.filter(function(r){return String(r.z)===String(z.id)&&ymdOf(r.d)===day.ymd;});
+        if(!recs.length)return {text:'—',color:NONE,light:true};
+        const am=recs.find(function(r){return r.p==='morning';}),pm=recs.find(function(r){return r.p==='afternoon';});
+        const other=recs.filter(function(r){return r.p!=='morning'&&r.p!=='afternoon';});
+        const top=am||other[0]||pm,bottom=am?(pm||other[0]):(top===pm?null:pm);
+        const bad=recs.some(isAnom);
+        const sub=bottom?(bottom.p==='afternoon'?'PM ':'')+rd(bottom):(am&&!pm?'PM —':'');
+        return {text:(am?'AM ':(top&&top.p==='afternoon'?'PM ':''))+rd(top),sub:sub,color:bad?BAD:OK};
+      })};
+    });
+    const cols=days.map(function(day){return {label:short('週'+WD[day.wd][0],WD[day.wd][1]),sub:day.ymd.slice(5)};});
+    const temps=view.map(function(r){return Number(r.t);}).filter(Number.isFinite),hums=view.map(function(r){return Number(r.h);}).filter(Number.isFinite),bad=view.filter(isAnom).length;
+    const blocks=[
+      {type:'stats',items:[{label:t('讀數','Readings','ការអាន'),value:String(view.length),color:P[0]||'#2b8fbd'},{label:t('溫度','Temp','សីតុណ្ហភាព'),value:tempTgRange(temps,'°C'),color:P[2]||'#f2a93b'},{label:t('濕度','Humidity','សំណើម'),value:tempTgRange(hums,'%'),color:P[5]||'#3fb9c9'},{label:t('超標','Out of range','ហួសកំណត់'),value:String(bad),color:bad?BAD:(P[7]||'#6c8ea4')}]},
+      {type:'grid',title:t('每日溫濕度表','Daily readings','ការអានប្រចាំថ្ងៃ'),cols:cols,rows:rows,
+        legend:[{label:t('在範圍內','In range','ក្នុងកំណត់'),color:OK},{label:t('超標','Out of range','ហួសកំណត់'),color:BAD},{label:t('沒記錄','No reading','គ្មានការអាន'),color:NONE}]}
+    ];
+    return ACChart.render({title:t('溫濕度 週報','Temperature & Humidity · Weekly','សីតុណ្ហភាព និងសំណើម · ប្រចាំសប្ដាហ៍'),subtitle:range.fromYmd+' ~ '+range.toYmd,theme:'green',width:1080,blocks:blocks,footer:'AC GASCheck · '+t('溫濕度','Temperature','សីតុណ្ហភាព')})||'';
+  }catch(err){return '';}
+}
 function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
   lang=lang||'bi';
   const G=GC.TG,lb=function(zh,en,km){return G.lbl(lang,zh,en,km);},e=tempTgEsc;
@@ -2462,6 +2504,7 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
   /* 照片只跟著超標的讀數（全部在範圍內就不附），最多 5 張。 */
   const photos=[];
   abnormal.forEach(r=>{(typeof GC!=='undefined'&&GC.util?GC.util.asArray(r.photos):Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if((/^data:image\//i.test(String(p))||/^https?:\/\//i.test(String(p)))&&!photos.includes(p)&&photos.length<5)photos.push(p);});});
+  if(period==='week'){const wc=tempWeekGridChart(view,reportZones,ref||(sorted[0]&&sorted[0].d),lang);if(wc){photos.unshift(wc);if(photos.length>5)photos.length=5;}}
   const day=period==='day';
   const missing=day?reportZones.length*2-view.filter(r=>r.p==='morning'||r.p==='afternoon').length:0;
   const sub=[];

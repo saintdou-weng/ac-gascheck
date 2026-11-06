@@ -179,7 +179,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
   <!-- AC_GASCHECK Shared System -->
 <script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
-<script src="./ac-tg-chart.js?v=20261103a"></script>
+<script src="./ac-tg-chart.js?v=20261106a"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -2329,6 +2329,49 @@ function cleaningTelegramIssueLine(area,withDate){
   const who=Array.from(new Set(fails.map(function(r){return String(r.checker||'').trim();}).filter(Boolean))).join(', ');
   return '• '+cleaningTelegramLocIcon(area.id)+' <b>'+e(area.name)+'</b> · '+e(when)+' · ❌ '+items+(notes?' · 📝 '+e(notes.length>80?notes.slice(0,79)+'…':notes):'')+(who?' · '+e(who):'');
 }
+/* 2026-11-06 週報附圖：一週檢查表（橫列＝週一到週六，直行＝各區域）。
+   格子：綠＝當天都正常（✓＋檢查時間；超過 3 個時段顯示 ×次數）、紅＝有異常（✗ 哪些項目）、灰＝當天沒檢查。週日有資料才顯示。
+   沒有 ACChart 或畫不出來回傳 ''（摘要照常送，只是沒圖）。 */
+function cleaningWeekGridChart(view,ref,lang){
+  if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
+  try{
+    const range=(typeof GC!=='undefined'&&GC.period&&GC.period.range)?GC.period.range('week',ref):null;
+    if(!range||!view.length)return '';
+    const t=function(zh,en,km){return lang==='bi'?zh+' · '+en:lang==='en'?en:lang==='km'?en+(km?' · '+km:''):zh;};
+    const short=function(zh,en){return lang==='en'||lang==='km'?en:zh;};
+    const ITEM={smell:['氣味','Smell'],light:['燈光','Light'],floor:['地板','Floor'],door:['門','Door'],corner:['角落','Corner'],ceiling:['天花','Ceiling']};
+    const WD=[['日','Sun'],['一','Mon'],['二','Tue'],['三','Wed'],['四','Thu'],['五','Fri'],['六','Sat']];
+    const P=ACChart.PALETTE||[],OK=P[1]||'#2e9c6a',BAD=P[3]||'#e35d5b',NONE='#eef2f5';
+    const days=[];
+    for(let d=new Date(range.from);d<range.to;d.setDate(d.getDate()+1)){
+      const ymd=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
+      if(d.getDay()===0&&!view.some(function(r){return cleaningTelegramDate(r.date)===ymd;}))continue;
+      days.push({ymd:ymd,wd:d.getDay()});
+    }
+    const areas=cleaningTelegramAreas(view);
+    const rows=areas.map(function(a){
+      return {label:a.name,cells:days.map(function(day){
+        const recs=a.records.filter(function(r){return cleaningTelegramDate(r.date)===day.ymd;});
+        if(!recs.length)return {text:'—',color:NONE,light:true};
+        const n=recs.reduce(function(s2,r){return s2+(cleaningTelegramSlots(r).length||1);},0);
+        const times=Array.from(new Set(recs.reduce(function(o,r){return o.concat(cleaningTelegramSlots(r).map(GC.TG.time).filter(Boolean));},[]))).sort();
+        const when=times.length&&times.length<=3?times.join(' '):'×'+n;
+        const failed=CHK_ITEMS.filter(function(k){return recs.some(function(r){return (r.checks||{})[k]===false;});});
+        if(!failed.length)return {text:'✓',sub:when,color:OK};
+        return {text:'✗ '+failed.map(function(k){return short(ITEM[k][0],ITEM[k][1]);}).join(','),sub:when,color:BAD};
+      })};
+    });
+    const cols=days.map(function(day){return {label:short('週'+WD[day.wd][0],WD[day.wd][1]),sub:day.ymd.slice(5)};});
+    const bad=areas.filter(function(a){return a.fails.length;}).length;
+    const checks=areas.reduce(function(s2,a){return s2+a.checks;},0);
+    const blocks=[
+      {type:'stats',items:[{label:t('區域','Areas','តំបន់'),value:String(areas.length),color:P[0]||'#2b8fbd'},{label:t('檢查次數','Checks','ការត្រួតពិនិត្យ'),value:String(checks),color:OK},{label:t('有異常區域','Areas with issues','តំបន់មានបញ្ហា'),value:String(bad),color:bad?BAD:(P[7]||'#6c8ea4')}]},
+      {type:'grid',title:t('每日檢查表','Daily check grid','តារាងត្រួតពិនិត្យប្រចាំថ្ងៃ'),cols:cols,rows:rows,
+        legend:[{label:t('正常','OK','ធម្មតា'),color:OK},{label:t('有異常','Issue','មានបញ្ហា'),color:BAD},{label:t('沒檢查','Not checked','មិនបានពិនិត្យ'),color:NONE}]}
+    ];
+    return ACChart.render({title:t('清潔巡檢 週報','Cleaning · Weekly','ការសម្អាត · ប្រចាំសប្ដាហ៍'),subtitle:range.fromYmd+' ~ '+range.toYmd,theme:'green',width:1080,blocks:blocks,footer:'AC GASCheck · '+t('清潔巡檢','Cleaning','ការសម្អាត')})||'';
+  }catch(err){return '';}
+}
 /* 共用卡片：period／ref 決定標題與是否顯示日期；all＝整個資料集（算本月累計用）。 */
 function cleaningTelegramReport(view,opt){
   opt=opt||{};
@@ -2362,7 +2405,11 @@ function cleaningTelegramReport(view,opt){
   if(bad.length){
     txt+=G.sec('⚠️',lb('需注意','Needs attention','ត្រូវយកចិត្តទុកដាក់'))+'\n'+bad.slice(0,12).map(function(a){return cleaningTelegramIssueLine(a,period!=='day');}).join('\n')+(bad.length>12?'\n… +'+(bad.length-12):'');
   }
-  if(ok.length)txt+='\n\n'+ok.slice(0,12).map(cleaningTelegramOkLine).join('\n')+(ok.length>12?'\n✅ … +'+(ok.length-12):'');
+  /* 週報：正常區域改成一行，每天每區的情形看附圖的「每日檢查表」。 */
+  const weekChart=period==='week'?cleaningWeekGridChart(view,opt.ref,lang):'';
+  if(weekChart){photos.unshift(weekChart);if(photos.length>5)photos.length=5;}
+  if(weekChart){if(ok.length)txt+='\n\n✅ '+lb('正常區域','Areas OK','តំបន់ធម្មតា')+' <b>'+ok.length+'</b> · '+e(ok.slice(0,6).map(function(a){return a.name;}).join(', '))+(ok.length>6?' +'+(ok.length-6):'');txt+='\n📊 '+lb('每天每區的檢查情形見附圖','Daily check grid in the chart','មើលតារាងប្រចាំថ្ងៃក្នុងរូបភាព');}
+  else if(ok.length)txt+='\n\n'+ok.slice(0,12).map(cleaningTelegramOkLine).join('\n')+(ok.length>12?'\n✅ … +'+(ok.length-12):'');
   if(checkers.length&&view.length)txt+='\n🔎 '+e(checkers.slice(0,4).join(', '))+(checkers.length>4?' +'+(checkers.length-4):'');
   if(opt.mode==='review'||opt.mode==='approval')txt+='\n⏳ '+lb('待審查／待核可','Pending review / approval','កំពុងរង់ចាំពិនិត្យ/អនុម័ត')+' <b>'+issues+'</b>';
   const sender=String(opt.sender||'').trim();
