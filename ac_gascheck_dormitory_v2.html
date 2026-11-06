@@ -149,6 +149,9 @@ select.fi{cursor:pointer}
 .insp-quick .btn{min-height:36px}
 .insp-loaded{margin:0 0 8px;padding:8px 12px;border-radius:8px;background:var(--bl,#EAF2FB);border:1px solid var(--bdr2);font-size:11px;font-weight:600;color:var(--acc2,#2C5282)}
 .ih-notes{padding:8px 10px 2px}
+.hra-body{padding:8px 12px 10px}.hra-verdict{padding:7px 10px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:6px}
+.hra-kpi{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:11px;margin-bottom:4px}.hra-sec{font-size:11px;font-weight:700;margin:8px 0 4px}
+.hra-list{display:flex;flex-wrap:wrap;gap:5px}.hra-p{font-size:11px;padding:3px 8px;border:1px solid var(--bdr2);border-radius:999px;background:var(--bg2,transparent)}
 .ih-title{font-size:12px;font-weight:700;margin:2px 0 6px}
 .ih-verdict{padding:7px 10px;border-radius:8px;font-size:12px;font-weight:700;margin-bottom:6px}
 .ih-ok{background:#E7F6EE;color:#1E6B45}.ih-warn{background:#FFF4E0;color:#8A5A0B}.ih-bad{background:#FDECEC;color:#A12A2A}
@@ -367,6 +370,9 @@ select.fi{cursor:pointer}
     <div class="rsc"><div class="rsv" id="rs-rooms">0</div><div class="rsl" data-i="rs-rooms">使用房間</div></div>
     <div class="rsc"><div class="rsv" id="rs-male">0</div><div class="rsl" data-i="g-male">男</div></div>
     <div class="rsc"><div class="rsv" id="rs-female">0</div><div class="rsl" data-i="g-female">女</div></div>
+  </div>
+  <div class="card hra-card"><div class="ch"><span class="ch-ic">🔁</span><span class="ch-tl" data-i="hra-title">HRA 住宿名單對照</span><span style="flex:1"></span><button class="btn bo" style="padding:4px 9px;font-size:10px" onclick="dormHra.refresh(true)" data-i="hra-refresh">🔄 重新核對</button></div>
+    <div id="hra-check" class="hra-body"><div class="es"><span class="esi">⏳</span><span data-i="hra-loading">讀取 HRA Portal 住宿名單中…</span></div></div>
   </div>
   <div class="br">
     <button class="btn bp" onclick="roster.load()" data-i="btn-refresh">🔄 刷新</button>
@@ -689,6 +695,16 @@ const DORM_TEXT = [
   ['kn-col-times','巡查次數','Inspections','ចំនួនដង'],['kn-col-last','最後巡查','Last inspected','ពិនិត្យចុងក្រោយ'],['kn-col-rooms','已巡查房間','Rooms checked','បន្ទប់បានពិនិត្យ'],
   ['kn-open','點日期看這筆巡查','Tap the date to open this inspection','ចុចកាលបរិច្ឆេទ ដើម្បីបើក'],
   ['viol-save-first','⚠️ 這筆違規還沒儲存，請先按「儲存違規」再發 Telegram','⚠️ Save this violation first, then send Telegram','⚠️ សូមរក្សាទុកការល្មើសនេះជាមុនសិន'],
+  ['hra-title','HRA 住宿名單對照（自動）','HRA accommodation check (automatic)','ផ្ទៀងផ្ទាត់បញ្ជីស្នាក់នៅ HRA (ស្វ័យប្រវត្តិ)'],
+  ['hra-refresh','🔄 重新核對','🔄 Check now','🔄 ពិនិត្យឥឡូវ'],
+  ['hra-loading','讀取 HRA Portal 住宿名單中…','Reading HRA Portal accommodation list…','កំពុងអានបញ្ជី HRA…'],
+  ['hra-done','✅ 已和 HRA 住宿名單核對','✅ Checked against the HRA list','✅ បានផ្ទៀងផ្ទាត់'],
+  ['hra-ok','宿舍申請與 HRA 住宿名單一致','Dorm applications match the HRA accommodation list','ពាក្យស្នើត្រូវនឹងបញ្ជី HRA'],
+  ['hra-diff','有 {n} 人對不上，請依下面補搬入／搬出申請','{n} people do not match — file move-in / move-out applications below','{n} នាក់មិនត្រូវគ្នា'],
+  ['hra-list','HRA {p} 住宿','HRA {p} residents','HRA {p}'],['hra-expat','外籍','Expat','បរទេស'],['hra-matched','對得上','Matched','ត្រូវគ្នា'],
+  ['hra-checked','核對時間 {t}','Checked {t}','ពិនិត្យ {t}'],
+  ['hra-missing','HRA 有、沒有搬入申請','On HRA list, no move-in application','មានក្នុង HRA គ្មានពាក្យចូល'],
+  ['hra-extra','有搬入申請、HRA 名單沒有（可能已搬出）','Has move-in application, not on HRA list (moved out?)','មានពាក្យចូល មិនមានក្នុង HRA'],
   ['imp-junk-file','❌ 沒有匯入：這份檔 {n} 筆大多沒有房號或日期不對（像員工名冊），不是宿舍申請','❌ Not imported: most of the {n} rows have no room number or a wrong date (looks like an employee list, not dorm applications)','❌ មិនបាននាំចូល៖ ជួរភាគច្រើនគ្មានលេខបន្ទប់ ឬកាលបរិច្ឆេទខុស (ដូចបញ្ជីបុគ្គលិក)'],
   ['imp-junk-rows','⚠️ {n} 筆沒有房號或日期不對，沒有匯入','⚠️ {n} rows skipped (no room number or wrong date)','⚠️ រំលង {n} ជួរ (គ្មានលេខបន្ទប់ ឬកាលបរិច្ឆេទខុស)'],
   ['tg-no-insp','這段期間、這個地點沒有巡查紀錄','No inspection for this location in this period','គ្មានការត្រួតពិនិត្យសម្រាប់ទីតាំងនេះ'],
@@ -1608,7 +1624,7 @@ var roster = (() => {
   const list = () => Object.values(dormResidents(state.db().records));
   const load = async () => {
     const rows=list();
-    sv2('rs-count',rows.length);
+    sv2('rs-count',rows.length);setTimeout(()=>dormHra.render(),0);
     sv2('rs-rooms',new Set(rows.map(r=>r.roomNo)).size);
     sv2('rs-male',rows.filter(r=>dormGenderCode(r.gender)==='Male').length);
     sv2('rs-female',rows.filter(r=>dormGenderCode(r.gender)==='Female').length);
@@ -2365,6 +2381,7 @@ function goApply(t) {
       setTimeout(function(){records.refreshStatus(true);},700);
     } else ui.tab(first);
     setTimeout(()=>dormExtraSync.run(),2500);
+    setTimeout(()=>dormHra.refresh(false),4000);setInterval(()=>dormHra.refresh(false),DORM_HRA_TTL);
   };
   if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();
 })();
@@ -2575,6 +2592,63 @@ function dormSummaryChartDraw(S,lang,periodLabel){
     return ACChart.render({title:t('VRT 宿舍設施巡查','VRT Dormitory inspection','ការត្រួតពិនិត្យអន្តេវាសិកដ្ឋាន VRT'),subtitle:String(periodLabel||''),theme:'green',width:1080,blocks,footer:'AC GASCheck · '+t('宿舍管理','Dormitory','អន្តេវាសិកដ្ឋាន')})||'';
   }catch(e){return '';}
 }
+/* ═══ 2026-11-06 HRA Portal 住宿名單自動對照（Paul：自己定期查，別靠我）═══
+   HRA Portal「福利／住宿」名單是官方在住名單；宿舍頁的搬入／搬出申請要跟它一致。
+   開頁時、每 6 小時、發 Telegram 摘要前自動讀 HRA 雲端（唯讀），算出：
+   HRA 有但沒有搬入申請、有搬入申請但 HRA 沒有。結果顯示在「在住」分頁和 Telegram 摘要，不需要人工輸入。 */
+const DORM_HRA_URL='https://script.google.com/macros/s/AKfycbya4jZG7YixRmumt9vKA-5Cv92jP8fi_o4toiU-8J2exQCYBhBsLOtN4kX9hoKqzp12/exec';
+const DORM_HRA_KEY='vrt_dorm_hra_accom_v1',DORM_HRA_TTL=6*3600*1000;
+const dormHra=(()=>{
+  let _cache=null,_inflight=null;
+  const idKey=v=>String(v==null?'':v).trim().replace(/^0+/,'');
+  const read=()=>{if(_cache)return _cache;try{_cache=JSON.parse(localStorage.getItem(DORM_HRA_KEY)||'null');}catch(e){_cache=null;}return _cache;};
+  const fetchJson=async(q,ms)=>{const ctl=typeof AbortController!=='undefined'?new AbortController():null;const tm=setTimeout(()=>{try{ctl&&ctl.abort();}catch(e){}},ms||30000);
+    try{const r=await fetch(DORM_HRA_URL+'?'+q,{cache:'no-store',signal:ctl?ctl.signal:undefined});return await r.json();}finally{clearTimeout(tm);}};
+  const rowsOf=j=>{const d=j&&(j.data||j);return (d&&(d.records||d.list))||(Array.isArray(d)?d:[]);};
+  const load=async()=>{
+    const man=await fetchJson('action=smartManifest&tool=welfare',30000),m=man&&(man.data||man);
+    const buckets=Object.keys((m&&(m.counts||m.hashes))||{});
+    if(!buckets.length)throw new Error('HRA welfare: no data');
+    const rows=[];let next=0;
+    const worker=async()=>{while(next<buckets.length){const b=buckets[next++];let ok=false;for(let t=0;t<3&&!ok;t++){try{rowsOf(await fetchJson('action=smartBucket&tool=welfare&bucket='+encodeURIComponent(b),30000)).forEach(r=>rows.push(r));ok=true;}catch(e){}}}};
+    await Promise.all([worker(),worker(),worker(),worker(),worker(),worker()]);
+    const members=rows.filter(r=>r&&!r._deleted&&r._kind==='members'&&r.accommodation&&r.status!=='stopped'&&/^\d{4}-\d{2}/.test(String(r.period||'')));
+    const period=members.map(r=>String(r.period).slice(0,7)).sort().pop()||'';
+    const latest=new Map();members.filter(r=>String(r.period).slice(0,7)===period).forEach(r=>latest.set(idKey(r.employeeId),{idNo:String(r.employeeId||''),name:r.name||'',gender:r.gender||'',department:r.department||'',type:r.accommodationType||''}));
+    const summ=rows.filter(r=>r&&!r._deleted&&r._kind==='summaries'&&String(r.period||'').slice(0,7)===period).pop()||null;
+    const moves=rows.filter(r=>r&&!r._deleted&&r._kind==='movements'&&/dorm_(in|out)/.test(String(r.action||''))&&String(r.date||'')>=period).map(r=>({date:String(r.date||'').slice(0,10),action:r.action,idNo:String(r.employeeId||''),name:r.name||''}));
+    const out={at:Date.now(),period,list:Array.from(latest.values()),expat:summ?Number(summ.accommodationExpat)||0:0,local:summ?Number(summ.accommodationLocal)||0:null,moves};
+    _cache=out;try{localStorage.setItem(DORM_HRA_KEY,JSON.stringify(out));}catch(e){}
+    return out;
+  };
+  const get=async(force)=>{const c=read();if(!force&&c&&Date.now()-c.at<DORM_HRA_TTL)return c;
+    if(!_inflight)_inflight=load().catch(e=>{try{console.warn('[dorm] HRA check failed',e);}catch(x){}return read();}).finally(()=>{_inflight=null;});
+    return _inflight;};
+  const diff=(h)=>{
+    h=h||read();if(!h||!h.list)return null;
+    const res=dormResidents(state.db().records),resMap=new Map(Object.entries(res).map(([k,v])=>[idKey(k),v]));
+    const hraMap=new Map(h.list.map(x=>[idKey(x.idNo),x]));
+    const matched=[],missing=[],extra=[];
+    hraMap.forEach((x,k)=>{if(resMap.has(k))matched.push(Object.assign({},x,{roomNo:resMap.get(k).roomNo||''}));else missing.push(x);});
+    resMap.forEach((x,k)=>{if(!hraMap.has(k))extra.push({idNo:String(x.idNo||''),name:x.name||'',roomNo:x.roomNo||'',department:x.department||''});});
+    const male=h.list.filter(x=>/^m/i.test(x.gender)||x.gender==='男').length,female=h.list.filter(x=>/^f/i.test(x.gender)||x.gender==='女').length;
+    return {period:h.period,at:h.at,total:h.list.length,expat:h.expat||0,male,female,matched,missing,extra,ok:!missing.length&&!extra.length};
+  };
+  const render=()=>{
+    const el=document.getElementById('hra-check');if(!el)return;
+    const d=diff();
+    if(!d){el.innerHTML=`<div class="es"><span class="esi">⏳</span>${esc(T('hra-loading'))}</div>`;return;}
+    const who=x=>`<span class="hra-p"><b>${esc(x.idNo)}</b> ${esc(x.name)}${x.roomNo?' · '+esc(x.roomNo):''}${x.department?' · <span style="color:var(--dim)">'+esc(x.department)+'</span>':''}</span>`;
+    el.innerHTML=`<div class="hra-verdict ${d.ok?'ih-ok':'ih-warn'}">${d.ok?'🟢':'🟠'} ${esc(T(d.ok?'hra-ok':'hra-diff',{n:d.missing.length+d.extra.length}))}</div>
+      <div class="hra-kpi"><span>🏠 ${esc(T('hra-list',{p:d.period}))} <b>${d.total}</b>${d.expat?' · '+esc(T('hra-expat'))+' <b>'+d.expat+'</b>':''}</span><span>✅ ${esc(T('hra-matched'))} <b>${d.matched.length}</b></span><span style="color:var(--dim)">${esc(T('hra-checked',{t:new Date(d.at).toLocaleString()}))}</span></div>
+      ${d.missing.length?`<div class="hra-sec">➕ ${esc(T('hra-missing'))} · ${d.missing.length}</div><div class="hra-list">${d.missing.map(who).join('')}</div>`:''}
+      ${d.extra.length?`<div class="hra-sec">➖ ${esc(T('hra-extra'))} · ${d.extra.length}</div><div class="hra-list">${d.extra.map(who).join('')}</div>`:''}`;
+    if(d.total){sv2('rs-count',d.total);}
+  };
+  const refresh=async(force)=>{if(force)toast(T('hra-loading'));await get(!!force);render();try{dash.render();}catch(e){}if(force)toast(T('hra-done'),'success');};
+  return {get,diff,render,refresh,read};
+})();
+window.dormHra=dormHra;
 /* 2026-11-04 巡查／違規頁的 📤 Telegram 打開共用面板（不再直接發簡易版） */
 function dormOpenTelegram(period,ref,scope){
   const pg=window.GC&&GC.pages&&GC.pages.dormitory;
@@ -2727,10 +2801,21 @@ function buildDormTelegram(opt){
     ['⏳',lb('待核可','Pending','រង់ចាំ'),pending.length],['✅',lb('核可','Approved','អនុម័ត'),st('approved')],['❌',lb('退件','Rejected','បដិសេធ'),st('rejected')],
     ['🔍',lb('巡查','Inspections','ត្រួតពិនិត្យ'),insps.length],['🏠',lb('房間','Rooms','បន្ទប់'),roomList.length],['🚫',lb('違規','Violations','ល្មើស'),viols.length]
   ],3);
-  /* 2026-11-06 在住人數（與 HRA Portal 住宿名單同口徑：本地員工；外籍不在宿舍申請名單內） */
+  /* 2026-11-06 在住人數以 HRA Portal 住宿名單為準，並自動對照宿舍搬入／搬出申請 */
   if(part!=='viol'){
-    const res=Object.values(dormResidents(state.db().records)),male=res.filter(r=>dormGenderCode(r.gender)==='Male').length,fem=res.filter(r=>dormGenderCode(r.gender)==='Female').length;
-    txt+='\n🛏 '+lb('目前在住','Living in dorm now','កំពុងស្នាក់នៅ')+' <b>'+res.length+'</b> '+lb('人','people','នាក់')+' · 👨 '+male+' · 👩 '+fem;
+    const hd=dormHra.diff();
+    if(hd&&hd.total){
+      txt+='\n🛏 '+lb('目前在住','Living in dorm','កំពុងស្នាក់នៅ')+' <b>'+hd.total+'</b> '+lb('人','people','នាក់')+' · 👨 '+hd.male+' · 👩 '+hd.female+(hd.expat?' · '+lb('外籍','Expat','បរទេស')+' '+hd.expat:'')+' <i>('+lb('HRA 名單','HRA list','បញ្ជី HRA')+' '+G.esc(hd.period)+')</i>';
+      if(hd.ok)txt+='\n✅ '+lb('宿舍申請與 HRA 名單一致','Dorm applications match the HRA list','ពាក្យស្នើត្រូវនឹងបញ្ជី HRA');
+      else{
+        const nm=x=>G.esc(x.idNo)+' '+G.esc(x.name)+(x.roomNo?' ('+G.esc(x.roomNo)+')':'');
+        txt+='\n⚠️ '+lb('對照宿舍申請','vs dorm applications','ធៀបពាក្យស្នើ')+' · '+lb('HRA 有、沒有搬入申請','on HRA, no move-in','មានក្នុង HRA គ្មានពាក្យចូល')+' <b>'+hd.missing.length+'</b> · '+lb('有申請、HRA 沒有','applied, not on HRA','មានពាក្យ មិនមានក្នុង HRA')+' <b>'+hd.extra.length+'</b>';
+        txt+=G.fold([].concat(hd.missing.length?['➕ '+hd.missing.map(nm).join(', ')]:[],hd.extra.length?['➖ '+hd.extra.map(nm).join(', ')]:[]));
+      }
+    } else {
+      const res=Object.values(dormResidents(state.db().records));
+      txt+='\n🛏 '+lb('目前在住','Living in dorm','កំពុងស្នាក់នៅ')+' <b>'+res.length+'</b> '+lb('人','people','នាក់');
+    }
   }
   if(day||period==='week'){
     const mA=appsAll.filter(r=>inM(r.date)),mI=inspAll.filter(r=>inM(r.date)).length,mV=violAll.filter(v=>inM(v.date)).length;
@@ -2780,7 +2865,7 @@ function buildDormTelegram(opt){
       telegramScopes:DORM_TG_SCOPES,telegramScopeLabel:{zh:'報告範圍',en:'Report scope',km:'វិសាលភាព'},
       /* 宿舍核可只走每筆申請的 Telegram 核可卡；共用摘要不提供「核可」選項。 */
       telegramModes:['summary','review'],
-      telegramBuilder:buildDormTelegram,
+      telegramBuilder:async function(o){try{await Promise.race([dormHra.get(false),new Promise(r=>setTimeout(r,45000))]);}catch(e){}return buildDormTelegram(o);},
       groupField:'roomNo',
       groupLabel:'Room',
       weather:false,
