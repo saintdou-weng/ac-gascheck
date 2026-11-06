@@ -2611,7 +2611,7 @@ const dormHra=(()=>{
     if(!buckets.length)throw new Error('HRA welfare: no data');
     const rows=[];let next=0;
     const worker=async()=>{while(next<buckets.length){const b=buckets[next++];let ok=false;for(let t=0;t<3&&!ok;t++){try{rowsOf(await fetchJson('action=smartBucket&tool=welfare&bucket='+encodeURIComponent(b),30000)).forEach(r=>rows.push(r));ok=true;}catch(e){}}}};
-    await Promise.all([worker(),worker(),worker(),worker(),worker(),worker()]);
+    await Promise.all(Array.from({length:14},worker));
     const members=rows.filter(r=>r&&!r._deleted&&r._kind==='members'&&r.accommodation&&r.status!=='stopped'&&/^\d{4}-\d{2}/.test(String(r.period||'')));
     const period=members.map(r=>String(r.period).slice(0,7)).sort().pop()||'';
     const latest=new Map();members.filter(r=>String(r.period).slice(0,7)===period).forEach(r=>latest.set(idKey(r.employeeId),{idNo:String(r.employeeId||''),name:r.name||'',gender:r.gender||'',department:r.department||'',type:r.accommodationType||''}));
@@ -2865,7 +2865,7 @@ function buildDormTelegram(opt){
       telegramScopes:DORM_TG_SCOPES,telegramScopeLabel:{zh:'報告範圍',en:'Report scope',km:'វិសាលភាព'},
       /* 宿舍核可只走每筆申請的 Telegram 核可卡；共用摘要不提供「核可」選項。 */
       telegramModes:['summary','review'],
-      telegramBuilder:async function(o){try{await Promise.race([dormHra.get(false),new Promise(r=>setTimeout(r,45000))]);}catch(e){}return buildDormTelegram(o);},
+      telegramBuilder:async function(o){try{await Promise.race([dormHra.get(false),new Promise(r=>setTimeout(r,dormHra.read()?8000:120000))]);}catch(e){}return buildDormTelegram(o);},
       groupField:'roomNo',
       groupLabel:'Room',
       weather:false,
