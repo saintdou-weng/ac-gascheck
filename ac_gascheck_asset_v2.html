@@ -287,7 +287,7 @@ button.user-pill{cursor:pointer;font-family:inherit;color:var(--tx)}
   <!-- AC_GASCHECK Shared System -->
 <script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
-<script src="./ac-tg-chart.js?v=20261103a"></script>
+<script src="./ac-tg-chart.js?v=20261106b"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -1602,6 +1602,38 @@ if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(b
     if(r.reason)line+=' · 📝 '+G.esc(String(r.reason).replace(/[\r\n]+/g,' '));
     return line;
   }
+  /* 2026-11-06 週報附圖：資產沒有「每天」的檢查，所以用一張清楚的「本週事項」表：待核可（轉移／報廢）、維修中、本週已決定、本週新增，
+     加上狀態分布橫條；數字和文字摘要相同（同一批 scoped／open／repair／decided／added）。超過 14 列：問題排前面，最後一列寫「另有 n 筆」。
+     沒有 ACChart 或畫不出來回傳 ''。 */
+  function assetWeekChart(c){
+    if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
+    try{
+      const lang=c.lang||'bi',range=c.range;if(!range)return '';
+      const t=(zh,en,km)=>lang==='bi'?zh+' · '+en:lang==='en'?en:lang==='km'?en+(km?' · '+km:''):zh;
+      const short=(zh,en)=>lang==='en'||lang==='km'?en:lang==='bi'?zh+' '+en:zh;
+      const P=ACChart.PALETTE||[],OK=P[1]||'#2e9c6a',BAD=P[3]||'#e35d5b',WARN='#c97c2e',INFO=P[0]||'#2b8fbd',MUTED=P[7]||'#6c8ea4';
+      const name=a=>String(a.code||'—')+(a.name?' '+a.name:''),dd=v=>GC.TG.d(String(v||'').slice(0,10))||'—';
+      const kind=r=>(r||{}).type==='transfer'?short('轉移','Transfer'):short('報廢','Scrap');
+      const list=[];
+      c.open.forEach(x=>{const r=x.h.request||{},lost=r.disposalType==='lost';list.push({p:lost?0:1,cells:[{text:name(x.a),bold:true},kind(r)+(r.type==='transfer'&&r.newLocation?' → '+r.newLocation:'')+(lost?' · '+short('遺失','Lost'):''),{text:short('待核可','Pending'),color:lost?BAD:WARN,bold:true},dd(x.h.date)]});});
+      c.repair.forEach(a=>list.push({p:2,cells:[{text:name(a),bold:true},(a.location||'—'),{text:short('維修中','Repair'),color:BAD,bold:true},'—']}));
+      c.decided.forEach(x=>{const ok=x.h.type==='approved';list.push({p:3,cells:[name(x.a),kind((x.req||x.h).request),{text:ok?short('核可','Approved'):short('退件','Rejected'),color:ok?OK:MUTED,bold:true},dd(x.h.date)]});});
+      c.added.forEach(a=>list.push({p:4,cells:[name(a),(a.location||'—'),{text:short('新增','New'),color:INFO,bold:true},dd(a.purchaseDate)]}));
+      list.sort((x,y)=>x.p-y.p);
+      let rows=list.map(x=>x.cells);
+      if(rows.length>14){const more=rows.length-13;rows=rows.slice(0,13).concat([[{text:t('另有 '+more+' 筆','+'+more+' more','+'+more),color:MUTED},'','','']]);}
+      const blocks=[{type:'stats',items:[
+        {label:t('資產','Assets','ទ្រព្យ'),value:String(c.total),color:INFO},
+        {label:t('待核可','Pending','រង់ចាំ'),value:String(c.open.length),color:c.open.length?WARN:MUTED},
+        {label:t('維修中','Repair','ជួសជុល'),value:String(c.repair.length),color:c.repair.length?BAD:MUTED},
+        {label:t('總值','Value','តម្លៃ'),value:'$'+Math.round(c.value).toLocaleString('en-US'),color:OK}]}];
+      if(rows.length)blocks.push({type:'table',title:t('本週事項','This week','សប្ដាហ៍នេះ'),head:[t('資產','Asset','ទ្រព្យ'),t('事項','What','អ្វី'),t('狀態','Status','ស្ថានភាព'),t('日期','Date','កាលបរិច្ឆេទ')],rows,align:['l','l','c','r'],widths:[2.3,2.1,1.3,0.8]});
+      else blocks.push({type:'table',title:t('本週事項','This week','សប្ដាហ៍នេះ'),head:[t('資產','Asset','ទ្រព្យ'),'','',''],rows:[[{text:t('沒有待核可、維修或異動','No pending, repair or changes','គ្មានការរង់ចាំ ជួសជុល ឬការផ្លាស់ប្ដូរ'),color:OK,bold:true},'','','']],widths:[4,1,1,1]});
+      const SC={active:OK,standby:P[5]||'#3fb9c9',lent:P[4]||'#8e6cc9',repair:BAD,disposed:MUTED};
+      blocks.push({type:'bars',span:2,title:t('資產狀態','Asset status','ស្ថានភាពទ្រព្យ'),items:['active','standby','lent','repair','disposed'].map(k=>({label:t(ST_LABEL[k][0],ST_LABEL[k][1],ST_LABEL[k][2]),value:c.st[k]||0,color:SC[k]}))});
+      return ACChart.render({title:t('資產管理 週報','Asset Management · Weekly','គ្រប់គ្រងទ្រព្យ · ប្រចាំសប្ដាហ៍'),subtitle:range.fromYmd+' ~ '+range.toYmd+(c.scopeLabel?' · '+c.scopeLabel:''),theme:'navy',width:1080,blocks,footer:'AC GASCheck · '+t('資產管理','Asset Management','គ្រប់គ្រងទ្រព្យ')})||'';
+    }catch(e){return '';}
+  }
   window.buildAssetTelegram=function(opt){
     /* 資產模組沒有真正的 Telegram 核可流程：只發摘要；語言預設為目前介面語言。 */
     opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',ref=opt.ref||today(),scope=opt.scope||'all',slot=opt.slot||'all',langOpt=opt.lang||lang||'en';
@@ -1638,10 +1670,15 @@ if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(b
     const lines=[],sec=(icon,title)=>'\n<b>'+icon+' '+title+'</b>',byDate=(x,y)=>String(x.h.date||'').localeCompare(String(y.h.date||''));
     if(open.length){lines.push(sec('⏳',lb('待核可','Pending approval','រង់ចាំអនុម័ត')+' · '+open.length));open.sort(byDate).forEach(x=>lines.push(assetTgRequestLine(x.a,x.h,langOpt,true)));}
     if(repair.length){lines.push(sec('🔧',lb('維修中／損壞','Repair / damaged','ជួសជុល / ខូច')+' · '+repair.length));repair.forEach(a=>lines.push('• <b>'+G.esc(String(a.code||'—')+(a.name?' '+a.name:''))+'</b>'+(a.location?' · '+G.esc(a.location):'')+(a.user?' · 👤 '+G.esc(a.user):'')+(a.remark?' · 📝 '+G.esc(String(a.remark).replace(/[\r\n]+/g,' ')):'')));}
-    if(decided.length){lines.push(sec('✔',lb('本期已決定','Decided this period','បានសម្រេចក្នុងរយៈពេលនេះ')+' · '+decided.length));decided.sort(byDate).slice(0,8).forEach(x=>lines.push((x.h.type==='approved'?'• ✅ ':'• ❌ ')+G.d(String(x.h.date||'').slice(0,10))+' <b>'+G.esc(String(x.a.code||'—')+(x.a.name?' '+x.a.name:''))+'</b> · '+(((x.req||x.h).request||{}).type==='transfer'?lb('轉移','Transfer','ផ្ទេរ'):lb('報廢','Scrap','ជម្រះចោល'))+' '+(x.h.type==='approved'?lb('核可','approved','អនុម័ត'):lb('退件','rejected','បដិសេធ'))));if(decided.length>8)lines.push('… +'+(decided.length-8));}
+    /* 2026-11-06 週報附圖：本週事項表＋狀態分布；已決定（正常）在文字裡併成一行 */
+    const weekChart=period==='week'&&scoped.length?assetWeekChart({lang:langOpt,range,open,repair,decided,added,st,value,total:scoped.length,scopeLabel:scope&&scope!=='all'?(()=>{const z=AT['zone_'+scope];return z?(langOpt==='bi'?z[0]+' · '+z[1]:langOpt==='zh'?z[0]:z[1]):String(scope);})():''}):'';
+    if(weekChart&&decided.length){const ap=decided.filter(x=>x.h.type==='approved').length;lines.push('\n✔ '+lb('本期已決定','Decided this period','បានសម្រេចក្នុងរយៈពេលនេះ')+' <b>'+decided.length+'</b> · ✅ '+ap+' · ❌ '+(decided.length-ap));}
+    if(weekChart)lines.push('📊 '+lb('本週事項與資產狀態見附圖','This week\'s items and asset status in the chart','មើលព័ត៌មានសប្ដាហ៍ក្នុងរូបភាព'));
+    if(decided.length&&!weekChart){lines.push(sec('✔',lb('本期已決定','Decided this period','បានសម្រេចក្នុងរយៈពេលនេះ')+' · '+decided.length));decided.sort(byDate).slice(0,8).forEach(x=>lines.push((x.h.type==='approved'?'• ✅ ':'• ❌ ')+G.d(String(x.h.date||'').slice(0,10))+' <b>'+G.esc(String(x.a.code||'—')+(x.a.name?' '+x.a.name:''))+'</b> · '+(((x.req||x.h).request||{}).type==='transfer'?lb('轉移','Transfer','ផ្ទេរ'):lb('報廢','Scrap','ជម្រះចោល'))+' '+(x.h.type==='approved'?lb('核可','approved','អនុម័ត'):lb('退件','rejected','បដិសេធ'))));if(decided.length>8)lines.push('… +'+(decided.length-8));}
     if(!scoped.length)lines.push('\nℹ️ '+lb('沒有資產記錄','No asset records','គ្មានកំណត់ត្រាទ្រព្យ'));
     const photos=[];
     open.map(x=>x.a).concat(repair).forEach(a=>{const ph=assetPhotoValue(photos[a.code])||assetPhotoValue(a.photos);if(ph&&!photos.includes(ph)&&photos.length<5)photos.push(ph);});
+    if(weekChart){photos.unshift(weekChart);if(photos.length>5)photos.length=5;}
     const body=lines.length?'\n'+lines.join('\n'):'';
     if((txt+body).length<=3000)return {text:txt+body,photos};
     const pages=G.chunk('📦 <b>'+lb('VRT 資產管理','VRT Asset Management','VRT គ្រប់គ្រងទ្រព្យសម្បត្តិ')+'</b> · '+G.esc(assetTgPeriodLabel(period,ref,langOpt)),lines.map(l=>l.replace(/^\n+/,'')),2800);

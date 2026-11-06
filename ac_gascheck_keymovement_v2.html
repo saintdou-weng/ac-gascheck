@@ -211,7 +211,7 @@ table tr:last-child td { border-bottom: none; }
   <!-- AC_GASCHECK Shared System -->
 <script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
-<script src="./ac-tg-chart.js?v=20261103a"></script>
+<script src="./ac-tg-chart.js?v=20261106b"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -1565,6 +1565,84 @@ function keyTgLine(r,lang,withDate){
   if(r.remarks)line+=' · 📝 '+G.esc(String(r.remarks).replace(/[\r\n]+/g,' '));
   return line;
 }
+/* 2026-11-06 週報附圖：一週借還表（直行＝週一到週六，橫列＝每把鑰匙）。和文字摘要用同一批記錄與數字。
+   格子：綠＝當天借出並已歸還（借→還時間）、淺綠＝借出期間（之後有還）、紅＝當天借出未還／遺失／歸還損壞、淺紅＝仍借出中、灰＝沒有借還。
+   超過 14 把：有問題的排前面，其餘正常的併成一列「其他正常（n 把）」。週日有資料才顯示。沒有 ACChart 或畫不出來回傳 ''。 */
+function keyWeekGridChart(c){
+  if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
+  try{
+    const lang=c.lang||'bi',range=GC.period.range('week',c.ref);if(!range)return '';
+    const t=(zh,en,km)=>lang==='bi'?zh+' · '+en:lang==='en'?en:lang==='km'?en+(km?' · '+km:''):zh;
+    const short=(zh,en)=>lang==='en'||lang==='km'?en:lang==='bi'?zh+' '+en:zh;
+    const G=GC.TG,P=ACChart.PALETTE||[],OK=P[1]||'#2e9c6a',OK_L='#cfe9dc',BAD=P[3]||'#e35d5b',BAD_L='#f6d2d1',NONE='#eef2f5',today=_localYMD();
+    const WD=[['日','Sun'],['一','Mon'],['二','Tue'],['三','Wed'],['四','Thu'],['五','Fri'],['六','Sat']];
+    const rows=c.rows||[],outKeys=c.outKeys||[],outIds=new Set(outKeys.map(r=>String(r.id)));
+    const days=[];
+    for(let d=new Date(range.from);d<range.to;d.setDate(d.getDate()+1)){
+      const ymd=_localYMD(d);
+      if(d.getDay()===0&&!rows.some(r=>String(r.issue_date||'')===ymd||String(r.return_date||'')===ymd))continue;
+      days.push({ymd,wd:d.getDay()});
+    }
+    if(!days.length)return '';
+    /* 每把鑰匙：本週的異動＋本週以前借出、到現在還沒還的那一筆 */
+    const by=new Map(),tok=r=>keyTgToken(r.key_no)||String(r.id);
+    rows.forEach(r=>{const k=tok(r);if(!by.has(k))by.set(k,[]);by.get(k).push(r);});
+    outKeys.forEach(r=>{if(String(r.issue_date||'')<range.fromYmd){const k=tok(r);if(!by.has(k))by.set(k,[]);if(!by.get(k).includes(r))by.get(k).push(r);}});
+    const deptName=v=>{const x=DEPT_LABEL[deptCode(v)];return x?short(x[0],x[1]):String(v||'');};
+    const keyRows=Array.from(by.entries()).map(([k,list])=>{
+      list=list.slice().sort((a,b)=>keyTgStamp(a).localeCompare(keyTgStamp(b)));
+      let bad=false;
+      const cells=days.map(day=>{
+        if(day.ymd>today)return {text:'',color:NONE,light:true};
+        const issued=list.filter(r=>String(r.issue_date||'')===day.ymd);
+        if(issued.length){
+          const lost=issued.filter(r=>keyTgState(r)==='lost'),out=issued.filter(r=>keyTgState(r)==='out'),dmg=issued.filter(r=>keyTgState(r)==='returned'&&condCode(r.return_condition)==='damaged');
+          const tm=issued.length===1?(G.time(issued[0].issue_time)||'')+(issued[0].return_date?(String(issued[0].return_date)===day.ymd?'–'+(G.time(issued[0].return_time)||'?'):'→'+G.d(issued[0].return_date)):''):'×'+issued.length;
+          if(lost.length){bad=true;return {text:'✗ '+short('遺失','Lost'),sub:tm,color:BAD};}
+          if(out.length){bad=true;return {text:'✗ '+short('未還','Not returned'),sub:(G.time(out[out.length-1].issue_time)||'')+(issued.length>1?' ×'+issued.length:''),color:BAD};}
+          if(dmg.length){bad=true;return {text:'⚠ '+short('損壞','Damaged'),sub:tm,color:BAD};}
+          return {text:'✓',sub:tm,color:OK};
+        }
+        /* 沒有新借出：看是不是還在借出期間（之前借、還沒還或之後才還） */
+        const span=list.find(r=>String(r.issue_date||'')<day.ymd&&(!r.return_date||String(r.return_date)>=day.ymd)&&keyTgState(r)!=='lost');
+        if(span){
+          if(!span.return_date&&outIds.has(String(span.id))){bad=true;return {text:short('借出中','Still out'),sub:G.d(span.issue_date)+'→',color:BAD_L,light:true};}
+          if(span.return_date&&String(span.return_date)===day.ymd)return {text:'↩',sub:G.time(span.return_time)||'',color:OK_L,light:true};
+          if(span.return_date)return {text:short('借出','Out'),color:OK_L,light:true};
+        }
+        return {text:'—',color:NONE,light:true};
+      });
+      const last=list[list.length-1]||{};
+      const name=String(last.key_no||k)+(last.key_name?' '+last.key_name:'');
+      const who=[String(last.recipient_name||'').trim(),deptName(last.dept)].filter(Boolean).join(' · ');
+      return {label:name,sub:who,cells,bad,k:String(last.key_no||k),tk:k};
+    }).sort((a,b)=>(b.bad-a.bad)||a.k.localeCompare(b.k,undefined,{numeric:true}));
+    let gridRows=keyRows;
+    if(keyRows.length>14){
+      const badRows=keyRows.filter(r=>r.bad),okRows=keyRows.filter(r=>!r.bad);
+      const keep=badRows.slice(0,okRows.length?13:14),restBad=badRows.slice(keep.length),rest=okRows.concat(restBad);
+      const restKeys=new Set(rest.map(r=>r.tk));
+      const okCells=days.map(day=>{
+        if(day.ymd>today)return {text:'',color:NONE,light:true};
+        const n=rows.filter(r=>restKeys.has(tok(r))&&String(r.issue_date||'')===day.ymd).length;
+        return n?{text:'✓ ×'+n,color:OK}:{text:'—',color:NONE,light:true};
+      });
+      gridRows=keep.concat([{label:(restBad.length?t('其他','Others','ផ្សេងៗ'):t('其他正常','Others OK','ផ្សេងៗធម្មតា'))+' ('+rest.length+')',sub:restBad.length?t('另有 '+restBad.length+' 把未還見文字','+'+restBad.length+' not returned, see text','+'+restBad.length+' មិនទាន់ប្រគល់'):'',cells:okCells}]);
+    }
+    const cols=days.map(day=>({label:short('週'+WD[day.wd][0],WD[day.wd][1]),sub:day.ymd.slice(5)}));
+    const blocks=[
+      {type:'stats',items:[
+        {label:t('借出','Borrowed','ខ្ចី'),value:String(c.borrowed),color:P[0]||'#2b8fbd'},
+        {label:t('歸還','Returned','ប្រគល់'),value:String(c.returned),color:OK},
+        {label:t('未歸還','Not returned','មិនទាន់ប្រគល់'),value:String(c.notReturned),color:c.notReturned?BAD:(P[7]||'#6c8ea4')},
+        {label:t('逾期','Overdue','ហួសកំណត់'),value:String(c.overdue),color:c.overdue?BAD:(P[7]||'#6c8ea4')}
+      ].concat(c.lost?[{label:t('遺失','Lost','បាត់'),value:String(c.lost),color:BAD}]:[])},
+      {type:'grid',title:t('每日借還表','Daily key log','តារាងខ្ចី/ប្រគល់ប្រចាំថ្ងៃ'),cols,rows:gridRows,
+        legend:[{label:t('已歸還','Returned','បានប្រគល់'),color:OK},{label:t('借出期間','Out','កំពុងខ្ចី'),color:OK_L},{label:t('未還／遺失','Problem','មានបញ្ហា'),color:BAD},{label:t('仍借出','Still out','នៅខ្ចី'),color:BAD_L},{label:t('沒借還','None','គ្មាន'),color:NONE}]}
+    ];
+    return ACChart.render({title:t('鑰匙管理 週報','Key Management · Weekly','គ្រប់គ្រងសោ · ប្រចាំសប្ដាហ៍'),subtitle:range.fromYmd+' ~ '+range.toYmd,theme:'navy',width:1080,blocks,footer:'AC GASCheck · '+t('鑰匙管理','Key Management','គ្រប់គ្រងសោ')})||'';
+  }catch(e){return '';}
+}
 function buildKeyTelegram(opt){
   /* 鑰匙模組沒有真正的 Telegram 核可：只發摘要；報告語言預設為目前介面語言 */
   opt=opt||{};const cfg=opt.cfg||{},period=opt.period||'month',ref=opt.ref||_localYMD(),scope=opt.scope||'all',slot=opt.slot||'all';
@@ -1600,6 +1678,9 @@ function buildKeyTelegram(opt){
   if(!rows.length&&!outKeys.length)lines.push('\nℹ️ '+lb('這段期間沒有紀錄','No records in this period','គ្មានកំណត់ត្រាក្នុងរយៈពេលនេះ'));
   const photos=[];
   outKeys.concat(lost,damaged).forEach(r=>(Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);}));
+  /* 2026-11-06 週報：附圖放第一張（每天每把鑰匙的借還表），文字只留未還／遺失／損壞逐把列出 */
+  const weekChart=period==='week'?keyWeekGridChart({lang,ref,rows,outKeys,borrowed:rows.length,returned,notReturned:n,overdue:overdue.length,lost:lost.length}):'';
+  if(weekChart){photos.unshift(weekChart);if(photos.length>5)photos.length=5;txt+='\n📊 '+lb('每天每把鑰匙的借還情形見附圖','Daily key log in the chart','មើលតារាងខ្ចី/ប្រគល់ប្រចាំថ្ងៃក្នុងរូបភាព');}
   const body=lines.length?'\n'+lines.join('\n'):'';
   if((txt+body).length<=3000)return {text:txt+body,photos};
   /* 太長：第一頁放摘要＋前段清單，其餘分頁（每頁 ≤ 3000 字），頁首重複標題 */

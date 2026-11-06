@@ -239,7 +239,7 @@ select.fi{cursor:pointer}
 </style>
 <script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
-<script src="./ac-tg-chart.js?v=20261103a"></script>
+<script src="./ac-tg-chart.js?v=20261106b"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -2405,7 +2405,9 @@ function dormInspStats(o){
   const photos=insps.reduce((s,r)=>s+(Array.isArray(r.photos)?r.photos.length:0),0);
   const today=String(ref||today_str()).slice(0,10);
   let fixed=0,overdue=0,noDue=0;badRooms.forEach(x=>{if(x.fixedAt)fixed++;else if(!x.dueDate)noDue++;else if(x.dueDate<today)overdue++;});
-  return {groups,roomList,badRooms,okRooms:roomList.filter(x=>!x.bad.length),notChecked,byDate,photos,issues:badRooms.reduce((s,x)=>s+x.bad.length,0),fixed,overdue,noDue,inspections:insps.length,period,range};
+  /* 2026-11-06 週報附圖用：每個地點每天巡了幾間、幾個 ✗（同 byDate 的算法） */
+  const byLocDate={};insps.forEach(r=>{const d=String(r.date||'').slice(0,10);if(!d)return;const k=r.location+'|'+d,cur=byLocDate[k]||(byLocDate[k]={rooms:0,bad:0});Object.keys(r.data||{}).forEach(room=>{if(!inScope(room))return;const rd=r.data[room]||{};if(!INSP_COLS.some(c=>rd[c.k]))return;cur.rooms++;INSP_COLS.forEach(c=>{if(rd[c.k]==='X')cur.bad++;});});});
+  return {groups,roomList,badRooms,okRooms:roomList.filter(x=>!x.bad.length),notChecked,byDate,byLocDate,photos,issues:badRooms.reduce((s,x)=>s+x.bad.length,0),fixed,overdue,noDue,inspections:insps.length,period,range};
 }
 /* 異常一行：房號 · 地點 · ✗ 項目 · 日期 · 👤 巡查員 · 📷 n／無照片 · ✅ 完成／⏰ 期限／🔴 逾期／⏰ 請填期限 */
 function dormInspDueText(x,lang,ref){
@@ -2434,11 +2436,29 @@ function dormInspLines(lines,sec,S,lang,K,ref){
 const _dormChartCache=new Map();
 function dormSummaryChart(S,lang,periodLabel){
   let key='';
-  try{key=JSON.stringify([lang,String(periodLabel||''),S.period,S.groups.map(g=>[g.k,g.ok,g.bad]),S.okRooms.length,S.badRooms.length,S.notChecked.length,S.roomList.length,S.issues,S.photos,S.byDate]);}catch(e){key='';}
+  try{key=JSON.stringify([lang,String(periodLabel||''),S.period,S.groups.map(g=>[g.k,g.ok,g.bad]),S.okRooms.length,S.badRooms.length,S.notChecked.length,S.roomList.length,S.issues,S.photos,S.byDate,S.byLocDate||null,S.locs||null]);}catch(e){key='';}
   if(key&&_dormChartCache.has(key))return _dormChartCache.get(key);
   const out=dormSummaryChartDraw(S,lang,periodLabel);
   if(key){_dormChartCache.set(key,out);if(_dormChartCache.size>8)_dormChartCache.delete(_dormChartCache.keys().next().value);}
   return out;
+}
+function dormWeekGrid(S,lang,t,C){
+  const D=i18n.dict,short=(zh,en)=>lang==='en'||lang==='km'?en:lang==='bi'?zh+' '+en:zh,NONE='#eef2f5';
+  const WD=[['日','Sun'],['一','Mon'],['二','Tue'],['三','Wed'],['四','Thu'],['五','Fri'],['六','Sat']];
+  const has=ymd=>Object.keys(S.byLocDate).some(k=>k.slice(-10)===ymd);
+  const days=[];
+  for(let d=new Date(S.range.from);d<S.range.to;d.setDate(d.getDate()+1)){const ymd=d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate());if(d.getDay()===0&&!has(ymd))continue;days.push({ymd,wd:d.getDay()});}
+  const locs=(S.locs||Object.keys(DEF_ROOMS_MAP));
+  if(!days.length||!locs.length)return null;
+  const roomsW=n=>n+' '+short('間',n===1?'room':'rooms');
+  const issuesW=n=>lang==='en'||lang==='km'?n+' found':lang==='bi'?n+' 項 found':'發現 '+n+' 項';
+  const rows=locs.map(L=>{
+    let n=0,bad=0;
+    const cells=days.map(day=>{const x=S.byLocDate[L+'|'+day.ymd];if(!x)return {text:'—',color:NONE,light:true};n++;bad+=x.bad;return x.bad?{text:'✗ '+issuesW(x.bad),sub:roomsW(x.rooms),color:C.bad}:{text:'✓',sub:roomsW(x.rooms),color:C.ok};});
+    return {label:t(D.zh['loc-'+L]||L,D.en['loc-'+L]||L,D.km['loc-'+L]),sub:n?(lang==='en'||lang==='km'?'checked '+n+(n===1?' day':' days'):'巡 '+n+' '+short('天',n===1?'day':'days'))+(bad?' · ✗ '+bad:''):short('本週未巡查','not inspected'),cells};
+  });
+  return {type:'grid',title:t('每日巡查表','Daily inspection grid','តារាងត្រួតពិនិត្យប្រចាំថ្ងៃ'),cols:days.map(day=>({label:short('週'+WD[day.wd][0],WD[day.wd][1]),sub:day.ymd.slice(5)})),rows,
+    legend:[{label:t('正常','OK','ល្អ'),color:C.ok},{label:t('有異常','Issue','មានបញ្ហា'),color:C.bad},{label:t('沒巡查','Not checked','មិនបានពិនិត្យ'),color:NONE}]};
 }
 function dormSummaryChartDraw(S,lang,periodLabel){
   if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
@@ -2449,11 +2469,14 @@ function dormSummaryChartDraw(S,lang,periodLabel){
     const blocks=[
       {type:'bars',title:t('各分類檢查結果','Checks by category','តាមប្រភេទ'),items:bars},
       {type:'donut',title:t('房間','Rooms','បន្ទប់'),center:String(S.roomList.length),centerSub:lang==='en'?'rooms':lang==='km'?'បន្ទប់':'房間',items:[{label:t('正常','OK','ល្អ'),value:S.okRooms.length,color:C.ok},{label:t('有異常','Issues','មានបញ្ហា'),value:S.badRooms.length,color:C.bad},{label:t('未巡查','Not checked','មិនទាន់ពិនិត្យ'),value:S.notChecked.length,color:C.na}]},
-      {type:'stats',items:[{label:t('已巡查房間','Rooms checked','បន្ទប់បានពិនិត្យ'),value:String(S.roomList.length),color:C.info},{label:t('異常項目','Issues','បញ្ហា'),value:String(S.issues),color:S.issues?C.bad:C.na},{label:t('照片','Photos','រូបថត'),value:String(S.photos),color:C.warn}]}
+      {type:'stats',items:[{label:t('已巡查房間','Rooms checked','បន្ទប់បានពិនិត្យ'),value:String(S.roomList.length),color:C.info},{label:t('目前仍異常','Still open','នៅមានបញ្ហា'),value:String(S.issues),color:S.issues?C.bad:C.na},{label:t('照片','Photos','រូបថត'),value:String(S.photos),color:C.warn}]}
     ];
     const dates=Object.keys(S.byDate).sort();
+    /* 2026-11-06 週報：改成一週巡查表（直行＝週一到週六，橫列＝地點）：綠＝巡查全部正常（巡了幾間）、紅＝有 ✗（幾項）、灰＝那天沒巡查。週日有資料才顯示。 */
+    const grid=S.period==='week'&&S.range&&S.byLocDate?dormWeekGrid(S,lang,t,C):null;
+    if(grid)blocks.push(grid);
     /* 只有一個巡查日就不畫直條（一根柱子沒意義，指標列改成整排） */
-    if(dates.length>1){
+    else if(dates.length>1){
       let cols;
       if(S.period==='year'){const byM={};dates.forEach(d=>{const m=d.slice(5,7);byM[m]=(byM[m]||0)+S.byDate[d];});cols=[];for(let i=1;i<=12;i++){const k=(i<10?'0':'')+i;cols.push({label:String(i),value:byM[k]||0});}}
       else cols=dates.map(d=>({label:GC.TG.d(d),value:S.byDate[d]}));
@@ -2570,6 +2593,7 @@ function dormInspReport(opt,loc){
     const list=[];insps.forEach(r=>Object.keys(r.data||{}).forEach(room=>{const rd=r.data[room]||{};if(!INSP_COLS.some(x=>rd[x.k]))return;list.push({location:r.location,room,date:r.date,inspector:r.inspector,bad:INSP_COLS.filter(x=>rd[x.k]==='X').map(x=>x.k),ok:INSP_COLS.filter(x=>rd[x.k]==='N').map(x=>x.k),photos:r.photos||[]});}));
     const byLatest=new Map();list.forEach(x=>byLatest.set(x.location+'|'+nk(x.room),x));const rl=Array.from(byLatest.values()),br=rl.filter(x=>x.bad.length);
     const S=dormInspStats({roomList:rl,badRooms:br,insps,inScope:()=>true,ref,period,range});
+    S.locs=locs;
     S.notChecked=[];locs.forEach(L=>{const cr=(Array.isArray(c['rooms_'+L])?c['rooms_'+L]:DEF_ROOMS_MAP[L]||[]);if(insps.some(r=>r.location===L))cr.forEach(x=>{if(!byLatest.has(L+'|'+nk(x)))S.notChecked.push({location:L,room:x});});});
     const chart=dormSummaryChart(S,lang,dormTgPeriodLabel(period,ref,lang));if(chart)photos.push(chart);
   }

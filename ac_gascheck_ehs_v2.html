@@ -166,7 +166,7 @@ select.bi{cursor:pointer}
 </style>
 <script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
-<script src="./ac-tg-chart.js?v=20261103a"></script>
+<script src="./ac-tg-chart.js?v=20261106b"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -1930,6 +1930,74 @@ function ehsTgSupplierNames(wasteRows,includeFixed){
   wasteRows.forEach(function(r){const n=ehsTgSupplier(r)||'—';if(names.indexOf(n)<0)names.push(n);});
   return names;
 }
+/* 2026-11-06 週報附圖：一週廢料／回收表（直行＝週一到週六，橫列＝每家廢料供應商＋回收）。和文字摘要用同一批記錄與數字。
+   格子：綠＝當天有出廠／回收且正常（趟數＋kg）、紅＝有需注意的趟次（時間、重量 0、在廠超過 3 小時）或回收總重 0、灰＝沒有。
+   固定供應商就算本週 0 趟也列出（看得到哪天沒來）。週日有資料才顯示。沒有 ACChart 或畫不出來回傳 ''。 */
+function ehsWeekGridChart(c){
+  if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
+  try{
+    const lang=c.lang||'bi',range=GC.period.range('week',c.ref);if(!range)return '';
+    const t=function(zh,en,km){return lang==='bi'?zh+' · '+en:lang==='en'?en:lang==='km'?en+(km?' · '+km:''):zh;};
+    const short=function(zh,en){return lang==='en'||lang==='km'?en:lang==='bi'?zh+' '+en:zh;};
+    const P=ACChart.PALETTE||[],OK=P[1]||'#2e9c6a',BAD=P[3]||'#e35d5b',NONE='#eef2f5',MUTED=P[7]||'#6c8ea4';
+    const WD=[['日','Sun'],['一','Mon'],['二','Tue'],['三','Wed'],['四','Thu'],['五','Fri'],['六','Sat']];
+    const wasteRows=c.wasteRows||[],recycleRows=c.recycleRows||[],kg=function(v){return Math.round(kgNumber(v)).toLocaleString('en-US')+' kg';};
+    const all=(c.showWaste?wasteRows:[]).concat(c.showRecycle?recycleRows:[]);
+    const days=[];
+    for(let d=new Date(range.from);d<range.to;d.setDate(d.getDate()+1)){
+      const ymd=_localYMD(d);
+      if(d.getDay()===0&&!all.some(function(r){return ehsYmd(r.date)===ymd;}))continue;
+      days.push({ymd:ymd,wd:d.getDay()});
+    }
+    if(!days.length)return '';
+    const WHY={time_in:['時間','Time'],time_out:['時間','Time'],kg:['沒重量','No kg'],long:['超過3h','>3h']};
+    const rows=[];
+    if(c.showWaste){
+      const names=SUPPLIERS.slice();
+      wasteRows.forEach(function(r){const n=ehsTgSupplier(r)||'—';if(names.indexOf(n)<0)names.push(n);});
+      names.forEach(function(n){
+        const list=wasteRows.filter(function(r){return (ehsTgSupplier(r)||'—')===n;});
+        let bad=false;
+        const cells=days.map(function(day){
+          const recs=list.filter(function(r){return ehsYmd(r.date)===day.ymd;});
+          if(!recs.length)return {text:'—',color:NONE,light:true};
+          const w=recs.reduce(function(a,r){return a+kgNumber(r.weight_kg);},0),issues=recs.map(ehsTgWasteIssue).filter(Boolean);
+          const trips=recs.length+' '+short('趟',recs.length===1?'trip':'trips');
+          if(issues.length){bad=true;const why=Array.from(new Set(issues.map(function(k){return short(WHY[k][0],WHY[k][1]);})));return {text:'⚠ '+why.join(','),sub:trips+' · '+kg(w),color:BAD};}
+          return {text:'✓ '+trips,sub:kg(w),color:OK};
+        });
+        const tot=list.reduce(function(a,r){return a+kgNumber(r.weight_kg);},0);
+        rows.push({label:n==='—'?t('未填供應商','No supplier','គ្មានអ្នកផ្គត់ផ្គង់'):n,sub:t('廢料','Waste','សំណល់')+' · '+list.length+' '+short('趟','trips')+' · '+kg(tot),cells:cells,bad:bad});
+      });
+    }
+    if(c.showRecycle&&recycleRows.length){
+      let bad=false;
+      const cells=days.map(function(day){
+        const recs=recycleRows.filter(function(r){return ehsYmd(r.date)===day.ymd;});
+        if(!recs.length)return {text:'—',color:NONE,light:true};
+        const w=recs.reduce(function(a,r){return a+kgNumber(ehsRecycleRowTotal(r));},0),zero=recs.some(function(r){return !kgNumber(ehsRecycleRowTotal(r));});
+        if(zero){bad=true;return {text:'⚠ '+short('總重 0','0 kg'),sub:kg(w),color:BAD};}
+        return {text:'✓ '+kg(w),sub:recs.length>1?'×'+recs.length:'',color:OK};
+      });
+      rows.push({label:t('回收','Recycle','កែច្នៃ'),sub:kg(c.recycleKg)+(recycleRows.length>1?' · '+recycleRows.length+' '+short('筆','records'):''),cells:cells,bad:bad});
+    }
+    if(!rows.length)return '';
+    let gridRows=rows;
+    if(rows.length>14){
+      const badRows=rows.filter(function(r){return r.bad;}),okRows=rows.filter(function(r){return !r.bad;});
+      const keep=badRows.concat(okRows).slice(0,13),rest=rows.filter(function(r){return keep.indexOf(r)<0;});
+      gridRows=keep.concat([{label:t('其他','Others','ផ្សេងៗ')+' ('+rest.length+')',cells:days.map(function(day,i){const n=rest.filter(function(r){return r.cells[i].color===OK;}).length;return n?{text:'✓ ×'+n,color:OK}:{text:'—',color:NONE,light:true};})}]);
+    }
+    const stats=[];
+    if(c.showWaste){stats.push({label:t('趟數','Trips','ជើង'),value:String(wasteRows.length),color:P[0]||'#2b8fbd'});stats.push({label:t('廢料','Waste','សំណល់'),value:kg(c.wasteKg),color:P[2]||'#f2a93b'});}
+    if(c.showRecycle)stats.push({label:t('回收','Recycle','កែច្នៃ'),value:kg(c.recycleKg),color:OK});
+    stats.push({label:t('需注意','To check','ត្រូវពិនិត្យ'),value:String(c.toCheck),color:c.toCheck?BAD:MUTED});
+    const blocks=[{type:'stats',items:stats},
+      {type:'grid',title:t('每日出廠／回收表','Daily waste / recycle log','តារាងសំណល់ / កែច្នៃប្រចាំថ្ងៃ'),cols:days.map(function(day){return {label:short('週'+WD[day.wd][0],WD[day.wd][1]),sub:day.ymd.slice(5)};}),rows:gridRows,
+        legend:[{label:t('正常','OK','ធម្មតា'),color:OK},{label:t('需注意','To check','ត្រូវពិនិត្យ'),color:BAD},{label:t('沒有','None','គ្មាន'),color:NONE}]}];
+    return ACChart.render({title:t('回收／廢料 週報','Recycle / Waste · Weekly','កែច្នៃ / សំណល់ · ប្រចាំសប្ដាហ៍'),subtitle:range.fromYmd+' ~ '+range.toYmd,theme:'green',width:1080,blocks:blocks,footer:'AC GASCheck · EHS · '+t('回收／廢料','Recycle / Waste','កែច្នៃ / សំណល់')})||'';
+  }catch(e){return '';}
+}
 function buildEhsTelegram(opt){
   opt=opt||{};
   const cfg=opt.cfg||{},G=GC.TG,period=opt.period||'month',scope=opt.scope||'all',slot=opt.slot||'all',lang=opt.lang||'bi';
@@ -1993,8 +2061,15 @@ function buildEhsTelegram(opt){
   txt+='\n'+G.kpis(k,2);
   if(checkers.length)txt+='\n👤 '+G.esc(checkers.slice(0,4).join(', '))+(checkers.length>4?' +'+(checkers.length-4):'');
   if(warn.length)txt+='\n'+warn.join('  ·  ');
+  /* 2026-11-06 週報附圖（第一張）：每天每家供應商的趟數／重量；正常的供應商在文字裡併成一行 */
+  const weekChart=period==='week'?ehsWeekGridChart({lang:lang,ref:opt.ref,wasteRows:wasteRows,recycleRows:recycleRows,showWaste:showWaste,showRecycle:showRecycle,wasteKg:wasteKg,recycleKg:recycleKg,toCheck:wasteIssues.length+recycleBad.length}):'';
+  if(weekChart){photos.unshift(weekChart);if(photos.length>5)photos.length=5;}
+  if(weekChart&&showWaste&&supNames.length){
+    txt+=G.sec('🚛',lb('廢料趟數','Waste trips','ជើងដឹកសំណល់'))+'\n'+supNames.slice(0,6).map(function(n){const list=supCount(n);return '<b>'+G.esc(n)+'</b> '+list.length+' '+lb('趟','trips','ជើង')+' · '+sum(list,'weight_kg').toLocaleString()+' kg';}).join('  ·  ')+(supNames.length>6?' +'+(supNames.length-6):'');
+  }
+  if(weekChart)txt+='\n📊 '+lb('每天每家的趟數與重量見附圖','Daily trips per supplier in the chart','មើលជើងប្រចាំថ្ងៃក្នុងរូបភាព');
   /* 每家供應商一行：趟數／目標 ✅、重量 */
-  if(showWaste&&!day&&supNames.length){
+  if(showWaste&&!day&&supNames.length&&!weekChart){
     const fixed=supNames.filter(function(n){return SUPPLIERS.indexOf(n)>=0;}),others=supNames.filter(function(n){return SUPPLIERS.indexOf(n)<0;}).sort(function(a,b){return supCount(b).length-supCount(a).length;});
     const shown=fixed.concat(others).slice(0,12);
     txt+=G.sec('🚛',lb('廢料趟數','Waste trips','ជើងដឹកសំណល់'))+'\n'+shown.map(function(n){

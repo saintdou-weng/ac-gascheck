@@ -482,7 +482,7 @@ document.addEventListener('click', function(e) {
 </style>
 <script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
-<script src="./ac-tg-chart.js?v=20261103a"></script>
+<script src="./ac-tg-chart.js?v=20261106b"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -2837,6 +2837,30 @@ function buildWaterTelegram(opt){
   }
   /* 2026-11-03 Telegram 摘要附圖（ac-tg-chart.js，與 AC SEC 共用）：工廠／宿舍圓環、每日（週／月）或每月（年）桶數直條、重點數字。
      文字語言跟摘要一致：bi → 中＋英；en → 只有英文；km → 英文＋柬文。沒有 ACChart 或畫不出來回傳 ''（摘要照常送，只是沒有圖）。 */
+  function waterWeekGrid(c,t,C){
+    const lang=c.lang||'bi',short=(zh,en)=>lang==='en'||lang==='km'?en:lang==='bi'?zh+' '+en:zh,G=GC.TG,today=_localYMD();
+    const P=ACChart.PALETTE||[],OK=C.sta,BAD=P[3]||'#e35d5b',NONE='#eef2f5',TOT=C.fac;
+    const WD=[['日','Sun'],['一','Mon'],['二','Tue'],['三','Wed'],['四','Thu'],['五','Fri'],['六','Sat']];
+    const entries=c.entries||[],odd=c.odd||[],byDate={};entries.forEach(r=>{byDate[r.date]=r;});
+    const days=[];
+    for(let d=new Date(c.range.from);d<c.range.to;d.setDate(d.getDate()+1)){const ymd=_localYMD(d);if(d.getDay()===0&&!byDate[ymd])continue;days.push({ymd,wd:d.getDay()});}
+    if(!days.length)return null;
+    const drumsW=n=>n+' '+short('桶',n===1?'drum':'drums');
+    const empty=ymd=>ymd>today?{text:'',color:NONE,light:true}:waterDayOff(ymd)?{text:short('休','Off'),color:NONE,light:true}:{text:'—',color:NONE,light:true};
+    const rows=[];
+    [['factory','fq','fRecorded','fTime',t('工廠','Factory','រោងចក្រ'),c.totals.fq],['staff','sq','sRecorded','sTime',t('宿舍','Staff House','ផ្ទះបុគ្គលិក'),c.totals.sq]].forEach(k=>{
+      if((c.scope==='factory'&&k[0]==='staff')||(c.scope==='staff'&&k[0]==='factory'))return;
+      rows.push({label:k[4],sub:drumsW(k[5]),cells:days.map(day=>{
+        const r=byDate[day.ymd];if(!r||!r[k[2]]||!(r[k[1]]>0))return empty(day.ymd);
+        const o=odd.find(x=>x.date===day.ymd&&x.kind===k[0]),tm=G.time(r[k[3]])||(r[k[3]]==='morning'?short('早','AM'):r[k[3]]==='afternoon'?short('午','PM'):'');
+        if(o)return {text:'⚠ '+drumsW(r[k[1]]),sub:o.why==='qty'?short('平均','avg')+' '+o.avg:short('單價偏高','price high'),color:BAD};
+        return {text:drumsW(r[k[1]]),sub:tm,color:OK};
+      })});
+    });
+    if(rows.length>1)rows.push({label:t('合計','Total','សរុប'),sub:drumsW(c.drums),cells:days.map(day=>{const r=byDate[day.ymd],n=r?r.fq+r.sq:0;return n?{text:drumsW(n),color:TOT}:empty(day.ymd);})});
+    return {type:'grid',title:t('每日送水表','Daily delivery log','តារាងដឹកទឹកប្រចាំថ្ងៃ'),cols:days.map(day=>({label:short('週'+WD[day.wd][0],WD[day.wd][1]),sub:day.ymd.slice(5)})),rows,
+      legend:[{label:t('有送水','Delivered','បានដឹក'),color:OK},{label:t('需注意','To check','ត្រូវពិនិត្យ'),color:BAD},{label:t('沒送水／休','None / off','គ្មាន / ឈប់'),color:NONE}]};
+  }
   function waterTelegramChart(c){
     if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
     try{
@@ -2849,12 +2873,17 @@ function buildWaterTelegram(opt){
       const cols=[];
       if(c.period==='year'){const byM={};Object.keys(byDate).forEach(d=>{const k=d.slice(5,7);byM[k]=(byM[k]||0)+byDate[d];});for(let m=1;m<=12;m++){const k=String(m).padStart(2,'0');cols.push({label:String(m),value:byM[k]||0,color:C.fac});}}
       else if(c.range){for(let d=new Date(c.range.from);d<c.range.to;d.setDate(d.getDate()+1)){const k=_localYMD(d);cols.push({label:c.period==='week'?k.slice(5):String(d.getDate()),value:byDate[k]||0,color:waterDayOff(k)?C.off:C.fac});}}
-      if(cols.length)blocks.push({type:'columns',title:c.period==='year'?t('每月桶數','Drums per month','ធុងក្នុងមួយខែ'):t('每日桶數','Drums per day','ធុងក្នុងមួយថ្ងៃ'),items:cols,color:C.fac});
+      /* 2026-11-06 週報：改成一週送水表（直行＝週一到週六，橫列＝工廠／宿舍／合計），每格＝當天桶數＋送水時間；
+         紅＝數量／單價異常（和文字「需注意」同一份 waterTgOddEntries），灰＝沒送水（只是資訊，不算異常），休＝週日／國定假日。週日有資料才顯示。 */
+      const grid=c.period==='week'&&c.range?waterWeekGrid(c,t,C):null;
+      if(grid)blocks.push(grid);
+      else if(cols.length)blocks.push({type:'columns',title:c.period==='year'?t('每月桶數','Drums per month','ធុងក្នុងមួយខែ'):t('每日桶數','Drums per day','ធុងក្នុងមួយថ្ងៃ'),items:cols,color:C.fac});
       const stats=[{label:t('桶數','Drums','ធុង'),value:drums.toLocaleString(),color:C.fac},{label:t('公升','Litres','លីត្រ'),value:(drums*20).toLocaleString()+' L',color:C.sta},{label:'KHR',value:(c.khr||0).toLocaleString(),sub:'$'+(+c.usd||0).toFixed(2),color:C.sum}];
       if(c.per)stats.push({label:t('人均','Per person','ក្នុងមនុស្សម្នាក់'),value:c.per.litres.toFixed(1)+' L',sub:t('出勤均','avg attendance','វត្តមានមធ្យម')+' '+c.per.avg,color:C.per});
       else if(c.workdays)stats.push({label:t('送水天數','Delivery days','ថ្ងៃដឹកទឹក'),value:c.delivered+' / '+c.workdays,sub:t('工作日','workdays','ថ្ងៃធ្វើការ'),color:C.na});
-      blocks.push({type:'stats',items:stats});
-      const img=ACChart.render({title:t('VRT 飲用水','VRT Drinking Water','VRT ទឹកផឹក'),subtitle:c.subtitle||'',theme:'green',columns:1,blocks:blocks,footer:'AC GASCheck · '+t('送水記錄','Drinking water log','កំណត់ត្រាទឹកផឹក')});
+      if(grid){blocks.length=0;blocks.push({type:'stats',items:stats},grid);}
+      else blocks.push({type:'stats',items:stats});
+      const img=ACChart.render({title:t('VRT 飲用水','VRT Drinking Water','VRT ទឹកផឹក'),subtitle:c.subtitle||'',theme:'green',columns:1,width:grid?1080:undefined,blocks:blocks,footer:'AC GASCheck · '+t('送水記錄','Drinking water log','កំណត់ត្រាទឹកផឹក')});
       return typeof img==='string'&&/^data:image\/png/.test(img)&&img.length>1000?img:'';
     }catch(e){return '';}
   }
@@ -2927,6 +2956,9 @@ function buildWaterTelegram(opt){
     if(scope!=='staff')locs.push('• <b>'+lb('工廠','Factory','រោងចក្រ')+'</b> · '+totals.fq.toLocaleString()+' '+lb('桶','drums','ធុង')+' · '+totals.ft.toLocaleString()+' KHR'+(!day?' · '+totals.fd+' '+dayW(totals.fd):''));
     if(scope!=='factory')locs.push('• <b>'+lb('宿舍','Staff House','ផ្ទះបុគ្គលិក')+'</b> · '+totals.sq.toLocaleString()+' '+lb('桶','drums','ធុង')+' · '+totals.st.toLocaleString()+' KHR'+(!day?' · '+totals.sd+' '+dayW(totals.sd):''));
     txt+=G.sec('📍',lb('地點','Locations','ទីតាំង'))+'\n'+locs.join('\n');
+    /* 附圖（週／月／年）；週報的圖是每天每個地點的送水表 */
+    const chart=day?'':waterTelegramChart({lang,period,scope,range,entries,totals,drums,khr,odd,usd:totals.usd,per,delivered:delivered.size,workdays:expected.length,subtitle:[waterTgPeriodText(period,opt.ref,lang),place,slotText].filter(Boolean).join(' · ')});
+    if(chart&&period==='week')txt+='\n📊 '+lb('每天每個地點的送水桶數見附圖','Daily drums per location in the chart','មើលធុងប្រចាំថ្ងៃក្នុងរូបភាព');
     /* 未送水的工作日只是資訊（可展開），日／週／月報列日期；年報不列（整年清單太長） */
     if(missing.length&&period!=='year'&&period!=='all')txt+=G.fold(['📭 '+lb('未送水日','No-delivery workdays','ថ្ងៃធ្វើការគ្មានការដឹក')+' '+missing.length+' · '+G.ranges(missing)]);
     /* 日報：當天每筆都列（最多 2 個地點）；其餘只列需要注意的 */
@@ -2945,7 +2977,6 @@ function buildWaterTelegram(opt){
     if(odd.length>8)ex.push('… +'+(odd.length-8));
     if(ex.length)txt+=G.sec('⚠️',lb('需注意','To check','ត្រូវពិនិត្យ'))+'\n'+ex.join('\n');
     /* 附圖放第一張（週／月／年），記錄照片接在後面，Telegram 一次最多 5 張 */
-    const chart=day?'':waterTelegramChart({lang,period,scope,range,entries,totals,drums,khr,usd:totals.usd,per,delivered:delivered.size,workdays:expected.length,subtitle:[waterTgPeriodText(period,opt.ref,lang),place,slotText].filter(Boolean).join(' · ')});
     const maxPhotos=chart?4:5;
     packet.photos=(chart?[chart]:[]).concat(photos).slice(0,5);
     if(photos.length>maxPhotos)txt+='\n\n📷 '+photos.length+' · '+lb('附前 '+maxPhotos+' 張，完整照片請開啟平台','First '+maxPhotos+' attached; all photos in dashboard','ភ្ជាប់ '+maxPhotos+' រូបដំបូង; រូបទាំងអស់នៅផ្ទាំងគ្រប់គ្រង');
