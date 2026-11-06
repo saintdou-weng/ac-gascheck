@@ -224,7 +224,7 @@ tbody tr:hover{background:var(--bg);}
   <!-- AC_GASCHECK Shared System -->
 <script src="./gascheck-core.js?v=20261104a"></script>
 <script src="./ac-holidays.js?v=20261103a"></script>
-<script src="./ac-tg-chart.js?v=20261106b"></script>
+<script src="./ac-tg-chart.js?v=20261106d"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
@@ -2452,8 +2452,8 @@ function tempWeekWeather(view,ymd,lang){
   [am,pm].concat(recs.map(function(r){return r.wx;})).forEach(function(k){if(k&&keys.indexOf(k)<0&&keys.length<2)keys.push(k);});
   const lb=function(k){const w=TEMP_WX[k];return lang==='bi'?w[1]+' '+w[2]:lang==='km'?w[2]:lang==='en'?w[2]:w[1];};
   const icons=keys.map(function(k){return TEMP_WX[k][0];});
-  if(keys.length===1)return {chart:icons[0]+' '+lb(keys[0]),text:icons[0]+(lang==='zh'||lang==='bi'?lb(keys[0]):TEMP_WX[keys[0]][2])};
-  return {chart:'AM '+icons[0]+'  PM '+icons[1],text:'AM'+icons[0]+' PM'+icons[1]};
+  if(keys.length===1)return {chart:icons[0]+' '+(lang==='zh'?TEMP_WX[keys[0]][1]:TEMP_WX[keys[0]][2]),text:icons[0]+(lang==='zh'||lang==='bi'?lb(keys[0]):TEMP_WX[keys[0]][2])};
+  return {chart:icons[0]+' → '+icons[1],text:'AM'+icons[0]+' PM'+icons[1]};
 }
 function tempWeekGridChart(view,zones,ref,lang){
   if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
@@ -2479,10 +2479,11 @@ function tempWeekGridChart(view,zones,ref,lang){
         if(!recs.length)return {text:'—',color:NONE,light:true};
         const am=recs.find(function(r){return r.p==='morning';}),pm=recs.find(function(r){return r.p==='afternoon';});
         const other=recs.filter(function(r){return r.p!=='morning'&&r.p!=='afternoon';});
-        const top=am||other[0]||pm,bottom=am?(pm||other[0]):(top===pm?null:pm);
+        const a=am||(!pm?other[0]:null),b=pm||(am&&other[0])||null;
+        const tv=function(r){const v=r?tempTgNum(r.t):'';return v?v+'°':'—';},hv=function(r){const v=r?tempTgNum(r.h):'';return v?v+'%':'—';};
         const bad=recs.some(isAnom);
-        const sub=bottom?(bottom.p==='afternoon'?'PM ':'')+rd(bottom):(am&&!pm?'PM —':'');
-        return {text:(am?'AM ':(top&&top.p==='afternoon'?'PM ':''))+rd(top),sub:sub,color:bad?BAD:OK};
+        /* 2026-11-06 手機看得清：格子上行＝溫度（上午·下午），下行＝濕度（上午·下午） */
+        return {text:tv(a)+' · '+tv(b),sub:hv(a)+' · '+hv(b),color:bad?BAD:OK};
       })};
     });
     const wxOf=function(ymd){return tempWeekWeather(view,ymd,lang);};
@@ -2490,7 +2491,7 @@ function tempWeekGridChart(view,zones,ref,lang){
     const temps=view.map(function(r){return Number(r.t);}).filter(Number.isFinite),hums=view.map(function(r){return Number(r.h);}).filter(Number.isFinite),bad=view.filter(isAnom).length;
     const blocks=[
       {type:'stats',items:[{label:t('讀數','Readings','ការអាន'),value:String(view.length),color:P[0]||'#2b8fbd'},{label:t('溫度','Temp','សីតុណ្ហភាព'),value:tempTgRange(temps,'°C'),color:P[2]||'#f2a93b'},{label:t('濕度','Humidity','សំណើម'),value:tempTgRange(hums,'%'),color:P[5]||'#3fb9c9'},{label:t('超標','Out of range','ហួសកំណត់'),value:String(bad),color:bad?BAD:(P[7]||'#6c8ea4')}]},
-      {type:'grid',title:t('每日溫濕度表','Daily readings','ការអានប្រចាំថ្ងៃ'),cols:cols,rows:rows,wxLabel:cols.some(function(c){return c.wx;})?t('天氣','Weather','អាកាសធាតុ'):'',
+      {type:'grid',title:t('每日溫濕度（上溫度・下濕度，AM · PM）','Daily (top temp, bottom humidity · AM · PM)','ការអានប្រចាំថ្ងៃ'),cols:cols,rows:rows,wxLabel:cols.some(function(c){return c.wx;})?t('天氣','Weather','អាកាសធាតុ'):'',
         legend:[{label:t('在範圍內','In range','ក្នុងកំណត់'),color:OK},{label:t('超標','Out of range','ហួសកំណត់'),color:BAD},{label:t('沒記錄','No reading','គ្មានការអាន'),color:NONE}]}
     ];
     return ACChart.render({title:t('溫濕度 週報','Temperature & Humidity · Weekly','សីតុណ្ហភាព និងសំណើម · ប្រចាំសប្ដាហ៍'),subtitle:range.fromYmd+' ~ '+range.toYmd,theme:'green',width:1080,blocks:blocks,footer:'AC GASCheck · '+t('溫濕度','Temperature','សីតុណ្ហភាព')})||'';
