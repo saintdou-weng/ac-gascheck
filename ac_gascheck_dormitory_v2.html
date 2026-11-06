@@ -2727,6 +2727,11 @@ function buildDormTelegram(opt){
     ['⏳',lb('待核可','Pending','រង់ចាំ'),pending.length],['✅',lb('核可','Approved','អនុម័ត'),st('approved')],['❌',lb('退件','Rejected','បដិសេធ'),st('rejected')],
     ['🔍',lb('巡查','Inspections','ត្រួតពិនិត្យ'),insps.length],['🏠',lb('房間','Rooms','បន្ទប់'),roomList.length],['🚫',lb('違規','Violations','ល្មើស'),viols.length]
   ],3);
+  /* 2026-11-06 在住人數（與 HRA Portal 住宿名單同口徑：本地員工；外籍不在宿舍申請名單內） */
+  if(part!=='viol'){
+    const res=Object.values(dormResidents(state.db().records)),male=res.filter(r=>dormGenderCode(r.gender)==='Male').length,fem=res.filter(r=>dormGenderCode(r.gender)==='Female').length;
+    txt+='\n🛏 '+lb('目前在住','Living in dorm now','កំពុងស្នាក់នៅ')+' <b>'+res.length+'</b> '+lb('人','people','នាក់')+' · 👨 '+male+' · 👩 '+fem;
+  }
   if(day||period==='week'){
     const mA=appsAll.filter(r=>inM(r.date)),mI=inspAll.filter(r=>inM(r.date)).length,mV=violAll.filter(v=>inM(v.date)).length;
     txt+='\n📆 '+lb('本月累計','Month to date','សរុបខែនេះ')+' · '+lb('申請','Applications','ពាក្យស្នើ')+' <b>'+mA.length+'</b> · '+lb('核可','Approved','អនុម័ត')+' <b>'+mA.filter(r=>dormStatusCode(r.status)==='approved').length+'</b> · '+lb('巡查','Inspections','ត្រួតពិនិត្យ')+' <b>'+mI+'</b> · '+lb('違規','Violations','ល្មើស')+' <b>'+mV+'</b>';
