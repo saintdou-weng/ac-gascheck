@@ -689,6 +689,8 @@ const DORM_TEXT = [
   ['kn-col-times','巡查次數','Inspections','ចំនួនដង'],['kn-col-last','最後巡查','Last inspected','ពិនិត្យចុងក្រោយ'],['kn-col-rooms','已巡查房間','Rooms checked','បន្ទប់បានពិនិត្យ'],
   ['kn-open','點日期看這筆巡查','Tap the date to open this inspection','ចុចកាលបរិច្ឆេទ ដើម្បីបើក'],
   ['viol-save-first','⚠️ 這筆違規還沒儲存，請先按「儲存違規」再發 Telegram','⚠️ Save this violation first, then send Telegram','⚠️ សូមរក្សាទុកការល្មើសនេះជាមុនសិន'],
+  ['imp-junk-file','❌ 沒有匯入：這份檔 {n} 筆大多沒有房號或日期不對（像員工名冊），不是宿舍申請','❌ Not imported: most of the {n} rows have no room number or a wrong date (looks like an employee list, not dorm applications)','❌ មិនបាននាំចូល៖ ជួរភាគច្រើនគ្មានលេខបន្ទប់ ឬកាលបរិច្ឆេទខុស (ដូចបញ្ជីបុគ្គលិក)'],
+  ['imp-junk-rows','⚠️ {n} 筆沒有房號或日期不對，沒有匯入','⚠️ {n} rows skipped (no room number or wrong date)','⚠️ រំលង {n} ជួរ (គ្មានលេខបន្ទប់ ឬកាលបរិច្ឆេទខុស)'],
   ['tg-no-insp','這段期間、這個地點沒有巡查紀錄','No inspection for this location in this period','គ្មានការត្រួតពិនិត្យសម្រាប់ទីតាំងនេះ'],
   ['tg-no-period','這段期間沒有申請、巡查或違規','No applications, inspections or violations in this period','គ្មានពាក្យស្នើ ការត្រួតពិនិត្យ ឬការល្មើស'],
   ['insp-need','⚠️ 請填寫巡查員和日期','⚠️ Enter the inspector and date','⚠️ សូមបញ្ចូលអ្នកត្រួតពិនិត្យ និងកាលបរិច្ឆេទ'],
@@ -959,6 +961,29 @@ function dormNormalizeRecord(r){
   /* A7：舊版匯入把 Excel 序號（數字）存成日期，會讓排序／報表當掉；讀取時修正。 */
   ['date','applyDate'].forEach(k=>{if(o[k]!=null&&o[k]!==''&&!/^\d{4}-\d{2}-\d{2}$/.test(String(o[k]))){const d=dormParseDate(o[k]);o[k]=d||String(o[k]);}});
   return o;
+}
+/* 2026-11-06 防止「員工名冊」被當成宿舍申請（同一時間幾百筆、沒房號、日期是出生年）。
+   真正的申請一定有房號（表單必填），日期是近年。符合下列任一項就是誤匯資料：
+   房號空白／不像房號（例如是人名、高棉文）、或日期不是日期／早於 2015 年。住宿名冊匯入(roster_import)不在此限。 */
+function dormRoomLooksValid(v){return /^[#A-Za-z0-9][A-Za-z0-9#\-\/\. ]{0,11}$/.test(String(v==null?'':v).trim());}
+function dormIsJunkRecord(r){
+  if(!r||r._deleted||r.source==='roster_import'||r.manualRemoval)return false;
+  if(!dormRoomLooksValid(r.roomNo))return true;
+  const d=String(r.date==null?'':r.date).replace(/"/g,'').trim();
+  if(!d)return false;
+  const m=d.match(/^(\d{4})-\d{2}-\d{2}/);
+  return !m||+m[1]<2015;
+}
+/* 每次開頁、雲端同步寫入後都掃一次：誤匯資料標成刪除（墓碑會同步到雲端和其他手機，舊手機再上傳也蓋不回來）。 */
+let _dormJunkSweeping=false;
+function dormSweepJunk(reason){
+  if(_dormJunkSweeping)return 0;_dormJunkSweeping=true;
+  try{
+    const db=state.db();let n=0;
+    db.records=(db.records||[]).map(r=>{if(dormIsJunkRecord(r)){n++;const t=dormTomb(r,DORM_REC_TOMB_KEYS);t.deleteReason='junk_import';return t;}return r;});
+    if(n){state.save();dormScheduleSync('junk_cleanup');try{console.info('[dorm] removed '+n+' junk records ('+(reason||'load')+')');}catch(e){}}
+    return n;
+  }finally{_dormJunkSweeping=false;}
 }
 function dormNormalizeInsp(r){const o=Object.assign({},r);if(o._deleted)return o;o.photos=dormArray(o.photos);o.anomalies=Number(o.anomalies)||0;if(o.date&&!/^\d{4}-\d{2}-\d{2}$/.test(String(o.date)))o.date=dormParseDate(o.date)||String(o.date);if(!o.updatedAt)o.updatedAt=o.timestamp||_localTS();return o;}
 function dormNormalizeViol(r){const o=Object.assign({},r);if(o._deleted)return o;const c=dormViolTypeCode(o.type);if(c)o.type=c;if(o.date&&!/^\d{4}-\d{2}-\d{2}$/.test(String(o.date)))o.date=dormParseDate(o.date)||String(o.date);if(!o.updatedAt)o.updatedAt=o.timestamp||_localTS();return o;}
@@ -2326,6 +2351,7 @@ function goApply(t) {
       const draft=JSON.parse(localStorage.getItem('vrt_dorm_draft'));
       if(draft){state.setFType(draft.type||'in');[['name','f-name'],['gender','f-gender'],['id','f-id'],['dept','f-dept'],['pos','f-pos'],['phone','f-phone'],['reason','f-reason'],['applicant','f-applicant'],['note','f-app-note']].forEach(([k,id])=>{if(draft[k])sv(id,draft[k]);});if(draft.room)sv('f-room',draft.room);if(draft.date)sv('f-date',draft.date);if(Array.isArray(draft.items)&&draft.items.length)state.setItems(draft.items);}
     } catch(e){}
+    dormSweepJunk('load');
     insp.loadForDate(false);
     de.set('month',document.querySelector('#pane-dash .dnp[data-p="month"]'));
     recDE.set('month',document.querySelector('#pane-records .dnp[data-p="month"]'));
@@ -2348,6 +2374,14 @@ function goApply(t) {
 /* ═══ AC GASCheck Core — 通用面板掛載 ═══ */
 /* 智慧匯入的列：日期轉換、代碼化、去重（類型+工號+房號+日期），並保留本機墓碑。 */
 function dormMergeImport(cur, rows){
+  /* 2026-11-06 匯入檢查：沒房號、日期不對的列不收；整份檔大多是這種（例如員工名冊）就整份拒收 */
+  const given=(rows||[]).filter(r=>r&&(String(r.name==null?'':r.name).trim()||String(r.idNo==null?'':r.idNo).trim()));
+  const badRows=given.filter(r=>dormIsJunkRecord(Object.assign({},r,{date:dormParseDate(r.date)||String(r.date==null?'':r.date)})));
+  if(given.length&&badRows.length>=Math.max(3,given.length*0.5)){
+    setTimeout(()=>toast(T('imp-junk-file',{n:given.length}),'error'),120);
+    return (cur||[]).slice();
+  }
+  if(badRows.length){const bad=new Set(badRows);rows=(rows||[]).filter(r=>!bad.has(r));setTimeout(()=>toast(T('imp-junk-rows',{n:badRows.length}),'warning'),120);}
   const out=(cur||[]).slice(),keys=new Set(out.map(dormRecordKey)),ts=_localTS();
   (rows||[]).forEach((r,i)=>{
     if(!r)return;
@@ -2749,10 +2783,10 @@ function buildDormTelegram(opt){
       importSchema:{"name": ["姓名", "name", "ឈ្មោះ"], "gender": ["性別", "gender", "ភេទ"], "idNo": ["工號", "employee id", "idno", "id", "លេខបុគ្គលិក"], "department": ["部門", "dept", "department", "ផ្នែក"], "roomNo": ["房號", "room", "roomno", "បន្ទប់"], "date": ["日期", "date", "move-in", "កាលបរិច្ឆេទ"], "reason": ["原因", "reason", "មូលហេតុ"], "type": ["類型", "type", "ប្រភេទ"], "status": ["狀態", "status", "ស្ថានភាព"]},
       mergeImport:dormMergeImport,
       exportRows:function(){return records.exportRows(dormLive(state.db().records));},
-      onSync(list){dedupeDormRecords(false);dormRerenderAll();},
+      onSync(list){dedupeDormRecords(false);dormSweepJunk('sync');dormRerenderAll();},
       read(){return dormLive(state.db().records);},
       cloudRead(){return (state.db().records||[]).slice();},
-      cloudWrite(list){state.replaceRecords(list);dedupeDormRecords(false);},
+      cloudWrite(list){state.replaceRecords(list);dedupeDormRecords(false);dormSweepJunk('cloud');},
       write(list){dormWriteLive(list);},
     });
     hookExport(0);
