@@ -143,6 +143,20 @@ tbody tr:hover{background:var(--bg);}
 .rzcard{background:var(--card);border-radius:var(--r);border:1.5px solid var(--border);padding:13px;transition:.2s;}
 .rzcard:hover{border-color:var(--pri);}
 .rzlbl{display:flex;align-items:center;gap:7px;margin-bottom:9px;}
+.temp-day-status{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+.temp-day-status .ds{flex:1 1 150px;min-width:0;display:flex;align-items:center;gap:8px;padding:9px 12px;border-radius:12px;border:1px solid var(--border);background:#fff;font-size:13px;font-weight:700;color:#40516b;cursor:pointer;font-family:inherit;text-align:left}
+.temp-day-status .ds .ic{font-size:20px;flex:none}.temp-day-status .ds b{display:block;font-size:15px;color:#1b2a41}.temp-day-status .ds small{display:block;font-weight:600;font-size:11.5px;color:#6b7a90;line-height:1.3}
+.temp-day-status .ds.ok{background:#eefaf2;border-color:#bfe6cc}.temp-day-status .ds.ok b{color:#177a3e}
+.temp-day-status .ds.wait{background:#fff8e8;border-color:#f1dba0}.temp-day-status .ds.wait b{color:#9a6a00}
+.temp-day-status .ds.bad{background:#fff1ef;border-color:#f3c1ba}.temp-day-status .ds.bad b{color:#b3261e}
+.temp-day-status .ds.cur{box-shadow:0 0 0 2px #4f6df5 inset}.temp-day-status .ds.grp{cursor:default}
+.tcs-mask{position:fixed;inset:0;z-index:4000;background:rgba(15,25,45,.55);display:flex;align-items:center;justify-content:center;padding:14px}
+.tcs-box{background:#fff;border-radius:16px;max-width:520px;width:100%;max-height:92vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 18px 50px rgba(0,0,0,.3)}
+.tcs-box h3{margin:0;padding:16px 18px 4px;font-size:18px;color:#1b2a41}.tcs-box .sub{padding:0 18px 10px;font-size:13px;color:#55647a;line-height:1.5}
+.tcs-box .upd{margin:0 18px 8px;padding:7px 10px;border-radius:8px;background:#fff8e8;color:#9a6a00;font-size:12.5px;font-weight:700}
+.tcs-box pre{margin:0 18px;padding:12px;border-radius:12px;background:#f2f6fb;border:1px solid #dfe7f1;font:13px/1.55 inherit;white-space:pre-wrap;overflow:auto;flex:1 1 auto;color:#1b2a41}
+.tcs-box .act{display:flex;gap:10px;padding:14px 18px 16px;flex-wrap:wrap}.tcs-box .act button{flex:1 1 180px;min-height:48px;border-radius:12px;font:800 15px inherit;cursor:pointer;border:1px solid #cfd8e3;background:#fff;color:#40516b}
+.tcs-box .act button.yes{background:#2f6bff;border-color:#2f6bff;color:#fff}
 .temp-zone-select-tools{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;padding:9px 12px;border:1px solid var(--border);border-radius:10px;background:#f5f8ff;color:#40516b;font-size:12px}
 .temp-zone-select-tools span{color:#687994;font-size:11px}
 .temp-zone-pick{margin-left:auto;display:inline-flex;align-items:center;gap:3px;color:#24539a;font-size:10px;font-weight:800;white-space:nowrap;cursor:pointer}
@@ -303,6 +317,7 @@ tbody tr:hover{background:var(--bg);}
     <button class="btn bg sm" onclick="syncUp()" id="i-upload-after-save" disabled>⬆ 上傳</button>
     <button class="btn bg" onclick="clearRI()" id="i-clear">清除</button>
   </div>
+  <div class="temp-day-status" id="temp-day-status"></div>
   <div class="temp-zone-select-tools">
     <strong id="i-zsel-title">區域</strong>
     <button type="button" class="btn bo sm" onclick="selectTempZones(true)" id="i-zsel-all">✅ 全選</button>
@@ -607,7 +622,7 @@ zh:{
   cold:'過冷',cool:'涼爽',ok:'正常',warm:'偏熱',hot:'過熱',dry:'偏乾',humid:'偏濕',vhum:'過濕',
   date:'日期',zone:'區域',per:'時段',note:'備註',checker:'檢查人',act:'操作',wx:'🌤️ 天氣', wxcol:'天氣',
   allz:'全部區域',allp:'全部時段',allsev:'全部等級',crit:'嚴重',warn:'警告',
-  addrec:'＋ 新增記錄',saveall:'💾 全部儲存',sendcombined:'✈️ 早＋午合併摘要',clr:'清除',clrtoday:'清除今日',
+  addrec:'＋ 新增記錄',saveall:'💾 只儲存（不發送）',sendcombined:'✈️ 發到群組…',clr:'清除',clrtoday:'清除今日',
   cancel:'取消',save:'儲存',edit:'編輯',del:'刪除',prev:'👁 預覽',send:'📤 發送',
   testcon:'🔗 測試',syncup:'⬆ 上傳',pull:'⬇ 拉取',
   expxl:'📥 Excel',exl:'📊 Excel',ejson:'📄 JSON',
@@ -645,7 +660,7 @@ en:{
   cold:'Cold',cool:'Cool',ok:'Normal',warm:'Warm',hot:'Hot',dry:'Dry',humid:'Humid',vhum:'Very Humid',
   date:'Date',zone:'Zone',per:'Period',note:'Notes',checker:'Inspector',act:'Actions',wx:'🌤️ Weather', wxcol:'Weather',
   allz:'All Zones',allp:'All Periods',allsev:'All Severity',crit:'Critical',warn:'Warning',
-  addrec:'＋ Add Record',saveall:'💾 Save All',sendcombined:'✈️ Send AM + PM summary',clr:'Clear',clrtoday:'Clear Today',
+  addrec:'＋ Add Record',saveall:'💾 Save only (no send)',sendcombined:'✈️ Send to group…',clr:'Clear',clrtoday:'Clear Today',
   cancel:'Cancel',save:'Save',edit:'Edit',del:'Delete',prev:'👁 Preview',send:'📤 Send',
   testcon:'🔗 Test',syncup:'⬆ Upload',pull:'⬇ Pull',
   expxl:'📥 Excel',exl:'📊 Excel',ejson:'📄 JSON',
@@ -683,7 +698,7 @@ km:{
   cold:'ត្រជាក់',cool:'ត្រជាក់ស្រួល',ok:'ធម្មតា',warm:'កក្តៅ',hot:'ក្តៅខ្លាំង',dry:'ស្ងួត',humid:'សើម',vhum:'សើមខ្លាំង',
   date:'កាលបរិច្ឆេទ',zone:'តំបន់',per:'វេលា',note:'កំណត់ចំណាំ',checker:'អ្នកត្រួតពិនិត្យ',act:'ប្រតិបត្តិការ',wx:'🌤️ អាកាសធាតុ', wxcol:'អាកាសធាតុ',
   allz:'គ្រប់តំបន់',allp:'គ្រប់វេលា',allsev:'គ្រប់កម្រិត',crit:'ធ្ងន់ធ្ងរ',warn:'ព្រមាន',
-  addrec:'＋ បន្ថែម',saveall:'💾 រក្សាទុក',sendcombined:'✈️ ផ្ញើសង្ខេបព្រឹក + រសៀល',clr:'លុបចោល',clrtoday:'លុបថ្ងៃនេះ',
+  addrec:'＋ បន្ថែម',saveall:'💾 រក្សាទុក (មិនផ្ញើ)',sendcombined:'✈️ ផ្ញើទៅក្រុម…',clr:'លុបចោល',clrtoday:'លុបថ្ងៃនេះ',
   cancel:'បោះបង់',save:'រក្សាទុក',edit:'កែ',del:'លុប',prev:'👁 មើល',send:'📤 ផ្ញើ',
   testcon:'🔗 សាកល្បង',syncup:'⬆ ផ្ទុក',pull:'⬇ ទាញ',
   expxl:'📥 Excel',exl:'📊 Excel',ejson:'📄 JSON',
@@ -725,6 +740,7 @@ Object.assign(D.zh,{
   deleted_sync:'已刪除（會同步到其他手機）',storage_full:'本機儲存空間不足，已保留原資料；請先匯出備份',
   imp_reading:'⏳ 讀取中…',imp_done:'✅ 完成：有效 {n} 筆；新增 {a}，更新／合併 {u}；工作表 {s}',imp_fail:'匯入失敗',imp_rows:'筆',
   imp_trunc:'⚠️ 工作表「{s}」超過 {max} 列，只讀取前 {max} 列；請分檔匯入其餘資料',json_merged:'（已合併，未刪除本機資料）',json_fail:'JSON 匯入失敗',
+  ds_am:'早上',ds_pm:'下午',ds_none:'還沒記',ds_group:'群組',ds_notsent:'還沒發',ds_sent:'已發',ds_changed:'發送後有改，要再發一次才會更新',ds_saved_notsent:'已儲存，還沒發到群組',cs_title:'要發到 Telegram 群組嗎？',cs_sub:'按「發送」後，群組所有人都會看到下面這則訊息。只是要存資料請按「取消」。',cs_yes:'✈️ 發送到群組',cs_no:'取消，不發送',cs_update:'這天已經發過，這次會更新同一則訊息。',
   new_zone:'新增區域',no_day_rows:'當日尚無已儲存記錄',combined_ok:'雲端已確認，早上＋下午摘要已發送',kept_local:'資料已保留在本機，Telegram 未重複發送',
   empty_msg:'訊息內容為空，請確認日期有記錄',tg_ok:'Telegram 發送成功，完成狀態已同步',net_err:'網路錯誤',no_confirm:'Telegram 未回傳送達確認',
   open_dash:'📊 開啟平台',refresh_needed:'請重新整理頁面以載入分頁發送功能',need_gas:'請設定 GAS URL',testing:'測試中…',connected:'✅ 已連接',conn_fail:'❌ 連接失敗',
@@ -743,6 +759,7 @@ Object.assign(D.en,{
   deleted_sync:'Deleted (will sync to other phones)',storage_full:'Storage on this phone is full; your data was kept. Export a backup first',
   imp_reading:'⏳ Reading…',imp_done:'✅ Done: {n} valid rows; {a} added, {u} updated/merged; sheets {s}',imp_fail:'Import failed',imp_rows:'rows',
   imp_trunc:'⚠️ Sheet “{s}” has more than {max} rows; only the first {max} were read. Import the rest as a separate file',json_merged:' (merged; no local data deleted)',json_fail:'JSON import failed',
+  ds_am:'Morning',ds_pm:'Afternoon',ds_none:'not recorded',ds_group:'Group',ds_notsent:'not sent yet',ds_sent:'sent',ds_changed:'changed after sending — send again to update',ds_saved_notsent:'Saved. Not sent to the group',cs_title:'Send to the Telegram group?',cs_sub:'After you tap Send, everyone in the group will see the message below. If you only want to save, tap Cancel.',cs_yes:'✈️ Send to group',cs_no:'Cancel — do not send',cs_update:'This day was already sent; the same message will be updated.',
   new_zone:'Add Zone',no_day_rows:'No saved records for this day',combined_ok:'Cloud confirmed; AM + PM summary sent',kept_local:'Data kept on this phone; Telegram was not sent twice',
   empty_msg:'The message is empty; check that the date has records',tg_ok:'Telegram sent; status synced',net_err:'Network error',no_confirm:'Telegram returned no delivery confirmation',
   open_dash:'📊 Open Dashboard',refresh_needed:'Refresh the page to load paginated delivery',need_gas:'Set the GAS URL',testing:'Testing…',connected:'✅ Connected',conn_fail:'❌ Connection failed',
@@ -761,6 +778,7 @@ Object.assign(D.km,{
   deleted_sync:'បានលុប (នឹងធ្វើសមកាលកម្មទៅទូរស័ព្ទផ្សេង)',storage_full:'ទំហំផ្ទុកក្នុងទូរស័ព្ទពេញ; ទិន្នន័យនៅរក្សា។ សូមនាំចេញបម្រុងទុកជាមុន',
   imp_reading:'⏳ កំពុងអាន…',imp_done:'✅ រួចរាល់៖ {n} ជួរត្រឹមត្រូវ; បន្ថែម {a}, ធ្វើបច្ចុប្បន្នភាព {u}; សន្លឹក {s}',imp_fail:'នាំចូលបរាជ័យ',imp_rows:'ជួរ',
   imp_trunc:'⚠️ សន្លឹក «{s}» មានលើស {max} ជួរ; បានអានតែ {max} ជួរដំបូង។ សូមនាំចូលផ្នែកដែលនៅសល់ជាឯកសារដាច់ដោយឡែក',json_merged:' (បានបញ្ចូលគ្នា មិនលុបទិន្នន័យក្នុងទូរស័ព្ទ)',json_fail:'នាំចូល JSON បរាជ័យ',
+  ds_am:'ព្រឹក',ds_pm:'រសៀល',ds_none:'មិនទាន់កត់ត្រា',ds_group:'ក្រុម',ds_notsent:'មិនទាន់ផ្ញើ',ds_sent:'បានផ្ញើ',ds_changed:'បានកែក្រោយផ្ញើ — សូមផ្ញើម្តងទៀត',ds_saved_notsent:'បានរក្សាទុក។ មិនទាន់ផ្ញើទៅក្រុម',cs_title:'ផ្ញើទៅក្រុម Telegram មែនទេ?',cs_sub:'ពេលចុច «ផ្ញើ» អ្នកទាំងអស់ក្នុងក្រុមនឹងឃើញសារខាងក្រោម។ បើគ្រាន់តែចង់រក្សាទុក សូមចុច «បោះបង់»។',cs_yes:'✈️ ផ្ញើទៅក្រុម',cs_no:'បោះបង់ — មិនផ្ញើ',cs_update:'ថ្ងៃនេះបានផ្ញើរួចហើយ សារដដែលនឹងត្រូវកែ។',
   new_zone:'បន្ថែមតំបន់',no_day_rows:'មិនមានកំណត់ត្រាដែលបានរក្សាទុកសម្រាប់ថ្ងៃនេះ',combined_ok:'បានបញ្ជាក់លើ Cloud និងផ្ញើសង្ខេបព្រឹក + រសៀល',kept_local:'ទិន្នន័យនៅរក្សាក្នុងទូរស័ព្ទ ហើយ Telegram មិនបានផ្ញើស្ទួន',
   empty_msg:'សារទទេ; សូមពិនិត្យថាកាលបរិច្ឆេទមានកំណត់ត្រា',tg_ok:'បានផ្ញើ Telegram និងធ្វើសមកាលកម្មស្ថានភាព',net_err:'បញ្ហាបណ្តាញ',no_confirm:'Telegram មិនបានបញ្ជាក់ការផ្ញើ',
   open_dash:'📊 បើកផ្ទាំងគ្រប់គ្រង',refresh_needed:'សូមផ្ទុកទំព័រឡើងវិញ',need_gas:'សូមកំណត់ GAS URL',testing:'កំពុងសាកល្បង…',connected:'✅ បានភ្ជាប់',conn_fail:'❌ ការភ្ជាប់បរាជ័យ',
@@ -1430,7 +1448,7 @@ function saveAllRec(opt){
     recs.push(rec);newRecs.push(rec);
   });
   try{setR(recs);}catch(e){toast(e.message,'err');return {ok:false};}
-  toast(T('saved')+' · '+newRecs.length+' · ☁ '+T('auto_sync'),'ok');renderTodayCard(sel);updBadge();
+  if(!opt.allowEmpty)toast('✅ '+T('ds_saved_notsent')+' · '+newRecs.length,'ok');renderTodayCard(sel);updBadge();
   // v48：比照 HRA PAY。儲存先落本機，完成一批後自動排入雲端；手動 ☁↑/☁↓ 仍保留作強制同步。
   window._tempPendingUpload=false;
   if(typeof GC!=='undefined'&&GC.sync&&GC.sync.schedule) GC.sync.schedule('temperature','batch_save',250);
@@ -1447,7 +1465,29 @@ function updateTempUploadButton(){
   b.title=window._tempPendingUpload?T('syncup'):T('saved');
 }
 
+/* 2026-11-11 Paul：一眼看懂今天記到哪、發了沒。早上／下午各幾區已記，群組發了沒（發後有改會提醒再發）。 */
+function tempDaySendState(date){
+  const defs=getZ(),rows=getR().filter(r=>String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon')&&tempCanonicalZoneId(r.z,defs));
+  const sent=rows.map(r=>String(r.summarySentAt||r.telegramSentAt||'')).filter(Boolean).sort().pop()||'';
+  const changed=!!sent&&rows.some(r=>!(r.summarySentAt||r.telegramSentAt)||String(r.updatedAt||r.ts||'')>String(r.summarySentAt||r.telegramSentAt));
+  return {rows:rows,sent:sent,changed:changed};
+}
+function renderTempDayStatus(date){
+  const box=document.getElementById('temp-day-status');if(!box)return;
+  date=date||(document.getElementById('rec-date')||{}).value||today();
+  const zones=(typeof tempReportZones==='function'?tempReportZones():getZ().filter(z=>z.on)),st=tempDaySendState(date),n=zones.length||0;
+  const cnt=p=>new Set(st.rows.filter(r=>r.p===p).map(r=>String(tempCanonicalZoneId(r.z,getZ())))).size;
+  const bad=p=>st.rows.filter(r=>r.p===p&&isAnom(r)).length;
+  const slot=(p,ic,lbl,time)=>{const c=cnt(p),b=bad(p),cls=b?'bad':c>=n&&n?'ok':c?'wait':'wait';
+    return `<button type="button" class="ds ${cls}${RP===p?' cur':''}" onclick="setRP('${p}')"><span class="ic">${ic}</span><span><b>${lbl} ${c}/${n} ${b?'⚠️':c>=n&&n?'✅':'⏳'}</b><small>${time}${c?'':' · '+T('ds_none')}${b?' · ⚠️ '+b:''}</small></span></button>`;};
+  const hm=String(st.sent).replace('T',' ').slice(11,16);
+  const g=!st.sent?`<span class="ds wait grp"><span class="ic">✈️</span><span><b>${T('ds_group')}: ${T('ds_notsent')}</b><small>${st.rows.length?T('ds_saved_notsent'):''}</small></span></span>`
+    :st.changed?`<span class="ds bad grp"><span class="ic">✈️</span><span><b>${T('ds_group')}: ${T('ds_sent')} ${hm}</b><small>${T('ds_changed')}</small></span></span>`
+    :`<span class="ds ok grp"><span class="ic">✈️</span><span><b>${T('ds_group')}: ${T('ds_sent')} ${hm} ✅</b><small></small></span></span>`;
+  box.innerHTML=slot('morning','☀️',T('ds_am'),'08:00–09:00')+slot('afternoon','🌇',T('ds_pm'),'15:30–16:30')+g;
+}
 function renderTodayCard(date){
+  renderTempDayStatus(date);
   const recs=getR().filter(r=>r.d===date);
   const tc=document.getElementById('rec-today'),tb=document.getElementById('rec-today-body');
   if(!recs.length){tc.style.display='none';return;}
@@ -2419,7 +2459,7 @@ function tempTgRange(values,unit){
 }
 function tempTgReading(r){
   const t=tempTgNum(r&&r.t),h=tempTgNum(r&&r.h);
-  if(!t&&!h)return '—';
+  if(!t&&!h)return '⏳';
   return (t?t+'°C':'—')+'/'+(h?h+'%':'—')+(isAnom(r)?'⚠️':'');
 }
 function tempTgZoneName(z,lang){
@@ -2533,8 +2573,9 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
     txt+='\n'+G.verdict('warn',lb('這段期間沒有記錄','No records in this period','គ្មានកំណត់ត្រាក្នុងរយៈពេលនេះ'));
     return {text:txt,pages:[txt],photos:photos,notice:notice};
   }
-  txt+='\n'+G.verdict(abnormal.length?'bad':missing?'warn':'ok',abnormal.length?lb(abnormal.length+' 筆超標',abnormal.length+' out of range',abnormal.length+' ហួសកំណត់'):missing?lb(missing+' 筆未記錄',missing+' missing',missing+' មិនទាន់កត់ត្រា'):lb('全部在範圍內','All in range','ទាំងអស់ក្នុងកំណត់'));
-  txt+='\n'+G.bar(inRange,view.length)+' '+lb('在範圍內','in range','ក្នុងកំណត់');
+  txt+='\n'+G.verdict(abnormal.length?'bad':missing?'warn':'ok',abnormal.length?lb(abnormal.length+' 筆超標',abnormal.length+' out of range',abnormal.length+' ហួសកំណត់'):missing?lb(missing+' 筆還沒記',missing+' not recorded yet',missing+' មិនទាន់កត់ត្រា'):lb('全部在範圍內','All in range','ទាំងអស់ក្នុងកំណត់'));
+  if(day){const exp=reportZones.length*2,got=exp-missing;const nb=exp?Math.round(got/exp*10):0;txt+='\n'+'🟦'.repeat(nb)+'⬜'.repeat(10-nb)+' '+lb('已記錄','recorded','បានកត់ត្រា')+' <b>'+got+'/'+exp+'</b>'+(abnormal.length?'':' · ✅ '+lb('都在範圍內','all in range','ទាំងអស់ក្នុងកំណត់'));}
+  else txt+='\n'+G.bar(inRange,view.length)+' '+lb('在範圍內','in range','ក្នុងកំណត់');
   txt+='\n'+G.kpis([['🏭',lb('區域','Zones','តំបន់'),reportZones.length],['🧾',lb('讀數','Readings','ការអាន'),view.length],['⏱',lb('時段','Slots','ពេល'),slotsSeen.map(tempTgSlotCode).join('+')||'—']],3);
   txt+='\n'+G.kpis([['🌡',lb('溫度','Temp','សីតុណ្ហភាព'),tempTgRange(temps,'°C')],['💧',lb('濕度','Humidity','សំណើម'),tempTgRange(hums,'%')]],2);
   if(!day){
@@ -2561,13 +2602,15 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
     const m=pick('month'),mBad=m.filter(isAnom).length;
     txt+='\n📆 <b>'+lb('本月累計','Month to date','សរុបខែនេះ')+'</b> · 🧾 '+m.length+' · ⚠️ '+mBad;
   }
-  if(missing)txt+='\n⏳ '+lb('未記錄','Missing','មិនទាន់កត់ត្រា')+' <b>'+missing+'</b>';
+  if(missing){const mAm=reportZones.length-view.filter(r=>r.p==='morning').length,mPm=reportZones.length-view.filter(r=>r.p==='afternoon').length;
+    txt+='\n⏳ '+lb('未記錄','Missing','មិនទាន់កត់ត្រា')+' <b>'+missing+'</b>'+' · ☀️ AM '+Math.max(0,mAm)+' · 🌇 PM '+Math.max(0,mPm);}
   /* 每區一行：日報 AM → PM；其他期間顯示範圍與次數。 */
   txt+=G.sec('🏭',lb('區域','Zones','តំបន់'));
   reportZones.forEach(function(z){
     const rows=sorted.filter(r=>String(r.z)===String(z.id)),bad=rows.filter(isAnom).length,name='• <b>'+e(tempTgZoneName(z,lang))+'</b>';
     if(day){
       const am=rows.find(r=>r.p==='morning'),pm=rows.find(r=>r.p==='afternoon');
+      /* 沒記的時段顯示 ⏳（原本是「—」，看不出是沒記還是沒資料） */
       txt+='\n'+name+' · AM '+tempTgReading(am)+' → PM '+tempTgReading(pm);
       return;
     }
@@ -2591,12 +2634,31 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
   return {text:txt,photos:photos,notice:notice};
 }
 
-async function sendTodayCombinedTemp(){
+/* 2026-11-11 Paul：有人反應「按儲存卻發出去了」。發送鈕原本一按就直接發、沒有確認，又緊貼在儲存鈕旁邊。
+   → 發送一律先跳確認視窗（看得到要發的內容），按「發送到群組」才會發；按取消只會留下已儲存的資料。 */
+function tempConfirmSend(text,already){
+  return new Promise(resolve=>{
+    const m=document.createElement('div');m.className='tcs-mask';m.setAttribute('data-noswipe','');
+    const plain=String(text||'').replace(/<[^>]+>/g,'').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&amp;/g,'&');
+    m.innerHTML='<div class="tcs-box" role="dialog" aria-modal="true"><h3></h3><div class="sub"></div>'+(already?'<div class="upd"></div>':'')+'<pre></pre><div class="act"><button type="button" class="no" id="tcs-no"></button><button type="button" class="yes" id="tcs-yes"></button></div></div>';
+    m.querySelector('h3').textContent=T('cs_title');m.querySelector('.sub').textContent=T('cs_sub');if(already)m.querySelector('.upd').textContent='ℹ️ '+T('cs_update');
+    m.querySelector('pre').textContent=plain;m.querySelector('#tcs-no').textContent=T('cs_no');m.querySelector('#tcs-yes').textContent=T('cs_yes');
+    const done=v=>{m.remove();resolve(v);};
+    m.querySelector('#tcs-no').onclick=()=>done(false);m.querySelector('#tcs-yes').onclick=()=>done(true);m.addEventListener('click',e=>{if(e.target===m)done(false);});
+    document.body.appendChild(m);
+  });
+}
+async function sendTodayCombinedTemp(opt){
+  opt=opt||{};
   if(window._tempTelegramSending)return;
   const date=(document.getElementById('rec-date')||{}).value||today();
   const pre=saveAllRec({allowEmpty:true});if(pre&&pre.ok===false)return;
   const dayRows=getR().filter(r=>String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon'));
   if(!dayRows.length){toast(T('no_day_rows'),'err');return;}
+  if(!opt.confirmed){
+    const pl=GCX.tgLangValue(),pv=buildTGPeriodMsg('day','summary',date,'all',pl==='bi'?'bi':pl);
+    if(!(await tempConfirmSend(pv.text,!!tempDaySendState(date).sent))){toast('ℹ️ '+T('ds_saved_notsent'),'inf');renderTempDayStatus(date);return;}
+  }
   setTempTelegramSending(true);
   try{
     await uploadTemperatureNow('telegram_combined_preflight');
@@ -2606,7 +2668,7 @@ async function sendTodayCombinedTemp(){
     await sendTemperatureTelegramPacket(packet,'-5113064563',{reportPeriod:'day',reportMode:'summary',reportRef:date,reportMonth:date.slice(0,7),reportScope:'all',reportSlot:'all',updateExisting:true,messageKey:'temperature|'+date,dedupePhotos:true,photoDedupeKey:'temperature|'+date});
     const sentAt=_localTS(),all=getR();all.forEach(r=>{if(tempCanonicalZoneId(r.z,getZ())&&String(r.d||'').slice(0,10)===date&&(r.p==='morning'||r.p==='afternoon')){r.telegramSentAt=sentAt;r.telegramMode='summary';r.summarySentAt=sentAt;}});setR(all);
     try{await uploadTemperatureNow('telegram_combined_status');}catch(syncErr){if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','telegram_status_retry',60);}
-    window._tempPendingUpload=false;updateTempUploadButton();toast('✅ '+T('combined_ok'),'ok');
+    window._tempPendingUpload=false;updateTempUploadButton();renderTempDayStatus(date);toast('✅ '+T('combined_ok'),'ok');
   }catch(ex){if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('temperature','telegram_record_retry',60);toast('Telegram: '+ex.message+' · '+T('kept_local'),'err');}
   finally{setTempTelegramSending(false);}
 }
