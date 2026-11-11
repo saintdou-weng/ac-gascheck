@@ -79,7 +79,7 @@ zones.forEach((z,i)=>['morning','afternoon'].forEach((p,s)=>records.push({
     // Missing PM stays missing; never fabricate a reading to make the report look complete.
     cfg.write(cfg.read().filter(r=>r.id!=='zd-afternoon'));
     const partial=w.buildTGPeriodMsg('day','summary','2026-09-15','all','en','all');
-    assert(partial.text.includes('Missing <b>1</b>'));assert(partial.text.includes('AM 28°C/78% → PM —'));
+    assert(partial.text.includes('Missing <b>1</b>'));assert(partial.text.includes('AM 28°C/78% → PM ⏳'),'20261111 沒記的時段顯示 ⏳');assert(/AM 0 · 🌇 PM 1/.test(partial.text),'missing split by slot');
     assert(!partial.text.includes('32°C/73%'));
   }finally{x.dom.window.close();}
 
