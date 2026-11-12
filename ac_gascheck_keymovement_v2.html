@@ -1558,11 +1558,12 @@ function keyTgLine(r,lang,withDate){
   const G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),st=keyTgState(r),now=new Date();
   const since=new Date(String(r.issue_date||'')+'T'+(G.time(r.issue_time)||'08:00')+':00'),mins=isNaN(since)?0:Math.round((now-since)/60000);
   const held=st==='out'&&mins>0?(mins>=2880?Math.floor(mins/1440)+'d':G.dur(mins)):'';
-  let line='• '+(st==='lost'?'🚨 ':'')+'<b>'+G.esc(String(r.key_no||'—')+(r.key_name?' '+r.key_name:''))+'</b> · '+G.esc(r.recipient_name||'—')+(r.dept?' · '+G.esc(keyTgDept(r.dept,lang)):'');
+  /* 2026-11-12 Paul：列表欄位位置要一致、上下午用顏色分。每行固定：🟡上午／🔵下午｜借出時間｜持有多久｜🔑 鑰匙｜👤 借用人｜🏢 部門｜📝 備註；沒填顯示 — */
+  const tm=G.time(r.issue_time)||'',pm=tm&&(+tm.slice(0,2)>=12);
+  let line=(st==='lost'?'🚨':pm?'🔵':'🟡')+' <code>'+((withDate?G.d(r.issue_date)+' ':'')+(tm||'--:--')).trim()+'</code> ⏱'+(held||'—')+' · 🔑 <b>'+G.esc(String(r.key_no||'—')+(r.key_name?' '+r.key_name:''))+'</b> · 👤 '+G.esc(r.recipient_name||'—')+' · 🏢 '+(r.dept?G.esc(keyTgDept(r.dept,lang)):'—');
   if(st==='lost')line+=' · '+lb('遺失','Lost','បាត់')+' '+(G.d(r.return_date||r.issue_date)||'—');
-  else line+=' · '+lb('借出','Out','ខ្ចី')+' '+((withDate?G.d(r.issue_date)+' ':'')+(G.time(r.issue_time)||'—')).trim()+(held?' · ⏱'+held:'');
   if(st==='returned'&&condCode(r.return_condition)==='damaged')line+=' · ⚠️ '+lb('歸還時損壞','Returned damaged','ប្រគល់វិញខូច');
-  if(r.remarks)line+=' · 📝 '+G.esc(String(r.remarks).replace(/[\r\n]+/g,' '));
+  line+=' · 📝 '+(r.remarks?G.esc(String(r.remarks).replace(/[\r\n]+/g,' ')):'—');
   return line;
 }
 /* 2026-11-06 週報附圖：一週借還表（直行＝週一到週六，橫列＝每把鑰匙）。和文字摘要用同一批記錄與數字。
@@ -1675,6 +1676,10 @@ function buildKeyTelegram(opt){
   if(outKeys.length){lines.push(sec('⏳',lb('未歸還','Not returned','មិនទាន់ប្រគល់')+' · '+outKeys.length));outKeys.forEach(r=>lines.push(keyTgLine(r,lang,!day||String(r.issue_date||'')!==ref)));}
   if(lost.length){lines.push(sec('🚨',lb('遺失','Lost','បាត់')+' · '+lost.length));lost.forEach(r=>lines.push(keyTgLine(r,lang,!day)));}
   if(damaged.length){lines.push(sec('⚠️',lb('歸還時損壞','Returned damaged','ប្រគល់វិញខូច')+' · '+damaged.length));damaged.forEach(r=>lines.push(keyTgLine(r,lang,!day)));}
+  if(lines.length)lines.push('🟡 '+lb('上午借出','borrowed AM','ខ្ចីពេលព្រឹក')+' · 🔵 '+lb('下午借出','borrowed PM','ខ្ចីពេលរសៀល'));
+  /* 數字核對（學考勤摘要）：期間內 借出＝歸還＋未還＋遺失 */
+  if(rows.length){const stillOut=rows.filter(r=>keyTgState(r)==='out').length,diff=rows.length-returned-stillOut-lost.length;
+    lines.push('\n'+(diff?'⚠️ '+lb('借出與歸還／未還／遺失加總不符','Borrowed ≠ returned + out + lost','ចំនួនមិនស៊ីគ្នា')+'（'+rows.length+' ≠ '+returned+'＋'+stillOut+'＋'+lost.length+'）':'✅ '+lb('借出','Borrowed','ខ្ចី')+' '+rows.length+'＝'+lb('歸還','returned','ប្រគល់')+' '+returned+'＋'+lb('未還','out','មិនទាន់ប្រគល់')+' '+stillOut+'＋'+lb('遺失','lost','បាត់')+' '+lost.length+' · '+lb('已核對正確','verified','បានផ្ទៀងផ្ទាត់')));}
   if(!rows.length&&!outKeys.length)lines.push('\nℹ️ '+lb('這段期間沒有紀錄','No records in this period','គ្មានកំណត់ត្រាក្នុងរយៈពេលនេះ'));
   const photos=[];
   outKeys.concat(lost,damaged).forEach(r=>(Array.isArray(r.photos)?r.photos:[]).forEach(p=>{if(/^(data:image\/|https?:\/\/)/i.test(String(p))&&!photos.includes(p)&&photos.length<5)photos.push(p);}));
