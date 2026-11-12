@@ -213,6 +213,7 @@ table tr:last-child td { border-bottom: none; }
 <script src="./ac-holidays.js?v=20261103a"></script>
 <script src="./ac-tg-chart.js?v=20261106d"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
+<script src="./gc-compact.js?v=20261113a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
 </head>
@@ -1377,8 +1378,14 @@ window.updateRecord = updateRecord;
     const p=prefs();document.getElementById('km-pref-inspector').value=p.inspector||'';document.getElementById('km-pref-type').value=p.keyType||'standard';document.getElementById('km-pref-condition').value=p.condition||'good';
     ensureMasterModal();
   }
+  /* 2026-11-13 手機精簡清單（跟保安同一套）：鑰匙清單在手機上一把一行（編號、名稱、狀態），點開看詳細卡；電腦表格照舊。
+     鑰匙清單整塊重畫時表格是新的，所以畫之前看一下這張表掛過沒有，沒掛才掛。只整理畫面，不改資料和按鈕。 */
+  function keyCompactAttach(body){
+    try{if(!window.GC||!GC.Compact)return;const t=body.closest('table');if(!t||t.__cmp)return;t.__cmp=1;
+      GC.Compact.attach({card:t.parentElement,table:t,cols:{title:[1,2],sub:[3,4,7,8],right:[6],actions:9}});}catch(e){if(window.console)console.warn('compact',e);}
+  }
   function renderMasterList(){
-    const body=document.getElementById('km-master-body');if(!body)return;
+    const body=document.getElementById('km-master-body');if(!body)return;keyCompactAttach(body);
     const q=((document.getElementById('km-master-search')||{}).value||'').toLowerCase(), dept=(document.getElementById('km-master-dept')||{}).value||'',type=(document.getElementById('km-master-type')||{}).value||'',status=(document.getElementById('km-master-status')||{}).value||'';
     const list=masters().filter(m=>{const s=masterState(m).key;return(!q||(JSON.stringify(m)+' '+deptLabel(m.dept)+' '+keyTypeLabel(m.key_type)).toLowerCase().includes(q))&&(!dept||deptCode(m.dept)===dept)&&(!type||keyTypeCode(m.key_type)===type)&&(!status||s===status);}).sort((a,b)=>String(a.key_no||'').localeCompare(String(b.key_no||''),undefined,{numeric:true}));
     const count=document.getElementById('km-master-count');if(count)count.textContent=list.length+' '+tx('把鑰匙','keys','សោ');

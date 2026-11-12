@@ -40,3 +40,11 @@ The fixture exports `{seed}` = localStorage keys → values the page reads (look
 - 不可以用空白補齊。
 - 已改：鑰匙、清潔、EHS、送水、資產（只加核對行）、溫濕度（只加核對行，區域行有很多測試在看，保持原樣）。
 - 還沒改：宿舍摘要的列（巡查明細有測試鎖格式）、各頁的手機清單（GASCheck 還沒有像保安 sec-compact 的共用元件）。
+
+## 2026-11-13（第二輪）
+- 宿舍摘要：待核可、異常房間、違規三種列改成固定欄位（巡查明細報告 `• ✅ #201` 那種沒動）。
+- 手機精簡清單：新增 `gc-compact.js`（保安 `shared/sec-compact.js` 的 GASCheck 版，檔頭寫了差在哪四樣）。用法同保安：
+  `GC.Compact.attach({ card, table, cols:{ title:[…], sub:[…], right:[…], actions:n } })`，card／table 可以直接給元素。
+  已掛：宿舍（最近申請、在住總表、違規清單、記錄查詢）、清潔（歷史記錄）、鑰匙（鑰匙清單；表格會整塊重畫，所以在 renderMasterList 裡檢查沒掛才掛）。
+- **不要掛的**：資產（手機本來就有自己的卡片版）、送水（是每月輸入表格不是清單）、溫濕度歷史（同一張表有明細和統計兩種欄位）、
+  EHS 廢料（列上的勾選框是批次刪除用的，要掛得另外處理選取模式）。

@@ -2443,7 +2443,8 @@ function dormTgPeriodLabel(period,ref,lang){
 function dormTgRoom(room,lang){const x=ROOM_LABELS[String(room)];return x?GC.TG.lbl(lang,String(room),x.en,x.km):String(room==null?'':room);}
 function dormTgAppLine(r,lang,withReason){
   const G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),code=dormStatusCode(r.status),isIn=dormTypeCode(r.type)==='in';
-  let line='• <b>'+G.esc(r.name||'—')+'</b>'+(r.idNo?' · '+G.esc(r.idNo):'')+(r.roomNo?' · '+G.esc(r.roomNo):'')+' · '+(isIn?'🟢 '+lb('搬入','Move-in','ចូល'):'🔴 '+lb('搬出','Move-out','ចេញ'))+' · '+(G.d(r.date)||'—');
+  /* 2026-11-13 Paul：列表欄位位置一致（同鑰匙／保安摘要）。一筆申請一行固定：🟢搬入／🔴搬出｜日期｜類別｜👤 姓名｜🪪 工號｜🏠 房號；沒填顯示 — */
+  let line=(isIn?'🟢':'🔴')+' <code>'+(G.d(r.date)||'--')+'</code> · '+(isIn?lb('搬入','Move-in','ចូល'):lb('搬出','Move-out','ចេញ'))+' · 👤 <b>'+G.esc(r.name||'—')+'</b> · 🪪 '+G.esc(r.idNo||'—')+' · 🏠 '+G.esc(r.roomNo||'—');
   if(code==='rejected'&&r.rejectReason)line+=' · ❌ '+G.esc(r.rejectReason);
   if(withReason&&(r.department||r.reason))line+='\n   '+[r.department?G.esc(r.department):'',r.reason?'📝 '+G.esc(String(r.reason).replace(/[\r\n]+/g,' ')):''].filter(Boolean).join(' · ');
   return line;
@@ -2477,7 +2478,8 @@ function dormInspDueText(x,lang,ref){
 }
 function dormInspIssueLine(x,bad,lang,K,ref){
   const G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km),n=x.photos.filter(p=>/^(data:image\/|https?:\/\/)/i.test(String(p))).length;
-  return '• <b>'+G.esc(dormTgRoom(x.room,lang))+'</b> · '+G.esc(K('loc-'+x.location)||x.location)+' · ✗ '+bad.map(k=>K('col-'+k)||COL_LABELS[k]||k).join(', ')+' · '+G.d(x.date)+(x.n>1?' ×'+x.n:'')+' · 👤 '+G.esc(x.inspector||'—')+' · '+(n?'📷 '+n:'📷 '+lb('無照片','no photo','គ្មានរូបថត'))+' · '+dormInspDueText(x,lang,ref)+(x.remarks?' · 📝 '+G.esc(String(x.remarks).replace(/[\r\n]+/g,' ')):'');
+  /* 2026-11-13：異常房間一行固定：⚠️｜日期｜🏠 房間｜📍 地點｜✗ 異常項目｜👤 巡查人｜📷｜期限｜📝 備註；沒填顯示 — */
+  return '⚠️ <code>'+G.d(x.date)+'</code>'+(x.n>1?' ×'+x.n:'')+' · 🏠 <b>'+G.esc(dormTgRoom(x.room,lang))+'</b> · 📍 '+G.esc(K('loc-'+x.location)||x.location)+' · ✗ '+bad.map(k=>K('col-'+k)||COL_LABELS[k]||k).join(', ')+' · 👤 '+G.esc(x.inspector||'—')+' · '+(n?'📷 '+n:'📷 '+lb('無照片','no photo','គ្មានរូបថត'))+' · '+dormInspDueText(x,lang,ref)+' · 📝 '+(x.remarks?G.esc(String(x.remarks).replace(/[\r\n]+/g,' ')):'—');
 }
 function dormInspLines(lines,sec,S,lang,K,ref){
   const G=GC.TG,lb=(zh,en,km)=>G.lbl(lang,zh,en,km);
@@ -2839,7 +2841,8 @@ function buildDormTelegram(opt){
   const lines=[],sec=(icon,title)=>'\n<b>'+icon+' '+title+'</b>';
   if(pending.length){lines.push(sec('⏳',lb('待核可','Pending approval','រង់ចាំអនុម័ត')+' · '+pending.length));pending.forEach(r=>lines.push(dormTgAppLine(r,lang,mode==='review')));}
   if(roomList.length||inspStats.notChecked.length)dormInspLines(lines,sec,inspStats,lang,K,ref);
-  if(viols.length){lines.push(sec('🚫',lb('違規','Violations','ការល្មើស')+' · '+viols.length));viols.forEach(v=>lines.push('• <b>'+G.esc(v.name||'—')+'</b>'+(v.idNo?' · '+G.esc(v.idNo):'')+(v.roomNo?' · '+G.esc(v.roomNo):'')+' · '+G.esc(dormViolTypeCode(v.type)?K('vt-'+dormViolTypeCode(v.type)):String(v.type||''))+(v.level?' · '+(v.level==='Serious'?'🔴 ':v.level==='Moderate'?'🟠 ':'')+G.esc(['Minor','Moderate','Serious'].includes(v.level)?K('lv-'+v.level):v.level):'')+' · '+G.d(v.date)+(v.desc?' · 📝 '+G.esc(String(v.desc).replace(/[\r\n]+/g,' ')):'')));}
+  if(viols.length){lines.push(sec('🚫',lb('違規','Violations','ការល្មើស')+' · '+viols.length));/* 2026-11-13：違規一行固定：燈號（🔴 嚴重／🟠 中等／🟡 輕微）｜日期｜👤 姓名｜🪪 工號｜🏠 房號｜違規類型｜程度｜📝 描述；沒填顯示 — */
+    viols.forEach(v=>lines.push((v.level==='Serious'?'🔴':v.level==='Moderate'?'🟠':'🟡')+' <code>'+(G.d(v.date)||'--')+'</code> · 👤 <b>'+G.esc(v.name||'—')+'</b> · 🪪 '+G.esc(v.idNo||'—')+' · 🏠 '+G.esc(v.roomNo||'—')+' · '+(G.esc(dormViolTypeCode(v.type)?K('vt-'+dormViolTypeCode(v.type)):String(v.type||''))||'—')+' · '+(v.level?G.esc(['Minor','Moderate','Serious'].includes(v.level)?K('lv-'+v.level):v.level):'—')+' · 📝 '+(v.desc?G.esc(String(v.desc).replace(/[\r\n]+/g,' ')):'—')));}
   const decided=apps.filter(r=>/^(approved|rejected)$/.test(dormStatusCode(r.status)));
   /* 已決定的只在日報或少量時逐筆列，否則只看上面的數字 */
   if(decided.length&&(day||decided.length<=4)){lines.push(sec('✔',lb('本期已決定','Decided this period','បានសម្រេចក្នុងរយៈពេលនេះ')+' · '+decided.length));decided.forEach(r=>lines.push((dormStatusCode(r.status)==='approved'?'• ✅ ':'• ❌ ')+dormTgAppLine(r,lang,false).slice(2)));}
@@ -2896,6 +2899,18 @@ function buildDormTelegram(opt){
     hookExport(0);
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+})();
+</script>
+<script src="./gc-compact.js?v=20261113a"></script>
+<script>
+/* 2026-11-13 手機精簡清單（跟保安同一套，仿 VRT HR 員工頁）：手機上一筆一行、點開看詳細卡；電腦表格照舊，點一列也會開詳細卡。
+   只整理畫面：資料、按鈕、原本的函式都不變。 */
+(function(){ if (!window.GC || !GC.Compact) return;
+  function at(id, cols, extra){ var tb=document.getElementById(id); if(!tb) return; var t=tb.closest('table'), c=t.closest('.card')||t.parentElement; var cfg={ card:c, table:t, cols:cols }; if(extra) for(var k in extra) cfg[k]=extra[k]; try{ GC.Compact.attach(cfg); }catch(e){ if(window.console) console.warn('compact', id, e); } }
+  at('dash-tbody', { title:[2,1], sub:[0,3,4], right:[5] });
+  at('roster-body', { title:[1], sub:[3,4,2,6,7], right:[5], actions:8 });
+  at('viol-body', { title:[1,3], sub:[0,2,5], right:[4], actions:6 });
+  at('records-body', { title:[2,1], sub:[6,3,4,5], right:[8], actions:10 });
 })();
 </script>
 <!-- VRT swipe-tabs：左右滑動（手指／滑鼠拖曳）切換分頁，只聽手勢、不改資料 -->

@@ -2529,6 +2529,15 @@ function validateCleaningTelegramSelection(ctx){
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
 })();
 </script>
+<script src="./gc-compact.js?v=20261113a"></script>
+<script>
+/* 2026-11-13 手機精簡清單（跟保安同一套，仿 VRT HR 員工頁）：手機上一筆一行、點開看詳細卡；電腦表格照舊，點一列也會開詳細卡。
+   只整理畫面：資料、按鈕、原本的函式都不變。 */
+(function(){ if (!window.GC || !GC.Compact) return;
+  function at(id, cols, extra){ var tb=document.getElementById(id); if(!tb) return; var t=tb.closest('table'), c=t.closest('.card')||t.parentElement; var cfg={ card:c, table:t, cols:cols }; if(extra) for(var k in extra) cfg[k]=extra[k]; try{ GC.Compact.attach(cfg); }catch(e){ if(window.console) console.warn('compact', id, e); } }
+  at('hist-tbody', { title:[1,6], sub:[0,4,2,3], right:[5], actions:8 });
+})();
+</script>
 <!-- VRT swipe-tabs：左右滑動（手指／滑鼠拖曳）切換分頁，只聽手勢、不改資料 -->
 <script src="https://saintdou-weng.github.io/ac-admin/shared/swipe-tabs.js" defer></script>
 </body>
