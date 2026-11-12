@@ -2292,7 +2292,8 @@ function cleaningTelegramOkLine(area){
   const e=cleaningTelegramEscape;
   const icons=CHK_ITEMS.filter(function(k){return area.records.some(function(r){return (r.checks||{})[k]===true;});}).map(function(k){return CHK_ICONS[k];}).join('');
   const who=Array.from(new Set(area.records.map(function(r){return String(r.cleaner||'').trim();}).filter(Boolean)));
-  return '✅ '+cleaningTelegramLocIcon(area.id)+' '+e(area.name)+' ×'+area.checks+(icons?' · '+icons:'')+(who.length?' · 👷 '+e(who.slice(0,3).join(', '))+(who.length>3?' +'+(who.length-3):''):'');
+  /* 2026-11-13 Paul：列表欄位位置一致（同鑰匙／保安摘要）。正常區域一行固定：🟢｜×檢查次數｜區域｜通過項目圖示｜👷 清潔員；沒填顯示 — */
+  return '🟢 <code>×'+area.checks+'</code> · '+cleaningTelegramLocIcon(area.id)+' <b>'+e(area.name)+'</b> · '+(icons||'—')+' · 👷 '+(who.length?e(who.slice(0,3).join(', '))+(who.length>3?' +'+(who.length-3):''):'—');
 }
 /* 期間標籤：日＝日期、週＝起迄、月＝YYYY-MM、年＝YYYY。 */
 function cleaningTelegramPeriodLabel(period,ref,lang){
@@ -2327,7 +2328,8 @@ function cleaningTelegramIssueLine(area,withDate){
   const items=CHK_ITEMS.filter(function(k){return fails.some(function(r){return (r.checks||{})[k]===false;});}).map(function(k){return CHK_ICONS[k];}).join(' ');
   const notes=Array.from(new Set(fails.map(function(r){return String(r.note||'').replace(/\s+/g,' ').trim();}).filter(Boolean))).join(' / ');
   const who=Array.from(new Set(fails.map(function(r){return String(r.checker||'').trim();}).filter(Boolean))).join(', ');
-  return '• '+cleaningTelegramLocIcon(area.id)+' <b>'+e(area.name)+'</b> · '+e(when)+' · ❌ '+items+(notes?' · 📝 '+e(notes.length>80?notes.slice(0,79)+'…':notes):'')+(who?' · '+e(who):'');
+  /* 2026-11-13：異常區域一行固定：🔴｜日期 時間｜區域｜❌ 沒過的項目｜📝 備註｜🔎 檢查人；沒填顯示 — */
+  return '🔴 <code>'+e(when)+'</code> · '+cleaningTelegramLocIcon(area.id)+' <b>'+e(area.name)+'</b> · ❌ '+(items||'—')+' · 📝 '+(notes?e(notes.length>80?notes.slice(0,79)+'…':notes):'—')+' · 🔎 '+(who?e(who):'—');
 }
 /* 2026-11-06 週報附圖：一週檢查表（橫列＝週一到週六，直行＝各區域）。
    格子：綠＝當天都正常（✓＋檢查時間；超過 3 個時段顯示 ×次數）、紅＝有異常（✗ 哪些項目）、灰＝當天沒檢查。週日有資料才顯示。
@@ -2396,6 +2398,9 @@ function cleaningTelegramReport(view,opt){
     txt+='\n'+G.bar(ok.length,areas.length)+' '+lb('區域正常','areas OK','តំបន់ធម្មតា');
     txt+='\n'+G.kpis([['📍',lb('區域','Areas','តំបន់'),areas.length],['🔎',lb('檢查','Checks','ការត្រួតពិនិត្យ'),checks],['👷',lb('清潔員','Cleaners','អ្នកសម្អាត'),cleaners.size]],3);
     txt+='\n'+G.kpis([['❌',lb('異常','Issues','បញ្ហា'),issues]].concat(photos.length?[['📷',lb('照片','Photos','រូបថត'),photos.length]]:[]),2);
+    /* 數字核對（學考勤摘要）：區域＝正常＋有異常 */
+    {const vd=areas.length-ok.length-bad.length;
+      txt+='\n'+(vd?'⚠️ '+lb('區域數加總不符','Area counts do not add up','ចំនួនតំបន់មិនស៊ីគ្នា')+'（'+areas.length+' ≠ '+ok.length+'＋'+bad.length+'）':'✅ '+lb('區域','Areas','តំបន់')+' '+areas.length+'＝'+lb('正常','OK','ធម្មតា')+' '+ok.length+'＋'+lb('有異常','with issues','មានបញ្ហា')+' '+bad.length+' · '+lb('已核對正確','verified','បានផ្ទៀងផ្ទាត់'));}
   }
   /* 日／週報加本月累計（同一地點／時段條件）。 */
   if((period==='day'||period==='week')&&Array.isArray(opt.month)){
@@ -2409,7 +2414,7 @@ function cleaningTelegramReport(view,opt){
   const weekChart=period==='week'?cleaningWeekGridChart(view,opt.ref,lang):'';
   if(weekChart){photos.unshift(weekChart);if(photos.length>5)photos.length=5;}
   if(weekChart){if(ok.length)txt+='\n\n✅ '+lb('正常區域','Areas OK','តំបន់ធម្មតា')+' <b>'+ok.length+'</b> · '+e(ok.slice(0,6).map(function(a){return a.name;}).join(', '))+(ok.length>6?' +'+(ok.length-6):'');txt+='\n📊 '+lb('每天每區的檢查情形見附圖','Daily check grid in the chart','មើលតារាងប្រចាំថ្ងៃក្នុងរូបភាព');}
-  else if(ok.length)txt+='\n\n'+ok.slice(0,12).map(cleaningTelegramOkLine).join('\n')+(ok.length>12?'\n✅ … +'+(ok.length-12):'');
+  else if(ok.length)txt+='\n\n'+ok.slice(0,12).map(cleaningTelegramOkLine).join('\n')+(ok.length>12?'\n🟢 … +'+(ok.length-12):'');
   if(checkers.length&&view.length)txt+='\n🔎 '+e(checkers.slice(0,4).join(', '))+(checkers.length>4?' +'+(checkers.length-4):'');
   if(opt.mode==='review'||opt.mode==='approval')txt+='\n⏳ '+lb('待審查／待核可','Pending review / approval','កំពុងរង់ចាំពិនិត្យ/អនុម័ត')+' <b>'+issues+'</b>';
   const sender=String(opt.sender||'').trim();

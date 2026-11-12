@@ -22,7 +22,8 @@ assert(temp.includes("approvalSentAt"));
 assert(!ehs.includes("ehsTgTable("));
 assert(!ehs.includes("padEnd("));
 assert(ehs.includes("G.bar(wasteRows.length,total)"));
-assert(ehs.includes("list.length+'/'+supTarget+' '+lb('趟','trips','ជើង')"));
+/* 2026-11-13 fixed-column supplier line: light · trips/target · supplier · kg (same meaning: trips shown against the target) */
+assert(ehs.includes("list.length+(supTarget?'/'+supTarget:'')+'</code> '+lb('趟','trips','ជើង')"));
 assert(ehs.includes("G.sec('⚠️',lb('需注意','To check','ត្រូវពិនិត្យ'))"));
 assert(ehs.includes("ehsUniqueWasteRows(rows)"));
 assert(ehs.includes("ehsWasteDuplicateKey"));

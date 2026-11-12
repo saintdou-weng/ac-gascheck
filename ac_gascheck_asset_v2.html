@@ -1664,6 +1664,9 @@ if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(b
       ['✅',lb('使用中','In use','កំពុងប្រើ'),st.active],['🟡',lb('備用','Standby','បម្រុង'),st.standby],['📤',lb('外借','Lent','ឱ្យខ្ចី'),st.lent],
       ['🔧',lb('維修中','Repair','ជួសជុល'),st.repair],['🗑',lb('已報廢','Scrapped','ជម្រះចោល'),st.disposed]
     ],3);
+    /* 2026-11-13 數字核對（學考勤摘要）：每筆資產的狀態都要在清單內；沒填或不明的會被算進「使用中」，這裡點出來 */
+    {const unk=scoped.filter(a=>!ST_LABEL[a.status]).length,vs=(+st.active||0)+(+st.standby||0)+(+st.lent||0)+(+st.repair||0)+(+st.disposed||0);
+      txt+='\n'+(unk||vs!==scoped.length?'⚠️ '+lb('狀態沒填或不明','Status missing / unknown','ស្ថានភាពមិនច្បាស់')+' <b>'+unk+'</b> · '+lb('先算在「使用中」','counted as In use','រាប់ជាកំពុងប្រើ'):'✅ '+lb('資產','Assets','ទ្រព្យ')+' <b>'+scoped.length+'</b>＝'+lb('各狀態加總','all statuses','សរុបស្ថានភាព')+' <b>'+vs+'</b> · '+lb('已核對正確','verified','បានផ្ទៀងផ្ទាត់'));}
     txt+='\n🔁 '+lb('轉移','Transfer','ផ្ទេរ')+' · '+lb('待核','Pending','រង់ចាំ')+' <b>'+cnt(open,'transfer')+'</b> · '+lb('核可','Approved','អនុម័ត')+' <b>'+cnt(decided,'transfer','approved')+'</b> · '+lb('退件','Rejected','បដិសេធ')+' <b>'+cnt(decided,'transfer','rejected')+'</b>';
     txt+='\n🗑 '+lb('報廢','Scrap','ជម្រះចោល')+' · '+lb('待核','Pending','រង់ចាំ')+' <b>'+cnt(open,'disposal')+'</b> · '+lb('核可','Approved','អនុម័ត')+' <b>'+cnt(decided,'disposal','approved')+'</b> · '+lb('退件','Rejected','បដិសេធ')+' <b>'+cnt(decided,'disposal','rejected')+'</b>';
     if(day||period==='week')txt+='\n📆 '+lb('本月累計','Month to date','សរុបខែនេះ')+' · '+lb('新增','Added','បន្ថែម')+' <b>'+addedM.length+'</b> · '+lb('申請','Requests','សំណើ')+' <b>'+askedM.length+'</b> · '+lb('已決定','Decided','បានសម្រេច')+' <b>'+decidedM+'</b>';

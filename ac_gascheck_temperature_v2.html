@@ -2576,6 +2576,9 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
   txt+='\n'+G.verdict(abnormal.length?'bad':missing?'warn':'ok',abnormal.length?lb(abnormal.length+' 筆超標',abnormal.length+' out of range',abnormal.length+' ហួសកំណត់'):missing?lb(missing+' 筆還沒記',missing+' not recorded yet',missing+' មិនទាន់កត់ត្រា'):lb('全部在範圍內','All in range','ទាំងអស់ក្នុងកំណត់'));
   if(day){const exp=reportZones.length*2,got=exp-missing;const nb=exp?Math.round(got/exp*10):0;txt+='\n'+'🟦'.repeat(nb)+'⬜'.repeat(10-nb)+' '+lb('已記錄','recorded','បានកត់ត្រា')+' <b>'+got+'/'+exp+'</b>'+(abnormal.length?'':' · ✅ '+lb('都在範圍內','all in range','ទាំងអស់ក្នុងកំណត់'));}
   else txt+='\n'+G.bar(inRange,view.length)+' '+lb('在範圍內','in range','ក្នុងកំណត់');
+  /* 2026-11-13 數字核對（學考勤摘要）：讀數＝在範圍內＋超標（逐筆重新數一次，不是直接相減） */
+  {const vIn=view.filter(r=>!isAnom(r)).length,vOut=view.filter(isAnom).length,vd=view.length-vIn-vOut||(vOut!==abnormal.length?1:0);
+    txt+='\n'+(vd?'⚠️ '+lb('讀數加總不符','Readings do not add up','ចំនួនការអានមិនស៊ីគ្នា')+'（'+view.length+' ≠ '+vIn+'＋'+vOut+'）':'✅ '+lb('讀數','Readings','ការអាន')+' '+view.length+'＝'+lb('在範圍內','in range','ក្នុងកំណត់')+' '+vIn+'＋'+lb('超標','out of range','ហួសកំណត់')+' '+vOut+' · '+lb('已核對正確','verified','បានផ្ទៀងផ្ទាត់'));}
   txt+='\n'+G.kpis([['🏭',lb('區域','Zones','តំបន់'),reportZones.length],['🧾',lb('讀數','Readings','ការអាន'),view.length],['⏱',lb('時段','Slots','ពេល'),slotsSeen.map(tempTgSlotCode).join('+')||'—']],3);
   txt+='\n'+G.kpis([['🌡',lb('溫度','Temp','សីតុណ្ហភាព'),tempTgRange(temps,'°C')],['💧',lb('濕度','Humidity','សំណើម'),tempTgRange(hums,'%')]],2);
   if(!day){

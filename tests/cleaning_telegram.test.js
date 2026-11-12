@@ -73,8 +73,8 @@ const packet = context.buildCleaningTelegram({
 });
 
 // Compact card: one line per area, exceptions first, OK areas counted once, no padded tables.
-assert(/✅ \S+ Office ×2 · [👃💡🧹🚪📐🏠]+/u.test(packet.text), 'all-pass area: one line with check count and item icons (2026-10-28)');
-assert(/• \S+ <b>Canteen<\/b> · 08-11 14:30 · ❌ 🧹 · Nin/u.test(packet.text), 'failed area line: icon · area · when · failed items · checker');
+assert(/🟢 <code>×2<\/code> · \S+ <b>Office<\/b> · [👃💡🧹🚪📐🏠]+ · 👷 /u.test(packet.text), 'all-pass area: one line, fixed columns: light · count · area · item icons · cleaner (2026-11-13)');
+assert(/🔴 <code>08-11 14:30<\/code> · \S+ <b>Canteen<\/b> · ❌ 🧹 · 📝 .* · 🔎 Nin/u.test(packet.text), 'failed area line, fixed columns: light · when · area · failed items · note · checker (2026-11-13)');
 assert(packet.text.includes('🗂 Office, Canteen'), 'selected locations shown in the header');
 assert.strictEqual(packet.text.split('\n').filter(l => /Office ×|<b>Office<\/b>/.test(l)).length, 1, 'same area is not repeated');
 assert(!packet.text.includes('Factory Floor'));
@@ -93,7 +93,7 @@ assert.deepStrictEqual(Array.from(packet.photos), ['https://example.invalid/clea
 assert.strictEqual(packet.recordCount, 2);
 const allPass = context.buildCleaningTelegram({cfg, period:'all', ref:'2026-08-11', mode:'summary', lang:'en', scope:['loc_office','loc_factory'], slot:['all'], sender:'Paul'});
 assert.deepStrictEqual(Array.from(allPass.photos), [], 'everything ticked → no photos');
-assert(allPass.text.includes('🟢 <b>All passed</b>') && /✅ \S+ Office ×2/u.test(allPass.text) && /✅ \S+ Factory Floor ×1/u.test(allPass.text), 'one line per OK area');
+assert(allPass.text.includes('🟢 <b>All passed</b>') && /🟢 <code>×2<\/code> · \S+ <b>Office<\/b>/u.test(allPass.text) && /🟢 <code>×1<\/code> · \S+ <b>Factory Floor<\/b>/u.test(allPass.text), 'one line per OK area');
 assert(!/[\u4e00-\u9fff]/.test(allPass.text), 'English report has no Chinese');
 const km = context.buildCleaningTelegram({cfg, period:'all', ref:'2026-08-11', mode:'summary', lang:'km', scope:['all'], slot:['all'], sender:'Paul'});
 assert(!/[\u4e00-\u9fff]/.test(km.text), 'Khmer report has no Chinese');
@@ -107,8 +107,8 @@ assert.strictEqual(context.validateCleaningTelegramSelection({records:[records[0
 
 const formPacket = context.buildCleaningSelectedRecordsTelegram(records.slice(0, 2), 'bi', 'Paul');
 assert(formPacket.text.includes('📅 2026-08-11'), 'form quick-send is the day card');
-assert(/✅ \S+ Office ×2/u.test(formPacket.text));
-assert(/• \S+ <b>Canteen<\/b> · 14:30 · ❌ 🧹 · Nin/u.test(formPacket.text));
+assert(/🟢 <code>×2<\/code> · \S+ <b>Office<\/b>/u.test(formPacket.text));
+assert(/🔴 <code>14:30<\/code> · \S+ <b>Canteen<\/b> · ❌ 🧹 · 📝 .* · 🔎 Nin/u.test(formPacket.text));
 assert(formPacket.text.includes('⏱ 10:30, 14:30'));
 assert(formPacket.text.includes('📆 <b>本月累計/Month to date</b> · 🔎 4 · 📍 3 · ❌ 1'), 'day card carries month-to-date totals');
 assert(!formPacket.text.includes('T00:00:00.000Z'));

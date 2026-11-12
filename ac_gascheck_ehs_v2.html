@@ -1912,17 +1912,19 @@ function ehsTgWasteIssue(r){
 function ehsTgWasteLine(r,lang,withDate){
   const G=GC.TG,lb=function(zh,en,km){return G.lbl(lang,zh,en,km);},issue=ehsTgWasteIssue(r);
   const sup=ehsTgSupplier(r)||lb('未填供應商','No supplier','គ្មានអ្នកផ្គត់ផ្គង់');
-  let s='• '+(withDate?G.d(r.date)+' ':'')+'<b>'+G.esc(sup)+'</b> · '+kgNumber(r.weight_kg).toLocaleString()+' kg · '+(G.time(r.time_in)||'—')+'→'+(G.time(r.time_out)||'—');
-  const dur=calcDuration(r.time_in,r.time_out);
-  if(dur&&!issue)s+=' ⏱'+G.dur(dur);
+  /* 2026-11-13 Paul：列表欄位位置一致、上下午分色（同保安出入閘／貨櫃）。一趟一行固定：
+     🟡上午／🔵下午｜進→出｜停留或問題｜🏢 清運商｜⚖️ 重量｜🚚 車牌；沒填顯示 — */
+  const tin=G.time(r.time_in)||'',pm=tin&&(+tin.slice(0,2)>=12),dur=calcDuration(r.time_in,r.time_out);
+  let s=(pm?'🔵':'🟡')+' <code>'+(withDate?G.d(r.date)+' ':'')+(tin||'--:--')+'→'+(G.time(r.time_out)||'--:--')+'</code>';
+  if(!issue)s+=' ⏱'+(dur?G.dur(dur):'—');
   const why={time_in:lb('未填進廠時間','no time in','គ្មានម៉ោងចូល'),time_out:lb('出廠時間未填或早於進廠','time out missing / before time in','ម៉ោងចេញគ្មាន ឬមុនម៉ោងចូល'),kg:lb('重量 0','0 kg','0 kg'),long:lb('在廠超過 3 小時','inside over 3h','នៅក្នុងរោងចក្រលើស 3 ម៉ោង')}[issue];
   if(why)s+=' ⚠️ '+why;
-  if(r.car_number)s+=' · 🚚 '+G.esc(r.car_number);
+  s+=' · 🏢 <b>'+G.esc(sup)+'</b> · ⚖️ '+kgNumber(r.weight_kg).toLocaleString()+' kg · 🚚 '+(r.car_number?G.esc(r.car_number):'—');
   return s;
 }
 function ehsTgRecycleLine(r,lang,withDate){
   const G=GC.TG,lb=function(zh,en,km){return G.lbl(lang,zh,en,km);},total=kgNumber(ehsRecycleRowTotal(r));
-  return '• '+(withDate?G.d(r.date)+' ':'')+lb('塑膠','Plastic','ប្លាស្ទិច')+' '+kgNumber(r.plastic_kg).toLocaleString()+' · '+lb('布','Fabric','ក្រណាត់')+' '+kgNumber(r.fabric_kg).toLocaleString()+' · '+lb('紙管','Core','ស្នូល')+' '+kgNumber(r.core_kg).toLocaleString()+' · <b>'+total.toLocaleString()+' kg</b>'+(total?'':' ⚠️ '+lb('總重 0','0 kg total','សរុប 0 kg'));
+  return '♻️ <code>'+(withDate?G.d(r.date):'--')+'</code> · '+lb('塑膠','Plastic','ប្លាស្ទិច')+' '+kgNumber(r.plastic_kg).toLocaleString()+' · '+lb('布','Fabric','ក្រណាត់')+' '+kgNumber(r.fabric_kg).toLocaleString()+' · '+lb('紙管','Core','ស្នូល')+' '+kgNumber(r.core_kg).toLocaleString()+' · <b>'+total.toLocaleString()+' kg</b>'+(total?'':' ⚠️ '+lb('總重 0','0 kg total','សរុប 0 kg'));
 }
 /* 供應商清單＝固定供應商（SUPPLIERS）∪ 期間內出現的；月／年報每家都列（0 趟也要看得到），日／週報只列有趟次的 */
 function ehsTgSupplierNames(wasteRows,includeFixed){
@@ -2074,8 +2076,12 @@ function buildEhsTelegram(opt){
     const shown=fixed.concat(others).slice(0,12);
     txt+=G.sec('🚛',lb('廢料趟數','Waste trips','ជើងដឹកសំណល់'))+'\n'+shown.map(function(n){
       const list=supCount(n),kg=sum(list,'weight_kg');
-      return '• <b>'+G.esc(n)+'</b> · '+(supTarget?list.length+'/'+supTarget+' '+lb('趟','trips','ជើង')+' '+(list.length>=supTarget?'✅':list.length?'🟠':'❌'):list.length+' '+lb('趟','trips','ជើង'))+' · '+kg.toLocaleString()+' kg';
-    }).join('\n')+(supNames.length>shown.length?'\n… +'+(supNames.length-shown.length):'');
+      /* 2026-11-13：一家一行固定：燈號（🟢 達標／🟠 未達／🔴 0 趟）｜趟數/目標｜清運商｜重量 */
+      return (supTarget?(list.length>=supTarget?'🟢':list.length?'🟠':'🔴'):'🟦')+' <code>'+list.length+(supTarget?'/'+supTarget:'')+'</code> '+lb('趟','trips','ជើង')+' · 🏢 <b>'+G.esc(n)+'</b> · ⚖️ '+kg.toLocaleString()+' kg';
+    }).join('\n')+(supNames.length>shown.length?'\n… +'+(supNames.length-shown.length):'')+
+    /* 數字核對（學考勤摘要）：各清運商趟數加總＝總趟數 */
+    (function(){const vs=supNames.reduce(function(a,n){return a+supCount(n).length;},0);
+      return '\n'+(vs===wasteRows.length?'✅ '+lb('各家加總','Suppliers total','សរុបអ្នកផ្គត់ផ្គង់')+' <b>'+vs+'</b>＝'+lb('總趟數','all trips','ជើងសរុប')+' <b>'+wasteRows.length+'</b> · '+lb('已核對正確','verified','បានផ្ទៀងផ្ទាត់'):'⚠️ '+lb('各家加總和總趟數不符','Suppliers total ≠ all trips','ចំនួនជើងមិនស៊ីគ្នា')+'（'+vs+' ≠ '+wasteRows.length+'）');})();
   }
   /* 回收：一行小計（日報就是當天那一筆） */
   if(showRecycle&&recycleRows.length){

@@ -2953,8 +2953,13 @@ function buildWaterTelegram(opt){
     if(warn.length)txt+='\n'+warn.join('  ·  ');
     /* 每個地點一行 */
     const locs=[];
-    if(scope!=='staff')locs.push('• <b>'+lb('工廠','Factory','រោងចក្រ')+'</b> · '+totals.fq.toLocaleString()+' '+lb('桶','drums','ធុង')+' · '+totals.ft.toLocaleString()+' KHR'+(!day?' · '+totals.fd+' '+dayW(totals.fd):''));
-    if(scope!=='factory')locs.push('• <b>'+lb('宿舍','Staff House','ផ្ទះបុគ្គលិក')+'</b> · '+totals.sq.toLocaleString()+' '+lb('桶','drums','ធុង')+' · '+totals.st.toLocaleString()+' KHR'+(!day?' · '+totals.sd+' '+dayW(totals.sd):''));
+    /* 2026-11-13 Paul：列表欄位位置一致、地點分色（🟦 工廠／🟧 宿舍，跟保安 A／B 廠同一組顏色） */
+    if(scope!=='staff')locs.push('🟦 <b>'+lb('工廠','Factory','រោងចក្រ')+'</b> · '+totals.fq.toLocaleString()+' '+lb('桶','drums','ធុង')+' · '+totals.ft.toLocaleString()+' KHR'+(!day?' · '+totals.fd+' '+dayW(totals.fd):''));
+    if(scope!=='factory')locs.push('🟧 <b>'+lb('宿舍','Staff House','ផ្ទះបុគ្គលិក')+'</b> · '+totals.sq.toLocaleString()+' '+lb('桶','drums','ធុង')+' · '+totals.st.toLocaleString()+' KHR'+(!day?' · '+totals.sd+' '+dayW(totals.sd):''));
+    /* 數字核對（學考勤摘要）：工廠＋宿舍＝合計（桶數和金額都要對） */
+    if(scope!=='staff'&&scope!=='factory'){const vq=totals.fq+totals.sq,vt=totals.ft+totals.st,okv=vq===drums&&vt===khr;
+      locs.push(okv?'✅ '+lb('工廠','Factory','រោងចក្រ')+'＋'+lb('宿舍','Staff House','ផ្ទះបុគ្គលិក')+'＝<b>'+drums.toLocaleString()+'</b> '+lb('桶','drums','ធុង')+' · <b>'+khr.toLocaleString()+'</b> KHR · '+lb('已核對正確','verified','បានផ្ទៀងផ្ទាត់'):
+        '⚠️ '+lb('工廠＋宿舍和合計不符','Factory + Staff House ≠ total','ចំនួនសរុបមិនស៊ីគ្នា')+'（'+vq.toLocaleString()+' / '+drums.toLocaleString()+' '+lb('桶','drums','ធុង')+' · '+vt.toLocaleString()+' / '+khr.toLocaleString()+' KHR）');}
     txt+=G.sec('📍',lb('地點','Locations','ទីតាំង'))+'\n'+locs.join('\n');
     /* 附圖（週／月／年）；週報的圖是每天每個地點的送水表 */
     const chart=day?'':waterTelegramChart({lang,period,scope,range,entries,totals,drums,khr,odd,usd:totals.usd,per,delivered:delivered.size,workdays:expected.length,subtitle:[waterTgPeriodText(period,opt.ref,lang),place,slotText].filter(Boolean).join(' · ')});
@@ -2963,16 +2968,17 @@ function buildWaterTelegram(opt){
     if(missing.length&&period!=='year'&&period!=='all')txt+=G.fold(['📭 '+lb('未送水日','No-delivery workdays','ថ្ងៃធ្វើការគ្មានការដឹក')+' '+missing.length+' · '+G.ranges(missing)]);
     /* 日報：當天每筆都列（最多 2 個地點）；其餘只列需要注意的 */
     if(day){
-      const r=entries[0],lines=[];
-      if(scope!=='staff'&&r.fRecorded)lines.push('• '+(G.time(r.fTime)||'—')+' '+lb('工廠','Factory','រោងចក្រ')+' · '+r.fq+' × '+r.fPrice.toLocaleString()+' = '+r.ft.toLocaleString()+' KHR');
-      if(scope!=='factory'&&r.sRecorded)lines.push('• '+(G.time(r.sTime)||'—')+' '+lb('宿舍','Staff House','ផ្ទះបុគ្គលិក')+' · '+r.sq+' × '+r.sPrice.toLocaleString()+' = '+r.st.toLocaleString()+' KHR');
+      /* 2026-11-13：一筆一行固定：🟡上午／🔵下午｜時間｜地點｜桶數 × 單價 = 金額 */
+      const r=entries[0],lines=[],wAmPm=function(t){const x=G.time(t)||'';return x&&(+x.slice(0,2)>=12)?'🔵':'🟡';};
+      if(scope!=='staff'&&r.fRecorded)lines.push(wAmPm(r.fTime)+' <code>'+(G.time(r.fTime)||'--:--')+'</code> · 🟦 <b>'+lb('工廠','Factory','រោងចក្រ')+'</b> · '+r.fq+' × '+r.fPrice.toLocaleString()+' = '+r.ft.toLocaleString()+' KHR');
+      if(scope!=='factory'&&r.sRecorded)lines.push(wAmPm(r.sTime)+' <code>'+(G.time(r.sTime)||'--:--')+'</code> · 🟧 <b>'+lb('宿舍','Staff House','ផ្ទះបុគ្គលិក')+'</b> · '+r.sq+' × '+r.sPrice.toLocaleString()+' = '+r.st.toLocaleString()+' KHR');
       if(lines.length)txt+=G.sec('📋',lb('今日送水','Today\'s deliveries','ការដឹកថ្ងៃនេះ'))+'\n'+lines.join('\n');
     }
     const ex=[];
     /* 需注意只放數量／單價異常（未送水日不算） */
     odd.slice(0,8).forEach(o=>{
       const where=o.kind==='factory'?lb('工廠','Factory','រោងចក្រ'):lb('宿舍','Staff House','ផ្ទះបុគ្គលិក');
-      ex.push('• '+G.d(o.date)+' '+where+' · '+(o.why==='qty'?'<b>'+o.qty+'</b> '+lb('桶','drums','ធុង')+' ('+lb('平均','avg','មធ្យម')+' '+o.avg+') ⚠️ '+lb('數量異常','unusual quantity','បរិមាណខុសធម្មតា'):lb('單價','price','តម្លៃ')+' <b>'+o.price.toLocaleString()+'</b> ('+lb('平均','avg','មធ្យម')+' '+o.avg.toLocaleString()+') ⚠️ '+lb('單價偏高','price above usual','តម្លៃខ្ពស់ជាងធម្មតា')));
+      ex.push('⚠️ <code>'+G.d(o.date)+'</code> · '+(o.kind==='factory'?'🟦':'🟧')+' <b>'+where+'</b> · '+(o.why==='qty'?'<b>'+o.qty+'</b> '+lb('桶','drums','ធុង')+' ('+lb('平均','avg','មធ្យម')+' '+o.avg+') ⚠️ '+lb('數量異常','unusual quantity','បរិមាណខុសធម្មតា'):lb('單價','price','តម្លៃ')+' <b>'+o.price.toLocaleString()+'</b> ('+lb('平均','avg','មធ្យម')+' '+o.avg.toLocaleString()+') ⚠️ '+lb('單價偏高','price above usual','តម្លៃខ្ពស់ជាងធម្មតា')));
     });
     if(odd.length>8)ex.push('… +'+(odd.length-8));
     if(ex.length)txt+=G.sec('⚠️',lb('需注意','To check','ត្រូវពិនិត្យ'))+'\n'+ex.join('\n');
