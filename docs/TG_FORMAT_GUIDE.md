@@ -33,3 +33,10 @@ The fixture exports `{seed}` = localStorage keys → values the page reads (look
 
 ## Tests
 `node tests/run.cjs` runs everything (≈6 min). A test that asserts the old padded text must be updated to assert the same meaning (records present, counts, photos with their rows, no Chinese in en/km, ≤3800 chars/page). Never weaken a data-integrity, approval, photo or translation assertion.
+
+## 2026-11-12／13 補充（Paul：和保安同一套——列表、顏色、圖表一致，數字正確、欄位對齊）
+- 欄位位置固定、沒填顯示 `—`；時間放最前面用 `<code>`；燈號放行首（🟢／🟠／🔴、上午 🟡／下午 🔵、工廠 🟦／宿舍 🟧）。
+- 重點數字後加一行「✅ …＝…＋… · 已核對正確」，用另一條路徑重數再比；不符亮 ⚠️。不要放永遠成立的假核對（宿舍申請那種就不放）。
+- 不可以用空白補齊。
+- 已改：鑰匙、清潔、EHS、送水、資產（只加核對行）、溫濕度（只加核對行，區域行有很多測試在看，保持原樣）。
+- 還沒改：宿舍摘要的列（巡查明細有測試鎖格式）、各頁的手機清單（GASCheck 還沒有像保安 sec-compact 的共用元件）。
