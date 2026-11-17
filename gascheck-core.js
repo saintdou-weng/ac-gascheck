@@ -3446,7 +3446,30 @@ GC.TG = (function () {
   }
   /* 多頁：每頁前面加【1/3】，給 GC.telegram.send 的 pages 用 */
   function number(pages) { return pages.length > 1 ? pages.map((p, i) => '【' + (i + 1) + '/' + pages.length + '】\n' + p) : pages; }
-  return { lbl, enKm, esc, d, time, mins, dur, ranges, head, verdict, bar, kpis, sec, fold, chunk, number };
+  /* 2026-11-17 Paul：週／月報要列出哪幾個工作日沒做（清潔、溫濕度這類每天要做的；水桶、鑰匙不用）。
+     工作日＝週一～六扣 HRA 行事曆假日（ac-holidays.js）；今天還沒過完不算；日報不列。o.all＝每天都要做。 */
+  function missed(period, ref, dates, lang, o) {
+    o = o || {}; const out = { exp:0, done:0, miss:[], line:'' };
+    if (!period || period === 'day' || period === 'all' || !GC.period || !GC.period.range) return out;
+    const r = GC.period.range(period, ref); if (!r) return out;
+    const t = new Date(), y = U.ymd(new Date(t.getFullYear(), t.getMonth(), t.getDate() - 1)), upto = r.toYmd < y ? r.toYmd : y;
+    if (upto < r.fromYmd) return out;
+    const H = (typeof window !== 'undefined' && window.ACHolidays) || null, exp = [];
+    for (let dd = new Date(r.fromYmd + 'T00:00:00'); U.ymd(dd) <= upto; dd.setDate(dd.getDate() + 1)) {
+      const k = U.ymd(dd); if (!o.all && (dd.getDay() === 0 || (H && H.has && H.has(k)))) continue; exp.push(k);
+    }
+    const set = {}; (dates || []).forEach(x => { const m = String(x || '').match(/^\d{4}-\d{2}-\d{2}/); if (m) set[m[0]] = 1; });
+    const miss = exp.filter(k => !set[k]); out.exp = exp.length; out.done = exp.length - miss.length; out.miss = miss;
+    if (!exp.length) return out;
+    const w = o.what || ['日檢', 'Daily check', 'ការពិនិត្យប្រចាំថ្ងៃ'], L = (zh, en, km) => lbl(lang, zh, en, km);
+    const WD = lang === 'en' || lang === 'km' ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] : ['日','一','二','三','四','五','六'];
+    const unit = o.all ? L('天', 'days', 'ថ្ងៃ') : L('個工作日', 'workdays', 'ថ្ងៃធ្វើការ');
+    if (!miss.length) { out.line = '✅ ' + L(w[0], w[1], w[2]) + ' <b>' + exp.length + '/' + exp.length + '</b> ' + unit + ' · ' + L('每天都有做', 'done every day', 'បានធ្វើរាល់ថ្ងៃ'); return out; }
+    const list = miss.length <= 7 ? miss.map(k => d(k) + '(' + WD[new Date(k + 'T00:00:00').getDay()] + ')').join(' ') : ranges(miss);
+    out.line = '⚠️ ' + L(w[0] + '沒做', w[1] + ' missed', w[2] + ' មិនបានធ្វើ') + ' <b>' + miss.length + '/' + exp.length + '</b> ' + unit + '：<b>' + list + '</b>';
+    return out;
+  }
+  return { lbl, enKm, esc, d, time, mins, dur, ranges, head, verdict, bar, kpis, sec, fold, chunk, number, missed };
 })();
 GC.enKm = GC.TG.enKm;
 

@@ -236,8 +236,8 @@ tbody tr:hover{background:var(--bg);}
 .nodata-row td{text-align:center;padding:32px;color:var(--text3);}
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=20261107b"></script>
-<script src="./ac-holidays.js?v=20261103a"></script>
+<script src="./gascheck-core.js?v=20261117m"></script>
+<script src="./ac-holidays.js?v=20261117m"></script>
 <script src="./ac-tg-chart.js?v=20261106d"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
@@ -2593,9 +2593,12 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
     txt+='\n'+G.verdict('warn',lb('這段期間沒有記錄','No records in this period','គ្មានកំណត់ត្រាក្នុងរយៈពេលនេះ'));
     return {text:txt,pages:[txt],photos:photos,notice:notice};
   }
-  txt+='\n'+G.verdict(abnormal.length?'bad':missing?'warn':'ok',abnormal.length?lb(abnormal.length+' 筆超標',abnormal.length+' out of range',abnormal.length+' ហួសកំណត់'):missing?lb(missing+' 筆還沒記',missing+' not recorded yet',missing+' មិនទាន់កត់ត្រា'):lb('全部在範圍內','All in range','ទាំងអស់ក្នុងកំណត់'));
+  /* 2026-11-17：週／月報列出哪幾個工作日沒記 */
+  const MS=G.missed?G.missed(period,ref||(sorted[0]&&sorted[0].d),view.map(r=>r.d),lang,{what:['溫濕度記錄','Temp record','កំណត់ត្រាសីតុណ្ហភាព']}):{miss:[]};
+  txt+='\n'+G.verdict(abnormal.length?'bad':(missing||MS.miss.length)?'warn':'ok',abnormal.length?lb(abnormal.length+' 筆超標',abnormal.length+' out of range',abnormal.length+' ហួសកំណត់'):missing?lb(missing+' 筆還沒記',missing+' not recorded yet',missing+' មិនទាន់កត់ត្រា'):lb('全部在範圍內','All in range','ទាំងអស់ក្នុងកំណត់'));
   if(day){const exp=reportZones.length*2,got=exp-missing;const nb=exp?Math.round(got/exp*10):0;txt+='\n'+'🟦'.repeat(nb)+'⬜'.repeat(10-nb)+' '+lb('已記錄','recorded','បានកត់ត្រា')+' <b>'+got+'/'+exp+'</b>'+(abnormal.length?'':' · ✅ '+lb('都在範圍內','all in range','ទាំងអស់ក្នុងកំណត់'));}
   else txt+='\n'+G.bar(inRange,view.length)+' '+lb('在範圍內','in range','ក្នុងកំណត់');
+  if(MS.line)txt+='\n'+MS.line;
   /* 2026-11-13 數字核對（學考勤摘要）：讀數＝在範圍內＋超標（逐筆重新數一次，不是直接相減） */
   {const vIn=view.filter(r=>!isAnom(r)).length,vOut=view.filter(isAnom).length,vd=view.length-vIn-vOut||(vOut!==abnormal.length?1:0);
     txt+='\n'+(vd?'⚠️ '+lb('讀數加總不符','Readings do not add up','ចំនួនការអានមិនស៊ីគ្នា')+'（'+view.length+' ≠ '+vIn+'＋'+vOut+'）':'✅ '+lb('讀數','Readings','ការអាន')+' '+view.length+'＝'+lb('在範圍內','in range','ក្នុងកំណត់')+' '+vIn+'＋'+lb('超標','out of range','ហួសកំណត់')+' '+vOut+' · '+lb('已核對正確','verified','បានផ្ទៀងផ្ទាត់'));}

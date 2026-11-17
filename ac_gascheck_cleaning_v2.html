@@ -177,8 +177,8 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=20261107b"></script>
-<script src="./ac-holidays.js?v=20261103a"></script>
+<script src="./gascheck-core.js?v=20261117m"></script>
+<script src="./ac-holidays.js?v=20261117m"></script>
 <script src="./ac-tg-chart.js?v=20261106d"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
@@ -2414,8 +2414,11 @@ function cleaningTelegramReport(view,opt){
   if(!view.length){
     txt+='\n'+G.verdict('warn',lb('這段期間沒有清潔記錄','No cleaning records in this period','គ្មានកំណត់ត្រាសម្អាតក្នុងរយៈពេលនេះ'));
   }else{
-    txt+='\n'+G.verdict(bad.length?'bad':'ok',bad.length?lb(bad.length+' 個區域有異常',bad.length+(bad.length===1?' area with issues':' areas with issues'),'តំបន់ '+bad.length+' មានបញ្ហា'):lb('全部通過','All passed','ជាប់ទាំងអស់'));
+    /* 2026-11-17：週／月報列出哪幾個工作日沒做清潔巡檢 */
+    const MS=G.missed?G.missed(period,opt.ref,view.map(function(r){return typeof cleaningDateValue==='function'?cleaningDateValue(r.date):r.date;}),lang,{what:['清潔巡檢','Cleaning check','ការត្រួតពិនិត្យសម្អាត']}):{miss:[]};
+    txt+='\n'+G.verdict(bad.length?'bad':MS.miss.length?'warn':'ok',bad.length?lb(bad.length+' 個區域有異常',bad.length+(bad.length===1?' area with issues':' areas with issues'),'តំបន់ '+bad.length+' មានបញ្ហា'):lb('全部通過','All passed','ជាប់ទាំងអស់'));
     txt+='\n'+G.bar(ok.length,areas.length)+' '+lb('區域正常','areas OK','តំបន់ធម្មតា');
+    if(MS.line)txt+='\n'+MS.line;
     txt+='\n'+G.kpis([['📍',lb('區域','Areas','តំបន់'),areas.length],['🔎',lb('檢查','Checks','ការត្រួតពិនិត្យ'),checks],['👷',lb('清潔員','Cleaners','អ្នកសម្អាត'),cleaners.size]],3);
     txt+='\n'+G.kpis([['❌',lb('異常','Issues','បញ្ហា'),issues]].concat(photos.length?[['📷',lb('照片','Photos','រូបថត'),photos.length]]:[]),2);
     /* 數字核對（學考勤摘要）：區域＝正常＋有異常 */
