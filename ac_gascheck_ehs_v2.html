@@ -2000,6 +2000,26 @@ function ehsWeekGridChart(c){
     return ACChart.render({title:t('回收／廢料 週報','Recycle / Waste · Weekly','កែច្នៃ / សំណល់ · ប្រចាំសប្ដាហ៍'),subtitle:range.fromYmd+' ~ '+range.toYmd,theme:'green',width:1080,blocks:blocks,footer:'AC GASCheck · EHS · '+t('回收／廢料','Recycle / Waste','កែច្នៃ / សំណល់')})||'';
   }catch(e){return '';}
 }
+/* 2026-11-17 Paul：週／月／年摘要要像 sewing／HRA PAY 一樣「一期一行＋橫向色條」：週＝每天、月＝每週、年＝每月。
+   gcPeriodBuckets 回傳 [{label,from,to}]（含頭含尾 YYYY-MM-DD，未來的期間不列）；gcSegBar 依各段數量畫 w 格（剩下的 ⬜）。 */
+function gcPeriodBuckets(period,ref,lang){
+  const r=GC.period&&GC.period.range?GC.period.range(period,ref):null;if(!r||period==='day')return [];
+  const p2=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()),today=ymd(new Date());
+  const zh=lang!=='en'&&lang!=='km',WD=zh?['日','一','二','三','四','五','六']:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const out=[],end=new Date(r.to-86400000);
+  if(period==='week'){for(let d=new Date(r.from);d<=end;d.setDate(d.getDate()+1)){const k=ymd(d);if(k>today)break;out.push({label:WD[d.getDay()]+' '+k.slice(8),from:k,to:k,sunOnly:d.getDay()===0});}}
+  else if(period==='month'){for(let d=new Date(r.from);d<=end;){const s=new Date(d),e=new Date(d);e.setDate(e.getDate()+(6-((e.getDay()+6)%7)));if(e>end)e.setTime(end.getTime());const a=ymd(s),b=ymd(e);if(a>today)break;out.push({label:a===b?a.slice(5).replace('-','/'):a.slice(5).replace('-','/')+'–'+b.slice(8),from:a,to:b,sunOnly:a===b&&s.getDay()===0});d=new Date(e);d.setDate(d.getDate()+1);}}
+  else if(period==='year'){for(let m=0;m<12;m++){const s=new Date(r.from.getFullYear(),m,1),e=new Date(r.from.getFullYear(),m+1,0),a=ymd(s);if(a>today)break;out.push({label:zh?(m+1)+'月':MN[m],from:a,to:ymd(e)});}}
+  return out;
+}
+function gcSegBar(segs,total,w){
+  w=w||10;total=Math.max(total||0,segs.reduce((a,s)=>a+(s.n||0),0));if(!total)return '⬜'.repeat(w);
+  const raw=segs.map(s=>(s.n||0)/total*w),cells=raw.map((v,i)=>segs[i].n?Math.max(1,Math.floor(v)):0);
+  while(cells.reduce((a,b)=>a+b,0)>w){const i=cells.indexOf(Math.max(...cells));cells[i]--;}
+  const filled=Math.round(segs.reduce((a,s)=>a+(s.n||0),0)/total*w);
+  while(cells.reduce((a,b)=>a+b,0)<filled){let bi=-1,bv=-1;raw.forEach((v,i)=>{const rem=v-cells[i];if(segs[i].n&&rem>bv){bv=rem;bi=i;}});if(bi<0)break;cells[bi]++;}
+  const used=cells.reduce((a,b)=>a+b,0);return segs.map((s,i)=>s.sq.repeat(cells[i])).join('')+'⬜'.repeat(Math.max(0,w-used));
+}
 function buildEhsTelegram(opt){
   opt=opt||{};
   const cfg=opt.cfg||{},G=GC.TG,period=opt.period||'month',scope=opt.scope||'all',slot=opt.slot||'all',lang=opt.lang||'bi';
@@ -2063,6 +2083,12 @@ function buildEhsTelegram(opt){
   txt+='\n'+G.kpis(k,2);
   if(checkers.length)txt+='\n👤 '+G.esc(checkers.slice(0,4).join(', '))+(checkers.length>4?' +'+(checkers.length-4):'');
   if(warn.length)txt+='\n'+warn.join('  ·  ');
+  /* 2026-11-17 一期一行：🟦 廢料 kg、🟩 回收 kg，長度＝該期重量 ÷ 最大的一期 */
+  if(!day){const bks=gcPeriodBuckets(period,opt.ref,lang);
+    if(bks.length){const inB=function(list,b){return list.filter(function(r){const d=ehsYmd(r.date);return d>=b.from&&d<=b.to;});};
+      const st=bks.map(function(b){const w=inB(wasteRows,b),rc=inB(recycleRows,b);return {b:b,n:w.length,wk:showWaste?sum(w,'weight_kg'):0,rk:showRecycle?sum(rc,ehsRecycleRowTotal):0};}),mx=Math.max.apply(null,st.map(function(x){return x.wk+x.rk;}))||1;
+      txt+=G.sec('📅',period==='week'?lb('每天','Daily','ប្រចាំថ្ងៃ'):period==='year'?lb('每月','Monthly','ប្រចាំខែ'):lb('每週','Weekly','ប្រចាំសប្ដាហ៍'))+(showWaste?' · 🟦 '+lb('廢料','waste','សំណល់'):'')+(showRecycle?' · 🟩 '+lb('回收','recycle','កែច្នៃ'):'');
+      st.forEach(function(x){if(x.b.sunOnly&&!(x.wk||x.rk||x.n))return;txt+='\n<code>'+G.esc(x.b.label)+'</code> '+gcSegBar([{n:x.wk,sq:'🟦'},{n:x.rk,sq:'🟩'}],mx)+' '+(x.wk||x.rk||x.n?[showWaste&&(x.n||x.wk)?'🚛 <b>'+x.n+'</b> · 🗑️ '+Math.round(x.wk).toLocaleString()+' kg':'',showRecycle&&x.rk?'♻️ '+Math.round(x.rk).toLocaleString()+' kg':''].filter(Boolean).join(' · '):'—');});}}
   /* 2026-11-06 週報附圖（第一張）：每天每家供應商的趟數／重量；正常的供應商在文字裡併成一行 */
   const weekChart=period==='week'?ehsWeekGridChart({lang:lang,ref:opt.ref,wasteRows:wasteRows,recycleRows:recycleRows,showWaste:showWaste,showRecycle:showRecycle,wasteKg:wasteKg,recycleKg:recycleKg,toCheck:wasteIssues.length+recycleBad.length}):'';
   if(weekChart){photos.unshift(weekChart);if(photos.length>5)photos.length=5;}

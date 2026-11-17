@@ -2375,6 +2375,26 @@ function cleaningWeekGridChart(view,ref,lang){
   }catch(err){return '';}
 }
 /* 共用卡片：period／ref 決定標題與是否顯示日期；all＝整個資料集（算本月累計用）。 */
+/* 2026-11-17 Paul：週／月／年摘要要像 sewing／HRA PAY 一樣「一期一行＋橫向色條」：週＝每天、月＝每週、年＝每月。
+   gcPeriodBuckets 回傳 [{label,from,to}]（含頭含尾 YYYY-MM-DD，未來的期間不列）；gcSegBar 依各段數量畫 w 格（剩下的 ⬜）。 */
+function gcPeriodBuckets(period,ref,lang){
+  const r=GC.period&&GC.period.range?GC.period.range(period,ref):null;if(!r||period==='day')return [];
+  const p2=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()),today=ymd(new Date());
+  const zh=lang!=='en'&&lang!=='km',WD=zh?['日','一','二','三','四','五','六']:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const out=[],end=new Date(r.to-86400000);
+  if(period==='week'){for(let d=new Date(r.from);d<=end;d.setDate(d.getDate()+1)){const k=ymd(d);if(k>today)break;out.push({label:WD[d.getDay()]+' '+k.slice(8),from:k,to:k,sunOnly:d.getDay()===0});}}
+  else if(period==='month'){for(let d=new Date(r.from);d<=end;){const s=new Date(d),e=new Date(d);e.setDate(e.getDate()+(6-((e.getDay()+6)%7)));if(e>end)e.setTime(end.getTime());const a=ymd(s),b=ymd(e);if(a>today)break;out.push({label:a===b?a.slice(5).replace('-','/'):a.slice(5).replace('-','/')+'–'+b.slice(8),from:a,to:b,sunOnly:a===b&&s.getDay()===0});d=new Date(e);d.setDate(d.getDate()+1);}}
+  else if(period==='year'){for(let m=0;m<12;m++){const s=new Date(r.from.getFullYear(),m,1),e=new Date(r.from.getFullYear(),m+1,0),a=ymd(s);if(a>today)break;out.push({label:zh?(m+1)+'月':MN[m],from:a,to:ymd(e)});}}
+  return out;
+}
+function gcSegBar(segs,total,w){
+  w=w||10;total=Math.max(total||0,segs.reduce((a,s)=>a+(s.n||0),0));if(!total)return '⬜'.repeat(w);
+  const raw=segs.map(s=>(s.n||0)/total*w),cells=raw.map((v,i)=>segs[i].n?Math.max(1,Math.floor(v)):0);
+  while(cells.reduce((a,b)=>a+b,0)>w){const i=cells.indexOf(Math.max(...cells));cells[i]--;}
+  const filled=Math.round(segs.reduce((a,s)=>a+(s.n||0),0)/total*w);
+  while(cells.reduce((a,b)=>a+b,0)<filled){let bi=-1,bv=-1;raw.forEach((v,i)=>{const rem=v-cells[i];if(segs[i].n&&rem>bv){bv=rem;bi=i;}});if(bi<0)break;cells[bi]++;}
+  const used=cells.reduce((a,b)=>a+b,0);return segs.map((s,i)=>s.sq.repeat(cells[i])).join('')+'⬜'.repeat(Math.max(0,w-used));
+}
 function cleaningTelegramReport(view,opt){
   opt=opt||{};
   const G=GC.TG,lang=opt.lang||'bi',period=opt.period||'month',lb=function(zh,en,km){return G.lbl(lang,zh,en,km);},e=cleaningTelegramEscape;
@@ -2407,6 +2427,12 @@ function cleaningTelegramReport(view,opt){
     const m=cleaningTelegramAreas(opt.month),mIssues=opt.month.filter(function(r){return cleaningTelegramFailed(r).length;}).length;
     txt+='\n📆 <b>'+lb('本月累計','Month to date','សរុបខែនេះ')+'</b> · 🔎 '+m.reduce(function(s,a){return s+a.checks;},0)+' · 📍 '+m.length+' · ❌ '+mIssues;
   }
+  /* 2026-11-17 一期一行：🟩 通過、🟥 有 ✕ 的檢查次數 */
+  if(period!=='day'&&view.length){const bks=gcPeriodBuckets(period,opt.ref||cleaningTelegramDate(view[0].date),lang);
+    if(bks.length){txt+=G.sec('📅',period==='week'?lb('每天','Daily','ប្រចាំថ្ងៃ'):period==='year'?lb('每月','Monthly','ប្រចាំខែ'):lb('每週','Weekly','ប្រចាំសប្ដាហ៍'))+' · 🟩 '+lb('通過','pass','ជាប់')+' 🟥 '+lb('有異常','issue','មានបញ្ហា');
+      bks.forEach(function(b){const rs=view.filter(function(r){const d=cleaningTelegramDate(r.date);return d>=b.from&&d<=b.to;}),n=function(r){return cleaningTelegramSlots(r).length||1;};
+        const all=rs.reduce(function(a,r){return a+n(r);},0);if(!all&&b.sunOnly)return;const f=rs.filter(function(r){return cleaningTelegramFailed(r).length;}).reduce(function(a,r){return a+n(r);},0),ar=new Set(rs.map(function(r){return String(r.locId||r.location||'');})).size;
+        txt+='\n<code>'+e(b.label)+'</code> '+gcSegBar([{n:all-f,sq:'🟩'},{n:f,sq:'🟥'}],all)+' '+(all?'<b>'+Math.round((all-f)/all*100)+'%</b> · 🔎 '+all+' · 📍 '+ar+(f?' · ❌ '+f:''):'—');});}}
   if(bad.length){
     txt+=G.sec('⚠️',lb('需注意','Needs attention','ត្រូវយកចិត្តទុកដាក់'))+'\n'+bad.slice(0,12).map(function(a){return cleaningTelegramIssueLine(a,period!=='day');}).join('\n')+(bad.length>12?'\n… +'+(bad.length-12):'');
   }

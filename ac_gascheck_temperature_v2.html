@@ -2537,6 +2537,26 @@ function tempWeekGridChart(view,zones,ref,lang){
     return ACChart.render({title:t('溫濕度 週報','Temperature & Humidity · Weekly','សីតុណ្ហភាព និងសំណើម · ប្រចាំសប្ដាហ៍'),subtitle:range.fromYmd+' ~ '+range.toYmd,theme:'green',width:1080,blocks:blocks,footer:'AC GASCheck · '+t('溫濕度','Temperature','សីតុណ្ហភាព')})||'';
   }catch(err){return '';}
 }
+/* 2026-11-17 Paul：週／月／年摘要要像 sewing／HRA PAY 一樣「一期一行＋橫向色條」：週＝每天、月＝每週、年＝每月。
+   gcPeriodBuckets 回傳 [{label,from,to}]（含頭含尾 YYYY-MM-DD，未來的期間不列）；gcSegBar 依各段數量畫 w 格（剩下的 ⬜）。 */
+function gcPeriodBuckets(period,ref,lang){
+  const r=GC.period&&GC.period.range?GC.period.range(period,ref):null;if(!r||period==='day')return [];
+  const p2=n=>String(n).padStart(2,'0'),ymd=d=>d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate()),today=ymd(new Date());
+  const zh=lang!=='en'&&lang!=='km',WD=zh?['日','一','二','三','四','五','六']:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'],MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const out=[],end=new Date(r.to-86400000);
+  if(period==='week'){for(let d=new Date(r.from);d<=end;d.setDate(d.getDate()+1)){const k=ymd(d);if(k>today)break;out.push({label:WD[d.getDay()]+' '+k.slice(8),from:k,to:k,sunOnly:d.getDay()===0});}}
+  else if(period==='month'){for(let d=new Date(r.from);d<=end;){const s=new Date(d),e=new Date(d);e.setDate(e.getDate()+(6-((e.getDay()+6)%7)));if(e>end)e.setTime(end.getTime());const a=ymd(s),b=ymd(e);if(a>today)break;out.push({label:a===b?a.slice(5).replace('-','/'):a.slice(5).replace('-','/')+'–'+b.slice(8),from:a,to:b,sunOnly:a===b&&s.getDay()===0});d=new Date(e);d.setDate(d.getDate()+1);}}
+  else if(period==='year'){for(let m=0;m<12;m++){const s=new Date(r.from.getFullYear(),m,1),e=new Date(r.from.getFullYear(),m+1,0),a=ymd(s);if(a>today)break;out.push({label:zh?(m+1)+'月':MN[m],from:a,to:ymd(e)});}}
+  return out;
+}
+function gcSegBar(segs,total,w){
+  w=w||10;total=Math.max(total||0,segs.reduce((a,s)=>a+(s.n||0),0));if(!total)return '⬜'.repeat(w);
+  const raw=segs.map(s=>(s.n||0)/total*w),cells=raw.map((v,i)=>segs[i].n?Math.max(1,Math.floor(v)):0);
+  while(cells.reduce((a,b)=>a+b,0)>w){const i=cells.indexOf(Math.max(...cells));cells[i]--;}
+  const filled=Math.round(segs.reduce((a,s)=>a+(s.n||0),0)/total*w);
+  while(cells.reduce((a,b)=>a+b,0)<filled){let bi=-1,bv=-1;raw.forEach((v,i)=>{const rem=v-cells[i];if(segs[i].n&&rem>bv){bv=rem;bi=i;}});if(bi<0)break;cells[bi]++;}
+  const used=cells.reduce((a,b)=>a+b,0);return segs.map((s,i)=>s.sq.repeat(cells[i])).join('')+'⬜'.repeat(Math.max(0,w-used));
+}
 function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
   lang=lang||'bi';
   const G=GC.TG,lb=function(zh,en,km){return G.lbl(lang,zh,en,km);},e=tempTgEsc;
@@ -2607,6 +2627,12 @@ function buildTGPeriodMsg(period,mode,ref,slot,lang,scope){
   }
   if(missing){const mAm=reportZones.length-view.filter(r=>r.p==='morning').length,mPm=reportZones.length-view.filter(r=>r.p==='afternoon').length;
     txt+='\n⏳ '+lb('未記錄','Missing','មិនទាន់កត់ត្រា')+' <b>'+missing+'</b>'+' · ☀️ AM '+Math.max(0,mAm)+' · 🌇 PM '+Math.max(0,mPm);}
+  /* 2026-11-17 一期一行：🟩 在範圍內、🟥 超標、⬜ 未記錄（應記＝區域×早午 2 次×非週日天數） */
+  if(!day){const bks=gcPeriodBuckets(period,ref||(sorted[0]&&sorted[0].d),lang);
+    if(bks.length){const nz=reportZones.length;txt+=G.sec('📅',period==='week'?lb('每天','Daily','ប្រចាំថ្ងៃ'):period==='year'?lb('每月','Monthly','ប្រចាំខែ'):lb('每週','Weekly','ប្រចាំសប្ដាហ៍'))+' · 🟩 '+lb('正常','OK','ធម្មតា')+' 🟥 '+lb('超標','out','ហួស')+' ⬜ '+lb('未記錄','missing','មិនទាន់កត់');
+      bks.forEach(function(b){const rs=view.filter(function(r){const d=String(r.d||'').slice(0,10);return d>=b.from&&d<=b.to;}),bad=rs.filter(isAnom).length;let wd=0;const td=new Date();td.setHours(0,0,0,0);for(let d=new Date(b.from+'T00:00:00');d<=new Date(b.to+'T00:00:00')&&d<=td;d.setDate(d.getDate()+1))if(d.getDay()!==0)wd++;
+        const exp=Math.max(nz*2*wd,rs.length);if(!exp)return;const tt=rs.map(r=>Number(r.t)).filter(Number.isFinite),hh=rs.map(r=>Number(r.h)).filter(Number.isFinite),av=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length*10)/10:null;
+        txt+='\n<code>'+e(b.label)+'</code> '+gcSegBar([{n:rs.length-bad,sq:'🟩'},{n:bad,sq:'🟥'}],exp)+' <b>'+rs.length+'/'+exp+'</b>'+(tt.length?' · '+av(tt)+'°C':'')+(hh.length?' '+av(hh)+'%':'')+(bad?' · ⚠️'+bad:'');});}}
   /* 每區一行：日報 AM → PM；其他期間顯示範圍與次數。 */
   txt+=G.sec('🏭',lb('區域','Zones','តំបន់'));
   reportZones.forEach(function(z){
