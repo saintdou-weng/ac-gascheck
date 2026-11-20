@@ -2075,6 +2075,19 @@ function buildEhsTelegram(opt){
       txt+='\n📆 '+lb('本月累計','Month to date','សរុបខែនេះ')+' <b>'+mtd.n+'</b> '+lb('趟','trips','ជើង')+' / '+lb('目標','target','គោលដៅ')+' '+mtd.target+' '+G.bar(mtd.n,mtd.target)+' · '+mtd.kg.toLocaleString()+' kg';
     }
   }
+  /* 2026-11-20 Paul：摘要至少要看到當月來幾趟（圖示）＋當年累計幾趟、多少 kg（回收、廢料都算；截至這期最後一天） */
+  if(range&&period!=='year'){
+    const end=range.toYmd,get=function(p,ref){return ehsUniqueWasteRows(GC.telegram.filter(all,cfg,p,ref,scope,slot)).filter(function(r){return ehsYmd(r.date)<=end;});};
+    const mAll=get('month',end.slice(0,7)+'-01'),yAll=get('year',end.slice(0,4)+'-01-01');
+    const mR=mAll.filter(function(r){return !ehsTgIsWaste(r);}),yR=yAll.filter(function(r){return !ehsTgIsWaste(r);}),yW=yAll.filter(ehsTgIsWaste);
+    const icons=function(n,sq){return n?(n<=12?sq.repeat(n):sq.repeat(12)+'…'):'—';};
+    const mon=lb((+end.slice(5,7))+' 月',['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+end.slice(5,7)-1],'ខែ '+(+end.slice(5,7)));
+    if(showRecycle){
+      txt+='\n♻️ '+mon+lb(' 回收',' recycle',' កែច្នៃ')+' '+icons(mR.length,'🟩')+' <b>'+mR.length+'</b> '+lb('趟','trips','ជើង')+' · '+Math.round(sum(mR,ehsRecycleRowTotal)).toLocaleString()+' kg';
+      txt+='\n📈 '+end.slice(0,4)+lb(' 年累計回收',' YTD recycle',' សរុបឆ្នាំកែច្នៃ')+' <b>'+yR.length+'</b> '+lb('趟','trips','ជើង')+' · <b>'+Math.round(sum(yR,ehsRecycleRowTotal)).toLocaleString()+'</b> kg';
+    }
+    if(showWaste)txt+='\n📈 '+end.slice(0,4)+lb(' 年累計廢料',' YTD waste',' សរុបឆ្នាំសំណល់')+' <b>'+yW.length+'</b> '+lb('趟','trips','ជើង')+' · <b>'+Math.round(sum(yW,'weight_kg')).toLocaleString()+'</b> kg';
+  }
   const k=[];
   if(showWaste&&!supTarget)k.push(['🚛',lb('趟數','Trips','ជើង'),wasteRows.length]);
   if(showWaste)k.push(['🗑️',lb('廢料','Waste','សំណល់'),wasteKg.toLocaleString()+' kg']);
