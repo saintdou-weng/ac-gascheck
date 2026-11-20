@@ -109,6 +109,36 @@ select.bi{cursor:pointer}
 .chart-wrap canvas{display:block;width:100%!important;height:100%!important;max-height:none}
 /* HISTORY TABLE */
 .htable-wrap{overflow-x:auto}
+/* v-wcards 2026-11-21：Waste 期間列表改成 sewing 每日報告式卡片（日／週／月＝每天一張；年＝每月一張） */
+.wview-bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--border2)}
+.wview-bar .wv{border:1px solid var(--border2);background:#fff;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:700;cursor:pointer;color:var(--dim)}
+.wview-bar .wv.on{background:var(--green);border-color:var(--green);color:#fff}
+.wview-bar .wv-note{font-size:11px;color:var(--dim);margin-left:auto}
+.wcards{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px;padding:12px}
+.wcard{background:#fff;border:1px solid var(--border2);border-top:4px solid var(--green);border-radius:10px;padding:10px 12px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
+.wcard.issue{border-top-color:var(--red)}.wcard.warn{border-top-color:var(--orange)}.wcard.none{border-top-color:#cbd5e1;opacity:.75}
+.wcard.click{cursor:pointer}.wcard.click:hover{box-shadow:0 3px 10px rgba(0,0,0,.08)}
+.wc-head{display:flex;justify-content:space-between;align-items:baseline;gap:6px}
+.wc-title{font-weight:800;font-size:15px}.wc-sub{font-size:11px;color:var(--dim)}
+.wc-pill{font-size:12px;font-weight:800;padding:2px 9px;border-radius:999px;background:#dcfce7;color:#14532d}
+.wcard.issue .wc-pill{background:#fee2e2;color:#7f1d1d}.wcard.warn .wc-pill{background:#ffedd5;color:#9a3412}
+.wc-big{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:8px 0}
+.wc-big div{background:var(--col);border-radius:8px;text-align:center;padding:6px 4px}
+.wc-big b{display:block;font-size:20px;line-height:1.2}.wc-big span{font-size:10px;color:var(--dim)}
+.wc-bar{display:flex;height:7px;border-radius:4px;overflow:hidden;background:#e2e8f0;margin:2px 0 6px}
+.wc-bar i{display:block;height:100%}
+.wc-legend{display:flex;gap:10px;font-size:11px;color:var(--dim);flex-wrap:wrap;margin-bottom:4px}
+.wc-row{display:flex;align-items:center;gap:6px;padding:6px 0;border-top:1px dashed var(--border2);font-size:12px;flex-wrap:wrap}
+.wc-row .sup{font-weight:800;min-width:78px}.wc-row .kg{font-weight:800;color:var(--blue);margin-left:auto}
+.wc-row .tm{color:var(--dim);font-size:11px;width:100%}
+.wc-row .tm.bad{color:var(--red);font-weight:700}
+.wc-row .wc-act{display:flex;gap:4px}
+.wc-row .wc-act button{border:1px solid var(--border2);background:#fff;border-radius:6px;padding:2px 7px;cursor:pointer;font-size:12px}
+.wc-empty{grid-column:1/-1;text-align:center;color:var(--dim);padding:16px;font-size:12px}
+.wc-gap{grid-column:1/-1;font-size:11px;color:var(--dim);padding:0 2px}
+.wcards.yr{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.wcards.yr .wc-big b{font-size:18px}
+.wcard.none .wc-big{display:none}
 .htable{width:100%;border-collapse:collapse;font-size:12px;min-width:600px}
 .htable th{background:var(--col);padding:5px 8px;text-align:left;border-bottom:2px solid var(--border);border-right:1px solid var(--border2);font-size:10px;font-weight:700;color:var(--dim);white-space:nowrap}
 .htable td{padding:5px 8px;border-bottom:1px solid var(--border2);border-right:1px solid var(--border2);vertical-align:middle}
@@ -321,7 +351,9 @@ select.bi{cursor:pointer}
         <button class="btn btn-secondary row-mini" onclick="exportEhsPeriod('gate')">⬇ Excel</button>
       </span>
     </div>
-    <div class="htable-wrap">
+    <div class="wview-bar" id="b-wview-bar"><button class="wv on" data-wv="cards" onclick="setWasteView('cards')">🗂️ <span class="wv-t-cards">卡片</span></button><button class="wv" data-wv="table" onclick="setWasteView('table')">📋 <span class="wv-t-table">表格</span></button><span class="wv-note" id="b-wview-note"></span></div>
+    <div class="wcards" id="b-wcards"></div>
+    <div class="htable-wrap" id="b-table-wrap">
       <table class="htable">
         <thead><tr>
           <th><input class="waste-select" id="b-select-all" type="checkbox" aria-label="Select all" data-i-title="sel-all" onchange="selectVisibleWaste(this.checked)"> #</th><th data-i="th-date">日期</th><th data-i="th-name">姓名</th><th data-i="th-supplier">供應商</th><th data-i="th-wtype">廢料類型</th>
@@ -781,7 +813,72 @@ function renderBAnalysis(){
   const sN=moRecs.filter(r=>r.supplier==='SONYAPICH').length;
   document.getElementById('b-month-footer').textContent=`K.S.W.M: ${kN} ${ehsText('趟','trips','ជើង')} | SONYAPICH: ${sN} ${ehsText('趟','trips','ជើង')} | ${ehsText('合計','Total','សរុប')}: ${moRecs.length} · ${kgDisplay(totalKg)}`;
   ehsViewState.gate=filterRecs.slice();
+  try{renderWasteCards(filterRecs,bounds);}catch(e){console.warn('[EHS] waste cards',e);}
   updateWasteSelectionUi();
+}
+
+/* ========== WASTE 卡片列表（學 sewing 每日報告：期間 ◀ ▶ → 每天／每月一張卡） ========== */
+function ehsWasteView(){try{return localStorage.getItem('ehs_waste_view')==='table'?'table':'cards';}catch(e){return 'cards';}}
+function setWasteView(v){try{localStorage.setItem('ehs_waste_view',v);}catch(e){}renderBAnalysis();}
+function ehsWeekdayLabel(ymd){const d=ehsDateLocal(ymd).getDay();return lang==='zh'?['週日','週一','週二','週三','週四','週五','週六'][d]:(lang==='km'?['អាទិត្យ','ច័ន្ទ','អង្គារ','ពុធ','ព្រហស្បតិ៍','សុក្រ','សៅរ៍'][d]:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][d]);}
+function ehsWasteSupColor(s){return s==='K.S.W.M'?'#2563eb':(s==='SONYAPICH'?'#dc2626':'#f59e0b');}
+function ehsWasteSplitBar(rows){
+  const tot=ehsSum(rows,'weight_kg')||rows.length||1,by={};
+  rows.forEach(function(r){const s=r.supplier||'—';by[s]=(by[s]||0)+(ehsSum([r],'weight_kg')||(ehsSum(rows,'weight_kg')?0:1));});
+  const keys=Object.keys(by).sort(function(a,b){return by[b]-by[a];});
+  return '<div class="wc-bar">'+keys.map(function(k){return '<i style="width:'+(by[k]/tot*100).toFixed(1)+'%;background:'+ehsWasteSupColor(k)+'" title="'+ehsEsc(k)+'"></i>';}).join('')+'</div>'
+    +'<div class="wc-legend">'+keys.map(function(k){const n=rows.filter(function(r){return (r.supplier||'—')===k;}).length;return '<span><b style="color:'+ehsWasteSupColor(k)+'">●</b> '+ehsEsc(k)+' '+n+ehsText('趟',' trips',' ជើង')+'</span>';}).join('')+'</div>';
+}
+function ehsWasteRowHtml(r){
+  const sel=ehsWasteSelectedIds.has(String(r.id||'')),issue=ehsWasteTimeIssue(r),photos=photoArray(r.photos);
+  const dur=r.duration_min!=null&&r.duration_min!==''?' ('+Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m)':'';
+  return '<div class="wc-row"><input class="waste-select" type="checkbox" data-waste-id="'+ehsEsc(r.id)+'" '+(sel?'checked':'')+' onchange="toggleWasteSelection(\''+ehsEsc(r.id)+'\',this.checked)" aria-label="select">'
+    +'<span class="sup" style="color:'+ehsWasteSupColor(r.supplier)+'">'+ehsEsc(r.supplier||'—')+'</span>'+ehsWasteTypeBadges(r)
+    +(r.anomaly?'<span class="badge badge-anom">⚠️</span>':'')+(photos.length?'<span class="wc-sub">📷'+photos.length+'</span>':'')
+    +'<span class="kg">'+kgDisplay(r.weight_kg)+'</span>'
+    +'<span class="wc-act"><button onclick="editRecord(\''+ehsEsc(r.id)+'\',\'gate\')" title="Edit">✏️</button><button onclick="deleteRecord(\''+ehsEsc(r.id)+'\',\'gate\')" title="Delete">🗑️</button></span>'
+    +'<span class="tm'+(issue?' bad':'')+'">🕒 '+ehsEsc(r.time_in||'—')+' → '+ehsEsc(r.time_out||'—')+dur+(issue?' · '+ehsText('時間異常','time issue','ម៉ោងមិនត្រឹមត្រូវ'):'')+' · 👤 '+ehsEsc(r.name||'—')+(r.checked_by?' · ✅ '+ehsEsc(r.checked_by):'')+'</span></div>';
+}
+function showWasteMonth(ym){
+  const parts=String(ym).split('-');bPeriod='month';document.getElementById('b-p-year').value=parts[0];document.getElementById('b-p-month').value=+parts[1];
+  document.querySelectorAll('#b-ptoggle button').forEach(function(b){b.classList.toggle('active',b.getAttribute('onclick').indexOf("'month'")>=0);});syncEhsPeriodControls('b');renderBAnalysis();
+  const el=document.getElementById('b-month-records');if(el&&el.scrollIntoView)el.scrollIntoView({behavior:'smooth',block:'start'});
+}
+function renderWasteCards(recs,bounds){
+  const view=ehsWasteView(),box=document.getElementById('b-wcards'),tw=document.getElementById('b-table-wrap'),note=document.getElementById('b-wview-note');
+  document.querySelectorAll('#b-wview-bar .wv').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-wv')===view);});
+  const tc=document.querySelector('#b-wview-bar .wv-t-cards'),tt=document.querySelector('#b-wview-bar .wv-t-table');if(tc)tc.textContent=ehsText('卡片','Cards','កាត');if(tt)tt.textContent=ehsText('表格','Table','តារាង');
+  if(tw)tw.style.display=view==='table'?'':'none';if(!box)return;box.style.display=view==='cards'?'':'none';
+  if(view!=='cards'){if(note)note.textContent='';return;}
+  const rows=(recs||[]).slice().sort(function(a,b){return String(a.time_in||'').localeCompare(String(b.time_in||''));});
+  if(!rows.length){box.innerHTML='<div class="wc-empty">'+ehsText('此期間沒有 Waste 記錄','No Waste records in this period','គ្មានកំណត់ត្រា Waste ក្នុងរយៈពេលនេះ')+'</div>';if(note)note.textContent='';return;}
+  let html='';box.classList.toggle('yr',bounds.period==='year');
+  if(bounds.period==='year'){
+    const target=SUP_TARGET*SUPPLIERS.length;
+    html=ehsBuckets(bounds).map(function(b){
+      const rs=ehsFilterPeriod(rows,b),kg=ehsSum(rs,'weight_kg'),bad=rs.filter(function(r){return r.anomaly||ehsWasteTimeIssue(r);}).length;
+      const cls=!rs.length?'none':(bad?'issue':(rs.length<target?'warn':''));
+      return '<div class="wcard click '+cls+'" onclick="showWasteMonth(\''+b.key+'\')"><div class="wc-head"><span class="wc-title">'+ehsEsc(b.label)+'</span><span class="wc-pill">'+kgDisplay(kg)+'</span></div>'
+        +'<div class="wc-big"><div><b>'+rs.length+'</b><span>🚛 '+ehsText('趟數','Trips','ជើង')+' / '+target+'</span></div><div><b>'+(rs.length?Math.round(kg/rs.length).toLocaleString():'—')+'</b><span>⚖️ '+ehsText('每趟 kg','kg / trip','kg / ជើង')+'</span></div></div>'
+        +(rs.length?ehsWasteSplitBar(rs):'<div class="wc-sub">📭 '+ehsText('沒有收料','No pick-up','គ្មានការទទួល')+'</div>')
+        +(bad?'<div class="wc-sub" style="color:var(--red)">⚠️ '+bad+' '+ehsText('筆需檢查','to check','ត្រូវពិនិត្យ')+'</div>':'')
+        +(rs.length?'<div class="wc-sub" style="margin-top:4px">👉 '+ehsText('點開看每天','Tap for daily view','ចុចមើលប្រចាំថ្ងៃ')+'</div>':'')+'</div>';
+    }).join('');
+    if(note)note.textContent=ehsText('每月一張卡，點卡片進入該月','One card per month — tap to open','មួយកាតក្នុងមួយខែ');
+  }else{
+    const days=ehsBuckets(bounds).map(function(b){return b.key;}),withData=[],empty=[];
+    days.forEach(function(d){const rs=rows.filter(function(r){return ehsYmd(r.date)===d;});if(rs.length)withData.push({d:d,rs:rs});else if(d<=_localYMD())empty.push(d);});
+    html=withData.slice().reverse().map(function(x){
+      const kg=ehsSum(x.rs,'weight_kg'),bad=x.rs.filter(function(r){return r.anomaly||ehsWasteTimeIssue(r);}).length,cls=bad?'issue':'';
+      return '<div class="wcard '+cls+'"><div class="wc-head"><span><span class="wc-title">'+x.d.slice(5).replace('-','/')+'</span> <span class="wc-sub">'+ehsWeekdayLabel(x.d)+'</span></span><span class="wc-pill">'+(bad?'⚠️ '+bad+' '+ehsText('筆需檢查','to check','ត្រូវពិនិត្យ'):'✅ '+ehsText('正常','OK','ធម្មតា'))+'</span></div>'
+        +'<div class="wc-big"><div><b>'+x.rs.length+'</b><span>🚛 '+ehsText('趟數','Trips','ជើង')+'</span></div><div><b>'+kgDisplay(kg)+'</b><span>⚖️ '+ehsText('重量','Weight','ទម្ងន់')+'</span></div></div>'
+        +ehsWasteSplitBar(x.rs)+x.rs.map(ehsWasteRowHtml).join('')+'</div>';
+    }).join('');
+    if(bounds.period!=='day'&&empty.length)html+='<div class="wc-gap">📭 '+ehsText('沒有收料的日子','Days without pick-up','ថ្ងៃគ្មានការទទួល')+' ('+empty.length+')：'+empty.map(function(d){return d.slice(5).replace('-','/');}).join('、')+'</div>';
+    if(note)note.textContent=withData.length+' '+ehsText('天有收料','days with pick-up','ថ្ងៃមានការទទួល')+(bounds.period!=='day'?' · '+empty.length+' '+ehsText('天沒有','days none','ថ្ងៃគ្មាន'):'');
+    if(!withData.length)html='<div class="wc-empty">'+ehsText('此期間沒有 Waste 記錄','No Waste records in this period','គ្មានកំណត់ត្រា Waste ក្នុងរយៈពេលនេះ')+'</div>'+html;
+  }
+  box.innerHTML=html;
 }
 
 /* ========== REPORT ========== */
