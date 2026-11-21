@@ -60,7 +60,7 @@ const coreSrc = fs.readFileSync(path.join(root, 'gascheck-core.js'), 'utf8');
 const tgStart = coreSrc.indexOf('GC.TG = (function'), tgEnd = coreSrc.indexOf('/* 送出成功動畫', tgStart);
 assert(tgStart > 0 && tgEnd > tgStart);
 new vm.Script('const U = {escapeHtml: GC.util.escapeHtml};\n' + coreSrc.slice(tgStart, tgEnd), {filename:'gc-tg.js'}).runInContext(context);
-new vm.Script(scripts[scripts.length - 1], {filename:'cleaning-telegram-inline.js'}).runInContext(context);
+new vm.Script(scripts.find(s => s.includes('function cleaningTelegramReport')), {filename:'cleaning-telegram-inline.js'}).runInContext(context);
 
 const cfg = {
   read(){ return records; },
@@ -126,7 +126,7 @@ assert(html.includes('id="locs-wrap"'));
 assert(html.includes('state.getLocs()'));
 assert(html.includes('telegramScopeMultiple:true'));
 assert(html.includes('telegramSlotMultiple:true'));
-assert(html.includes('gascheck-core.js?v=20261028a'));
+assert(html.includes('gascheck-core.js?v=20261120a'));
 assert(html.includes('id="loc-cleaner-map"'));
 assert(html.includes('state.getLocCleaner(locId)'));
 assert(html.includes('missing-location-cleaner'));
