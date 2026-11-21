@@ -2,6 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
+<script src="./gc-theme.js?v=20261121a"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VRT Recycle / Waste</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -136,6 +137,23 @@ select.bi{cursor:pointer}
 .wc-row .wc-act button{border:1px solid var(--border2);background:#fff;border-radius:6px;padding:2px 7px;cursor:pointer;font-size:12px}
 .wc-empty{grid-column:1/-1;text-align:center;color:var(--dim);padding:16px;font-size:12px}
 .wc-gap{grid-column:1/-1;font-size:11px;color:var(--dim);padding:0 2px}
+/* 2026-11-21 期間報表（學 HRA 考勤「期間考勤報表」：一期一列、最新在上、目前期間 ◀ 標示，點列切換） */
+.ptable{margin:10px 12px 12px;border:1px solid var(--border2);border-radius:12px;overflow:hidden;background:#fff}
+.ptable .pt-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--border2);flex-wrap:wrap}
+.ptable .pt-title{font-weight:800;font-size:14px;border-left:4px solid var(--gc-acc,#2d7a5a);padding-left:8px}
+.ptable .pt-count{margin-left:auto;font-size:12px;color:var(--dim)}
+.ptable .pt-scroll{max-height:440px;overflow:auto}
+.ptable table{width:100%;border-collapse:collapse;font-size:13px}
+.ptable th{position:sticky;top:0;background:var(--gc-alt,#e8f3ee);color:var(--gc-hdr,#1f4d3a);font-weight:800;padding:9px 8px;text-align:center;white-space:nowrap;z-index:1}
+.ptable td{padding:9px 8px;border-top:1px solid var(--border2);text-align:center;white-space:nowrap}
+.ptable td:first-child,.ptable th:first-child{text-align:left;font-weight:800;padding-left:12px}
+.ptable tr.pt-row{cursor:pointer}.ptable tr.pt-row:hover td{background:#f8fafc}
+.ptable tr.pt-cur td{background:#e0efff;color:#1e3a8a;font-weight:800}
+.ptable tr.pt-empty td{color:#94a3b8}
+.ptable .pt-kg{position:relative;min-width:84px}
+.ptable .pt-kg i{position:absolute;left:4px;top:50%;height:18px;transform:translateY(-50%);border-radius:4px;opacity:.18;background:var(--gc-acc,#2d7a5a)}
+.ptable .pt-kg span{position:relative}
+.ptable .pt-bad{color:var(--red);font-weight:800}
 .wcards.yr{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
 .wcards.yr .wc-big b{font-size:18px}
 .wcard.none .wc-big{display:none}
@@ -246,6 +264,7 @@ select.bi{cursor:pointer}
     </div>
     <div class="chart-wrap"><canvas id="chartA"></canvas></div>
     <div class="stat-row" id="a-stats"></div>
+    <div class="ptable" id="a-ptable"></div>
   </div>
 
   <div class="sec">
@@ -333,6 +352,7 @@ select.bi{cursor:pointer}
     <div class="sup-grid" id="b-sup-grid"></div>
     <div class="chart-wrap"><canvas id="chartB"></canvas></div>
     <div class="stat-row" id="b-stats"></div>
+    <div class="ptable" id="b-ptable"></div>
     <!-- Monthly report: honest status (sent summary / pending Paul's Telegram button / approved / rejected) -->
     <div id="b-pending-bar" class="pending-bar" style="display:none"><span id="b-pending-text"></span></div>
     <div class="btn-row" id="b-approval-row">
@@ -386,6 +406,7 @@ select.bi{cursor:pointer}
       <button class="btn btn-secondary" style="padding:4px 12px;font-size:12px;margin-left:auto" onclick="exportReportComparison()">⬇ Excel</button>
     </div>
     <div class="stat-row" id="r-stats"></div>
+    <div class="ptable" id="r-ptable"></div>
     <div class="report-charts">
       <div style="border-right:1px solid var(--border2)">
         <div style="padding:8px 12px;font-size:11px;font-weight:700;color:var(--dim)" data-i="r-trend">Recycle 趨勢 (kg)</div>
@@ -599,7 +620,8 @@ function buildYearSelect(selId,changeHandler){
   const sel=document.getElementById(selId);
   const now=new Date();
   sel.innerHTML='';
-  for(let y=now.getFullYear();y>=now.getFullYear()-3;y--){
+  let minY=now.getFullYear()-3;try{const d0=loadLocal();(d0.gate||[]).concat(d0.internal||[]).forEach(function(r){const y0=+String(ehsYmd(r&&r.date)).slice(0,4);if(y0>=2015&&y0<minY)minY=y0;});}catch(e){}
+  for(let y=now.getFullYear();y>=minY;y--){
     const o=document.createElement('option');o.value=y;o.textContent=ehsYearLabel(y);
     if(y===now.getFullYear())o.selected=true;
     sel.appendChild(o);
@@ -816,6 +838,65 @@ function renderBAnalysis(){
   try{renderWasteCards(filterRecs,bounds);}catch(e){console.warn('[EHS] waste cards',e);}
   updateWasteSelectionUi();
 }
+
+/* ========== 期間報表（像 HRA 考勤「期間考勤報表」） ==========
+   日＝當月每天、週＝當年每週、月＝所有月份、年＝所有年份；最新在上；目前選的期間淺藍底＋◀；點一列就切到那一期。 */
+function ehsPKey(ymd,g){
+  if(g==='year')return ymd.slice(0,4);if(g==='month')return ymd.slice(0,7);
+  if(g==='week'){const d=ehsDateLocal(ymd),dow=(d.getDay()+6)%7;d.setDate(d.getDate()-dow);return _localYMD(d);}
+  return ymd;
+}
+function ehsPLabel(k,g){
+  if(g==='week'){const e=ehsAddDays(k,6);return k.slice(5).replace('-','/')+' – '+e.slice(5).replace('-','/');}
+  if(g==='day')return k.slice(5).replace('-','/')+' '+(typeof ehsWeekdayLabel==='function'?ehsWeekdayLabel(k):'');
+  return k;
+}
+function ehsPickPeriod(prefix,k){
+  const g=ehsPeriodFor(prefix),ids=ehsIds(prefix),date=document.getElementById(ids.date),year=document.getElementById(ids.year),month=document.getElementById(ids.month);
+  function setYear(y){if(!year)return;if(!Array.from(year.options).some(function(o){return o.value===String(y);})){const o=document.createElement('option');o.value=y;o.textContent=ehsYearLabel(+y);year.appendChild(o);}year.value=String(y);}
+  if(g==='year')setYear(k);else if(g==='month'){setYear(k.slice(0,4));if(month)month.value=String(+k.slice(5,7));}else if(date)date.value=k;
+  if(prefix==='a')renderAAnalysis();else if(prefix==='b')renderBAnalysis();else renderReport();
+}
+function ehsRenderPeriodTable(prefix){
+  const box=document.getElementById(prefix+'-ptable');if(!box)return;
+  const g=ehsPeriodFor(prefix),bounds=ehsPeriodBounds(prefix),cur=ehsPKey(bounds.start,g),db=loadLocal();
+  const gate=(db.gate||[]).filter(function(r){return ehsYmd(r.date);}),intl=(db.internal||[]).filter(function(r){return ehsYmd(r.date);});
+  const src=prefix==='a'?intl:(prefix==='b'?gate:gate.concat(intl));
+  const today=_localYMD();
+  /* 範圍：日＝選定月份，週＝選定年份，月／年＝全部 */
+  const scope=function(d){if(g==='day')return d.slice(0,7)===bounds.start.slice(0,7);if(g==='week')return d.slice(0,4)===bounds.start.slice(0,4);return true;};
+  const groups={};src.forEach(function(r){const d=ehsYmd(r.date);if(!scope(d)||d>today&&d.slice(0,4)>today.slice(0,4))return;const k=ehsPKey(d,g);(groups[k]=groups[k]||[]).push(r);});
+  if(!groups[cur])groups[cur]=[];
+  const keys=Object.keys(groups).sort().reverse();
+  const isW=function(r){return r.sourceType==='waste'||r.module==='gate';};
+  let cols,cells;
+  if(prefix==='b'){
+    cols=[ehsText('期間','Period','រយៈពេល'),ehsText('收料天數','Days','ថ្ងៃ'),ehsText('趟數','Trips','ជើង'),ehsText('重量','Weight','ទម្ងន់'),'K.S.W.M','SONYAPICH','⚠️'];
+    cells=function(rs){const days=new Set(rs.map(function(r){return ehsYmd(r.date);})).size,bad=rs.filter(function(r){return r.anomaly||ehsWasteTimeIssue(r);}).length;
+      return [days||'—',rs.length||'—',{kg:ehsSum(rs,'weight_kg')},rs.filter(function(r){return r.supplier==='K.S.W.M';}).length||'—',rs.filter(function(r){return r.supplier==='SONYAPICH';}).length||'—',bad?'<span class="pt-bad">'+bad+'</span>':'—'];};
+  }else if(prefix==='a'){
+    cols=[ehsText('期間','Period','រយៈពេល'),ehsText('天數','Days','ថ្ងៃ'),ehsText('筆數','Records','កំណត់ត្រា'),ehsText('塑膠','Plastic','ប្លាស្ទិក'),ehsText('布料','Fabric','ក្រណាត់'),ehsText('布管','Core','ស្នូល'),ehsText('合計','Total','សរុប')];
+    cells=function(rs){const days=new Set(rs.map(function(r){return ehsYmd(r.date);})).size;return [days||'—',rs.length||'—',kgDisplay(ehsSum(rs,'plastic_kg')),kgDisplay(ehsSum(rs,'fabric_kg')),kgDisplay(ehsSum(rs,'core_kg')),{kg:ehsRecycleTotal(rs)}];};
+  }else{
+    cols=[ehsText('期間','Period','រយៈពេល'),'♻️ Recycle','🗑️ Waste',ehsText('🚛 趟數','🚛 Trips','🚛 ជើង'),ehsText('📷 照片','📷 Photos','📷 រូប')];
+    cells=function(rs){const w=rs.filter(isW),a=rs.filter(function(r){return !isW(r);});return [{kg:ehsRecycleTotal(a)},{kg:ehsSum(w,'weight_kg'),c:'#dc2626'},w.length||'—',rs.reduce(function(s,r){return s+photoArray(r.photos).length;},0)||'—'];};
+  }
+  const data=keys.map(function(k){return {k:k,rs:groups[k],c:cells(groups[k])};});
+  const max=Math.max.apply(null,[1].concat(data.map(function(x){return Math.max.apply(null,x.c.map(function(v){return v&&v.kg||0;}));})));
+  const unit=g==='year'?ehsText('個年度','years','ឆ្នាំ'):g==='month'?ehsText('個月份','months','ខែ'):g==='week'?ehsText('週','weeks','សប្ដាហ៍'):ehsText('天','days','ថ្ងៃ');
+  const title=(prefix==='b'?'🗑️ Waste ':prefix==='a'?'♻️ Recycle ':'📊 ')+ehsText('期間報表','period report','របាយការណ៍តាមរយៈពេល')+' · '+(g==='year'?ehsText('年報','Yearly','ប្រចាំឆ្នាំ'):g==='month'?ehsText('月報','Monthly','ប្រចាំខែ'):g==='week'?ehsText('週報','Weekly','ប្រចាំសប្ដាហ៍')+' '+bounds.start.slice(0,4):ehsText('日報','Daily','ប្រចាំថ្ងៃ')+' '+bounds.start.slice(0,7));
+  box.innerHTML='<div class="pt-head"><span class="pt-title">'+ehsEsc(title)+'</span><span class="pt-count">'+data.filter(function(x){return x.rs.length;}).length+' '+unit+'</span></div><div class="pt-scroll"><table><thead><tr>'+cols.map(function(c){return '<th>'+c+'</th>';}).join('')+'</tr></thead><tbody>'+
+    data.map(function(x){const isCur=x.k===cur;return '<tr class="pt-row'+(isCur?' pt-cur':'')+(x.rs.length?'':' pt-empty')+'" onclick="ehsPickPeriod(\''+prefix+'\',\''+x.k+'\')"><td>'+(isCur?'◀ ':'')+ehsEsc(ehsPLabel(x.k,g))+'</td>'+x.c.map(function(v){
+      if(v&&typeof v==='object'&&'kg' in v)return '<td class="pt-kg"><i style="width:calc('+(v.kg/max*100).toFixed(1)+'% - 8px)'+(v.c?';background:'+v.c:'')+'"></i><span>'+(v.kg?kgDisplay(v.kg):'—')+'</span></td>';
+      return '<td>'+v+'</td>';}).join('')+'</tr>';}).join('')+'</tbody></table></div>';
+  const curRow=box.querySelector('.pt-cur'),sc=box.querySelector('.pt-scroll');if(curRow&&sc&&curRow.offsetTop>sc.clientHeight)sc.scrollTop=curRow.offsetTop-60;
+}
+(function(){
+  const A=renderAAnalysis,B=renderBAnalysis,R=renderReport;
+  renderAAnalysis=function(){const v=A.apply(this,arguments);try{ehsRenderPeriodTable('a');}catch(e){console.warn('[EHS] ptable a',e);}return v;};
+  renderBAnalysis=function(){const v=B.apply(this,arguments);try{ehsRenderPeriodTable('b');}catch(e){console.warn('[EHS] ptable b',e);}return v;};
+  renderReport=function(){const v=R.apply(this,arguments);try{ehsRenderPeriodTable('r');}catch(e){console.warn('[EHS] ptable r',e);}return v;};
+})();
 
 /* ========== WASTE 卡片列表（學 sewing 每日報告：期間 ◀ ▶ → 每天／每月一張卡） ========== */
 function ehsWasteView(){try{return localStorage.getItem('ehs_waste_view')==='table'?'table':'cards';}catch(e){return 'cards';}}
