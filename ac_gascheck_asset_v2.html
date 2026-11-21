@@ -897,7 +897,7 @@ function renderStats(){
     ['💰',L('資產總值','Total value','តម្លៃសរុប'),'$'+numText(tv,{maximumFractionDigits:0}),'USD','#7c3aed'],
   ].map(([i,l,v,u,c])=>`<div class="sc"><div class="sc-i">${i}</div><div><div class="sc-l">${esc(l)}</div><div class="sc-v" style="color:${c}">${esc(v)}<span style="font-size:10px;font-weight:400;color:var(--tx3);margin-left:3px">${esc(u)}</span></div></div></div>`).join('');
 }
-function pcell(code){const p=photos[code];if(p)return`<img src="${esc(p)}" class="pcell" alt="" onclick="lightbox(photos['${esc(code)}'])">`;return`<div class="pcell-e">📷</div>`}
+function pcell(code){const p=photos[code];if(p)return`<img src="${esc(photoSrc(p))}" class="pcell" alt="" onclick="lightbox(photos['${esc(code)}'])">`;return`<div class="pcell-e">📷</div>`}
 function rowActions(a,compact){
   const c=esc(a.code);
   return `<button class="bx bx-v" onclick="openDetail('${c}')">${esc(L('詳情','Detail','លម្អិត'))}</button>`+
@@ -928,7 +928,7 @@ function renderCards(list){
   const el=document.getElementById('cgrid');if(!el)return;
   if(!list.length){el.innerHTML=`<div class="nodata" style="grid-column:1/-1">📭 ${esc(L('查無資料','No records','គ្មានទិន្នន័យ'))}</div>`;return}
   el.innerHTML=list.map(a=>`<div class="acard">
-    <div class="cp">${photos[a.code]?`<img src="${esc(photos[a.code])}" alt="" onclick="lightbox(photos['${esc(a.code)}'])">`:'📦'}</div>
+    <div class="cp">${photos[a.code]?`<img src="${esc(photoSrc(photos[a.code]))}" alt="" onclick="lightbox(photos['${esc(a.code)}'])">`:'📦'}</div>
     <div class="cbody">
       <div class="ccr"><span class="ccode">${esc(a.code)}</span>${sbadge(a.status)}${assetOpenRequests(a).length?' <span class="asset-req-chip" title="'+esc(L('等待 Paul 核可','Waiting for Paul','រង់ចាំ Paul'))+'">⏳</span>':''}</div>
       <div class="cname">${esc(a.name)}</div>
@@ -956,11 +956,13 @@ function handlePhoto(e){
 }
 function showPup(data){
   const el=document.getElementById('pup');
-  if(data){el.innerHTML=`<img src="${esc(data)}" alt="">`;el.classList.add('has');document.getElementById('pup-rm').classList.remove('hidden')}
+  if(data){el.innerHTML=`<img src="${esc(photoSrc(data))}" alt="">`;el.classList.add('has');document.getElementById('pup-rm').classList.remove('hidden')}
   else{el.innerHTML=`<div style="font-size:26px">📷</div><div style="font-size:12px;color:var(--tx3)">${esc(tt('uploadHint'))}</div>`;el.classList.remove('has');document.getElementById('pup-rm').classList.add('hidden')}
 }
 function removePhoto(){formPhoto=null;showPup(null);['f-pi','f-pc'].forEach(id=>{const el=document.getElementById(id);if(el)el.value=''})}
-function lightbox(src){if(!src)return;document.getElementById('lb-img').src=src;openM('m-lb')}
+/* 2026-11-22：上雲後照片是 Drive 連結，手機直接顯示常被擋 → 一律走 GC.photo.src（Drive 縮圖網址） */
+function photoSrc(p){return (typeof GC!=='undefined'&&GC.photo&&GC.photo.src)?GC.photo.src(p):String(p||'');}
+function lightbox(src){if(!src)return;document.getElementById('lb-img').src=photoSrc(src);openM('m-lb')}
 function calcTV(){const q=parseFloat(document.getElementById('f-qt').value)||0,u=parseFloat(document.getElementById('f-up').value)||0;document.getElementById('f-tv').value=q&&u?'$'+numText(q*u,{minimumFractionDigits:2,maximumFractionDigits:2}):''}
 function upCP(){if(editCode){document.getElementById('cp-val').textContent=editCode;return}recomputeCounters();const t=document.getElementById('f-ct').value||'AOA';document.getElementById('cp-val').textContent=t+String(cnts[t]).padStart(3,'0')}
 function syncZoneCodeType(){
@@ -1059,7 +1061,7 @@ function openDetail(code){
   const a=assets.find(x=>x.code===code);if(!a)return;
   viewCode=code;const p=photos[code];
   let html=`<div class="dcode">${esc(a.code)}</div>`;
-  if(p)html+=`<img src="${esc(p)}" class="dphoto" alt="" onclick="lightbox(photos['${esc(code)}'])">`;
+  if(p)html+=`<img src="${esc(photoSrc(p))}" class="dphoto" alt="" onclick="lightbox(photos['${esc(code)}'])">`;
   if(a.status!=='disposed'){
     html+=`<div style="margin-bottom:13px"><div style="font-size:10px;font-weight:700;color:var(--tx3);text-transform:uppercase;margin-bottom:6px">⚡ ${esc(L('快速狀態','Quick status','ស្ថានភាពរហ័ស'))}</div><div class="sts-chips">`;
     ST_KEYS.filter(k=>k!=='disposed').forEach(k=>{const on=k===a.status;html+=`<button class="sts-chip" onclick="quickSt('${esc(code)}','${k}')" style="${on?'background:#1d4ed8;color:#fff;border-color:#1d4ed8':'background:#f8fafc;border-color:#cbd5e1;color:#475569'}">${esc(stLabel(k))}</button>`});
@@ -1790,6 +1792,153 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
     }catch(e){}
   }
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',boot); else boot();
+})();
+</script>
+<!-- 2026-11-22 Paul：資產列表與資訊卡學 PSJHR 員工頁（gc-item-page.js）——手機一眼看完、不左右拉、照片固定有位置、一筆一行。
+     只換畫面：資料與按鈕都呼叫本頁原本的函式（quickSt、openEdit、openPrintSingle、openReq、deleteAssetRow、saveToGAS）。 -->
+<script src="./gc-item-page.js?v=20261122a"></script>
+<style id="asset-ip-css">
+.asset-more{display:none}
+@media(max-width:768px){
+  /* 區域分頁：四顆擠一排，不用左右拉 */
+  .znav{padding:0 4px;overflow-x:visible}
+  .ztab{flex:1 1 0;min-width:0;padding:8px 2px 7px;font-size:12px;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:1px 4px;white-space:normal;text-align:center;line-height:1.2}
+  .ztab>[data-t]{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ztab .zcnt{margin-left:0}
+  /* 工具列：新增＋搜尋＋篩選留著，其他按鈕收進「⋯ 更多」 */
+  .toolbar{padding:8px;gap:6px}
+  .toolbar>button:not(.btn-add):not(.asset-more),.toolbar>label{display:none!important}
+  .toolbar.open>button:not(.btn-add):not(.asset-more),.toolbar.open>label{display:inline-flex!important;flex:1 1 30%;justify-content:center;align-items:center}
+  .asset-more{display:inline-flex;align-items:center;justify-content:center;flex:1 1 30%;min-height:44px;border:1.5px solid var(--bdd);border-radius:8px;background:#fff;color:var(--tx2);font-weight:700;font-size:13px;font-family:inherit;cursor:pointer}
+  .toolbar .cnt{flex:1 1 auto!important;order:0!important;align-self:center}
+  /* 重點數字：五格一排 */
+  .stats{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:5px;margin-bottom:10px}
+  .sc{flex-direction:column;align-items:center;text-align:center;padding:7px 2px;gap:0;border-radius:9px;min-width:0}
+  .sc>div{min-width:0;max-width:100%}
+  .sc-i{font-size:15px;line-height:1.1}
+  .sc-l{font-size:9.5px!important;letter-spacing:0;text-transform:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .sc-v{font-size:15px;white-space:nowrap}
+  .sc-v>span{display:none}
+  /* 期間列：日週月年一排、◀ 月份 ▶ 📊 一排、異動數字一排五格 */
+  #asset-period-panel{gap:6px!important;padding:8px!important}
+  #asset-period-panel .asset-period-buttons{flex:1 1 100%}
+  #asset-period-panel .asset-period-buttons button{flex:1}
+  #asset-period-panel>input{flex:1 1 0;min-width:0}
+  #asset-period-panel>.btn-sm{padding:6px 10px}
+  #asset-period-panel>.btn-sm>span{display:none}
+  #asset-inline-metrics{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px!important;order:3;flex:1 1 100%!important}
+  #asset-inline-metrics>span{display:flex;flex-direction:column;align-items:center;justify-content:center;background:#f4f7fa;border-radius:8px;padding:4px 2px;font-size:10px;line-height:1.25;white-space:nowrap;overflow:hidden;min-width:0;text-align:center}
+  #asset-inline-metrics>span b{font-size:14px}
+  #asset-inline-metrics>span small{font-size:10px;font-weight:600;color:#5e7186}
+  /* 卡片清單改成一筆一行 */
+  .cgrid{display:block!important}
+}
+</style>
+<script>
+(function(){
+  if(!window.GC||!GC.ItemPage)return;
+  const L3=(zh,en,km)=>L(zh,en,km);
+  const money=v=>(+v)?'$'+numText(v,{maximumFractionDigits:2}):'';
+  const ST_TONE={active:'g',standby:'b',repair:'y',disposed:'r',lent:'p'};
+  const ZN_ICON={factory:'🏭',expat:'🏠',local:'🏡'};
+  const HIST_TONE={created:'g',edit:'b',pending:'y',verified:'o',approved:'g',rejected:'r'};
+  function find(code){return assets.find(x=>String(x.code)===String(code))||null;}
+  function chip(t,c){return t?'<span class="gip-chip'+(c?' '+c:'')+'">'+t+'</span>':'';}
+  function pend(a){return assetOpenRequests(a).length;}
+  async function setPhoto(a){
+    const d=await GC.ItemPage.pickPhoto({max:1024,quality:0.72});if(!d)return;
+    const cur=find(a.code);if(!cur)return;
+    const by=storedActor()||'—',now=_localTS(),had=!!photos[cur.code];
+    photos[cur.code]=d;
+    assets=assets.map(x=>x.code!==cur.code?x:Object.assign({},x,{updatedAt:now,lastEditedBy:by,history:[...(x.history||[]),{type:'edit',date:now,actor:by,before:{photo:had?'📷':''},after:{photo:'📷 '+now.slice(0,10)}}]}));
+    render();toast('📷 '+L3('照片已存','Photo saved','បានរក្សាទុករូបថត')+': '+cur.code,'ok');
+    await saveToGAS();
+  }
+  const ip=GC.ItemPage.create({
+    key:'asset',accent:'var(--p,#2563eb)',
+    list:()=>getFiltered(),get:find,id:a=>a.code,
+    labels:{noPhoto:()=>L3('缺照片','No photo','គ្មានរូប'),addPhoto:()=>L3('點這裡拍','Tap to add','ចុចដើម្បីថត'),noPhotoShort:()=>L3('缺','none','គ្មាន'),end:()=>L3('已經到最後一筆','End of list','ចុងបញ្ជី'),emptyList:()=>L3('查無資料','No records','គ្មានទិន្នន័យ')},
+    head:a=>({photo:photos[a.code]||'',code:a.code,title:a.name,chips:[
+      chip(esc(stLabel(a.status)),ST_TONE[a.status]||'k'),
+      chip((ZN_ICON[a.zone]||'')+' '+esc(znLabel(a.zone))),
+      a.location?chip('📍 '+esc(a.location)):'',
+      a.user?chip('👤 '+esc(a.user)):'',
+      chip('📦 '+esc((a.qty||1)+' '+(a.unit||'pcs'))),
+      money(a.unitPrice)?chip('💰 '+esc(money(a.unitPrice))):'',
+      pend(a)?chip('⏳ '+esc(L3('待 Paul 核可','Waiting for Paul','រង់ចាំ Paul')),'y'):''
+    ]}),
+    row:a=>({photo:photos[a.code]||'',code:a.code,title:a.name,
+      sub:esc([(ZN_ICON[a.zone]||'')+' '+(a.location||znLabel(a.zone)),a.user?'👤 '+a.user:'',a.brand||'',[a.color,a.size].filter(Boolean).join(' ')].filter(x=>String(x).trim()).join(' · ')),
+      right:sbadge(a.status)+(pend(a)?'<span class="asset-req-chip">⏳</span>':'')+'<span>📦 '+esc(a.qty||1)+'</span>'}),
+    tabs:[
+      {id:'basic',icon:'📋',label:()=>L3('基本','Basic','មូលដ្ឋាន'),render:(a,ip)=>{
+        const tv=(+a.unitPrice)&&(+a.qty)?'$'+numText(Number(a.unitPrice)*Number(a.qty),{minimumFractionDigits:2}):'';
+        let h='';
+        const reqs=assetOpenRequests(a);
+        if(reqs.length){const r=reqs[reqs.length-1].request||{};h+='<div class="gip-note">⏳ '+esc(r.type==='transfer'?L3('轉移申請','Transfer request','សំណើផ្ទេរ')+' → '+(r.newLocation||'—'):L3('報廢申請','Disposal request','សំណើជម្រះចោល'))+' · '+esc(L3('等待 Paul 在 Telegram 核可','Waiting for Paul to approve in Telegram','រង់ចាំ Paul អនុម័តក្នុង Telegram'))+'</div>';}
+        h+=ip.kpis([[String(a.qty||1),a.unit||'pcs'],[money(a.unitPrice)||'—',tt('unitPrice')],[tv||'—',L3('總值','Total value','តម្លៃសរុប'),'#7c3aed']]);
+        if(a.status!=='disposed'){h+='<div class="gip-sub">⚡ '+esc(L3('快速狀態（點一下就改）','Quick status (tap to change)','ស្ថានភាពរហ័ស'))+'</div><div class="gip-pills">'+ST_KEYS.filter(k=>k!=='disposed').map(k=>'<button type="button" class="gip-pill'+(k===a.status?' on':'')+'" data-gip-act="status" data-st="'+k+'">'+esc(stLabel(k))+'</button>').join('')+'</div>';}
+        h+='<div class="gip-sub">📋 '+esc(L3('資料','Details','ព័ត៌មាន'))+'</div>'+ip.kv([
+          [tt('category'),catLabel(a.category)],[tt('zone'),(ZN_ICON[a.zone]||'')+' '+znLabel(a.zone)],
+          [tt('brand'),a.brand],[tt('model'),a.model],[tt('color'),a.color],[tt('size'),a.size],
+          [tt('location'),a.location],[tt('user'),a.user],[tt('purchaseDate'),a.purchaseDate],[tt('recordedBy'),a.recordedBy],
+          [tt('remark'),a.remark,true]]);
+        return h;}},
+      {id:'hist',icon:'🔁',label:()=>L3('異動','History','ប្រវត្តិ'),count:a=>(a.history||[]).length,render:a=>{
+        const hs=[...(a.history||[])].reverse();
+        if(!hs.length)return '<div class="gip-empty">'+esc(L3('還沒有異動紀錄','No history yet','មិនទាន់មានប្រវត្តិ'))+'</div>';
+        return '<div class="gip-hist">'+hs.map(h=>'<div class="gip-h '+(HIST_TONE[h.type]||'')+'"><div class="d">'+esc(String(h.date||'').slice(0,16))+' · '+esc(histTypeLabel(h.type))+'</div><div class="t">'+esc(describeHistory(h))+'</div></div>').join('')+'</div>';}},
+      {id:'photo',icon:'📷',label:()=>L3('照片','Photo','រូបថត'),count:a=>photos[a.code]?1:0,render:a=>{
+        const p=photos[a.code];
+        return (p?'<img class="gip-big" src="'+esc(photoSrc(p))+'" alt="" data-gip-act="viewPhoto"><div class="gip-cap">⭐ '+esc(L3('標準照（點開放大）','Standard photo (tap to enlarge)','រូបស្តង់ដារ'))+'</div>'
+          :'<div class="gip-bigempty" role="button" data-gip-act="addPhoto"><b>📷</b>'+esc(L3('這項還沒有照片，點這裡拍或選照片','No photo yet — tap to take or choose one','មិនទាន់មានរូប ចុចដើម្បីថត'))+'</div>')+
+          '<div class="gip-acts" style="margin-top:12px"><button type="button" class="gip-btn pri full" data-gip-act="addPhoto">📷 '+esc(p?L3('換照片（拍照／選照片）','Replace photo (camera / file)','ប្តូររូប'):L3('拍照／選照片','Take / choose photo','ថត / ជ្រើសរូប'))+'</button></div>';}},
+      {id:'manage',icon:'⚙️',label:()=>L3('管理','Manage','គ្រប់គ្រង'),render:a=>{
+        const live=a.status!=='disposed';
+        return '<div class="gip-acts">'+
+          '<button type="button" class="gip-btn ok" data-gip-act="edit">✏️ '+esc(tt('edit'))+'</button>'+
+          '<button type="button" class="gip-btn lbl" data-gip-act="label">🏷️ '+esc(tt('printLabel'))+'</button>'+
+          (live?'<button type="button" class="gip-btn warn" data-gip-act="transfer">↔️ '+esc(L3('轉移申請','Transfer','ផ្ទេរ'))+'</button><button type="button" class="gip-btn bad" data-gip-act="disposal">♻️ '+esc(L3('報廢申請','Disposal','ជម្រះចោល'))+'</button>':'')+
+          '<button type="button" class="gip-btn bad full" data-gip-act="del">🗑 '+esc(tt('delete'))+'</button></div>'+
+          '<div class="gip-cap" style="margin-top:10px">'+esc(L3('轉移／報廢會送到 Telegram 等 Paul 核可；刪除會先問一次。','Transfer / disposal go to Telegram for Paul to approve; delete asks first.','ផ្ទេរ/ជម្រះចោល ផ្ញើទៅ Telegram ឱ្យ Paul អនុម័ត'))+'</div>';}}
+    ],
+    actions:{
+      addPhoto:a=>setPhoto(a),
+      viewPhoto:a=>{if(photos[a.code])lightbox(photos[a.code]);},
+      status:(a,el)=>quickSt(a.code,el.getAttribute('data-st')),
+      edit:a=>openEdit(a.code),
+      label:a=>openPrintSingle(a.code),
+      transfer:a=>openReq('transfer',a.code),
+      disposal:a=>openReq('disposal',a.code),
+      del:a=>deleteAssetRow(a.code)
+    },
+    onOpen:a=>{if(a)viewCode=a.code;}
+  });
+  window.ASSET_ITEM_PAGE=ip;
+  /* 異動數字格：＋／🗑／📷 原本只有滑鼠提示，手機看不到 → 把提示字寫在數字下面 */
+  const _ria=window.renderAssetInlineAnalysis;
+  if(typeof _ria==='function')window.renderAssetInlineAnalysis=function(){const r=_ria.apply(this,arguments);try{document.querySelectorAll('#asset-inline-metrics>span[title]').forEach(sp=>{if(!sp.querySelector('small'))sp.insertAdjacentHTML('beforeend',' <small>'+esc(sp.getAttribute('title'))+'</small>');});}catch(e){}return r;};
+  /* 「詳情」與快速狀態都改開物品頁（原本的詳細視窗 m-det 留著不用） */
+  window.openDetail=function(code){viewCode=code;if(ip.isOpen()&&ip.currentId()===String(code)){ip.refresh();return;}ip.open(code);};
+  /* 手機：卡片清單改成一筆一行（cgrid 原本就只在手機顯示） */
+  window.renderCards=function(list){
+    const el=document.getElementById('cgrid');if(!el)return;
+    el.innerHTML=ip.listHtml(list);ip.bindList(el);
+  };
+  /* 電腦表格：點一列（不是按鈕／照片）也開物品頁 */
+  const tb=document.getElementById('tbod');
+  if(tb&&!tb.__ip){tb.__ip=1;tb.addEventListener('click',e=>{if(e.target.closest('button,a,input,img,select,label'))return;const tr=e.target.closest('tr');const c=tr&&tr.querySelector('.tc');if(c&&c.textContent.trim())ip.open(c.textContent.trim());});tb.style.cursor='pointer';}
+  /* 資料一變（編輯、刪除、雲端同步、換語言）物品頁跟著更新 */
+  let updMore=function(){};
+  const _render=window.render;
+  window.render=function(){const r=_render.apply(this,arguments);try{updMore();if(ip.isOpen())ip.refresh();}catch(e){}return r;};
+  /* 工具列「⋯ 更多」 */
+  const bar=document.querySelector('.toolbar');
+  if(bar&&!bar.querySelector('.asset-more')){const b=document.createElement('button');b.type='button';b.className='asset-more';
+    const lab=()=>bar.classList.contains('open')?'▴ '+L3('收起','Less','តិច'):'⋯ '+L3('更多','More','ច្រើនទៀត');b.textContent=lab();
+    b.onclick=()=>{bar.classList.toggle('open');b.textContent=lab();};
+    const cnt=bar.querySelector('.cnt');bar.insertBefore(b,cnt||null);updMore=()=>{b.textContent=lab();};}
+  try{render();}catch(e){}
 })();
 </script>
 <!-- VRT swipe-tabs：左右滑動（手指／滑鼠拖曳）切換分頁，只聽手勢、不改資料 -->

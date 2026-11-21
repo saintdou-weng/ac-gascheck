@@ -178,7 +178,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 
 </style>
   <!-- AC_GASCHECK Shared System -->
-<script src="./gascheck-core.js?v=20261117m"></script>
+<script src="./gascheck-core.js?v=20261120a"></script>
 <script src="./gc-period-table.js?v=20261121a"></script>
 <script src="./ac-holidays.js?v=20261117m"></script>
 <script src="./ac-tg-chart.js?v=20261106d"></script>
@@ -2397,6 +2397,64 @@ function gcSegBar(segs,total,w){
   while(cells.reduce((a,b)=>a+b,0)<filled){let bi=-1,bv=-1;raw.forEach((v,i)=>{const rem=v-cells[i];if(segs[i].n&&rem>bv){bv=rem;bi=i;}});if(bi<0)break;cells[bi]++;}
   const used=cells.reduce((a,b)=>a+b,0);return segs.map((s,i)=>s.sq.repeat(cells[i])).join('')+'⬜'.repeat(Math.max(0,w-used));
 }
+/* 2026-11-20 Paul：週／月報要「把日期列出」、每天每區用顏色格子像表格一樣對齊，
+   沒做的工作日（週日、HRA 假日除外）要 highlight。
+   cleaningDayRows：期間內每一天一列（到今天為止；週日／假日沒資料就不列；今天沒資料不算沒做）。
+   每列 cells＝各區域（固定順序）：'ok' 當天都通過、'bad' 有 ✕、'none' 當天這區沒檢查；missed＝整天沒人做（工作日）。 */
+function cleaningDayRows(view,period,ref,lang){
+  const r=(typeof GC!=='undefined'&&GC.period&&GC.period.range)?GC.period.range(period,ref):null;if(!r)return {days:[],areas:[]};
+  const p2=function(n){return String(n).padStart(2,'0');},ymd=function(d){return d.getFullYear()+'-'+p2(d.getMonth()+1)+'-'+p2(d.getDate());},today=ymd(new Date());
+  const zh=lang!=='en'&&lang!=='km',WD=zh?['日','一','二','三','四','五','六']:['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  const H=(typeof window!=='undefined'&&window.ACHolidays)||null;
+  const areas=cleaningTelegramAreas(view),byDay={};
+  view.forEach(function(x){const k=cleaningTelegramDate(x.date);(byDay[k]=byDay[k]||[]).push(x);});
+  const n=function(x){return cleaningTelegramSlots(x).length||1;},days=[],end=new Date(r.to-86400000);
+  for(let d=new Date(r.from);d<=end;d.setDate(d.getDate()+1)){
+    const k=ymd(d);if(k>today)break;
+    const recs=byDay[k]||[],off=d.getDay()===0||!!(H&&H.has&&H.has(k));
+    if(!recs.length&&(off||k===today))continue;
+    const cells=areas.map(function(a){const rs=recs.filter(function(x){return String(x.locId||x.location||'—')===a.id;});return !rs.length?'none':rs.some(function(x){return cleaningTelegramFailed(x).length;})?'bad':'ok';});
+    days.push({ymd:k,wd:d.getDay(),label:k.slice(5).replace('-','/')+' '+WD[d.getDay()],off:off,missed:!recs.length,cells:cells,
+      checks:recs.reduce(function(s,x){return s+n(x);},0),fails:recs.filter(function(x){return cleaningTelegramFailed(x).length;}).reduce(function(s,x){return s+n(x);},0)});
+  }
+  return {days:days,areas:areas};
+}
+/* 每個檢查項目（👃💡🧹🚪📐🏠）通過／不通過次數（跟 🔎 檢查次數一樣以時段數計） */
+function cleaningItemStats(view){
+  const n=function(x){return cleaningTelegramSlots(x).length||1;};
+  return CHK_ITEMS.map(function(k){let ok=0,bad=0;view.forEach(function(x){const v=(x.checks||{})[k];if(v===true)ok+=n(x);else if(v===false)bad+=n(x);});return {key:k,icon:CHK_ICONS[k],ok:ok,bad:bad};});
+}
+function cleaningItemLabel(k,lang){
+  const L={smell:['氣味','Smell','ក្លិន'],light:['燈光','Light','អំពូល'],floor:['地板','Floor','កម្រាលឥដ្ឋ'],door:['門','Door','ទ្វារ'],corner:['角落','Corner','ជ្រុង'],ceiling:['天花','Ceiling','ពិដាន']}[k]||[k,k,k];
+  return GC.TG.lbl(lang,L[0],L[1],L[2]);
+}
+/* 月報附圖：直行＝區域、橫列＝日期（綠＝通過、紅＝有異常、灰＝沒檢查、橘＝整天沒做）。 */
+function cleaningMonthGridChart(view,ref,lang){
+  if(typeof ACChart==='undefined'||!ACChart||typeof ACChart.render!=='function')return '';
+  try{
+    const range=(typeof GC!=='undefined'&&GC.period&&GC.period.range)?GC.period.range('month',ref):null;
+    if(!range||!view.length)return '';
+    const t=function(zh,en,km){return lang==='bi'?zh+' · '+en:lang==='en'?en:lang==='km'?en+(km?' · '+km:''):zh;};
+    const P=ACChart.PALETTE||[],OK=P[1]||'#2e9c6a',BAD=P[3]||'#e35d5b',NONE='#eef2f5',MISS='#f2a93b';
+    const dr=cleaningDayRows(view,'month',ref,lang);if(!dr.days.length)return '';
+    const rows=dr.days.map(function(day){
+      return {label:day.label+(day.off?' ·'+t('休','off','ឈប់'):''),cells:day.missed?dr.areas.map(function(){return {text:'⚠ '+(lang==='zh'?'沒做':'missed'),color:MISS};}):day.cells.map(function(c,i){
+        if(c==='none')return {text:'—',color:NONE,light:true};
+        const a=dr.areas[i],recs=a.records.filter(function(x){return cleaningTelegramDate(x.date)===day.ymd;});
+        const times=Array.from(new Set(recs.reduce(function(o,x){return o.concat(cleaningTelegramSlots(x).map(GC.TG.time).filter(Boolean));},[]))).sort();
+        const when=times.length&&times.length<=3?times.join(' '):'×'+recs.reduce(function(s,x){return s+(cleaningTelegramSlots(x).length||1);},0);
+        if(c==='bad'){const failed=CHK_ITEMS.filter(function(k){return recs.some(function(x){return (x.checks||{})[k]===false;});}).map(function(k){return CHK_ICONS[k];}).join('');return {text:'✗ '+failed,sub:when,color:BAD};}
+        return {text:'✓',sub:when,color:OK};})};
+    });
+    const missed=dr.days.filter(function(d){return d.missed;}).length,bad=dr.areas.filter(function(a){return a.fails.length;}).length,checks=dr.areas.reduce(function(s,a){return s+a.checks;},0);
+    const blocks=[
+      {type:'stats',items:[{label:t('區域','Areas','តំបន់'),value:String(dr.areas.length),color:P[0]||'#2b8fbd'},{label:t('檢查次數','Checks','ការត្រួតពិនិត្យ'),value:String(checks),color:OK},{label:t('有異常區域','Areas with issues','តំបន់មានបញ្ហា'),value:String(bad),color:bad?BAD:(P[7]||'#6c8ea4')},{label:t('沒做的工作日','Missed workdays','ថ្ងៃធ្វើការមិនបានធ្វើ'),value:String(missed),color:missed?MISS:(P[7]||'#6c8ea4')}]},
+      {type:'grid',title:t('每日檢查表','Daily check grid','តារាងត្រួតពិនិត្យប្រចាំថ្ងៃ'),cols:dr.areas.map(function(a){return {label:a.name};}),rows:rows,
+        legend:[{label:t('正常','OK','ធម្មតា'),color:OK},{label:t('有異常','Issue','មានបញ្ហា'),color:BAD},{label:t('沒檢查','Not checked','មិនបានពិនិត្យ'),color:NONE},{label:t('整天沒做','Missed day','ថ្ងៃមិនបានធ្វើ'),color:MISS}]}
+    ];
+    return ACChart.render({title:t('清潔巡檢 月報','Cleaning · Monthly','ការសម្អាត · ប្រចាំខែ'),subtitle:range.fromYmd+' ~ '+range.toYmd,theme:'green',width:1080,blocks:blocks,footer:'AC GASCheck · '+t('清潔巡檢','Cleaning','ការសម្អាត')})||'';
+  }catch(err){return '';}
+}
 function cleaningTelegramReport(view,opt){
   opt=opt||{};
   const G=GC.TG,lang=opt.lang||'bi',period=opt.period||'month',lb=function(zh,en,km){return G.lbl(lang,zh,en,km);},e=cleaningTelegramEscape;
@@ -2411,41 +2469,64 @@ function cleaningTelegramReport(view,opt){
   if(opt.scopeLabel)sub.push('🗂 '+e(opt.scopeLabel));
   const actualSlots=Array.from(new Set(view.reduce(function(out,r){return out.concat(cleaningTelegramSlots(r));},[]))).filter(Boolean).sort();
   const slotLabel=opt.slotLabel||(actualSlots.length?actualSlots.join(', '):'');
-  if(slotLabel)sub.push('⏱ '+e(slotLabel));
-  let txt=G.head('🧹',lb('清潔巡檢','Cleaning','ការសម្អាត'),cleaningTelegramPeriodLabel(period,opt.ref,lang),sub.join('\n'));
+  /* 2026-11-20 Paul：前段太囉嗦 → 時段併到日期那一行；標籤只寫一次、數字在前 */
+  const grid=period==='week'||period==='month';
+  let txt=G.head('🧹',lb('清潔巡檢','Cleaning','ការសម្អាត'),cleaningTelegramPeriodLabel(period,opt.ref,lang)+(slotLabel?' · ⏱ '+slotLabel:''),sub.join('\n'));
   if(!view.length){
     txt+='\n'+G.verdict('warn',lb('這段期間沒有清潔記錄','No cleaning records in this period','គ្មានកំណត់ត្រាសម្អាតក្នុងរយៈពេលនេះ'));
   }else{
-    /* 2026-11-17：週／月報列出哪幾個工作日沒做清潔巡檢 */
-    const MS=G.missed?G.missed(period,opt.ref,view.map(function(r){return typeof cleaningDateValue==='function'?cleaningDateValue(r.date):r.date;}),lang,{what:['清潔巡檢','Cleaning check','ការត្រួតពិនិត្យសម្អាត']}):{miss:[]};
+    /* 2026-11-17：週／月報列出哪幾個工作日沒做清潔巡檢（2026-11-20 改短句） */
+    const MS=G.missed?G.missed(period,opt.ref,view.map(function(r){return typeof cleaningDateValue==='function'?cleaningDateValue(r.date):r.date;}),lang,{what:['清潔巡檢','Cleaning check','ការត្រួតពិនិត្យសម្អាត'],short:grid}):{miss:[]};
     txt+='\n'+G.verdict(bad.length?'bad':MS.miss.length?'warn':'ok',bad.length?lb(bad.length+' 個區域有異常',bad.length+(bad.length===1?' area with issues':' areas with issues'),'តំបន់ '+bad.length+' មានបញ្ហា'):lb('全部通過','All passed','ជាប់ទាំងអស់'));
     txt+='\n'+G.bar(ok.length,areas.length)+' '+lb('區域正常','areas OK','តំបន់ធម្មតា');
     if(MS.line)txt+='\n'+MS.line;
-    txt+='\n'+G.kpis([['📍',lb('區域','Areas','តំបន់'),areas.length],['🔎',lb('檢查','Checks','ការត្រួតពិនិត្យ'),checks],['👷',lb('清潔員','Cleaners','អ្នកសម្អាត'),cleaners.size]],3);
-    txt+='\n'+G.kpis([['❌',lb('異常','Issues','បញ្ហា'),issues]].concat(photos.length?[['📷',lb('照片','Photos','រូបថត'),photos.length]]:[]),2);
+    if(grid){
+      txt+='\n📍 <b>'+areas.length+'</b> '+lb('區域','Areas','តំបន់')+' · 🔎 <b>'+checks+'</b> '+lb('檢查','Checks','ត្រួតពិនិត្យ')+' · 👷 <b>'+cleaners.size+'</b> '+lb('清潔員','Cleaners','អ្នកសម្អាត')+' · ❌ <b>'+issues+'</b> '+lb('異常','Issues','បញ្ហា')+(photos.length?' · 📷 <b>'+photos.length+'</b>':'');
+    }else{
+      txt+='\n'+G.kpis([['📍',lb('區域','Areas','តំបន់'),areas.length],['🔎',lb('檢查','Checks','ការត្រួតពិនិត្យ'),checks],['👷',lb('清潔員','Cleaners','អ្នកសម្អាត'),cleaners.size]],3);
+      txt+='\n'+G.kpis([['❌',lb('異常','Issues','បញ្ហា'),issues]].concat(photos.length?[['📷',lb('照片','Photos','រូបថត'),photos.length]]:[]),2);
+    }
     /* 數字核對（學考勤摘要）：區域＝正常＋有異常 */
     {const vd=areas.length-ok.length-bad.length;
-      txt+='\n'+(vd?'⚠️ '+lb('區域數加總不符','Area counts do not add up','ចំនួនតំបន់មិនស៊ីគ្នា')+'（'+areas.length+' ≠ '+ok.length+'＋'+bad.length+'）':'✅ '+lb('區域','Areas','តំបន់')+' '+areas.length+'＝'+lb('正常','OK','ធម្មតា')+' '+ok.length+'＋'+lb('有異常','with issues','មានបញ្ហា')+' '+bad.length+' · '+lb('已核對正確','verified','បានផ្ទៀងផ្ទាត់'));}
+      txt+='\n'+(vd?'⚠️ '+lb('區域數加總不符','Area counts do not add up','ចំនួនតំបន់មិនស៊ីគ្នា')+'（'+areas.length+' ≠ '+ok.length+'＋'+bad.length+'）':grid?'✅ 📍 '+areas.length+'＝🟢 '+ok.length+'＋🔴 '+bad.length+' · '+lb('已核對正確','verified','បានផ្ទៀងផ្ទាត់'):'✅ '+lb('區域','Areas','តំបន់')+' '+areas.length+'＝'+lb('正常','OK','ធម្មតា')+' '+ok.length+'＋'+lb('有異常','with issues','មានបញ្ហា')+' '+bad.length+' · '+lb('已核對正確','verified','បានផ្ទៀងផ្ទាត់'));}
   }
   /* 日／週報加本月累計（同一地點／時段條件）。 */
   if((period==='day'||period==='week')&&Array.isArray(opt.month)){
     const m=cleaningTelegramAreas(opt.month),mIssues=opt.month.filter(function(r){return cleaningTelegramFailed(r).length;}).length;
     txt+='\n📆 <b>'+lb('本月累計','Month to date','សរុបខែនេះ')+'</b> · 🔎 '+m.reduce(function(s,a){return s+a.checks;},0)+' · 📍 '+m.length+' · ❌ '+mIssues;
   }
-  /* 2026-11-17 一期一行：🟩 通過、🟥 有 ✕ 的檢查次數 */
-  if(period!=='day'&&view.length){const bks=gcPeriodBuckets(period,opt.ref||cleaningTelegramDate(view[0].date),lang);
-    if(bks.length){txt+=G.sec('📅',period==='week'?lb('每天','Daily','ប្រចាំថ្ងៃ'):period==='year'?lb('每月','Monthly','ប្រចាំខែ'):lb('每週','Weekly','ប្រចាំសប្ដាហ៍'))+' · 🟩 '+lb('通過','pass','ជាប់')+' 🟥 '+lb('有異常','issue','មានបញ្ហា');
+  /* 2026-11-20 週／月報：每天一列、每格一個區域（像表格對齊）；整天沒做的工作日 🟨 highlight；今天沒資料不列。 */
+  if(grid&&view.length){
+    const dr=cleaningDayRows(view,period,opt.ref||cleaningTelegramDate(view[0].date),lang),CN='①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳';
+    if(dr.days.length){
+      txt+=G.sec('📅',lb('每日檢查','Daily','ប្រចាំថ្ងៃ'))+' · 🟩 '+lb('通過','pass','ជាប់')+' 🟥 '+lb('異常','issue','បញ្ហា')+' ⬜ '+lb('沒檢查','not checked','មិនបានពិនិត្យ')+' 🟨 '+lb('整天沒做','missed','មិនបានធ្វើ')+' · 🔎 '+lb('數字＝檢查次數','n = checks','n = ត្រួតពិនិត្យ');
+      txt+='\n📍 '+e(dr.areas.map(function(a,i){return (CN[i]||(i+1)+'.')+a.name;}).join(' '));
+      dr.days.forEach(function(d){
+        const sq=d.missed?'🟨'.repeat(dr.areas.length):d.cells.map(function(c){return c==='ok'?'🟩':c==='bad'?'🟥':'⬜';}).join('');
+        txt+='\n<code>'+e(d.label)+'</code> '+sq+' '+(d.missed?'⚠️ '+lb('沒做','missed','មិនបានធ្វើ'):'<b>'+d.checks+'</b>'+(d.fails?' · ❌ '+d.fails:'')+(d.off?' · '+lb('休','off','ឈប់'):''));
+      });
+    }
+    /* 檢查項目：一項一列，色條固定 10 格對齊 */
+    const st=cleaningItemStats(view).filter(function(s){return s.ok+s.bad;});
+    if(st.length){
+      txt+=G.sec('🧾',lb('檢查項目','Items','ចំណុចត្រួតពិនិត្យ'))+' · 🟩 '+lb('通過','pass','ជាប់')+' 🟥 '+lb('不通過','fail','មិនជាប់');
+      st.forEach(function(s){const all=s.ok+s.bad;txt+='\n'+gcSegBar([{n:s.ok,sq:'🟩'},{n:s.bad,sq:'🟥'}],all)+' <b>'+Math.round(s.ok/all*100)+'%</b> '+s.icon+' '+cleaningItemLabel(s.key,lang)+' <code>'+all+'</code>'+(s.bad?' · ❌ '+s.bad:'');});
+    }
+  }
+  /* 年報維持一期一行（每月）：🟩 通過、🟥 有 ✕ 的檢查次數，另加 ⚠️ 沒做的工作日數 */
+  else if(period!=='day'&&view.length){const bks=gcPeriodBuckets(period,opt.ref||cleaningTelegramDate(view[0].date),lang);
+    if(bks.length){txt+=G.sec('📅',period==='week'?lb('每天','Daily','ប្រចាំថ្ងៃ'):period==='year'?lb('每月','Monthly','ប្រចាំខែ'):lb('每週','Weekly','ប្រចាំសប្ដាហ៍'))+' · 🟩 '+lb('通過','pass','ជាប់')+' 🟥 '+lb('有異常','issue','មានបញ្ហា')+(period==='year'?' · ⚠️ '+lb('沒做的工作日','missed workdays','ថ្ងៃធ្វើការមិនបានធ្វើ'):'');
       bks.forEach(function(b){const rs=view.filter(function(r){const d=cleaningTelegramDate(r.date);return d>=b.from&&d<=b.to;}),n=function(r){return cleaningTelegramSlots(r).length||1;};
         const all=rs.reduce(function(a,r){return a+n(r);},0);if(!all&&b.sunOnly)return;const f=rs.filter(function(r){return cleaningTelegramFailed(r).length;}).reduce(function(a,r){return a+n(r);},0),ar=new Set(rs.map(function(r){return String(r.locId||r.location||'');})).size;
-        txt+='\n<code>'+e(b.label)+'</code> '+gcSegBar([{n:all-f,sq:'🟩'},{n:f,sq:'🟥'}],all)+' '+(all?'<b>'+Math.round((all-f)/all*100)+'%</b> · 🔎 '+all+' · 📍 '+ar+(f?' · ❌ '+f:''):'—');});}}
+        const mm=period==='year'&&G.missed?G.missed('month',b.from,rs.map(function(r){return cleaningTelegramDate(r.date);}),lang,{}).miss.length:0;
+        txt+='\n<code>'+e(b.label)+'</code> '+gcSegBar([{n:all-f,sq:'🟩'},{n:f,sq:'🟥'}],all)+' '+(all?'<b>'+Math.round((all-f)/all*100)+'%</b> · 🔎 '+all+' · 📍 '+ar+(f?' · ❌ '+f:'')+(mm?' · ⚠️ '+mm:''):'—');});}}
   if(bad.length){
     txt+=G.sec('⚠️',lb('需注意','Needs attention','ត្រូវយកចិត្តទុកដាក់'))+'\n'+bad.slice(0,12).map(function(a){return cleaningTelegramIssueLine(a,period!=='day');}).join('\n')+(bad.length>12?'\n… +'+(bad.length-12):'');
   }
-  /* 週報：正常區域改成一行，每天每區的情形看附圖的「每日檢查表」。 */
-  const weekChart=period==='week'?cleaningWeekGridChart(view,opt.ref,lang):'';
+  /* 週／月報：正常區域不再逐區列（每日格子已有），附一張「每日檢查表」圖。 */
+  const weekChart=period==='week'?cleaningWeekGridChart(view,opt.ref,lang):period==='month'?cleaningMonthGridChart(view,opt.ref,lang):'';
   if(weekChart){photos.unshift(weekChart);if(photos.length>5)photos.length=5;}
-  if(weekChart){if(ok.length)txt+='\n\n✅ '+lb('正常區域','Areas OK','តំបន់ធម្មតា')+' <b>'+ok.length+'</b> · '+e(ok.slice(0,6).map(function(a){return a.name;}).join(', '))+(ok.length>6?' +'+(ok.length-6):'');txt+='\n📊 '+lb('每天每區的檢查情形見附圖','Daily check grid in the chart','មើលតារាងប្រចាំថ្ងៃក្នុងរូបភាព');}
-  else if(ok.length)txt+='\n\n'+ok.slice(0,12).map(cleaningTelegramOkLine).join('\n')+(ok.length>12?'\n🟢 … +'+(ok.length-12):'');
+  if(!grid&&ok.length)txt+='\n\n'+ok.slice(0,12).map(cleaningTelegramOkLine).join('\n')+(ok.length>12?'\n🟢 … +'+(ok.length-12):'');
   if(checkers.length&&view.length)txt+='\n🔎 '+e(checkers.slice(0,4).join(', '))+(checkers.length>4?' +'+(checkers.length-4):'');
   if(opt.mode==='review'||opt.mode==='approval')txt+='\n⏳ '+lb('待審查／待核可','Pending review / approval','កំពុងរង់ចាំពិនិត្យ/អនុម័ត')+' <b>'+issues+'</b>';
   const sender=String(opt.sender||'').trim();

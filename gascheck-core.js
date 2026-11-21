@@ -3464,9 +3464,11 @@ GC.TG = (function () {
     const w = o.what || ['日檢', 'Daily check', 'ការពិនិត្យប្រចាំថ្ងៃ'], L = (zh, en, km) => lbl(lang, zh, en, km);
     const WD = lang === 'en' || lang === 'km' ? ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'] : ['日','一','二','三','四','五','六'];
     const unit = o.all ? L('天', 'days', 'ថ្ងៃ') : L('個工作日', 'workdays', 'ថ្ងៃធ្វើការ');
-    if (!miss.length) { out.line = '✅ ' + L(w[0], w[1], w[2]) + ' <b>' + exp.length + '/' + exp.length + '</b> ' + unit + ' · ' + L('每天都有做', 'done every day', 'បានធ្វើរាល់ថ្ងៃ'); return out; }
-    const list = miss.length <= 7 ? miss.map(k => d(k) + '(' + WD[new Date(k + 'T00:00:00').getDay()] + ')').join(' ') : ranges(miss);
-    out.line = '⚠️ ' + L(w[0] + '沒做', w[1] + ' missed', w[2] + ' មិនបានធ្វើ') + ' <b>' + miss.length + '/' + exp.length + '</b> ' + unit + '：<b>' + list + '</b>';
+    /* 2026-11-20 Paul：清潔摘要前段太囉嗦 → o.short 只寫「沒做 n/總數 工作日 · 日期」，不再重複模組名稱 */
+    if (!miss.length) { out.line = (o.short ? '✅ <b>' + exp.length + '/' + exp.length + '</b> ' + unit + ' · ' + L('每天都有做', 'done every day', 'បានធ្វើរាល់ថ្ងៃ') : '✅ ' + L(w[0], w[1], w[2]) + ' <b>' + exp.length + '/' + exp.length + '</b> ' + unit + ' · ' + L('每天都有做', 'done every day', 'បានធ្វើរាល់ថ្ងៃ')); return out; }
+    const list = miss.length <= 7 ? miss.map(k => d(k) + '(' + WD[new Date(k + 'T00:00:00').getDay()] + ')').join(o.short ? ' · ' : ' ') : ranges(miss);
+    out.line = o.short ? '⚠️ ' + L('沒做', 'Missed', 'មិនបានធ្វើ') + ' <b>' + miss.length + '/' + exp.length + '</b> ' + unit + ' · <b>' + list + '</b>'
+      : '⚠️ ' + L(w[0] + '沒做', w[1] + ' missed', w[2] + ' មិនបានធ្វើ') + ' <b>' + miss.length + '/' + exp.length + '</b> ' + unit + '：<b>' + list + '</b>';
     return out;
   }
   return { lbl, enKm, esc, d, time, mins, dur, ranges, head, verdict, bar, kpis, sec, fold, chunk, number, missed };
@@ -5009,3 +5011,27 @@ global.GC = GC;
 global.GASCheckCore = GC;
 
 })(window);
+
+/* ═══ 2026-11-22 雲端照片一定看得到（Drive 照片自動改用縮圖網址）═══
+   Paul：上傳到雲端的照片要隨時看得到。照片上傳後存的是 Google Drive 的 uc?export=view／open?id=／file/d/…/view 連結，
+   這種連結在手機瀏覽器常常被擋（圖片破掉，只剩「Photo 1」字樣）。這裡在整頁聽圖片載入失敗：
+   是 Drive 連結就改用 Drive 縮圖網址重試，再不行改用 lh3 網址；只換畫面上的網址，存的資料不變。 */
+(function () {
+  if (typeof document === 'undefined' || window.__vrtDriveImgFix) return; window.__vrtDriveImgFix = true;
+  function driveId(u) {
+    u = String(u || '');
+    if (!/(drive|docs)\.google\.com|googleusercontent\.com/.test(u)) return '';
+    var m = u.match(/[?&]id=([A-Za-z0-9_-]{10,})/) || u.match(/\/file\/d\/([A-Za-z0-9_-]{10,})/) || u.match(/googleusercontent\.com\/d\/([A-Za-z0-9_-]{10,})/);
+    return m ? m[1] : '';
+  }
+  window.vrtDriveThumb = function (u, w) { var id = driveId(u); return id ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w' + (w || 1600) : String(u || ''); };
+  document.addEventListener('error', function (e) {
+    var im = e.target; if (!im || im.tagName !== 'IMG') return;
+    var src = im.currentSrc || im.src || '', id = driveId(src); if (!id) return;
+    var step = +(im.getAttribute('data-drive-try') || 0);
+    var next = step === 0 && !/\/thumbnail\?/.test(src) ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(id) + '&sz=w1600'
+      : step <= 1 ? 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(id) + '=w1600' : '';
+    if (!next || next === src) { im.setAttribute('data-drive-failed', '1'); return; }
+    im.setAttribute('data-drive-try', String(step + 1)); im.src = next;
+  }, true);
+})();

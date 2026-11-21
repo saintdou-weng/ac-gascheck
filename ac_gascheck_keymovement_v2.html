@@ -1386,10 +1386,28 @@ window.updateRecord = updateRecord;
     try{if(!window.GC||!GC.Compact)return;const t=body.closest('table');if(!t||t.__cmp)return;t.__cmp=1;
       GC.Compact.attach({card:t.parentElement,table:t,cols:{title:[1,2],sub:[3,4,7,8],right:[6],actions:9}});}catch(e){if(window.console)console.warn('compact',e);}
   }
-  function renderMasterList(){
-    const body=document.getElementById('km-master-body');if(!body)return;keyCompactAttach(body);
+  /* 2026-11-22：清單篩選抽成一個函式，物品頁（gc-item-page）用同一個順序上下翻 */
+  function masterListView(){
     const q=((document.getElementById('km-master-search')||{}).value||'').toLowerCase(), dept=(document.getElementById('km-master-dept')||{}).value||'',type=(document.getElementById('km-master-type')||{}).value||'',status=(document.getElementById('km-master-status')||{}).value||'';
-    const list=masters().filter(m=>{const s=masterState(m).key;return(!q||(JSON.stringify(m)+' '+deptLabel(m.dept)+' '+keyTypeLabel(m.key_type)).toLowerCase().includes(q))&&(!dept||deptCode(m.dept)===dept)&&(!type||keyTypeCode(m.key_type)===type)&&(!status||s===status);}).sort((a,b)=>String(a.key_no||'').localeCompare(String(b.key_no||''),undefined,{numeric:true}));
+    return masters().filter(m=>{const s=masterState(m).key;return(!q||(JSON.stringify(m)+' '+deptLabel(m.dept)+' '+keyTypeLabel(m.key_type)).toLowerCase().includes(q))&&(!dept||deptCode(m.dept)===dept)&&(!type||keyTypeCode(m.key_type)===type)&&(!status||s===status);}).sort((a,b)=>String(a.key_no||'').localeCompare(String(b.key_no||''),undefined,{numeric:true}));
+  }
+  /* 從物品頁按「登記借出」：把這把鑰匙放進批次登記（第一列是空的就直接用第一列） */
+  function lendMaster(id){
+    const m=masters().find(x=>String(x.id)===String(id));if(!m)return false;
+    if(masterState(m).key!=='available'){showToast(tx('這把鑰匙目前不能借出（已借出／遺失／停用）','This key cannot be issued now (issued / lost / inactive)','សោនេះមិនអាចខ្ចីបានទេ'),'error');return false;}
+    if(batchRows.some(r=>String(r.masterId)===String(m.id))){showSection('record');return true;}
+    const row=newBatchRow({masterId:m.id,key_no:m.key_no});
+    const empty=batchRows.findIndex(r=>!r.masterId&&!String(r.recipient_name||'').trim());
+    if(empty>=0)batchRows[empty]=row;else batchRows.push(row);
+    showSection('record');renderBatchRows();
+    try{const t=document.getElementById('km-batch-body');t&&t.scrollIntoView&&t.scrollIntoView({block:'center'});}catch(e){}
+    return true;
+  }
+  /* 2026-11-22：畫完鑰匙清單後通知物品頁（gc-item-page）更新手機清單與開著的物品頁 */
+  function renderMasterList(){renderMasterList0();if(window.__keyIpAfterRender)try{window.__keyIpAfterRender();}catch(e){if(window.console)console.warn('key ip',e);}}
+  function renderMasterList0(){
+    const body=document.getElementById('km-master-body');if(!body)return;keyCompactAttach(body);
+    const list=masterListView();
     const count=document.getElementById('km-master-count');if(count)count.textContent=list.length+' '+tx('把鑰匙','keys','សោ');
     const info=document.getElementById('record-count-info');if(info)info.textContent=tx('鑰匙名單','Key master','បញ្ជីសោ')+': '+masters().length+' · '+tx('異動記錄','Movement records','កំណត់ត្រាចលនា')+': '+(records||[]).length;
     if(!list.length){body.innerHTML='<tr><td colspan="10" class="empty">'+tx('尚無鑰匙名單，可按新增或匯入 Excel','No keys yet. Add one or import Excel.','មិនទាន់មានបញ្ជីសោ។ បន្ថែម ឬនាំចូល Excel។')+'</td></tr>';return;}
@@ -1534,7 +1552,7 @@ window.updateRecord = updateRecord;
   window.keyCancelEdit=function(){cancelEdit(false);};
   const oldSet=window.setLang||setLang;window.setLang=setLang=function(l){oldSet(l);mount();renderMasterList();renderBatchRows();};
   window.renderSettings=renderSettings=function(){renderMasterList();};
-  window.KEY_V31={refresh:function(){renderMasterList();renderKeyPeriodSummary();renderBatchRows();},normalizeKeyNo:keyNoToken,normalizeKeyType,reconcileMasters,currentMovement,newBatchRow,readMaster:rawMaster,activeMaster:masters,cloudRead:cloudRead,cloudWrite:cloudWrite,mount:mount};
+  window.KEY_V31={refresh:function(){renderMasterList();renderKeyPeriodSummary();renderBatchRows();},normalizeKeyNo:keyNoToken,normalizeKeyType,reconcileMasters,currentMovement,newBatchRow,readMaster:rawMaster,activeMaster:masters,cloudRead:cloudRead,cloudWrite:cloudWrite,mount:mount,listView:masterListView,masterState:masterState,sameKey:sameKey,saveMaster:saveMaster,lend:lendMaster};
   const start=()=>{const run=()=>mount();if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(run);else run();};
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start);else start();
 })();
@@ -1756,5 +1774,135 @@ function keyMergeImport(cur,rows){
 <script src="https://saintdou-weng.github.io/ac-admin/shared/swipe-tabs.js" defer></script>
 <!-- 2026-11-19: 照片表 Excel（編號＋照片）匯入 -->
 <script src="photo-chart-import.js?v=20261119a"></script>
+<!-- 2026-11-22 Paul：鑰匙清單與資訊卡學 PSJHR 員工頁（gc-item-page.js）——一把一行附照片、點開看分頁、照片固定有位置、手機不用左右拉。
+     只換畫面：資料與按鈕都用本頁原本的函式（keyMasterOpen／keyMasterDelete／setReturnNow／editRecord／批次登記／GC.sync）。 -->
+<script src="./gc-item-page.js?v=20261122a"></script>
+<style id="key-ip-css">
+#km-ip-list{display:none}
+/* 鑰匙編輯／借還歷史視窗（modal-overlay）原本沒有樣式，會出現在頁面最下面 → 跟其他視窗一樣蓋在畫面上 */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1000;align-items:center;justify-content:center;padding:12px}
+.modal-overlay.open{display:flex}
+@media(max-width:720px){
+  #km-ip-list{display:block;margin-top:8px}
+  .key-master-table{display:none!important}
+  .key-master-table~.cmp-list,.key-master-table+.cmp-list{display:none!important}
+  /* 鑰匙清單卡頭：標題一行、按鈕一排 */
+  #section-record .card-header{flex-wrap:wrap;gap:8px}
+  #section-record .card-header .btn-group{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+  #section-record .card-header .btn-group>*{flex:1 1 auto;justify-content:center;font-size:12.5px!important;padding:6px 8px!important}
+  /* 期間列：日週月年一排、◀ 月份 ▶ 一排、四個數字一排 */
+  .km-period-bar{gap:6px!important;padding:8px!important}
+  .km-period-tabs{flex:1 1 100%}.km-period-tabs button{flex:1}
+  .km-period-bar>input{flex:1 1 0;min-width:0}
+  #km-period-summary{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px!important}
+  #km-period-summary>span{display:flex;flex-direction:column;align-items:center;background:#fff;border:1px solid #d6dee8;border-radius:8px;padding:4px 2px;font-size:10.5px;line-height:1.25;white-space:nowrap;overflow:hidden;text-align:center;min-width:0}
+  #km-period-summary>span b{font-size:15px}
+  /* 篩選：搜尋一行、三個下拉一行 */
+  #section-record .filter-bar{padding:8px!important;gap:6px!important}
+  #km-master-search{flex:1 1 100%;min-width:0}
+  #km-master-dept,#km-master-type,#km-master-status{flex:1 1 0;min-width:0;font-size:12.5px}
+  #km-master-count{flex:1 1 100%;font-size:12px}
+}
+</style>
+<script>
+(function(){
+  if(!window.GC||!GC.ItemPage)return;
+  const K=()=>window.KEY_V31||{};
+  const T=(zh,en,km)=>L(zh,en,km);
+  const e=s=>GC.ItemPage.esc(s);
+  const STONE={available:'g',issued:'y',lost:'r',inactive:'k'};
+  function all(){return (K().activeMaster?K().activeMaster():[]);}
+  function find(id){return all().find(m=>String(m.id)===String(id))||null;}
+  function pics(m){return (Array.isArray(m&&m.photos)?m.photos:[]).filter(Boolean).map(p=>GC.photo&&GC.photo.src?GC.photo.src(p):String(p));}
+  function state(m){return K().masterState?K().masterState(m):{key:'available',label:''};}
+  function moves(m){const same=K().sameKey;return (records||[]).filter(r=>r&&!r._deleted&&(same?same(r,m):String(r.key_no)===String(m.key_no))).sort((a,b)=>String((b.issue_date||'')+' '+(b.issue_time||'')).localeCompare(String((a.issue_date||'')+' '+(a.issue_time||''))));}
+  function current(m){const c=K().currentMovement?K().currentMovement(m):null;return c&&!c.return_date&&!isLost(c)?c:null;}
+  function days(d){const t=Date.parse(String(d||'').slice(0,10)+'T00:00:00');return isFinite(t)?Math.max(0,Math.floor((Date.now()-t)/86400000)):null;}
+  function chip(t,c){return t?'<span class="gip-chip'+(c?' '+c:'')+'">'+t+'</span>':'';}
+  async function addPhoto(m){
+    const d=await GC.ItemPage.pickPhoto({max:1280,quality:0.75});if(!d)return;
+    const list=K().readMaster?K().readMaster():[];const x=list.find(y=>String(y.id)===String(m.id));if(!x)return;
+    /* 新照片放第一張當標準照，最多留 2 張（跟原本的鑰匙表單一樣） */
+    x.photos=[d].concat((Array.isArray(x.photos)?x.photos:[]).filter(p=>p&&p!==d)).slice(0,2);x.updatedAt=typeof _localTS==='function'?_localTS():new Date().toISOString();
+    if(K().saveMaster)K().saveMaster(list,'key_photo');
+    showToast('📷 '+T('照片已存','Photo saved','បានរក្សាទុករូបថត')+': '+(x.key_no||''),'success');
+  }
+  const ip=GC.ItemPage.create({
+    key:'key',accent:'var(--primary,#1a3a5c)',z:999,
+    list:()=>K().listView?K().listView():all(),get:find,id:m=>m.id,
+    labels:{noPhoto:()=>T('缺照片','No photo','គ្មានរូប'),addPhoto:()=>T('點這裡拍','Tap to add','ចុចដើម្បីថត'),noPhotoShort:()=>T('缺','none','គ្មាន'),end:()=>T('已經到最後一把','End of list','ចុងបញ្ជី'),emptyList:()=>T('尚無鑰匙名單','No keys yet','មិនទាន់មានសោ')},
+    head:m=>{const s=state(m),c=current(m),p=pics(m);return {photo:p[0]||'',photoCount:p.length,code:m.key_no,title:m.key_name||m.location||'—',chips:[
+      chip(e(s.label),STONE[s.key]||'k'),
+      c?chip('👤 '+e(c.recipient_name||'—')+(days(c.issue_date)!=null?' · '+days(c.issue_date)+T('天','d','ថ្ងៃ'):''),'y'):'',
+      m.dept?chip('🏢 '+e(deptLabel(m.dept))):'',
+      m.location?chip('📍 '+e(m.location)):'',
+      m.key_type?chip('🗝 '+e(keyTypeLabelIn(m.key_type))):''
+    ]};},
+    row:m=>{const s=state(m),c=current(m),p=pics(m);return {photo:p[0]||'',code:m.key_no,title:m.key_name||'—',
+      sub:e([deptLabel(m.dept),m.location,keyTypeLabelIn(m.key_type)].filter(x=>String(x||'').trim()).join(' · ')),
+      right:'<span class="km-state '+s.key+'">'+e(s.label)+'</span>'+(c?'<span>👤 '+e(c.recipient_name||'—')+'</span>':'')};},
+    tabs:[
+      {id:'basic',icon:'📋',label:()=>T('基本','Basic','មូលដ្ឋាន'),render:(m,ip)=>{
+        const mv=moves(m),c=current(m),out=mv.filter(r=>!r.return_date&&!isLost(r)).length,lost=mv.filter(isLost).length;
+        let h='';
+        if(c)h+='<div class="gip-note">🔓 '+e(T('借出中','Issued','កំពុងខ្ចី'))+'：<b>'+e(c.recipient_name||'—')+'</b>'+(c.recipient_id?' ('+e(c.recipient_id)+')':'')+' · '+e((c.issue_date||'')+' '+(c.issue_time||''))+(days(c.issue_date)!=null?' · '+e(T('已借','held','កាន់')+' '+days(c.issue_date)+' '+T('天','days','ថ្ងៃ')):'')+'</div>'+
+          '<div class="gip-acts" style="margin-bottom:12px"><button type="button" class="gip-btn ok full" data-gip-act="ret" data-rid="'+e(c.id)+'">✅ '+e(T('現在歸還（狀態良好）','Return now (good condition)','ប្រគល់ឥឡូវ'))+'</button></div>';
+        h+=ip.kpis([[String(mv.length),T('借用次數','Times issued','ចំនួនខ្ចី')],[String(out),T('未還','Outstanding','មិនទាន់ប្រគល់'),out?'#b45309':''],[String(lost),T('遺失','Lost','បាត់'),lost?'#b91c1c':'']]);
+        h+='<div class="gip-sub">📋 '+e(T('資料','Details','ព័ត៌មាន'))+'</div>'+ip.kv([
+          [T('鑰匙編號','Key No.','លេខសោ'),m.key_no],[T('名稱','Name','ឈ្មោះ'),m.key_name],
+          [T('部門','Department','ផ្នែក'),deptLabel(m.dept)],[T('地點','Location','ទីតាំង'),m.location],
+          [T('類型','Type','ប្រភេទ'),keyTypeLabelIn(m.key_type)],[T('啟用狀態','Active status','ស្ថានភាពប្រើប្រាស់'),m.status==='inactive'?T('停用','Inactive','ផ្អាក'):T('啟用','Active','សកម្ម')],
+          [T('最近借出','Last issued','ខ្ចីចុងក្រោយ'),mv[0]?((mv[0].issue_date||'')+' '+(mv[0].issue_time||'')+' · '+(mv[0].recipient_name||'')).trim():''],[T('更新','Updated','ធ្វើបច្ចុប្បន្នភាព'),String(m.updatedAt||'').slice(0,16)],
+          [T('備註','Remarks','ចំណាំ'),m.remarks,true]]);
+        return h;}},
+      {id:'moves',icon:'🔁',label:()=>T('借還紀錄','Movements','ចលនា'),count:m=>moves(m).length,render:m=>{
+        const mv=moves(m);if(!mv.length)return '<div class="gip-empty">'+e(T('這把鑰匙還沒有借出紀錄','No movements for this key yet','មិនទាន់មានកំណត់ត្រា'))+'</div>';
+        return '<div class="gip-hist">'+mv.map(r=>{const lost=isLost(r),back=!!r.return_date&&!lost,tone=lost?'r':back?'g':'y';
+          const st=lost?'🚨 '+T('遺失','Lost','បាត់'):back?'✅ '+T('已還','Returned','បានប្រគល់')+' '+(r.return_date||'')+' '+(r.return_time||'')+(r.return_condition&&condCode(r.return_condition)!=='good'?' · '+condLabel(r.return_condition):''):'⏳ '+T('未還','Outstanding','មិនទាន់ប្រគល់')+(days(r.issue_date)!=null?' · '+days(r.issue_date)+' '+T('天','days','ថ្ងៃ'):'');
+          return '<div class="gip-h '+tone+'"><div class="d">🔓 '+e((r.issue_date||'')+' '+(r.issue_time||''))+' · 👤 <b>'+e(r.recipient_name||'—')+'</b>'+(r.recipient_id?' ('+e(r.recipient_id)+')':'')+'</div><div class="t">'+e(st)+(r.checker?' · 🔎 '+e(r.checker):'')+(r.remarks?' · 📝 '+e(r.remarks):'')+'</div>'+
+            '<div style="display:flex;gap:6px;margin-top:6px">'+(!back&&!lost?'<button type="button" class="gip-btn ok" style="min-height:38px;font-size:12.5px" data-gip-act="ret" data-rid="'+e(r.id)+'">✅ '+e(T('歸還','Return','ប្រគល់'))+'</button>':'')+'<button type="button" class="gip-btn" style="min-height:38px;font-size:12.5px" data-gip-act="editMove" data-rid="'+e(r.id)+'">✏️ '+e(T('修改','Edit','កែ'))+'</button></div></div>';}).join('')+'</div>';}},
+      {id:'photo',icon:'📷',label:()=>T('照片','Photos','រូបថត'),count:m=>pics(m).length,render:m=>{
+        const p=pics(m);
+        return (p.length?'<img class="gip-big" src="'+e(p[0])+'" alt="" data-gip-act="viewPhoto" data-i="0"><div class="gip-cap">⭐ '+e(T('標準照（點開放大）','Standard photo (tap to enlarge)','រូបស្តង់ដារ'))+'</div>'+(p.length>1?'<div class="gip-thumbs">'+p.slice(1).map((x,i)=>'<img src="'+e(x)+'" alt="" data-gip-act="viewPhoto" data-i="'+(i+1)+'">').join('')+'</div>':'')
+          :'<div class="gip-bigempty" role="button" data-gip-act="addPhoto"><b>📷</b>'+e(T('這把鑰匙還沒有照片，點這裡拍或選照片','No photo yet — tap to take or choose one','មិនទាន់មានរូប ចុចដើម្បីថត'))+'</div>')+
+          '<div class="gip-acts" style="margin-top:12px"><button type="button" class="gip-btn pri full" data-gip-act="addPhoto">📷 '+e(p.length?T('加新照片（變成標準照，最多留 2 張）','Add new photo (becomes standard, keeps 2)','បន្ថែមរូបថ្មី'):T('拍照／選照片','Take / choose photo','ថត / ជ្រើសរូប'))+'</button></div>';}},
+      {id:'manage',icon:'⚙️',label:()=>T('管理','Manage','គ្រប់គ្រង'),render:m=>{
+        const s=state(m);
+        return '<div class="gip-acts">'+(s.key==='available'?'<button type="button" class="gip-btn pri full" data-gip-act="lend">🔓 '+e(T('登記借出（放進批次登記）','Issue this key (batch entry)','ចុះឈ្មោះខ្ចី'))+'</button>':'')+
+          '<button type="button" class="gip-btn ok" data-gip-act="edit">✏️ '+e(T('編輯','Edit','កែ'))+'</button>'+
+          '<button type="button" class="gip-btn bad" data-gip-act="del">🗑️ '+e(T('刪除','Delete','លុប'))+'</button></div>'+
+          '<div class="gip-cap" style="margin-top:10px">'+e(T('刪除會先問一次；借還紀錄會留著。','Delete asks first; movement records are kept.','លុបនឹងសួរមុន'))+'</div>';}}
+    ],
+    actions:{
+      addPhoto:m=>addPhoto(m),
+      viewPhoto:(m,el)=>{const p=pics(m);if(p.length&&GC.photo&&GC.photo.lightbox)GC.photo.lightbox(p,+el.getAttribute('data-i')||0);},
+      ret:(m,el)=>{if(typeof setReturnNow==='function')setReturnNow(el.getAttribute('data-rid'));},
+      editMove:(m,el)=>{const id=el.getAttribute('data-rid');ip.close();if(typeof editRecord==='function')editRecord(id);},
+      lend:m=>{if(K().lend&&K().lend(m.id))ip.close();},
+      edit:m=>{if(typeof keyMasterOpen==='function')keyMasterOpen(m.id);},
+      del:m=>{if(typeof keyMasterDelete==='function')keyMasterDelete(m.id);}
+    }
+  });
+  window.KEY_ITEM_PAGE=ip;
+  /* 手機清單：鑰匙一把一行附照片（原本的表格留給電腦用） */
+  function paintList(){
+    const body=document.getElementById('km-master-body');if(!body)return;
+    const t=body.closest('table'),wrap=t&&t.parentElement;if(!wrap)return;
+    let box=document.getElementById('km-ip-list');
+    if(!box||box.parentElement!==wrap.parentElement){if(box)box.remove();box=document.createElement('div');box.id='km-ip-list';wrap.insertAdjacentElement('afterend',box);}
+    box.innerHTML=ip.listHtml(K().listView?K().listView():all());ip.bindList(box);
+    /* 電腦：點表格一列（不是按鈕／照片）開物品頁 */
+    if(!body.__ip){body.__ip=1;body.style.cursor='pointer';body.addEventListener('click',ev=>{if(ev.target.closest('button,a,input,img,select,label'))return;const tr=ev.target.closest('tr'),no=tr&&tr.children[1]&&tr.children[1].textContent.trim();const m=no&&all().find(x=>String(x.key_no)===no);if(m)ip.open(m.id);});}
+  }
+  /* 原本的手機精簡清單（GC.Compact）不要再掛在鑰匙清單上，改用上面這個 */
+  if(GC.Compact&&GC.Compact.attach&&!GC.Compact.__keyIp){const a0=GC.Compact.attach;GC.Compact.__keyIp=1;GC.Compact.attach=function(cfg){try{const t=cfg&&cfg.table;const el=typeof t==='string'?document.querySelector(t):t;if(el&&el.classList&&el.classList.contains('key-master-table'))return null;}catch(x){}return a0.apply(this,arguments);};}
+  /* 鑰匙清單每次重畫（新增、編輯、刪除、照片、雲端同步、換語言）→ 手機清單與開著的物品頁一起更新 */
+  window.__keyIpAfterRender=function(){paintList();if(ip.isOpen())ip.refresh();};
+  /* 借還紀錄變了（歸還、存檔、雲端同步）→ 物品頁的狀態與借還紀錄也更新 */
+  const f0=window.renderAll;if(typeof f0==='function'&&!f0.__ip){const g=function(){const r=f0.apply(this,arguments);try{if(ip.isOpen())ip.refresh();}catch(x){}return r;};g.__ip=1;window.renderAll=g;}
+  let tries=0;(function first(){if(document.getElementById('km-master-body')){try{window.keyMasterRender();}catch(x){}}else if(tries++<40)setTimeout(first,250);})();
+})();
+</script>
+
 </body>
 </html>

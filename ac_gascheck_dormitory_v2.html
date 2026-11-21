@@ -1899,7 +1899,7 @@ var insp = (() => {
   const renderPhotos = () => {
     const photos=currentPhotos(),grid=document.getElementById('insp-photo-grid'),count=document.getElementById('insp-photo-count');
     if(count)count.textContent=photos.length+' / '+PHOTO_LIMIT;
-    if(grid)grid.innerHTML=photos.map((p,i)=>`<div class="insp-photo"><img src="${esc(p)}" onclick="insp.viewPhoto(${i})" alt="${esc(T('photos'))} ${i+1}"><button type="button" onclick="insp.removePhoto(${i})" aria-label="Remove">×</button></div>`).join('');
+    if(grid)grid.innerHTML=photos.map((p,i)=>`<div class="insp-photo"><img src="${esc(window.GC&&GC.photo&&GC.photo.src?GC.photo.src(p):p)}" onclick="insp.viewPhoto(${i})" alt="${esc(T('photos'))} ${i+1}"><button type="button" onclick="insp.removePhoto(${i})" aria-label="Remove">×</button></div>`).join('');
   };
 
   const pickPhotos = async input => {
