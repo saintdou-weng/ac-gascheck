@@ -30,6 +30,14 @@
     try { var l = (window.GC && GC.lang && GC.lang()) || localStorage.getItem('gc_lang') || document.documentElement.lang || 'zh'; return /km/.test(l) ? 'km' : (/en/.test(l) ? 'en' : 'zh'); } catch (e) { return 'zh'; }
   }
   function t(zh, en, km) { var l = lang(); return l === 'en' ? en : (l === 'km' ? km : zh); }
+  /* 2026-11-23 Paul：GASCheck 的調色盤要跟其他平台一樣（可混色、可加壁紙），而且每個平台各設各的。
+     → 顏色改由共用調色盤（PSJERP/music.js，設定存 'vrt_pal:ac-gascheck'）來管；這支檔只留「中性的底」：
+       一般頁用白色那一組（顏色由共用調色盤蓋上去），入口頁（深色設計）的漸層跟著所選顏色走。
+       共用調色盤還沒設定過（或 music.js 沒載到）時，照原本的方式運作，🎨 也照舊。 */
+  var SHARED_KEY = 'vrt_pal:ac-gascheck';
+  var SHARED_MAP = { green: 'green', yellow: 'yellow', blue: 'blue', pink: 'pink', beige: 'beige', navy: 'navy', dgreen: 'forest', dark: 'black', wine: 'wine', dpurple: 'purple' };
+  var SHARED_HDR = { ivory: ['#5c4a1c', '#3d3112'], orange: ['#6b3a12', '#47260b'], purple: ['#3b2a63', '#281c45'], grey: ['#334155', '#1e293b'] };
+  function shared() { var j = read(SHARED_KEY); return j && typeof j === 'object' ? j : null; }
   function choice() {
     var own = read(OWN_KEY);
     if (own && own.colour && own.colour !== 'psjga' && find(own.colour)) return { key: own.colour, follow: false };
@@ -45,6 +53,12 @@
   var styleEl = null;
   function apply() {
     var c = choice(), p = find(c.key) || find(DEFAULT), root = document.documentElement;
+    var sh = shared(), portalH = null;
+    if (sh) {   /* 共用調色盤接手：這裡只給中性的底 */
+      var mp = find(SHARED_MAP[sh.c] || '') , hx = SHARED_HDR[sh.c];
+      portalH = mp ? [mp[5], mp[6]] : (hx || null);
+      p = find('white');
+    }
     var canvas = p[1], dark = !!p[8], h1 = p[5], h2 = p[6], acc = p[7];
     var soft = dark ? '#ffffff' : mix('#ffffff', canvas, 0.86), alt = dark ? '#f1f5f9' : mix('#ffffff', canvas, 0.6);
     root.setAttribute('data-gc-theme', p[0]);
@@ -65,7 +79,7 @@
     styleEl.textContent =
       'html,body{background:' + canvas + ' !important}' +
       /* 平台首頁（portal）本來是深色設計：底色用所選色系的深色漸層，文字維持白色 */
-      'html[data-gc-portal] body{background:linear-gradient(160deg,' + h1 + ',' + h2 + ') !important}' +
+      'html[data-gc-portal] body{background:linear-gradient(160deg,' + (portalH ? portalH[0] : h1) + ',' + (portalH ? portalH[1] : h2) + ') !important}' +
       /* 頁首：原本是深色頁首的頁面，換成所選色系的深色；白色頁首（資產、溫濕度）只換底線色 */
       '.topbar.gc-dark-hdr,.hd.gc-dark-hdr,header.gc-dark-hdr{background:linear-gradient(135deg,' + h1 + ',' + h2 + ') !important}' +
       '.topbar.gc-light-hdr,.hd.gc-light-hdr{border-bottom-color:' + (acc || h1) + ' !important}' +
@@ -122,6 +136,7 @@
       '<div class="note">' + t('這個瀏覽器會記住設定；GASCheck 所有頁面一起換色。', 'Saved in this browser; all GASCheck pages change together.', 'រក្សាទុកក្នុងកម្មវិធីរុករកនេះ') + (c.follow && !c.psjga ? ' ' + t('（PSJGA 尚未設定顏色，先用淡綠）', '(PSJGA has no colour yet — using light green)', '') : '') + '</div>';
   }
   function open() {
+    if (window.vrtPalette && window.vrtPalette.open) { try { window.vrtPalette.open(document.getElementById('gc-theme-btn')); return; } catch (e) {} }
     if (!ov) {
       ov = document.createElement('div'); ov.id = 'gc-theme-ov'; ov.innerHTML = '<div class="box2" role="dialog" aria-modal="true"></div>';
       ov.addEventListener('click', function (e) {
@@ -147,7 +162,7 @@
   /* 先套色（避免閃白），DOM 好了再加按鈕 */
   try { apply(); } catch (e) {}
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot); else boot();
-  window.addEventListener('storage', function (e) { if (e.key === PSJGA_KEY || e.key === OWN_KEY) apply(); });
+  window.addEventListener('storage', function (e) { if (e.key === PSJGA_KEY || e.key === OWN_KEY || e.key === SHARED_KEY) apply(); });
   document.addEventListener('visibilitychange', function () { if (!document.hidden) apply(); });
   window.GCTheme = { apply: apply, open: open, palettes: P, choice: choice };
 })();
