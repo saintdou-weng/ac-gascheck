@@ -196,3 +196,16 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 300); }); else setTimeout(boot, 300);
   window.UIMotion = { refresh: function () { markButtons(); setupSticky(); setupSpots(); setupTilt(); } };
 })();
+/* ── 回平台選單（2026-11-22 Paul：每頁最上面一條，不用退出再進來；頁面最上面已經有回選單的連結就不加；放在平台框架裡面時不加）── */
+(function(){var O={href:'./ac_gascheck_portal_v1.html',name:'GASCheck',skip:/^(ac_gascheck_portal_v1\.html|index\.html)$/,alt:null};
+ function run(){try{if(window.top!==window.self||document.getElementById('fx-home')||/[?&]embed=1/.test(location.search))return;
+  var file=location.pathname.split('/').pop()||'index.html';if(O.skip.test(file))return;
+  var target=new URL(O.href,location.href).pathname,ls=document.querySelectorAll('a[href]');
+  for(var i=0;i<ls.length;i++){var a=ls[i];if(/^\s*PROD v/i.test(a.textContent||''))continue;var u;try{u=new URL(a.getAttribute('href'),location.href)}catch(e){continue}
+   if(u.pathname===target||(O.alt&&O.alt.test(u.pathname))){var r=a.getBoundingClientRect();if(r.width>0&&r.height>0&&r.top<180)return}}
+  var b=document.createElement('a');b.id='fx-home';b.href=O.href;b.setAttribute('data-fx','off');b.title='回 '+O.name+' 選單 Back to menu';
+  b.innerHTML='<span style="font-size:15px">‹</span> 🏠 <b>'+O.name+'</b> 選單 Menu';
+  b.style.cssText='font:600 13px/1 system-ui,"Noto Sans TC",sans-serif;color:#fff;background:#0f172a;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;width:100%;box-sizing:border-box;position:relative;z-index:5';
+  var bs=getComputedStyle(document.body);if((bs.display==='flex'&&!/column/.test(bs.flexDirection))||bs.display==='grid'){b.style.cssText+=';position:fixed;top:6px;left:50%;transform:translateX(-50%);width:auto;border-radius:999px;z-index:80;box-shadow:0 2px 10px rgba(15,23,42,.3);opacity:.94';document.body.appendChild(b)}
+  else document.body.insertBefore(b,document.body.firstChild)}catch(e){}}
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(run,700)});else setTimeout(run,700)})();
