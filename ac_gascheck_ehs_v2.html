@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="./gc-theme.js?v=20261122a"></script>
-<script src="./gc-mobile.js?v=20261122a"></script>
+<script src="./gc-mobile.js?v=20261122c"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VRT Recycle / Waste</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -2459,7 +2459,7 @@ window.openRowPhotos=openRowPhotos;
 window.closeRowPhotos=closeRowPhotos;
 </script>
 <!-- VRT swipe-tabs：左右滑動（手指／滑鼠拖曳）切換分頁，只聽手勢、不改資料 -->
-<script src="./gc-compact.js?v=20261122a"></script>
+<script src="./gc-compact.js?v=20261122b"></script>
 <script>
 /* 2026-11-22 Paul：keynote 點了要有反應、照片學消防設備放另一個分頁依月份顯示。
    ① 回收／廢料的每一筆（卡片列、表格列、歷史列）點一下 → 開詳細卡（全部欄位＋照片，點照片放大，◀ ▶ 換筆，✏️ 編輯）
@@ -2488,6 +2488,15 @@ window.closeRowPhotos=closeRowPhotos;
     const idx=items.findIndex(function(x){return String(x.r.id)===ref.id;});if(idx<0)return;
     GC.Compact.sheet({items:items,index:idx,render:view,actions:function(x){return [{label:'✏️ '+ehsText('編輯','Edit','កែ'),fn:function(){editRecord(x.r.id,x.mod);}}];}});
   });
+  /* 期間報表點一列：照原本切到那一期，並跳出那一期每一筆的詳細卡（現況＋📷照片分頁，◀ ▶ 換筆） */
+  if(typeof ehsPickPeriod==='function'){const P0=ehsPickPeriod;window.ehsPickPeriod=ehsPickPeriod=function(prefix,k){const y=window.scrollY;const v=P0.apply(this,arguments);try{window.scrollTo(0,y);}catch(e){}
+    try{const g=ehsPeriodFor(prefix),d=loadLocal(),isW=r=>r.sourceType==='waste'||r.module==='gate';
+      const pick=(arr,mod)=>arr.filter(r=>{const dd=ehsYmd(r.date);return dd&&ehsPKey(dd,g)===k;}).map(r=>({r:r,mod:mod}));
+      let items=prefix==='a'?pick(d.internal,'internal'):prefix==='b'?pick(d.gate,'gate'):pick(d.gate,'gate').concat(pick(d.internal,'internal'));
+      items.sort((x,y)=>String(ehsYmd(y.r.date)).localeCompare(String(ehsYmd(x.r.date))));
+      if(items.length)setTimeout(()=>GC.Compact.sheet({items:items,index:0,render:view,actions:function(x){return [{label:'✏️ '+ehsText('編輯','Edit','កែ'),fn:function(){editRecord(x.r.id,x.mod);}}];}}),80);
+      else showToast(ehsText('這一期沒有記錄','No records in this period','គ្មានកំណត់ត្រា'));}catch(e){console.warn('[EHS] period sheet',e);}
+    return v;};}
   let gal=null;
   window.ehsRenderGallery=function(){
     const get=function(){const d=loadLocal(),out=[];

@@ -3,6 +3,7 @@
  *  ① 「🏠 GASCheck 選單」條變細
  *  ② 各頁頁首只留一行：圖示＋標題＋右邊按鈕；副標、時鐘、文件編號收起
  *  ③ 分頁列一行（圖示＋文字並排、36px 高），太多時左右滑；選中的分頁自動捲到看得到
+ *  （卡片互動微變色在 ui-motion.js）
  */
 (function () {
   'use strict';
@@ -27,8 +28,11 @@
     'body>.nav>.nav-btn{margin:4px 0!important;border-radius:9px!important}',
     '}'
   ].join('\n');
+  /* ④ 卡片互動微變色：已由 ui-motion.js（.ui-cc）統一處理，這裡不重複 */
   function inject() { if (document.getElementById('gc-mobile-css')) return; var s = document.createElement('style'); s.id = 'gc-mobile-css'; s.textContent = css; (document.head || document.documentElement).appendChild(s); }
   inject();
+  /* iOS Safari 要有 touchstart 監聽，:active 按壓變色才會出現 */
+  try { document.addEventListener('touchstart', function () {}, { passive:true }); } catch (e) {}
   /* 選中的分頁捲到看得到 */
   function reveal() {
     if (!(window.matchMedia && matchMedia('(max-width:720px)').matches)) return;
