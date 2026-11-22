@@ -46,6 +46,13 @@
     '#ui-top{position:fixed;right:24px;bottom:24px;width:48px;height:48px;border-radius:50%;border:none;cursor:pointer;z-index:8990;background:var(--gc-hdr,#1e293b);color:#fff;font-size:20px;line-height:48px;text-align:center;box-shadow:0 6px 18px rgba(15,23,42,.28);opacity:0;pointer-events:none;translate:0 8px;transition:opacity 200ms ease-out,translate 200ms ease-out,box-shadow 150ms ease-out}' +
     '#ui-top.on{opacity:.92;pointer-events:auto;translate:0 0}' +
     '@media (hover:hover) and (pointer:fine){#ui-top.on:hover{translate:0 -3px;opacity:1;box-shadow:0 10px 22px rgba(15,23,42,.32)}}' +
+    /* 6 卡片互動微變色（2026-11-22）：電腦滑鼠移入、手機手指按下時，卡片底色與邊框柔和變色；淺藍／淺綠／粉紅／粉橘輪替；深色底用 13% 色光疊加 */
+    '.ui-cc{-webkit-tap-highlight-color:transparent;transition:box-shadow 150ms ease-out,border-color 150ms ease-out}' +
+    '.ui-cc>td{transition:box-shadow 150ms ease-out}' +
+    '@media (hover:hover) and (pointer:fine){.ui-cc:hover,.ui-cc:hover>td{box-shadow:inset 0 0 0 999px rgba(var(--ucc,96,165,250),.14) !important;border-color:rgba(var(--ucc,96,165,250),.55) !important}' +
+    '.ui-cc.ui-cc-dk:hover{box-shadow:inset 0 0 0 999px rgba(var(--ucc,96,165,250),.13) !important;border-color:rgba(var(--ucc,96,165,250),.5) !important}}' +
+    '@media (hover:none),(pointer:coarse){.ui-cc:active,.ui-cc:active>td{box-shadow:inset 0 0 0 999px rgba(var(--ucc,96,165,250),.18) !important;border-color:rgba(var(--ucc,96,165,250),.6) !important;transition:none}' +
+    '.ui-cc.ui-cc-dk:active{box-shadow:inset 0 0 0 999px rgba(var(--ucc,96,165,250),.15) !important}}' +
     '@media (prefers-reduced-motion: reduce){button.ui-hov:hover,.btn.ui-hov:hover{translate:none}.ui-sticky,#ui-top{transition:none}}';
   function addCss() { if (document.getElementById('ui-motion-css')) return; var s = document.createElement('style'); s.id = 'ui-motion-css'; s.textContent = css; (document.head || document.documentElement).appendChild(s); }
 
@@ -60,6 +67,37 @@
       var cs = getComputedStyle(b);
       if (cs.position === 'fixed' || (cs.translate && cs.translate !== 'none')) continue; /* 浮動鈕與已用 translate 的不動 */
       b.classList.add('ui-hov');
+    }
+  }
+
+  /* ---------- 6 卡片微變色：找出「可以點的卡片／列」加上 ui-cc ---------- */
+  var CARD_SEL = '.gk-row,.gk-h.go,.mb,.card,.recordCard,.mt-request-card,.stat-card,.exp-card,.sum-card,.recv-month-card,.recv-balance-card,.inv-card2,.proc3916-card,.cmp-rec,.gc-card,[data-ui-card],tbody>tr,[onclick]:not(button):not(input):not(select):not(option),a.card';
+  var PAL = ['96,165,250', '74,222,128', '244,114,182', '251,146,60'];
+  var seenC = typeof WeakSet !== 'undefined' ? new WeakSet() : null;
+  function cardDark(el) { /* 半透明（<35%）的底色當作透明，往外層找真正的底色 */
+    for (var e = el; e && e.nodeType === 1; e = e.parentElement) {
+      var cs = getComputedStyle(e), m = String(cs.backgroundColor).match(/[\d.]+/g);
+      if (m && m.length >= 3 && !(m.length > 3 && +m[3] < 0.35)) return (0.299 * m[0] + 0.587 * m[1] + 0.114 * m[2]) / 255 < 0.4;
+      if (cs.backgroundImage && /gradient/.test(cs.backgroundImage)) return darkBehind(e);
+    }
+    return false;
+  }
+  function markCards() {
+    var list = document.querySelectorAll(CARD_SEL);
+    for (var i = 0; i < list.length; i++) {
+      var el = list[i];
+      if (seenC && seenC.has(el)) continue;
+      if (el.offsetHeight === 0) continue; /* 還沒顯示的，之後再看 */
+      if (seenC) seenC.add(el);
+      if (el.tagName === 'BUTTON' || el.id === 'ui-top' || el.closest('.ui-sticky,.gmh-h,nav,.gk-top,.gk-tabs,.gk-strip,thead,.ptoggle,.tabs,[role=tablist]')) continue;
+      var h = el.offsetHeight, w = el.offsetWidth; if (w < 110 || h < 26 || h > 560) continue;
+      var tr = el.tagName === 'TR', cs = getComputedStyle(el);
+      var click = cs.cursor === 'pointer' || el.hasAttribute('onclick') || el.tagName === 'A' || el.hasAttribute('data-ui-card') || /\b(gk-row|gk-h)\b/.test(el.className || '');
+      if (!click && tr) { var td = el.querySelector('td'); click = !!(td && getComputedStyle(td).cursor === 'pointer'); }
+      if (!click) continue;
+      var k = 0; for (var p = el.previousElementSibling; p && k < 400; p = p.previousElementSibling) k++;
+      el.style.setProperty('--ucc', PAL[k % 4]);
+      el.classList.add('ui-cc'); if (cardDark(el)) el.classList.add('ui-cc-dk');
     }
   }
 
@@ -183,18 +221,19 @@
 
   /* ---------- 啟動 ---------- */
   function boot() {
-    addCss(); setupTop(); setupSticky(); setupSpots(); setupTilt(); markButtons();
+    addCss(); setupTop(); setupSticky(); setupSpots(); setupTilt(); markButtons(); markCards();
+    try { document.addEventListener('touchstart', function () {}, { passive: true }); } catch (e) {} /* 讓手機的 :active 按下變色生效 */
     window.addEventListener('scroll', onScroll, { passive: true });
     window.addEventListener('resize', function () { var b = document.getElementById('ui-top'); if (b && b.classList.contains('on')) placeTop(b); }, { passive: true });
     if (fine && !reduce) document.addEventListener('pointermove', onMove, { passive: true });
     frameScroll();
     /* 頁面會動態產生按鈕與卡片：稍後與每次 DOM 大變動後補標記（節流） */
     var mt = null;
-    try { new MutationObserver(function () { if (mt) return; mt = setTimeout(function () { mt = null; markButtons(); setupSticky(); setupSpots(); setupTilt(); }, 400); }).observe(document.body, { childList: true, subtree: true }); } catch (e) {}
+    try { new MutationObserver(function () { if (mt) return; mt = setTimeout(function () { mt = null; markButtons(); setupSticky(); setupSpots(); setupTilt(); markCards(); }, 400); }).observe(document.body, { childList: true, subtree: true }); } catch (e) {}
   }
   addCss();
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 300); }); else setTimeout(boot, 300);
-  window.UIMotion = { refresh: function () { markButtons(); setupSticky(); setupSpots(); setupTilt(); } };
+  window.UIMotion = { refresh: function () { markButtons(); setupSticky(); setupSpots(); setupTilt(); markCards(); } };
 })();
 /* ── 回平台選單（2026-11-22 Paul：每頁最上面一條，不用退出再進來；頁面最上面已經有回選單的連結就不加；放在平台框架裡面時不加）── */
 (function(){var O={href:'./ac_gascheck_portal_v1.html',name:'GASCheck',skip:/^(ac_gascheck_portal_v1\.html|index\.html)$/,alt:null};
