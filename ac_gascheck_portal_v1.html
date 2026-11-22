@@ -38,7 +38,9 @@ body::before{content:'';position:fixed;inset:0;pointer-events:none;opacity:.04;
 .st-v{font-size:15px;font-weight:700;font-family:monospace;color:var(--gold)}
 .st-l{font-size:9px;color:var(--mt);margin-top:1px;text-transform:uppercase;letter-spacing:.04em}
 /* Section */
-.sec{font-size:9px;font-weight:700;color:rgba(255,255,255,.3);text-transform:uppercase;letter-spacing:.12em;padding:2px 4px}
+.sec{font-size:12px;font-weight:800;color:rgba(255,255,255,.88);text-transform:uppercase;letter-spacing:.08em;padding:4px 4px 2px 10px;position:relative;text-shadow:0 1px 2px rgba(0,0,0,.35)}
+/* 2026-11-22 Paul：「管理模組」標題原本 9px、30% 白字幾乎看不到 → 放大、提亮、左邊加一條主題色短線 */
+.sec::before{content:'';position:absolute;left:2px;top:5px;bottom:3px;width:3px;border-radius:2px;background:var(--acc,#f97316)}
 /* Module grid */
 .mod-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
 .mb{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:var(--r);padding:13px 11px;cursor:pointer;transition:.15s;display:flex;align-items:center;gap:10px;text-decoration:none;position:relative;overflow:hidden;box-shadow:0 3px 12px rgba(0,0,0,.28)}
