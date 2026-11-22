@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="./gc-theme.js?v=20261122a"></script>
+<script src="./gc-mobile.js?v=20261122a"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Water Drum Record</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@300;400;600;700&family=Noto+Sans+SC:wght@300;400;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -482,12 +483,47 @@ document.addEventListener('click', function(e) {
 @keyframes wdrFlash{0%{background:#fde68a}100%{background:#eff6ff}}
 </style>
 <script src="./gascheck-core.js?v=20261122m"></script>
-<script src="./gc-period-table.js?v=20261121a"></script>
+<script src="./gc-period-table.js?v=20261122b"></script>
 <script src="./ac-holidays.js?v=20261117m"></script>
 <script src="./ac-tg-chart.js?v=20261106d"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
+<style id="wdr-compact-1122">
+/* 2026-11-22 Paul：上方固定的選項太大、太佔空間 → 手機頁首一列（圖示＋標題＋小圖示按鈕），期間列收成兩列；按鈕功能不變 */
+@media(max-width:600px){
+  .header-inner{padding:6px 10px!important;gap:8px;flex-wrap:nowrap}
+  .app-logo{min-width:0;flex:1 1 0;gap:8px}.app-logo>div:last-child{min-width:0}
+  .app-icon{width:30px;height:30px;font-size:16px;border-radius:8px}
+  .app-title{font-size:14.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .app-subtitle{display:none}
+  .header-actions{flex-wrap:nowrap!important;gap:5px!important;flex:none}
+  .header-actions .btn{height:32px;min-height:32px;padding:0 9px!important;font-size:14px}
+  .header-actions .btn>span[data-key]{display:none}
+  .controls-bar{gap:6px!important;padding:8px!important;align-items:center}
+  .controls-bar .ctrl-label{display:none}
+  .controls-bar .ctrl-group{gap:4px}
+  .controls-bar #period-label{display:none}
+  .controls-bar select{height:32px;padding:0 6px;font-size:13px}
+  .controls-bar .btn{height:32px;min-height:32px;padding:0 9px!important;font-size:13px}
+  .controls-bar .period-btn{padding:5px 9px}
+  .controls-bar #last-saved-label{flex-basis:100%;text-align:right;font-size:11px!important}
+  .controls-bar .btn[onclick*="clearMonth"]>span{display:none}
+  .controls-bar{display:grid!important;grid-template-columns:38px minmax(0,1fr) minmax(0,1fr) 38px auto 38px;grid-template-areas:"tog tog tog tog tog tog" "prev year month next today clr" "saved saved saved saved saved saved";gap:6px!important}
+  .controls-bar>.ctrl-group{display:contents}
+  .controls-bar .period-toggle{grid-area:tog;display:grid!important;grid-template-columns:repeat(4,1fr)}
+  .controls-bar #sel-year{grid-area:year;width:100%}.controls-bar #sel-month{grid-area:month;width:100%}
+  .controls-bar .btn[onclick^="prevMonth"]{grid-area:prev;padding:0!important}.controls-bar .btn[onclick^="nextMonth"]{grid-area:next;padding:0!important}
+  .controls-bar .btn[onclick^="goToday"]{grid-area:today}.controls-bar .btn[onclick*="clearMonth"]{grid-area:clr;padding:0!important}
+  .controls-bar #last-saved-label{grid-area:saved;margin:0!important}
+  .controls-bar #wdr-ref-date,.controls-bar #wdr-month-settings-btn,.controls-bar #wdr-current-settings,.controls-bar #wdr-attendance-btn{grid-column:1/-1;width:100%;margin:0!important}
+  .controls-bar #wdr-month-settings-btn,.controls-bar #wdr-attendance-btn{height:36px!important;font-size:13px!important}
+  .controls-bar #wdr-current-settings{font-size:11.5px!important;padding:5px 8px!important}
+  .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;margin-bottom:12px!important}
+  .summary-card{padding:9px 11px!important;border-radius:10px}
+  .card-label{font-size:10.5px;margin-bottom:2px}.card-value{font-size:18px}.card-sub{font-size:10.5px}
+}
+</style>
 </head>
 <body>
 <!-- Currency Settings Panel -->
@@ -549,6 +585,7 @@ document.addEventListener('click', function(e) {
 <nav class="nav-tabs">
   <button class="tab-btn active" onclick="showTab('entry')" id="tab-entry">📋 <span data-key="tab_entry">Data Entry</span></button>
   <button class="tab-btn" onclick="showTab('analysis')" id="tab-analysis">📊 <span data-key="tab_analysis">Analysis</span></button>
+  <button class="tab-btn" onclick="showTab('photos')" id="tab-photos">📷 <span data-key="tab_photos">Photos</span></button>
   <button class="tab-btn" onclick="showTab('history')" id="tab-history">🗂 <span data-key="tab_history">History</span></button>
   <button class="tab-btn" onclick="showTab('import')" id="tab-import">📥 <span data-key="tab_import">Import Excel</span></button>
   <button class="tab-btn" onclick="showTab('alerts')" id="tab-alerts">⚠️ <span data-key="tab_alerts">Alerts</span> <span id="alert-badge" style="display:none;background:var(--red-500);color:white;border-radius:10px;padding:1px 6px;font-size:10px;"></span></button>
@@ -656,6 +693,7 @@ document.addEventListener('click', function(e) {
   </div>
 
   <!-- ===== HISTORY TAB ===== -->
+  <div class="tab-panel" id="panel-photos"><div class="card" style="padding:12px"><div id="wdr-gallery"></div></div></div>
   <div class="tab-panel" id="panel-history">
     <div class="controls-bar">
       <span data-key="history_desc" style="font-size:13px;color:var(--slate-500)">All saved monthly records. Click a card to view details.</span>
@@ -855,7 +893,7 @@ function _localYMD(d){d=d?new Date(d):new Date();const p=n=>String(n).padStart(2
 const LANGS = {
   en: {
     app_title:'Water Drum Record', app_subtitle:'Factory & Staff House Tracking',
-    tab_entry:'Data Entry', tab_analysis:'Analysis', tab_history:'History',
+    tab_entry:'Data Entry', tab_analysis:'Analysis', tab_history:'History', tab_photos:'Photos',
     tab_import:'Import Excel', tab_alerts:'Alerts', tab_telegram:'Telegram',
     add_record:'Add Record', export:'Export', save:'Save', cancel:'Cancel',
     day:'Day', week:'Week', year:'Year', month:'Month', date:'Date', time:'Time', qty:'Qty', checker:'Inspector', morning:'Morning', afternoon:'Afternoon',
@@ -904,7 +942,7 @@ const LANGS = {
   },
   zh: {
     app_title:'水桶管理', app_subtitle:'工廠及職員宿舍水桶追蹤',
-    tab_entry:'數據輸入', tab_analysis:'分析', tab_history:'歷史記錄',
+    tab_entry:'數據輸入', tab_analysis:'分析', tab_history:'歷史記錄', tab_photos:'照片',
     tab_import:'匯入Excel', tab_alerts:'異常提醒', tab_telegram:'Telegram',
     add_record:'新增記錄', export:'匯出', save:'儲存', cancel:'取消',
     day:'日', week:'週', year:'年', month:'月', date:'日期', time:'時間', qty:'數量', checker:'檢查人', morning:'早上', afternoon:'下午',
@@ -953,7 +991,7 @@ const LANGS = {
   },
   km: {
     app_title:'ការគ្រប់គ្រងធុងទឹក', app_subtitle:'តាមដានធុងទឹកនៅរោងចក្រ',
-    tab_entry:'បញ្ចូលទិន្នន័យ', tab_analysis:'វិភាគ', tab_history:'ប្រវត្តិ',
+    tab_entry:'បញ្ចូលទិន្នន័យ', tab_analysis:'វិភាគ', tab_history:'ប្រវត្តិ', tab_photos:'រូបថត',
     tab_import:'នាំចូល Excel', tab_alerts:'ការជូនដំណឹង', tab_telegram:'Telegram',
     add_record:'បន្ថែមកំណត់ត្រា', export:'នាំចេញ', save:'រក្សាទុក', cancel:'បោះបង់',
     day:'ថ្ងៃ', week:'សប្តាហ៍', year:'ឆ្នាំ', month:'ខែ', date:'កាលបរិច្ឆេទ', time:'ម៉ោង', qty:'បរិមាណ', checker:'អ្នកត្រួតពិនិត្យ', morning:'ពេលព្រឹក', afternoon:'ពេលរសៀល',
@@ -1144,7 +1182,9 @@ function getDaysInMonth(year, month) { return new Date(year, month, 0).getDate()
 function populateSelects() {
   const now = new Date();
   const years = [];
-  for(let y = now.getFullYear()-3; y <= now.getFullYear()+1; y++) years.push(y);
+  /* 2026-11-22：年份清單包含所有有資料的年份（原本只有近 3 年，較舊的月份選不到） */
+  let minY=now.getFullYear()-3;try{getAllKeys().forEach(k=>{const y=+k.split('_')[1];if(y>=2000&&y<minY)minY=y;});}catch(e){}
+  for(let y = minY; y <= now.getFullYear()+1; y++) years.push(y);
   const months = T('month_names');
 
   ['sel-year','modal-year','an-year','alert-year','tg-year'].forEach(id => {
@@ -1748,6 +1788,7 @@ function viewHistoryMonth(y, m) {
   document.getElementById('sel-month').value = parseInt(m);
   showTab('entry');
   loadMonthData();
+  try{window.scrollTo({top:0,behavior:'smooth'});}catch(e){window.scrollTo(0,0);}
 }
 
 /* A3：刪除整月＝每一天都留下刪除標記（清空欄位＋_deleted＋updatedAt），
@@ -2282,6 +2323,7 @@ function showTab(name) {
   document.getElementById('tab-'+name).classList.add('active');
   if(name === 'analysis') renderAnalysis();
   if(name === 'history') renderHistory();
+  if(name === 'photos' && window.renderWaterGallery) renderWaterGallery();
   if(name === 'alerts') renderAlerts();
   if(name === 'telegram' || name === 'settings') loadDefaultPriceUI();
 }
@@ -2617,6 +2659,27 @@ function buildWaterTelegram(opt){
     const photos=rowPhotos(row,waterLocation),thumbs=photos.slice(0,2).map(p=>'<img src="'+esc(GC.photo.src(p))+'" alt="Delivery photo">').join('');
     return '<button type="button" class="wdr-photo-open" onclick="openWaterPhotos('+idx+')" aria-label="'+esc(wtx('檢視或加入照片','View or add photos','មើល ឬបន្ថែមរូបថត'))+'">'+(thumbs||'📷')+'<span>'+photos.length+' · '+wtx('照片','Photos','រូបថត')+'</span></button>';
   }
+  /* 2026-11-22 Paul：照片學消防設備——放另一個分頁「📷 照片」，所有月份依月份列出；點照片放大，按「看這筆」跳到那天的照片 */
+  let waterGal=null;
+  window.renderWaterGallery=function(){
+    if(!window.GC||!GC.Compact||!GC.Compact.gallery||!GC.photo)return;
+    const getGroups=function(){
+      const out=[];
+      getAllKeys().forEach(function(k){
+        const parts=k.split('_'),y=+parts[1],m=+parts[2];let rows=[];try{rows=JSON.parse(localStorage.getItem(k))||[];}catch(e){}
+        rows.filter(r=>r&&r._deleted!==true).forEach(function(r){
+          const date=y+'-'+String(m).padStart(2,'0')+'-'+String(r.day).padStart(2,'0');
+          const open=function(){showTab('entry');document.getElementById('sel-year').value=y;document.getElementById('sel-month').value=m;loadMonthData();setTimeout(function(){const idx=currentRows.findIndex(x=>+x.day===+r.day);if(idx>=0)openWaterPhotos(idx);},60);};
+          const f=GC.photo.list(r.fPhotos).map(GC.photo.value).filter(Boolean),st=GC.photo.list(r.sPhotos).map(GC.photo.value).filter(Boolean),o=GC.photo.list(r.photos).map(GC.photo.value).filter(Boolean).filter(p=>f.indexOf(p)<0&&st.indexOf(p)<0);
+          if(f.length)out.push({date:date,title:'🏭 '+wtx('工廠','Factory','រោងចក្រ')+(r.fQty?' · '+r.fQty+' '+wtx('桶','drums','ធុង'):''),photos:f,open:open});
+          if(st.length)out.push({date:date,title:'🏠 '+wtx('宿舍','Staff House','ផ្ទះបុគ្គលិក')+(r.sQty?' · '+r.sQty+' '+wtx('桶','drums','ធុង'):''),photos:st,open:open});
+          if(o.length)out.push({date:date,title:'📷 '+wtx('送水照片','Delivery photos','រូបថតដឹកទឹក'),photos:o,open:open});
+        });
+      });
+      return out;
+    };
+    if(!waterGal)waterGal=GC.Compact.gallery('#wdr-gallery',getGroups,{note:wtx('點照片放大；按「看這筆」到那天加照片','Tap to zoom; “Open” goes to that day','ចុចរូបដើម្បីពង្រីក')});else waterGal.refresh();
+  };
   window.closeWaterPhotos=function(){
     if(waterPhotoControllers.some(c=>c.isBusy())){showToast(wtx('照片處理中，請稍候','Please wait while photos are processed'),'warning');return;}
     waterPhotoControllers.forEach(c=>c.destroy());waterPhotoControllers=[];
@@ -3107,6 +3170,139 @@ function waterCloudWrite(list){
 </script>
 <!-- VRT swipe-tabs：左右滑動（手指／滑鼠拖曳）切換分頁，只聽手勢、不改資料 -->
 <script src="https://saintdou-weng.github.io/ac-admin/shared/swipe-tabs.js" defer></script>
+<script src="./gc-compact.js?v=20261122a"></script>
+<script>
+/* 2026-11-22 Paul：水桶「數據輸入」要更易填寫／更新／上傳／下載／編輯；手機點表格亂跳（每改一格整張表重畫）。
+   手機改成「一天一行」清單：點一天 → 小視窗一次填好工廠／宿舍桶數、時間、單價、檢查人、備註，按儲存才寫入（只重畫一次）；
+   上面一排：＋今天、💾 儲存、☁↑ 上傳、☁↓ 下載。電腦版表格不變；資料欄位、計算、同步都沿用原本的。 */
+(function(){
+  const box=document.createElement('div');box.id='wdr-daylist';
+  const host=document.querySelector('#panel-entry .table-wrap');if(!host)return;const cb=document.querySelector('#panel-entry .controls-bar');
+  if(cb&&window.matchMedia&&matchMedia('(max-width:720px)').matches)cb.parentNode.insertBefore(box,cb.nextSibling);else host.parentNode.insertBefore(box,host);
+  const css=document.createElement('style');css.textContent=`
+#wdr-daylist{display:none}
+@media(max-width:720px){
+  #wdr-daylist{display:block;margin:0 0 12px}
+  #panel-entry .table-wrap>div[style*="overflow-x"]{display:none}
+  .wdl-bar{display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:6px;margin-bottom:8px}
+  .wdl-bar button{height:40px;border-radius:10px;border:1px solid var(--slate-200,#e2e8f0);background:#fff;font:700 13px/1 inherit;font-family:inherit;color:var(--slate-700,#334155);cursor:pointer}
+  .wdl-bar button.pri{background:var(--blue-600,#2563eb);border-color:var(--blue-600,#2563eb);color:#fff}
+  .wdl-list{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(15,23,42,.08)}
+  .wdl-row{display:grid;grid-template-columns:44px minmax(0,1fr) minmax(0,1fr) auto;align-items:center;gap:6px;padding:8px 10px;border-bottom:1px solid #eef2f6;cursor:pointer;min-height:48px}
+  .wdl-row:last-child{border-bottom:0}.wdl-row:active{background:#f1f5f9}
+  .wdl-row.today{background:#eff6ff}.wdl-row.empty .q{color:#cbd5e1}.wdl-row.future{opacity:.45}
+  .wdl-d{text-align:center;line-height:1.1}.wdl-d b{display:block;font-size:17px;color:#0f172a}.wdl-d small{font-size:10.5px;color:#64748b}
+  .wdl-c{min-width:0;font-size:12px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.wdl-c .q{font-size:16px;font-weight:800;color:#0f172a;margin:0 3px}
+  .wdl-ph{height:34px;min-width:44px;border-radius:9px;border:1px solid #e2e8f0;background:#f8fafc;font:700 12px/1 inherit;font-family:inherit;cursor:pointer;padding:0 8px}
+  .wdl-ph.has{background:#ecfdf5;border-color:#a7f3d0;color:#047857}
+  .wdl-sum{display:flex;gap:10px;flex-wrap:wrap;padding:8px 10px;font-size:12px;color:#475569;background:#f8fafc;border-top:1px solid #eef2f6}.wdl-sum b{color:#0f172a}
+}
+.wdl-mask{position:fixed;inset:0;z-index:2147483000;background:rgba(15,23,42,.5);display:flex;align-items:flex-end;justify-content:center}
+.wdl-sheet{background:#fff;width:100%;max-width:520px;border-radius:16px 16px 0 0;padding:14px 14px calc(14px + env(safe-area-inset-bottom));max-height:92vh;overflow:auto;animation:wdlUp .16s ease-out}
+@keyframes wdlUp{from{transform:translateY(20px);opacity:.6}to{transform:none;opacity:1}}
+.wdl-sheet h4{margin:0 0 10px;display:flex;align-items:center;gap:8px;font-size:16px}.wdl-sheet h4 .nav{margin-left:auto;display:flex;gap:6px}
+.wdl-sheet h4 button{width:40px;height:36px;border-radius:9px;border:1px solid #e2e8f0;background:#fff;font-size:15px;cursor:pointer}
+.wdl-grp{border:1px solid #e2e8f0;border-radius:12px;padding:10px;margin-bottom:10px}.wdl-grp b{display:block;font-size:13px;margin-bottom:8px}
+.wdl-f{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}.wdl-f label{font-size:11px;color:#64748b;font-weight:700;display:flex;flex-direction:column;gap:4px}
+.wdl-f input,.wdl-f select,.wdl-one input{height:42px;border:1px solid #cbd5e1;border-radius:9px;padding:0 9px;font-size:16px;font-family:inherit;width:100%;box-sizing:border-box;background:#fff}
+.wdl-one{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}.wdl-one label{font-size:11px;color:#64748b;font-weight:700;display:flex;flex-direction:column;gap:4px}
+.wdl-acts{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:8px}.wdl-acts button{height:46px;border-radius:11px;border:1px solid #cbd5e1;background:#fff;font:800 14px/1 inherit;font-family:inherit;cursor:pointer}
+.wdl-acts .pri{background:#2563eb;border-color:#2563eb;color:#fff}`;document.head.appendChild(css);
+  const L=(zh,en,km)=>{try{return typeof wtx==='function'?wtx(zh,en,km):((typeof currentLang!=='undefined'&&currentLang==='en')?en:(typeof currentLang!=='undefined'&&currentLang==='km')?(km||en):zh);}catch(e){return zh;}};
+  const lang=()=>{try{return currentLang;}catch(e){return 'zh';}};
+  const T2=(zh,en,km)=>lang()==='en'?en:lang()==='km'?(km||en):zh;
+  const esc=v=>String(v==null?'':v).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const wd=d=>{const i=new Date(currentYear,currentMonth-1,d).getDay();return T2(['日','一','二','三','四','五','六'][i],['Sun','Mon','Tue','Wed','Thu','Fri','Sat'][i],['អា','ច','អ','ព','ព្រ','សុ','ស'][i]);};
+  const photosOf=r=>{try{return [...new Set((window.GC&&GC.photo?GC.photo.list(r.photos).concat(GC.photo.list(r.fPhotos),GC.photo.list(r.sPhotos)):[]))].length;}catch(e){return 0;}};
+  function paint(){
+    if(!Array.isArray(currentRows))return;
+    const now=new Date(),isCur=now.getFullYear()===currentYear&&now.getMonth()+1===currentMonth,today=isCur?now.getDate():-1;
+    let fq=0,sq=0,ft=0,st=0;
+    /* 最新的日子在最上面；本月還沒到的空白日子不列 */
+    const rows=currentRows.map((r,i)=>{
+      fq+=+r.fQty||0;sq+=+r.sQty||0;ft+=+r.fTtl||0;st+=+r.sTtl||0;
+      const has=(r.fQty!==''&&r.fQty!=null)||(r.sQty!==''&&r.sQty!=null),pc=photosOf(r),fut=isCur&&r.day>today;
+      return '<div class="wdl-row'+(r.day===today?' today':'')+(has?'':' empty')+(fut&&!has?' future':'')+'" data-i="'+i+'">'+
+        '<div class="wdl-d"><b>'+r.day+'</b><small>'+wd(r.day)+'</small></div>'+
+        '<div class="wdl-c">🏭<span class="q">'+(r.fQty!==''&&r.fQty!=null?esc(r.fQty):'—')+'</span>'+esc(r.fTime||'')+'</div>'+
+        '<div class="wdl-c">🏠<span class="q">'+(r.sQty!==''&&r.sQty!=null?esc(r.sQty):'—')+'</span>'+esc(r.sTime||'')+'</div>'+
+        '<button type="button" class="wdl-ph'+(pc?' has':'')+'" data-ph="'+i+'">📷'+(pc||'')+'</button></div>';
+    }).filter((h,i)=>{const r=currentRows[i],has=(r.fQty!==''&&r.fQty!=null)||(r.sQty!==''&&r.sQty!=null);return !(isCur&&r.day>today&&!has);}).reverse().join('');
+    box.innerHTML='<div class="wdl-bar"><button type="button" class="pri" data-a="today">＋ '+T2('今天','Today','ថ្ងៃនេះ')+'</button><button type="button" data-a="save">💾 '+T2('儲存','Save','រក្សា')+'</button><button type="button" data-a="up">☁↑ '+T2('上傳','Upload','ផ្ទុកឡើង')+'</button><button type="button" data-a="down">☁↓ '+T2('下載','Download','ទាញយក')+'</button></div>'+
+      '<div class="wdl-list">'+rows+'<div class="wdl-sum">🏭 <b>'+fq+'</b> '+T2('桶','drums','ធុង')+' · '+ft.toLocaleString()+' ៛ <span>🏠 <b>'+sq+'</b> '+T2('桶','drums','ធុង')+' · '+st.toLocaleString()+' ៛</span></div></div>';
+  }
+  function slotOpts(v){let c={};try{c=(window.WDR_V29&&WDR_V29.monthCfg)?(WDR_V29.monthCfg(currentYear,currentMonth)||{}):{};}catch(e){}const m=c.morningTime||'08:00',a=c.afternoonTime||'15:30';const o=[['',' — '],[m,'🌅 '+m],[a,'🌇 '+a]];if(v&&v!==m&&v!==a)o.push([v,v]);return o.map(x=>'<option value="'+esc(x[0])+'"'+(x[0]===(v||'')?' selected':'')+'>'+esc(x[1])+'</option>').join('');}
+  function openDay(i){
+    const r=currentRows[i];if(!r)return;closeSheet();
+    const m=document.createElement('div');m.className='wdl-mask';m.setAttribute('data-noswipe','');
+    const date=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(r.day).padStart(2,'0');
+    m.innerHTML='<div class="wdl-sheet"><h4>💧 '+date+' ('+wd(r.day)+')<span class="nav"><button type="button" data-n="-1">◀</button><button type="button" data-n="1">▶</button><button type="button" data-x>✕</button></span></h4>'+
+      '<div class="wdl-grp"><b>🏭 '+T2('工廠','Factory','រោងចក្រ')+'</b><div class="wdl-f"><label>'+T2('時間','Time','ម៉ោង')+'<select data-k="fTime">'+slotOpts(r.fTime)+'</select></label><label>'+T2('桶數','Drums','ធុង')+'<input data-k="fQty" type="number" inputmode="numeric" min="0" step="1" value="'+esc(r.fQty)+'"></label><label>'+T2('單價 ៛','Price ៛','តម្លៃ ៛')+'<input data-k="fPrice" type="number" inputmode="decimal" min="0" value="'+esc(r.fPrice)+'"></label></div></div>'+
+      '<div class="wdl-grp"><b>🏠 '+T2('宿舍','Staff House','ផ្ទះបុគ្គលិក')+'</b><div class="wdl-f"><label>'+T2('時間','Time','ម៉ោង')+'<select data-k="sTime">'+slotOpts(r.sTime)+'</select></label><label>'+T2('桶數','Drums','ធុង')+'<input data-k="sQty" type="number" inputmode="numeric" min="0" step="1" value="'+esc(r.sQty)+'"></label><label>'+T2('單價 ៛','Price ៛','តម្លៃ ៛')+'<input data-k="sPrice" type="number" inputmode="decimal" min="0" value="'+esc(r.sPrice)+'"></label></div></div>'+
+      '<div class="wdl-one"><label>'+T2('檢查人','Checked by','អ្នកពិនិត្យ')+'<input data-k="checkBy" value="'+esc(r.checkBy)+'"></label><label>'+T2('備註','Note','កំណត់ចំណាំ')+'<input data-k="note" value="'+esc(r.note)+'"></label></div>'+
+      '<div class="wdl-acts"><button type="button" data-p>📷 '+T2('照片','Photos','រូបថត')+' '+(photosOf(r)||'')+'</button><button type="button" data-x>'+T2('取消','Cancel','បោះបង់')+'</button><button type="button" class="pri" data-s>💾 '+T2('儲存','Save','រក្សា')+'</button></div></div>';
+    document.body.appendChild(m);m._i=i;
+    const q=m.querySelector('[data-k="'+((r.fQty===''||r.fQty==null)?'fQty':'sQty')+'"]');if(q&&!('ontouchstart' in window))q.focus();
+    m.addEventListener('click',function(e){
+      if(e.target===m||e.target.closest('[data-x]'))return closeSheet();
+      const n=e.target.closest('[data-n]');if(n){const k=m._i+(+n.dataset.n);if(k>=0&&k<currentRows.length){if(save(m,true)!==false)openDay(k);}return;}
+      if(e.target.closest('[data-p]')){if(save(m,true)===false)return;closeSheet();if(typeof openWaterPhotos==='function')openWaterPhotos(i);return;}
+      if(e.target.closest('[data-s]')){if(save(m)!==false)closeSheet();}
+    });
+  }
+  function save(m,quiet){
+    const r=currentRows[m._i];if(!r)return;const v={};m.querySelectorAll('[data-k]').forEach(el=>v[el.dataset.k]=String(el.value||'').trim());
+    for(const k of ['fQty','sQty'])if(v[k]!==''&&(!Number.isInteger(Number(v[k]))||Number(v[k])<0)){showToast(T2('桶數須為非負整數','Drums must be a whole number ≥ 0','ចំនួនធុងត្រូវជាចំនួនគត់'),'error');return false;}
+    for(const k of ['fPrice','sPrice'])if(v[k]!==''&&(!isFinite(Number(v[k]))||Number(v[k])<0)){showToast(T2('單價不得為負數','Price cannot be negative','តម្លៃមិនអាចអវិជ្ជមាន'),'error');return false;}
+    let changed=false;Object.keys(v).forEach(k=>{if(String(r[k]==null?'':r[k])!==v[k]){r[k]=v[k];changed=true;}});
+    if(!changed)return true;
+    if(v.fQty!==''&&(r.fPrice===''||r.fPrice==null))r.fPrice=getDefaultFacPrice();if(v.sQty!==''&&(r.sPrice===''||r.sPrice==null))r.sPrice=getDefaultStaPrice();
+    if(v.fQty!==''&&!r.fTime){try{r.fTime=waterNowSlotTime(currentYear,currentMonth);}catch(e){}}if(v.sQty!==''&&!r.sTime){try{r.sTime=waterNowSlotTime(currentYear,currentMonth);}catch(e){}}
+    r.fTtl=calcTtl(r.fQty,r.fPrice);r.sTtl=calcTtl(r.sQty,r.sPrice);r.updatedAt=_localTS();if(r._deleted===true){r._deleted=false;delete r.deletedAt;}
+    const y=window.scrollY;renderTable();renderSummaryCards();saveData(true);window.scrollTo(0,y);
+    if(!quiet)showToast(T2('已儲存','Saved','បានរក្សាទុក'),'success');return true;
+  }
+  function closeSheet(){document.querySelectorAll('.wdl-mask').forEach(x=>x.remove());}
+  box.addEventListener('click',function(e){
+    const a=e.target.closest('[data-a]');
+    if(a){const k=a.dataset.a;
+      if(k==='today'){const now=new Date();if(now.getFullYear()!==currentYear||now.getMonth()+1!==currentMonth){if(typeof goToday==='function')goToday();}setTimeout(()=>{const i=currentRows.findIndex(r=>+r.day===new Date().getDate());if(i>=0)openDay(i);},60);}
+      else if(k==='save'){saveData();}
+      else if(k==='up'){if(window.GC&&GC.sync)GC.sync.upload('waterdrum');}
+      else if(k==='down'){if(window.GC&&GC.sync)GC.sync.download('waterdrum');}
+      return;}
+    const ph=e.target.closest('[data-ph]');if(ph){if(typeof openWaterPhotos==='function')openWaterPhotos(+ph.dataset.ph);return;}
+    const row=e.target.closest('.wdl-row');if(row)openKey(+row.dataset.i,[...box.querySelectorAll('.wdl-row')].map(x=>+x.dataset.i));
+  });
+  /* 2026-11-22 Paul：點列表／卡片要跳出 keynote（數據＋照片），像消防設備 → 點一天先看詳細卡（全部數據、照片可放大），卡上再按 ✏️ 編輯 或 📷 加照片 */
+  const hasData=r=>(r.fQty!==''&&r.fQty!=null)||(r.sQty!==''&&r.sQty!=null);
+  const photoList=r=>{try{return [...new Set(GC.photo.list(r.fPhotos).concat(GC.photo.list(r.sPhotos),GC.photo.list(r.photos)))];}catch(e){return [];}};
+  const money=n=>(+n||0).toLocaleString()+' ៛';
+  function openKey(i,order){
+    if(!window.GC||!GC.Compact||!GC.Compact.sheet){openDay(i);return;}
+    order=(order&&order.length?order:currentRows.map((r,k)=>k)).filter(k=>currentRows[k]);
+    const items=order.map(k=>({k:k,r:currentRows[k]})),idx=Math.max(0,items.findIndex(x=>x.k===i));
+    GC.Compact.sheet({items:items,index:idx,render:function(x){const r=x.r,date=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(r.day).padStart(2,'0');
+      return {title:'💧 '+date+' ('+wd(r.day)+')',sub:'🏭 '+(r.fQty||0)+' '+T2('桶','drums','ធុង')+' · 🏠 '+(r.sQty||0)+' '+T2('桶','drums','ធុង'),chips:'<b>'+money((+r.fTtl||0)+(+r.sTtl||0))+'</b>',date:date,photos:photoList(r),
+        kv:[[T2('🏭 工廠桶數','🏭 Factory drums','🏭 ធុងរោងចក្រ'),esc(r.fQty||'—')],[T2('🏭 送水時間','🏭 Delivery time','🏭 ម៉ោង'),esc(r.fTime||'—')],[T2('🏭 單價','🏭 Price','🏭 តម្លៃ'),esc(r.fPrice||'—')],[T2('🏭 小計','🏭 Subtotal','🏭 សរុប'),money(r.fTtl)],
+          [T2('🏠 宿舍桶數','🏠 Staff house drums','🏠 ធុងផ្ទះបុគ្គលិក'),esc(r.sQty||'—')],[T2('🏠 送水時間','🏠 Delivery time','🏠 ម៉ោង'),esc(r.sTime||'—')],[T2('🏠 單價','🏠 Price','🏠 តម្លៃ'),esc(r.sPrice||'—')],[T2('🏠 小計','🏠 Subtotal','🏠 សរុប'),money(r.sTtl)],
+          [T2('檢查人','Checked by','អ្នកពិនិត្យ'),esc(r.checkBy||'—')],[T2('備註','Note','កំណត់ចំណាំ'),esc(r.note||'—'),1]]};},
+      actions:function(x){return [{label:'✏️ '+T2('編輯','Edit','កែ'),fn:function(){openDay(x.k);}},{label:'📷 '+T2('加照片','Add photos','បន្ថែមរូប'),cls:'gh',fn:function(){if(typeof openWaterPhotos==='function')openWaterPhotos(x.k);}}];}});
+  }
+  /* 電腦表格：點日期那格也開詳細卡；摘要卡（工廠／宿舍／總計）點了列出有資料的日子 */
+  document.addEventListener('click',function(e){
+    const dc=e.target.closest&&e.target.closest('#table-body td.date-cell');
+    if(dc){const tr=dc.closest('tr'),day=tr&&+String(tr.id||'').replace('row-','');const i=currentRows.findIndex(r=>+r.day===day);if(i>=0)openKey(i,currentRows.map((r,k)=>k).filter(k=>hasData(currentRows[k])||k===i));return;}
+    const sc=e.target.closest&&e.target.closest('#summary-cards .summary-card');
+    if(sc){const t=sc.textContent||'',f=/🏭|FACTORY|工廠/i.test(t),st=/🏠|STAFF|宿舍/i.test(t);const ks=currentRows.map((r,k)=>k).filter(k=>{const r=currentRows[k];return f?(r.fQty!==''&&r.fQty!=null):st?(r.sQty!==''&&r.sQty!=null):hasData(r);}).reverse();
+      if(!ks.length){showToast(T2('這個月還沒有資料','No data this month yet','មិនទាន់មានទិន្នន័យ'),'info');return;}openKey(ks[0],ks);}
+  });
+  const cs2=document.createElement('style');cs2.textContent='#summary-cards .summary-card,#table-body td.date-cell{cursor:pointer}#summary-cards .summary-card:active{transform:scale(.98)}';document.head.appendChild(cs2);
+  document.addEventListener('keydown',e=>{if(e.key==='Escape')closeSheet();});
+  const tb=document.getElementById('table-body');if(tb)new MutationObserver(paint).observe(tb,{childList:true});
+  window.wdrOpenDay=openDay;paint();
+})();
+</script>
 <script src="ui-motion.js?v=20261122a" defer></script>
 </body>
 </html>

@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="./gc-theme.js?v=20261122a"></script>
+<script src="./gc-mobile.js?v=20261122a"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VRT Recycle / Waste</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -191,7 +192,7 @@ select.bi{cursor:pointer}
 .add-row-btn{min-height:38px}
 .tab{display:flex;align-items:center;gap:4px}
 @media(max-width:720px){
-  .tabs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));padding:0;overflow:visible}
+  .tabs{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));padding:0;overflow:visible}
   .tab{flex-direction:column;justify-content:center;padding:7px 2px;min-height:50px;font-size:11px;white-space:normal;text-align:center;line-height:1.15}
   .topbar-title{font-size:13px}
 }
@@ -238,10 +239,13 @@ select.bi{cursor:pointer}
   <div class="tab" data-tab="modB" onclick="switchTab('modB')">🗑️ <span data-i="tab-b">Waste 廢料</span></div>
   <div class="tab" data-tab="modA" onclick="switchTab('modA')">♻️ <span data-i="tab-a">Recycle 回收</span></div>
   <div class="tab" data-tab="report" onclick="switchTab('report')">📊 <span data-i="tab-report">報表分析</span></div>
+  <div class="tab" data-tab="photos" onclick="switchTab('photos')">📷 <span data-i="tab-photos">照片</span></div>
   <div class="tab" data-tab="history" onclick="switchTab('history')">📋 <span data-i="tab-hist">歷史記錄</span></div>
 </div>
 
 <div class="main">
+
+<div id="tab-photos" class="tab-content"><div class="card" style="padding:12px"><div id="ehs-gallery"></div></div></div>
 
 <!-- ========== MODULE A: RECYCLE ========== -->
 <div id="tab-modA" class="tab-content">
@@ -479,7 +483,7 @@ let lang = (() => {
 })();
 const EHS_TEXT = [
   ['title','VRT 回收／廢料管理','VRT Recycle / Waste','VRT កែច្នៃ / សំណល់'],
-  ['tab-a','Recycle 回收','Recycle','កែច្នៃ'],['tab-b','Waste 廢料','Waste','សំណល់'],['tab-report','報表分析','Report','របាយការណ៍'],['tab-hist','歷史記錄','History','ប្រវត្តិ'],
+  ['tab-a','Recycle 回收','Recycle','កែច្នៃ'],['tab-photos','照片','Photos','រូបថត'],['tab-b','Waste 廢料','Waste','សំណល់'],['tab-report','報表分析','Report','របាយការណ៍'],['tab-hist','歷史記錄','History','ប្រវត្តិ'],
   ['p-day','日','Day','ថ្ងៃ'],['p-week','週','Week','សប្ដាហ៍'],['p-month','月','Month','ខែ'],['p-year','年','Year','ឆ្នាំ'],
   ['prev','上一期','Previous','មុន'],['next','下一期','Next','បន្ទាប់'],
   ['a-records','Recycle 記錄','Recycle records','កំណត់ត្រាកែច្នៃ'],['b-records','Waste 記錄','Waste records','កំណត់ត្រាសំណល់'],
@@ -562,6 +566,7 @@ function switchTab(id){
   if(id==='modB')renderBAnalysis();
   if(id==='report')renderReport();
   if(id==='history')queryHistory();
+  if(id==='photos'&&window.ehsRenderGallery)ehsRenderGallery();
 }
 
 /* ========== LOCAL STORAGE ========== */
@@ -2454,6 +2459,63 @@ window.openRowPhotos=openRowPhotos;
 window.closeRowPhotos=closeRowPhotos;
 </script>
 <!-- VRT swipe-tabs：左右滑動（手指／滑鼠拖曳）切換分頁，只聽手勢、不改資料 -->
+<script src="./gc-compact.js?v=20261122a"></script>
+<script>
+/* 2026-11-22 Paul：keynote 點了要有反應、照片學消防設備放另一個分頁依月份顯示。
+   ① 回收／廢料的每一筆（卡片列、表格列、歷史列）點一下 → 開詳細卡（全部欄位＋照片，點照片放大，◀ ▶ 換筆，✏️ 編輯）
+   ② 新分頁「📷 照片」：回收＋廢料所有照片依月份列出。只讀資料，不改任何記錄。 */
+(function(){
+  if(!window.GC||!GC.Compact)return;
+  function ph(r){return photoArray(r&&r.photos).map(function(p){return GC.photo?GC.photo.value(p):p;}).filter(Boolean);}
+  function find(id,mod){const d=loadLocal(),arr=(mod==='internal'?d.internal:d.gate).concat(historyData||[]);return arr.filter(function(r){return String(r.id)===String(id);})[0]||null;}
+  function dur(r){return r.duration_min!=null&&r.duration_min!==''?Math.floor(r.duration_min/60)+'h'+(r.duration_min%60)+'m':'';}
+  function view(x){
+    const r=x.r,e=ehsEsc;
+    if(x.mod==='internal')return {title:'♻️ '+ehsText('回收','Recycle','កែច្នៃ')+' · '+e(kgDisplay(ehsRecycleRowTotal(r))),sub:e(ehsYmd(r.date))+(r.checked_by?' · ✅ '+e(r.checked_by):''),date:ehsYmd(r.date),photos:ph(r),
+      kv:[[ehsText('日期','Date','កាលបរិច្ឆេទ'),e(ehsYmd(r.date))],[ehsT('th-plastic'),e(kgDisplay(r.plastic_kg))],[ehsT('th-fabric'),e(kgDisplay(r.fabric_kg))],[ehsT('th-core'),e(kgDisplay(r.core_kg))],[ehsT('th-total'),'<b>'+e(kgDisplay(ehsRecycleRowTotal(r)))+'</b>'],[ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ'),e(r.checked_by||'')],[ehsText('備註','Remark','កំណត់ចំណាំ'),e(r.remark||''),1]]};
+    return {title:'🗑️ '+e(r.supplier||'—')+' · '+e(kgDisplay(r.weight_kg)),sub:e(ehsYmd(r.date))+' · 🕒 '+e(r.time_in||'—')+' → '+e(r.time_out||'—')+(dur(r)?' ('+dur(r)+')':''),chips:(typeof ehsWasteTypeBadges==='function'?ehsWasteTypeBadges(r):'')+(r.anomaly?' <span class="badge badge-anom">⚠️</span>':''),date:ehsYmd(r.date),photos:ph(r),
+      kv:[[ehsText('日期','Date','កាលបរិច្ឆេទ'),e(ehsYmd(r.date))],[ehsText('姓名','Name','ឈ្មោះ'),e(r.name||'')],[ehsText('供應商','Supplier','អ្នកផ្គត់ផ្គង់'),e(r.supplier||'')],[ehsText('車牌','Plate','ស្លាកលេខ'),e(r.car_number||'')],
+        [ehsText('種類','Type','ប្រភេទ'),e(ehsWasteTypeText(r))],[ehsText('重量','Weight','ទម្ងន់'),'<b>'+e(kgDisplay(r.weight_kg))+'</b>'],[ehsText('進場','In','ចូល'),e(r.time_in||'')],[ehsText('離場','Out','ចេញ'),e(r.time_out||'')],
+        [ehsText('停留','Stay','រយៈពេល'),e(dur(r))],[ehsText('檢查人','Inspector','អ្នកត្រួតពិនិត្យ'),e(r.checked_by||'')],[ehsText('異常','Anomaly','មិនប្រក្រតី'),r.anomaly?'⚠️ '+e(typeof r.anomaly==='string'?r.anomaly:ehsText('有','Yes','មាន')):'—'],[ehsText('備註','Remark','កំណត់ចំណាំ'),e(r.remark||''),1]]};
+  }
+  function rowRef(el){const b=el&&el.querySelector('[onclick^="editRecord("]'),m=b&&String(b.getAttribute('onclick')).match(/editRecord\('([^']*)','([^']*)'\)/);return m?{id:m[1],mod:m[2]}:null;}
+  document.addEventListener('click',function(ev){
+    const t=ev.target;if(!t.closest||t.closest('button,a,input,select,label,textarea,.ph-cell,img,[onclick]:not(tr):not(.wc-row)'))return;
+    const row=t.closest('#tab-modA tr,#tab-modB tr,#tab-history tr,.wc-row');if(!row||row.closest('thead'))return;
+    const ref=rowRef(row);if(!ref)return;
+    const box=row.parentElement,sibs=[...box.children].map(function(x){return {el:x,ref:rowRef(x)};}).filter(function(x){return x.ref;});
+    const items=sibs.map(function(x){const r=find(x.ref.id,x.ref.mod);return r?{r:r,mod:x.ref.mod}:null;}).filter(Boolean);
+    const idx=items.findIndex(function(x){return String(x.r.id)===ref.id;});if(idx<0)return;
+    GC.Compact.sheet({items:items,index:idx,render:view,actions:function(x){return [{label:'✏️ '+ehsText('編輯','Edit','កែ'),fn:function(){editRecord(x.r.id,x.mod);}}];}});
+  });
+  let gal=null;
+  window.ehsRenderGallery=function(){
+    const get=function(){const d=loadLocal(),out=[];
+      d.gate.forEach(function(r){const p=ph(r);if(p.length)out.push({date:ehsYmd(r.date),title:'🗑️ '+(r.supplier||'—')+' · '+kgDisplay(r.weight_kg)+(r.name?' · '+r.name:''),photos:p,open:function(){GC.Compact.sheet({items:[{r:r,mod:'gate'}],index:0,render:view,actions:function(x){return [{label:'✏️ '+ehsText('編輯','Edit','កែ'),fn:function(){editRecord(x.r.id,'gate');}}];}});}});});
+      d.internal.forEach(function(r){const p=ph(r);if(p.length)out.push({date:ehsYmd(r.date),title:'♻️ '+ehsText('回收','Recycle','កែច្នៃ')+' · '+kgDisplay(ehsRecycleRowTotal(r))+(r.checked_by?' · '+r.checked_by:''),photos:p,open:function(){GC.Compact.sheet({items:[{r:r,mod:'internal'}],index:0,render:view,actions:function(x){return [{label:'✏️ '+ehsText('編輯','Edit','កែ'),fn:function(){editRecord(x.r.id,'internal');}}];}});}});});
+      return out;};
+    if(!gal)gal=GC.Compact.gallery('#ehs-gallery',get,{note:ehsText('回收＋廢料，點照片放大','Recycle + Waste · tap to zoom','កែច្នៃ + សំណល់')});else gal.refresh();
+  };
+  /* 頁面上的重點數字卡（總重量、筆數、照片）點了也要有反應：開這段期間的記錄詳細卡；照片卡 → 照片分頁 */
+  document.addEventListener('click',function(ev){
+    const sup=ev.target.closest&&ev.target.closest('.sup-card');
+    if(sup&&!ev.target.closest('button,a,input,select')){const name=(sup.querySelector('.sup-name')||{}).textContent||'';let rs=loadLocal().gate.filter(function(r){return ehsYmd(r.date)&&(r.supplier||'')===name.trim();});try{rs=ehsFilterPeriod(rs,ehsPeriodBounds('b'));}catch(e){}rs.sort(function(a,b){return String(ehsYmd(b.date)).localeCompare(String(ehsYmd(a.date)));});
+      if(!rs.length){showToast(ehsText('這段期間沒有記錄','No records in this period','គ្មានកំណត់ត្រា'));return;}
+      GC.Compact.sheet({items:rs.map(function(r){return {r:r,mod:'gate'};}),index:0,render:view,actions:function(x){return [{label:'✏️ '+ehsText('編輯','Edit','កែ'),fn:function(){editRecord(x.r.id,'gate');}}];}});return;}
+    const card=ev.target.closest&&ev.target.closest('#r-stats .stat-card,#a-stats .stat-card,#b-stats .stat-card');if(!card)return;
+    const box=card.parentElement,i=[...box.children].indexOf(card),pre=box.id[0],d=loadLocal();
+    const isPhoto=/照片|Photos|រូបថត/.test(card.querySelector('.stat-lbl')?card.querySelector('.stat-lbl').textContent:'');
+    if(isPhoto){switchTab('photos');window.scrollTo({top:0,behavior:'smooth'});return;}
+    const mod=pre==='a'?'internal':pre==='b'?'gate':(i<=1?'internal':'gate');
+    let recs=(mod==='internal'?d.internal:d.gate).filter(function(r){return ehsYmd(r.date);});
+    try{recs=ehsFilterPeriod(recs,ehsPeriodBounds(pre));}catch(e){}
+    recs=recs.slice().sort(function(a,b){return String(ehsYmd(b.date)).localeCompare(String(ehsYmd(a.date)));});
+    if(!recs.length){showToast(ehsText('這段期間沒有記錄','No records in this period','គ្មានកំណត់ត្រា'));return;}
+    GC.Compact.sheet({items:recs.map(function(r){return {r:r,mod:mod};}),index:0,render:view,actions:function(x){return [{label:'✏️ '+ehsText('編輯','Edit','កែ'),fn:function(){editRecord(x.r.id,x.mod);}}];}});
+  });
+  const st=document.createElement('style');st.textContent='#tab-modA tbody tr,#tab-modB tbody tr,#tab-history tbody tr,.wc-row,#r-stats .stat-card,#a-stats .stat-card,#b-stats .stat-card,.sup-card{cursor:pointer}#r-stats .stat-card:active,#a-stats .stat-card:active,#b-stats .stat-card:active{transform:scale(.98)}';document.head.appendChild(st);
+})();
+</script>
 <script src="https://saintdou-weng.github.io/ac-admin/shared/swipe-tabs.js" defer></script>
 <script src="ui-motion.js?v=20261122a" defer></script>
 </body>

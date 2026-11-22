@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <script src="./gc-theme.js?v=20261122a"></script>
+<script src="./gc-mobile.js?v=20261122a"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>VRT 溫濕度管理 | Temp & Humidity Monitor</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Khmer:wght@300;400;600;700&family=Noto+Sans+TC:wght@300;400;600;700&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
@@ -238,12 +239,36 @@ tbody tr:hover{background:var(--bg);}
 </style>
   <!-- AC_GASCHECK Shared System -->
 <script src="./gascheck-core.js?v=20261122m"></script>
-<script src="./gc-period-table.js?v=20261121a"></script>
+<script src="./gc-period-table.js?v=20261122b"></script>
 <script src="./ac-holidays.js?v=20261117m"></script>
 <script src="./ac-tg-chart.js?v=20261106d"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
+<style id="tmp-compact-1122">
+/* 2026-11-22 Paul：上方固定的頁首太大 → 手機一列：圖示＋標題＋🎨，時鐘與副標收起 */
+@media(max-width:600px){
+  .hd-in{flex-wrap:nowrap!important;padding:6px 10px!important;gap:8px!important}
+  .hd .fl{min-width:0;flex:1 1 0;flex-wrap:nowrap;display:flex;align-items:center;gap:8px}
+  .hd .fl>div:nth-child(2){min-width:0}
+  .hd-ico{width:30px;height:30px;font-size:16px;border-radius:8px}
+  .hd-t{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hd-s,.hd .clk{display:none!important}
+  .hd-r{flex:none}
+  .twrap table td:first-child,.twrap table th:first-child{white-space:nowrap}
+  .twrap table td,.twrap table th{padding:7px 6px;font-size:12px}
+  /* 篩選列：原本選單被擠成只剩箭頭、看不到年份月份 → 排成整齊四欄，不再固定在上面 */
+  .temp-overview-bar{display:grid!important;grid-template-columns:40px minmax(0,1fr) minmax(0,1fr) 40px;grid-template-areas:"zone zone slot slot" "tog tog tog tog" "prev year ref next" "xl xl add add" "lbl lbl lbl lbl";gap:6px!important;position:static!important;align-items:center}
+  .temp-overview-bar>*{min-width:0!important;max-width:none!important;width:auto!important;margin:0!important}
+  .temp-overview-bar #ov-zone{grid-area:zone}.temp-overview-bar #ov-slot{grid-area:slot}
+  .temp-overview-bar .ptog{grid-area:tog;display:grid!important;grid-template-columns:repeat(4,1fr)}
+  .temp-overview-bar .period-step[onclick*="(-1)"]{grid-area:prev}.temp-overview-bar #ov-year{grid-area:year}.temp-overview-bar #ov-ref{grid-area:ref}
+  .temp-overview-bar .period-step[onclick*="(1)"]{grid-area:next}
+  .temp-overview-bar #i-overview-export{grid-area:xl}.temp-overview-bar #i-addrec{grid-area:add}
+  .temp-overview-bar .period-label{grid-area:lbl;font-size:11.5px}
+  .temp-overview-bar .period-pick,.temp-overview-bar .period-step,.temp-overview-bar .btn,.temp-overview-bar .pbtn{height:36px!important;min-height:36px!important;font-size:13px}
+}
+</style>
 </head>
 <body>
 <!-- HEADER -->
@@ -1226,7 +1251,7 @@ function syncTempOverviewControls(){
   const slotSel=document.getElementById('ov-slot');if(slotSel&&slotSel.options.length>=3){slotSel.options[0].text=T('allp');slotSel.options[1].text=T('am');slotSel.options[2].text=T('pm');}
 }
 function refreshTempOverview(){syncTempOverviewControls();renderDash();renderAnal();renderHist();}
-function setTempOverviewPeriod(p){_tempOverviewPeriod=['day','week','month','year'].includes(p)?p:'month';HP=1;refreshTempOverview();}
+function setTempOverviewPeriod(p){_tempOverviewPeriod=['day','week','month','year'].includes(p)?p:'month';HP=1;refreshTempOverview();try{if(window.GCPeriodTable&&GCPeriodTable.setGranularity)GCPeriodTable.setGranularity('temperature',_tempOverviewPeriod);}catch(e){}}
 function shiftTempOverview(n){const d=tempMidnight(_tempOverviewRef);if(_tempOverviewPeriod==='day')d.setDate(d.getDate()+n);else if(_tempOverviewPeriod==='week')d.setDate(d.getDate()+n*7);else if(_tempOverviewPeriod==='month')d.setMonth(d.getMonth()+n);else d.setFullYear(d.getFullYear()+n);_tempOverviewRef=d;HP=1;refreshTempOverview();}
 function setTempOverviewYear(v){const y=Number(v);if(!isFinite(y))return;const d=tempMidnight(_tempOverviewRef),day=d.getDate();d.setDate(1);d.setFullYear(y);d.setDate(Math.min(day,new Date(y,d.getMonth()+1,0).getDate()));_tempOverviewRef=d;HP=1;refreshTempOverview();}
 function setTempOverviewRef(v){_tempOverviewRef=tempMidnight(v);HP=1;refreshTempOverview();}
@@ -3186,6 +3211,17 @@ function markTemperatureTelegramSent(ctx){
 })();
 </script>
 <!-- VRT swipe-tabs：左右滑動（手指／滑鼠拖曳）切換分頁，只聽手勢、不改資料 -->
+<script src="./gc-compact.js?v=20261122a"></script>
+<script>
+/* 2026-11-22 Paul：keynote 點了要有反應——歷史記錄每一列點一下開詳細卡（全部欄位、照片可放大、◀ ▶ 換筆），手機一筆一行；按鈕還是原本那顆 */
+(function(){try{
+  if(!window.GC||!GC.Compact)return;const tb=document.getElementById('h-tbody');if(!tb)return;const t=tb.closest('table'),c=t.closest('.card')||t.parentElement;
+  const rid=tr=>{const b=tr&&tr.querySelector('[onclick^="openREmod("]'),m=b&&String(b.getAttribute('onclick')).match(/'([^']*)'/);return m?m[1]:'';};
+  const rec=tr=>{const id=rid(tr);return id?(getR().find(r=>r.id===id)||null):null;};
+  GC.Compact.attach({card:c,table:t,cols:{title:[1,2],sub:[0,5,6],right:[3,4],actions:9},labelRight:true,rightRow:true,
+    photos:tr=>{const r=rec(tr);return r?tempPhotoList(r.photos).map(p=>GC.photo?GC.photo.value(p):p).filter(Boolean):[];},photoDate:tr=>{const r=rec(tr);return r?r.d:'';}});
+}catch(e){if(window.console)console.warn('temp compact',e);}})();
+</script>
 <script src="https://saintdou-weng.github.io/ac-admin/shared/swipe-tabs.js" defer></script>
 <script src="ui-motion.js?v=20261122a" defer></script>
 </body></html>

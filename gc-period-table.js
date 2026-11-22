@@ -115,7 +115,8 @@
       });
     }
     var f = P.cfg && P.cfg.dateField || 'date', sf = P.cfg && (P.cfg.scopeField || P.cfg.groupField), rs0 = [];
-    try { rs0 = (P.records() || []).filter(function (r) { return r && !r._deleted && ymd(r[f]); }); } catch (e) { rs0 = []; }
+    /* 2026-11-22 修正：P.records() 預設只回傳「本月」→ 期間報表只看得到 11 月；改讀全部記錄 P.read() */
+    try { rs0 = ((P.read ? P.read() : P.records()) || []).filter(function (r) { return r && !r._deleted && ymd(r[f]); }); } catch (e) { rs0 = []; }
     var today = ymdLocal(new Date()), g = st.g, cur = key(today, g), groups = {};
     var scope = function (d) { if (g === 'day') return d.slice(0, 7) === today.slice(0, 7); if (g === 'week') return d.slice(0, 4) === today.slice(0, 4); return true; };
     rs0.forEach(function (r) { var d = ymd(r[f]); if (!scope(d) || d > today) return; var k = key(d, g); (groups[k] = groups[k] || []).push(r); });
@@ -143,17 +144,23 @@
         html += '<tr class="dt"><td colspan="' + cols.length + '">' + (x.rs.length ? '📍 ' + ks.map(function (k) { return '<span class="chip">' + esc(k) + ' · ' + by[k] + '</span>'; }).join('') : t('這一期沒有記錄', 'No records in this period', 'គ្មានកំណត់ត្រា')) + '</td></tr>';
       }
     });
+    /* 2026-11-22 Paul：點一列畫面亂跳 → 重畫時保留表格與整頁的捲動位置 */
+    var osc = box.querySelector('.sc'), st0 = osc ? osc.scrollTop : 0, wy = window.scrollY, top0 = box.getBoundingClientRect().top;
     box.innerHTML = html + '</tbody></table></div>';
+    var nsc = box.querySelector('.sc'); if (nsc) nsc.scrollTop = st0;
+    var dy = box.getBoundingClientRect().top - top0; if (Math.abs(dy) > 1) window.scrollTo(0, wy + dy);
     st.sig = rs0.length + '|' + g + '|' + st.sel + '|' + L();
   }
   function tick() {
     Object.keys(ADAPT).forEach(function (tool) {
       if (!(window.GC && GC.pages && GC.pages[tool])) return;
-      var st = state[tool], n = 0; try { n = (GC.pages[tool].records() || []).length; } catch (e) {}
+      var st = state[tool], n = 0; try { var PP = GC.pages[tool]; n = ((PP.read ? PP.read() : PP.records()) || []).length; } catch (e) {}
       if (!st || !document.getElementById('gcpt-' + tool) || st.sig !== n + '|' + st.g + '|' + st.sel + '|' + L()) { css(); render(tool); }
     });
   }
   function boot() { tick(); setInterval(function () { if (!document.hidden) tick(); }, 4000); }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 1500); }); else setTimeout(boot, 1500);
-  window.GCPeriodTable = { render: render, tick: tick, adapters: ADAPT };
+  /* 外部可指定顯示粒度（例如溫濕度上方選「月」→ 報表也列每月） */
+  function setGranularity(tool, g) { if (['day', 'week', 'month', 'year'].indexOf(g) < 0) return; var st = state[tool] || (state[tool] = { g: g, sel: '' }); if (st.g === g) return; st.g = g; st.sel = ''; if (document.getElementById('gcpt-' + tool)) render(tool); }
+  window.GCPeriodTable = { render: render, tick: tick, adapters: ADAPT, setGranularity: setGranularity };
 })();
