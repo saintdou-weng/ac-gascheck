@@ -3773,6 +3773,8 @@ GC.attach = function (cfg) {
     C.importSchema ? '<button type="button" class="gc-head-btn gc-head-import" data-gc-open-import title="' + U.escapeHtml(I18.t('gc.importTitle')) + '"><span class="gc-btn-ico">📥</span><span class="gc-btn-label" data-i="gc.smartImport">' + U.escapeHtml(I18.t('gc.smartImport')) + '</span></button>' : '',
     '<button type="button" class="gc-head-btn gc-head-report" data-gc-report title="' + U.escapeHtml(I18.t('gc.reportTitle')) + '"><span class="gc-btn-ico">📝</span><span class="gc-btn-label" data-i="gc.report">' + U.escapeHtml(I18.t('gc.report')) + '</span></button>',
     '<button type="button" class="gc-head-btn gc-head-export" data-gc-export title="' + U.escapeHtml(I18.t('gc.export')) + '"><span class="gc-btn-ico">💾</span><span class="gc-btn-label" data-i="gc.export">' + U.escapeHtml(I18.t('gc.export')) + '</span></button>',
+    /* 2026-11-22 手機精簡：⇧ ✈️ 📥 📝 💾 收進「⋯」，按一下展開（按的是原本那幾顆，功能不變） */
+    '<button type="button" class="gc-head-more" aria-expanded="false" title="More">⋯</button>',
     '<span class="gc-head-langs" aria-label="' + U.escapeHtml(I18.t('gc.menuLanguage')) + '">',
       '<button type="button" data-gc-ui-lang="zh">中</button>',
       '<button type="button" data-gc-ui-lang="en">EN</button>',
@@ -3780,6 +3782,10 @@ GC.attach = function (cfg) {
     '</span>'
   ].join('');
   shell.appendChild(tools);
+  (function(){ const mb = tools.querySelector('.gc-head-more'); if (!mb) return;
+    mb.addEventListener('click', function (ev) { ev.stopPropagation(); const o = tools.classList.toggle('gc-more-open'); mb.setAttribute('aria-expanded', o ? 'true' : 'false'); });
+    tools.addEventListener('click', function (ev) { if (ev.target.closest('.gc-head-btn')) { tools.classList.remove('gc-more-open'); mb.setAttribute('aria-expanded', 'false'); } });
+  })();
   if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(shell, anchor.nextSibling);
   else document.body.insertBefore(shell, document.body.firstChild);
 
@@ -4970,6 +4976,21 @@ const BAR_CSS = `
 .gc-sec-t{font-size:11px;font-weight:700;color:#5A6478;text-transform:uppercase;letter-spacing:.7px;margin-bottom:9px}
 .gc-note{font-size:10px;color:#8892A8;margin-top:7px}
 @media(max-width:1050px){.gc-panel-body{grid-template-columns:1fr 1fr}.gc-import-sec{grid-column:auto}}
+.gc-head-more{display:none}
+@media(max-width:720px){
+  /* 2026-11-22 Paul：上方選項太佔空間 → 手機只留一行：雲端燈號｜☁↑ ☁↓｜語言｜⋯；其他操作按「⋯」才出現 */
+  .gc-head-tools{flex-wrap:wrap!important;gap:5px!important;padding:5px 8px!important}
+  .gc-toolbar-title,.gc-btn-label,.gc-state-detail{display:none!important}
+  .gc-cloud-state{order:1!important;flex:0 1 auto!important;padding:0 8px!important;font-size:12px!important;height:36px;min-height:36px!important}
+  .gc-head-cloud{order:2!important;flex:0 0 auto!important;display:flex}
+  .gc-head-cloud .gc-cloud-btns{display:flex;width:auto!important;gap:4px}
+  .gc-head-tools .gc-cloud-btn{flex:0 0 auto!important;height:36px!important;min-height:36px!important;min-width:38px!important;padding:0 6px!important}
+  .gc-head-langs{order:3!important;margin-left:auto!important;min-height:0!important;height:36px!important}
+  .gc-head-langs button{min-width:32px!important;height:36px!important;min-height:36px!important;padding:0 5px!important;font-size:11px!important}
+  .gc-head-more{order:4;display:inline-flex;align-items:center;justify-content:center;height:36px;min-width:38px;border:1px solid #B9D9EA;border-radius:9px;background:#EDF8FC;color:#126B91;font:800 16px/1 inherit;cursor:pointer}
+  .gc-head-tools .gc-head-btn{display:none!important}
+  .gc-head-tools.gc-more-open .gc-head-btn{display:inline-flex!important;order:5!important;flex:1 1 44px!important;height:38px!important}
+}
 @media(max-width:560px){
   /* 手機：第一列＝雲端狀態＋語言；第二列＝操作按鈕（平均分配寬度），不再左右捲動。 */
   .gc-head-tools{gap:6px;padding:7px 8px;flex-wrap:wrap;overflow-x:visible}
