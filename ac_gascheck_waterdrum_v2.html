@@ -482,8 +482,8 @@ document.addEventListener('click', function(e) {
 #main-table tr.wdr-flash td{animation:wdrFlash 1.6s ease-out}
 @keyframes wdrFlash{0%{background:#fde68a}100%{background:#eff6ff}}
 </style>
-<script src="./gascheck-core.js?v=20261122m"></script>
-<script src="./gc-period-table.js?v=20261122b"></script>
+<script src="./gascheck-core.js?v=20261123a"></script>
+<script src="./gc-period-table.js?v=20261123a"></script>
 <script src="./ac-holidays.js?v=20261117m"></script>
 <script src="./ac-tg-chart.js?v=20261106d"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
@@ -524,6 +524,55 @@ document.addEventListener('click', function(e) {
   .card-label{font-size:10.5px;margin-bottom:2px}.card-value{font-size:18px}.card-sub{font-size:10.5px}
 }
 </style>
+<style id="wdr-compact-1123">
+/* 2026-11-23 Paul：Water Drum 上方介面還沒調整過來，要精簡易讀；底下的也是（電腦／平板寬度；手機照 11/22 的版本）。
+   只改外觀與排列，按鈕功能都不變：
+   ① 頁首、分頁列、期間列都變矮；期間列收成一列（年／月的字拿掉，清除本月只留 🗑）
+   ② 「⚙️ 本月單價／時間」跟頁首的「💱 單價、時段與匯率設定」是同一個功能 → 這一顆收起，改成點「本月設定」那個小標籤就打開
+   ③ 四張統計卡變矮；月報狀態那一條變細；期間報表最多露出 5 列（其餘在框內捲） */
+@media(min-width:601px){
+  .header-inner{padding:6px 20px!important}
+  .app-icon{width:34px!important;height:34px!important;font-size:18px!important;border-radius:9px!important}
+  .app-title{font-size:15px!important}.app-subtitle{font-size:10.5px!important;line-height:1.2}
+  .header-actions .btn{height:34px;min-height:34px!important;padding:0 12px!important}
+  .nav-tabs .tab-btn{padding:9px 16px!important}
+  .main{padding:12px 20px!important}
+  #panel-entry .controls-bar{padding:8px 12px!important;gap:6px 8px!important;margin-bottom:12px!important;align-items:center}
+  #panel-entry .controls-bar .ctrl-label{display:none}
+  #panel-entry .controls-bar .btn,#panel-entry .controls-bar .period-btn{min-height:34px!important;height:34px}
+  #panel-entry .controls-bar .btn{padding:0 10px!important;min-width:34px!important}
+  #panel-entry .controls-bar select{height:34px;padding-top:0;padding-bottom:0}
+  #panel-entry .controls-bar .btn[onclick*="clearMonth"]>span{display:none}
+  #panel-entry #period-label{min-width:84px!important}
+  #panel-entry #wdr-month-settings-btn{display:none!important}
+  #panel-entry #last-saved-label{order:30;font-size:11px!important}
+  #summary-cards{gap:12px!important;margin-bottom:12px!important}
+  #summary-cards .summary-card{padding:9px 14px!important}
+  #summary-cards .card-value{font-size:20px!important;line-height:1.2}
+  #gcpt-waterdrum{margin:0 0 10px!important}
+  #gcpt-waterdrum .sc{max-height:212px}
+}
+@media(max-width:600px){
+  /* 手機：⚙️ 那一顆同樣收起（點「本月設定」小標籤就打開），小標籤跟出勤排同一列，少兩列高度 */
+  #panel-entry .controls-bar #wdr-month-settings-btn{display:none!important}
+  #panel-entry .controls-bar #wdr-current-settings{grid-column:1/5!important;width:auto!important}
+  #panel-entry .controls-bar #wdr-attendance-btn{grid-column:5/-1!important;width:auto!important;height:auto!important;min-height:32px;padding:0 6px!important;font-size:12px!important}
+}
+#panel-entry #wdr-current-settings{cursor:pointer;order:20}
+#panel-entry #wdr-current-settings:before{content:"⚙️ "}
+#panel-entry #wdr-current-settings:hover{background:#dcecfb}
+#panel-entry #wdr-attendance-btn{order:21}
+#wdr-approval-status{margin:0 0 10px!important;padding:5px 12px!important;font-size:12px!important;border-radius:8px!important;color:#40556b}
+</style>
+<script>
+/* 2026-11-23：點「本月設定」小標籤＝打開單價／時間設定；上面的 日／週／月／年 也一起切換下面的期間報表 */
+document.addEventListener('click',function(e){try{
+  var t=e.target;if(!t||!t.closest)return;
+  if(t.closest('#wdr-current-settings')){if(typeof toggleCurrencyPanel==='function')toggleCurrencyPanel();return;}
+  var pb=t.closest('#panel-entry .period-btn[id^="pb-"]');
+  if(pb&&window.GCPeriodTable&&GCPeriodTable.setGranularity)GCPeriodTable.setGranularity('waterdrum',pb.id.slice(3));
+}catch(_){}});
+</script>
 </head>
 <body>
 <!-- Currency Settings Panel -->
@@ -3303,6 +3352,6 @@ function waterCloudWrite(list){
   window.wdrOpenDay=openDay;paint();
 })();
 </script>
-<script src="ui-motion.js?v=20261122c" defer></script>
+<script src="ui-motion.js?v=20261123a" defer></script>
 </body>
 </html>

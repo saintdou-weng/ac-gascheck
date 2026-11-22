@@ -244,7 +244,7 @@
    if(u.pathname===target||(O.alt&&O.alt.test(u.pathname))){var r=a.getBoundingClientRect();if(r.width>0&&r.height>0&&r.top<180)return}}
   var b=document.createElement('a');b.id='fx-home';b.href=O.href;b.setAttribute('data-fx','off');b.title='回 '+O.name+' 選單 Back to menu';
   b.innerHTML='<span style="font-size:15px">‹</span> 🏠 <b>'+O.name+'</b> 選單 Menu';
-  b.style.cssText='font:600 13px/1 system-ui,"Noto Sans TC",sans-serif;color:#fff;background:#0f172a;text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;width:100%;box-sizing:border-box;position:relative;z-index:5';
+  b.style.cssText='font:600 13px/1 system-ui,"Noto Sans TC",sans-serif;color:var(--vc-ink,#1d2b3a);background:var(--vc-hd,#e8ecf1);border-bottom:1px solid rgba(15,23,42,.12);text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 14px;width:100%;box-sizing:border-box;position:relative;z-index:5';
   var bs=getComputedStyle(document.body);if((bs.display==='flex'&&!/column/.test(bs.flexDirection))||bs.display==='grid'){b.style.cssText+=';position:fixed;top:6px;left:50%;transform:translateX(-50%);width:auto;border-radius:999px;z-index:80;box-shadow:0 2px 10px rgba(15,23,42,.3);opacity:.94';document.body.appendChild(b)}
   else document.body.insertBefore(b,document.body.firstChild)}catch(e){}}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(run,700)});else setTimeout(run,700)})();

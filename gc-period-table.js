@@ -85,7 +85,21 @@
       '.gcpt .tg{display:inline-flex;border:1px solid #cbd5e1;border-radius:10px;overflow:hidden;margin-left:auto}' +
       '.gcpt .tg button{border:none;background:#fff;padding:6px 12px;font-weight:700;cursor:pointer;color:#475569;font-size:12px}' +
       '.gcpt .tg button.on{background:var(--gc-hdr,#1f4d3a);color:#fff}' +
-      '.gcpt .ct{font-size:12px;color:#64748b;width:100%}' +
+      '.gcpt .ct{font-size:12px;color:#64748b;order:2;flex:1 1 160px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.gcpt .tt{order:1}.gcpt .tg{order:3}' +
+      '.gcpt .h{padding:7px 12px}.gcpt .tg button{padding:5px 11px}' +
+      '.gcpt tr.r:active td{background:#eef4fa}' +
+      /* 卡片（物品頁 .gip-ov 的版面）裡的小積木 */
+      '.gcpt-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}' +
+      '.gcpt-kpi{background:#fff;border:1px solid #dfe6ee;border-left:4px solid var(--gip-acc,#2d7a5a);border-radius:12px;padding:10px 12px;min-width:0}' +
+      '.gcpt-kpi .l{font-size:11.5px;color:#64768a;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
+      '.gcpt-kpi .v{font-size:22px;font-weight:800;color:#1d2b3a;line-height:1.2;margin-top:2px;word-break:break-word}.gcpt-kpi .v.bad{color:#dc2626}' +
+      '.gcpt-kpi .t{height:6px;border-radius:4px;background:#e6ecf2;margin:7px 0 5px;overflow:hidden}.gcpt-kpi .t i{display:block;height:100%;border-radius:4px;background:var(--gip-acc,#2d7a5a)}' +
+      '.gcpt-kpi .n{font-size:11px;color:#64768a;line-height:1.45}.gcpt-kpi .up{color:#b45309;font-weight:700}.gcpt-kpi .dn{color:#15803d;font-weight:700}' +
+      '.gcpt-bars{display:flex;flex-direction:column;gap:6px}' +
+      '.gcpt-br{display:grid;grid-template-columns:minmax(84px,34%) 1fr auto;gap:8px;align-items:center;font-size:13px}' +
+      '.gcpt-br .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:#1d2b3a}.gcpt-br .tk{height:10px;background:#e6ecf2;border-radius:6px;overflow:hidden}.gcpt-br .tk i{display:block;height:100%;border-radius:6px;background:var(--gip-acc,#2d7a5a);opacity:.75}.gcpt-br .vl{font-weight:800;color:#1d2b3a;min-width:28px;text-align:right}' +
+      '.gcpt-mt{width:100%;border-collapse:collapse;font-size:12.5px}.gcpt-mt th{font-size:11px;color:#64768a;font-weight:700;padding:5px 6px;text-align:right;white-space:nowrap;border-bottom:1px solid #e1e8ef}.gcpt-mt td{padding:6px;text-align:right;border-bottom:1px solid #eef2f6;white-space:nowrap}.gcpt-mt th:first-child,.gcpt-mt td:first-child{text-align:left;font-weight:700;color:#1d2b3a}.gcpt-mt .bad{color:#dc2626;font-weight:800}' +
+      '.gcpt-sc{overflow-x:auto;-webkit-overflow-scrolling:touch}' +
       '.gcpt .sc{max-height:420px;overflow:auto}' +
       '.gcpt table{width:100%;border-collapse:collapse}' +
       '.gcpt th{position:sticky;top:0;z-index:1;background:var(--gc-alt,#e8f3ee);color:var(--gc-hdr,#1f4d3a);font-weight:800;padding:9px 8px;white-space:nowrap;text-align:center}' +
@@ -111,7 +125,8 @@
       if (A.where === 'prepend') anc.insertBefore(box, anc.firstChild); else anc.parentNode.insertBefore(box, anc.nextSibling);
       box.addEventListener('click', function (e) {
         var b = e.target.closest('[data-g]'); if (b) { st.g = b.getAttribute('data-g'); st.sel = ''; render(tool); return; }
-        var r = e.target.closest('tr.r'); if (r) { var k = r.getAttribute('data-k'); st.sel = st.sel === k ? '' : k; render(tool); }
+        /* 2026-11-23 Paul：點一列不要在列表格子裡展開，要跳出卡片 */
+        var r = e.target.closest('tr.r'); if (r) { var k = r.getAttribute('data-k'); st.sel = k; render(tool); openCard(tool, k); }
       });
     }
     var f = P.cfg && P.cfg.dateField || 'date', sf = P.cfg && (P.cfg.scopeField || P.cfg.groupField), rs0 = [];
@@ -123,12 +138,13 @@
     if (!groups[cur]) groups[cur] = [];
     var keys = Object.keys(groups).sort().reverse(), rows = keys.map(function (k) { return { k: k, rs: groups[k], c: A.row(groups[k], f) }; });
     var max = 1; rows.forEach(function (x) { x.c.forEach(function (v) { if (v && typeof v === 'object' && v.bar && v.v > max) max = v.v; }); });
+    st.rows = rows; st.f = f; st.sf = sf; st.cur = cur;
     var unit = g === 'year' ? t('個年度', 'years', 'ឆ្នាំ') : g === 'month' ? t('個月份', 'months', 'ខែ') : g === 'week' ? t('週', 'weeks', 'សប្ដាហ៍') : t('天', 'days', 'ថ្ងៃ');
     var scopeTxt = g === 'day' ? t('本月每天', 'each day this month', 'ប្រចាំថ្ងៃខែនេះ') : g === 'week' ? t('今年每週', 'each week this year', 'ប្រចាំសប្ដាហ៍ឆ្នាំនេះ') : g === 'month' ? t('全部月份', 'all months', 'គ្រប់ខែ') : t('全部年度', 'all years', 'គ្រប់ឆ្នាំ');
     var cols = [t('期間', 'Period', 'រយៈពេល')].concat(A.cols());
     var html = '<div class="h"><span class="tt">' + esc(typeof A.title === 'function' ? A.title() : A.title) + '</span><span class="tg">' + [['day', t('日', 'Day', 'ថ្ងៃ')], ['week', t('週', 'Week', 'សប្ដាហ៍')], ['month', t('月報', 'Month', 'ខែ')], ['year', t('年報', 'Year', 'ឆ្នាំ')]].map(function (b) { return '<button type="button" data-g="' + b[0] + '" class="' + (g === b[0] ? 'on' : '') + '">' + b[1] + '</button>'; }).join('') + '</span>' +
-      '<span class="ct">' + scopeTxt + ' · ' + rows.filter(function (x) { return x.rs.length; }).length + ' ' + unit + ' · ' + t('點一列看分項', 'tap a row for breakdown', 'ចុចជួរដើម្បីមើលលម្អិត') + '</span></div>' +
-      '<div class="sc"><table><thead><tr>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>';
+      '<span class="ct">' + scopeTxt + ' · ' + rows.filter(function (x) { return x.rs.length; }).length + ' ' + unit + ' · ' + t('點一列跳出卡片', 'tap a row to open its card', 'ចុចជួរដើម្បីបើកកាត') + '</span></div>' +
+      '<div class="sc"><table data-keynote="off"><thead><tr>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>';
     rows.forEach(function (x) {
       var isCur = x.k === cur, isSel = x.k === st.sel;
       html += '<tr class="r' + (isCur ? ' cur' : '') + (isSel ? ' sel' : '') + (x.rs.length ? '' : ' em') + '" data-k="' + x.k + '"><td>' + (isCur ? '◀ ' : '') + esc(label(x.k, g)) + '</td>' + x.c.map(function (v) {
@@ -138,11 +154,6 @@
         }
         return '<td>' + esc(v) + '</td>';
       }).join('') + '</tr>';
-      if (isSel) {
-        var by = {}; x.rs.forEach(function (r) { var s = pretty(sf ? r[sf] : ''); by[s] = (by[s] || 0) + 1; });
-        var ks = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; });
-        html += '<tr class="dt"><td colspan="' + cols.length + '">' + (x.rs.length ? '📍 ' + ks.map(function (k) { return '<span class="chip">' + esc(k) + ' · ' + by[k] + '</span>'; }).join('') : t('這一期沒有記錄', 'No records in this period', 'គ្មានកំណត់ត្រា')) + '</td></tr>';
-      }
     });
     /* 2026-11-22 Paul：點一列畫面亂跳 → 重畫時保留表格與整頁的捲動位置 */
     var osc = box.querySelector('.sc'), st0 = osc ? osc.scrollTop : 0, wy = window.scrollY, top0 = box.getBoundingClientRect().top;
@@ -150,7 +161,81 @@
     var nsc = box.querySelector('.sc'); if (nsc) nsc.scrollTop = st0;
     var dy = box.getBoundingClientRect().top - top0; if (Math.abs(dy) > 1) window.scrollTo(0, wy + dy);
     st.sig = rs0.length + '|' + g + '|' + st.sel + '|' + L();
+    try { if (pages[tool] && pages[tool].isOpen()) pages[tool].refresh(); } catch (e) {}
   }
+  /* ── 2026-11-23 Paul：點一列 → 跳出卡片（版面＝SEC 貨櫃頁的物品頁 .gip-ov：上面固定 n/N ◀ ▶ ✕，
+        表頭＝圖示＋期間＋重點 chips，下面分頁；往下捲自動接上一期，左右滑／← → 換期）。只讀資料，不改任何功能。 ── */
+  var pages = {}, ipLoading = null, SELF = (document.currentScript && document.currentScript.src) || '';
+  function needIP(cb) {
+    if (window.GC && GC.ItemPage) return cb();
+    if (!ipLoading) ipLoading = new Promise(function (res) {
+      var s = document.createElement('script'); s.src = SELF ? SELF.replace(/gc-period-table\.js.*$/, 'gc-item-page.js?v=20261123a') : './gc-item-page.js?v=20261123a';
+      s.onload = function () { res(true); }; s.onerror = function () { res(false); }; document.head.appendChild(s);
+    });
+    ipLoading.then(function (ok) { if (ok && window.GC && GC.ItemPage) cb(); });
+  }
+  function cellText(v) { if (v && typeof v === 'object') return v.v ? v.v.toLocaleString() : '—'; return String(v == null ? '—' : v); }
+  function cellNum(v) { if (v && typeof v === 'object') return num(v.v); var s = String(v == null ? '' : v).replace(/[^0-9.\-]/g, ''); return s === '' || s === '-' ? null : num(s); }
+  function fmtN(n) { var a = Math.abs(n); return (Math.round(n * 10) / 10).toLocaleString('en-US', { maximumFractionDigits: a >= 100 ? 0 : 1 }); }
+  function subOf(g) { return g === 'year' ? 'month' : (g === 'day' ? '' : 'day'); }
+  function unitName(g) { return g === 'year' ? t('年度', 'Year', 'ឆ្នាំ') : g === 'month' ? t('月份', 'Month', 'ខែ') : g === 'week' ? t('週', 'Week', 'សប្ដាហ៍') : t('日', 'Day', 'ថ្ងៃ'); }
+  function page(tool) {
+    if (pages[tool]) return pages[tool];
+    var A = ADAPT[tool], st = state[tool];
+    var rowsNow = function () { return (st.rows || []); };
+    var icon = (function () { var m = String(typeof A.title === 'function' ? A.title() : A.title).match(/^\s*(\S+)/); return m ? m[1] : '📋'; })();
+    pages[tool] = GC.ItemPage.create({
+      key: 'gcpt_' + tool, accent: 'var(--gc-acc,#2d7a5a)', z: 2000,
+      list: rowsNow, id: function (x) { return x.k; },
+      get: function (id) { var l = rowsNow(); for (var i = 0; i < l.length; i++) if (l[i].k === String(id)) return l[i]; return null; },
+      head: function (x) {
+        var chips = [];
+        if (x.k === st.cur) chips.push('<span class="gip-chip b">◀ ' + esc(t('本期', 'Current', 'បច្ចុប្បន្ន')) + '</span>');
+        chips.push('<span class="gip-chip' + (x.rs.length ? ' g' : ' k') + '">' + x.rs.length + ' ' + esc(t('筆記錄', 'records', 'កំណត់ត្រា')) + '</span>');
+        var d = days(x.rs, st.f); if (d && st.g !== 'day') chips.push('<span class="gip-chip">' + d + ' ' + esc(t('天有記錄', 'days with records', 'ថ្ងៃ')) + '</span>');
+        return { icon: icon, code: unitName(st.g), title: label(x.k, st.g), chips: chips };
+      },
+      tabs: [
+        { id: 'key', icon: '📊', label: function () { return t('重點', 'Key', 'សំខាន់'); }, render: function (x) {
+          var cols = A.cols(), l = rowsNow(), i = l.indexOf(x), prev = l[i + 1];   /* 列表是新→舊，下一列＝上一期 */
+          var html = '<div class="gcpt-kpis">' + x.c.map(function (v, ci) {
+            var n = cellNum(v), all = l.filter(function (y) { return y.rs.length; }).map(function (y) { return cellNum(y.c[ci]); }).filter(function (q) { return q != null; });
+            var mx = Math.max.apply(null, all.map(Math.abs).concat([1])), bad = v && typeof v === 'object' && v.bad && v.v;
+            var note = '';
+            if (n != null && x.rs.length) {
+              if (prev && prev.rs.length) { var pn = cellNum(prev.c[ci]); if (pn != null) { var d = n - pn; note += esc(t('上一期', 'Previous', 'មុន')) + ' ' + esc(cellText(prev.c[ci])) + ' · ' + (Math.abs(d) < 0.05 ? '＝ ' + esc(t('一樣', 'same', 'ដូចគ្នា')) : '<span class="' + (d > 0 ? 'up' : 'dn') + '">' + (d > 0 ? '▲ ' + esc(t('多', 'up', 'កើន')) : '▼ ' + esc(t('少', 'down', 'ថយ'))) + ' ' + fmtN(Math.abs(d)) + '</span>'); } }
+              if (all.length >= 3) note += (note ? '<br>' : '') + esc(t('各期平均', 'Average', 'មធ្យម')) + ' ' + fmtN(avg(all));
+            }
+            return '<div class="gcpt-kpi"><div class="l">' + esc(cols[ci] || '') + '</div><div class="v' + (bad ? ' bad' : '') + '">' + esc(cellText(v)) + '</div>' +
+              (n != null && all.length >= 2 ? '<div class="t"><i style="width:' + Math.max(3, Math.round(Math.abs(n) / mx * 100)) + '%"></i></div>' : '') + (note ? '<div class="n">' + note + '</div>' : '') + '</div>';
+          }).join('') + '</div>';
+          if (!x.rs.length) html += '<div class="gip-empty">' + esc(t('這一期沒有記錄', 'No records in this period', 'គ្មានកំណត់ត្រា')) + '</div>';
+          return html;
+        } },
+        { id: 'area', icon: '📍', label: function () { return t('分項', 'Breakdown', 'លម្អិត'); },
+          when: function () { return !!st.sf; }, count: function (x) { var o = {}; x.rs.forEach(function (r) { o[pretty(r[st.sf])] = 1; }); var n = Object.keys(o).filter(function (k) { return k !== '—'; }).length; return n || null; },
+          render: function (x) {
+            var by = {}; x.rs.forEach(function (r) { var s = pretty(st.sf ? r[st.sf] : ''); by[s] = (by[s] || 0) + 1; });
+            var ks = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }); if (!ks.length) return '';
+            var mx = by[ks[0]] || 1;
+            return '<div class="gcpt-bars">' + ks.map(function (k) { return '<div class="gcpt-br"><span class="nm">' + esc(k === '—' ? t('未分類', 'Unspecified', 'មិនបានបញ្ជាក់') : k) + '</span><span class="tk"><i style="width:' + Math.max(3, Math.round(by[k] / mx * 100)) + '%"></i></span><span class="vl">' + by[k] + '</span></div>'; }).join('') + '</div>';
+          } },
+        { id: 'time', icon: '📅', label: function () { return st.g === 'year' ? t('各月', 'By month', 'តាមខែ') : t('每天', 'By day', 'តាមថ្ងៃ'); },
+          when: function () { return !!subOf(st.g); },
+          render: function (x) {
+            var sg = subOf(st.g), gp = {}; x.rs.forEach(function (r) { var d = ymd(r[st.f]); if (!d) return; var k = key(d, sg); (gp[k] = gp[k] || []).push(r); });
+            var ks = Object.keys(gp).sort().reverse(); if (!ks.length) return '';
+            var cols = A.cols();
+            return '<div class="gcpt-sc"><table class="gcpt-mt" data-keynote="off"><thead><tr><th>' + esc(sg === 'month' ? t('月份', 'Month', 'ខែ') : t('日期', 'Date', 'ថ្ងៃ')) + '</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+              ks.map(function (k) { var c = A.row(gp[k], st.f); return '<tr><td>' + esc(label(k, sg)) + '</td>' + c.map(function (v) { var bad = v && typeof v === 'object' && v.bad && v.v; return '<td' + (bad ? ' class="bad"' : '') + '>' + esc(cellText(v)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+          } }
+      ],
+      labels: { end: function () { return t('已經到最早一期', 'No earlier period', 'គ្មានរយៈពេលមុនទៀតទេ'); } },
+      onClose: function () { st.sel = ''; render(tool); }
+    });
+    return pages[tool];
+  }
+  function openCard(tool, k) { needIP(function () { try { page(tool).open(k); } catch (e) { if (window.console) console.warn('gcpt card', e); } }); }
   function tick() {
     Object.keys(ADAPT).forEach(function (tool) {
       if (!(window.GC && GC.pages && GC.pages[tool])) return;
@@ -162,5 +247,5 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 1500); }); else setTimeout(boot, 1500);
   /* 外部可指定顯示粒度（例如溫濕度上方選「月」→ 報表也列每月） */
   function setGranularity(tool, g) { if (['day', 'week', 'month', 'year'].indexOf(g) < 0) return; var st = state[tool] || (state[tool] = { g: g, sel: '' }); if (st.g === g) return; st.g = g; st.sel = ''; if (document.getElementById('gcpt-' + tool)) render(tool); }
-  window.GCPeriodTable = { render: render, tick: tick, adapters: ADAPT, setGranularity: setGranularity };
+  window.GCPeriodTable = { render: render, tick: tick, adapters: ADAPT, setGranularity: setGranularity, openCard: openCard };
 })();

@@ -61,6 +61,7 @@
     '.gip-ph{width:88px;height:88px;border-radius:14px;flex:none;object-fit:cover;background:#f3f6f9;border:1px solid #d6e0ea;cursor:zoom-in;position:relative}',
     '.gip-ph.empty{cursor:pointer;border:2px dashed #9fb2c6;display:flex;flex-direction:column;align-items:center;justify-content:center;color:#6f8399;font-size:11px;font-weight:800;gap:2px;text-align:center;line-height:1.15;background:#f7f9fb}',
     '.gip-ph.empty b{font-size:24px;font-weight:400}',
+    '.gip-ph.ico{cursor:default;display:flex;align-items:center;justify-content:center;font-size:40px;line-height:1;background:linear-gradient(150deg,#ffffff,#e9eff5);box-shadow:inset 0 1px 0 #fff,0 3px 8px rgba(15,23,42,.10)}',
     '.gip-phw{position:relative;flex:none}',
     '.gip-phn{position:absolute;right:-4px;bottom:-4px;background:#1d2b3a;color:#fff;font-size:10.5px;font-weight:800;border-radius:10px;padding:1px 6px;border:2px solid #fff}',
     '.gip-hm{flex:1;min-width:0}',
@@ -135,7 +136,8 @@
     /* ── 表頭：照片（沒有就留虛線框，點了直接加）＋編號＋名稱＋chips ── */
     function headHtml(it) {
       var h = cfg.head ? cfg.head(it) : {}, id = esc(idOf(it));
-      var ph = h.photo ? '<div class="gip-phw"><img class="gip-ph" src="' + esc(psrc(h.photo)) + '" alt="" data-gip-act="viewPhoto" data-gip-id="' + id + '">' + (h.photoCount > 1 ? '<span class="gip-phn">' + h.photoCount + '</span>' : '') + '</div>'
+      /* 2026-11-23：沒有照片概念的卡（例如期間報表）可以給 head.icon，放一個大圖示，不出現「缺照片」框 */
+      var ph = h.icon ? '<div class="gip-ph ico" aria-hidden="true">' + h.icon + '</div>' : h.photo ? '<div class="gip-phw"><img class="gip-ph" src="' + esc(psrc(h.photo)) + '" alt="" data-gip-act="viewPhoto" data-gip-id="' + id + '">' + (h.photoCount > 1 ? '<span class="gip-phn">' + h.photoCount + '</span>' : '') + '</div>'
         : '<div class="gip-ph empty" role="button" tabindex="0" data-gip-act="addPhoto" data-gip-id="' + id + '"><b>📷</b>' + esc(lb('noPhoto', '缺照片')) + '<br>' + esc(lb('addPhoto', '點這裡加')) + '</div>';
       return '<div class="gip-hd">' + ph + '<div class="gip-hm">' + (h.code ? '<div class="gip-code">' + esc(h.code) + '</div>' : '') +
         '<div class="gip-title">' + esc(h.title || '—') + '</div><div class="gip-chips">' + (h.chips || []).filter(Boolean).join('') + '</div></div></div>';

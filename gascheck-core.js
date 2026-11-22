@@ -5017,6 +5017,27 @@ const BAR_CSS = `
   .gc-sec:last-child{grid-column:auto}
   .gc-storage-badge{order:3}
 }
+/* 2026-11-23 Paul：上方介面要精簡易讀（電腦／平板寬度）。
+   一列、34px 高、按鈕不再互相壓到；「快速操作」標題拿掉；常用的留在外面（雲端燈號｜上傳｜下載｜智慧匯入｜Telegram），
+   較少用的（📥 本頁匯入、📝 報告、💾 匯出）收進「⋯」，按一下就展開——按的還是原本那幾顆，功能不變。手機（≤720px）照 11/22 的版本。 */
+@media(min-width:721px){
+  .gc-unified-shell{box-shadow:0 1px 4px rgba(22,52,80,.06)}
+  .gc-head-tools{padding:5px 14px;gap:6px;overflow:visible;flex-wrap:wrap}
+  .gc-head-tools>*{flex:0 0 auto}
+  .gc-toolbar-title{display:none}
+  .gc-cloud-state{min-height:34px;height:34px;padding:0 11px;border-radius:17px}
+  .gc-state-detail{max-width:170px}
+  .gc-head-tools .gc-cloud-btn,.gc-head-btn{height:34px;min-width:36px;padding:0 10px;border-radius:8px}
+  .gc-head-langs{min-height:34px;height:34px}
+  .gc-head-langs button{min-height:32px;height:32px;min-width:38px}
+  .gc-head-more{display:inline-flex;align-items:center;justify-content:center;height:34px;min-width:38px;padding:0 8px;border:1px solid #D5DCE5;border-radius:8px;background:#F7F8FA;color:#48586C;font:800 16px/1 inherit;cursor:pointer}
+  .gc-head-tools .gc-head-import,.gc-head-tools .gc-head-report,.gc-head-tools .gc-head-export{display:none}
+  .gc-head-tools.gc-more-open .gc-head-import,.gc-head-tools.gc-more-open .gc-head-report,.gc-head-tools.gc-more-open .gc-head-export{display:inline-flex}
+  .gc-head-tools.gc-more-open .gc-head-more{background:#E8EEF5;border-color:#B8C6D6}
+}
+@media(min-width:721px) and (max-width:980px){
+  .gc-head-tools .gc-btn-label,.gc-state-detail{display:none}
+}
 `;
 (function(){
   function inj(){ if(document.getElementById('gc-bar-css'))return;
