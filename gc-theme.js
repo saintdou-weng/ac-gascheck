@@ -70,7 +70,7 @@
       '.topbar.gc-dark-hdr,.hd.gc-dark-hdr,header.gc-dark-hdr{background:linear-gradient(135deg,' + h1 + ',' + h2 + ') !important}' +
       '.topbar.gc-light-hdr,.hd.gc-light-hdr{border-bottom-color:' + (acc || h1) + ' !important}' +
       /* 淺色主題：區塊／卡片帶一點所選色；深色主題卡片維持白底 */
-      (dark ? '' : '.sec,.card,.panel,.box{background-color:' + soft + '}') +
+      (dark ? '' : 'html:not([data-gc-portal]) .sec,html:not([data-gc-portal]) .card,html:not([data-gc-portal]) .panel,html:not([data-gc-portal]) .box{background-color:' + soft + '}') +
       /* 深色主題：直接放在底色上的標題文字改白色 */
       (dark ? 'body>h1,body>h2,body>h3,.page-title,.sec-title-out{color:#f8fafc !important}' : '') +
       '#gc-theme-btn{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.92);border-radius:10px;width:34px;height:34px;font-size:17px;line-height:1;cursor:pointer;flex:0 0 auto;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.18)}' +
