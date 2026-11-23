@@ -5031,7 +5031,8 @@ const BAR_CSS = `
   .gc-head-langs{min-height:34px;height:34px}
   .gc-head-langs button{min-height:32px;height:32px;min-width:38px}
   .gc-head-more{display:inline-flex;align-items:center;justify-content:center;height:34px;min-width:38px;padding:0 8px;border:1px solid #D5DCE5;border-radius:8px;background:#F7F8FA;color:#48586C;font:800 16px/1 inherit;cursor:pointer}
-  .gc-head-tools .gc-head-import,.gc-head-tools .gc-head-report,.gc-head-tools .gc-head-export{display:none}
+  /* 2026-11-23 Paul：匯入是資料的起點，不可以收起來 → 📥 本頁匯入留在外面，只收報告和匯出 */
+  .gc-head-tools .gc-head-report,.gc-head-tools .gc-head-export{display:none}
   .gc-head-tools.gc-more-open .gc-head-import,.gc-head-tools.gc-more-open .gc-head-report,.gc-head-tools.gc-more-open .gc-head-export{display:inline-flex}
   .gc-head-tools.gc-more-open .gc-head-more{background:#E8EEF5;border-color:#B8C6D6}
 }
