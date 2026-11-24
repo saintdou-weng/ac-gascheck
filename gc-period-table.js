@@ -99,7 +99,7 @@
       '.gcpt tr.r:active td{background:#eef4fa}' +
       /* 卡片（物品頁 .gip-ov 的版面）裡的小積木 */
       '.gcpt-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}' +
-      '.gcpt-kpi{background:#fff;border:1px solid #dfe6ee;border-left:4px solid var(--gip-acc,#2d7a5a);border-radius:12px;padding:10px 12px;min-width:0}' +
+      '.gcpt-kpi{background:#f1f4f8;border:1px solid #dfe6ee;border-left:4px solid var(--gip-acc,#2d7a5a);border-radius:12px;padding:10px 12px;min-width:0}' +
       '.gcpt-kpi .l{font-size:11.5px;color:#64768a;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.gcpt-kpi .v{font-size:22px;font-weight:800;color:#1d2b3a;line-height:1.2;margin-top:2px;word-break:break-word}.gcpt-kpi .v.bad{color:#dc2626}' +
       '.gcpt-kpi .t{height:6px;border-radius:4px;background:#e6ecf2;margin:7px 0 5px;overflow:hidden}.gcpt-kpi .t i{display:block;height:100%;border-radius:4px;background:var(--gip-acc,#2d7a5a)}' +
@@ -113,7 +113,7 @@
       '.gcpt-svg{display:block;width:100%;height:auto;margin:2px 0 4px;overflow:visible}.gcpt-svg .gl{stroke:currentColor;opacity:.13}.gcpt-svg .ax{fill:currentColor;opacity:.6;font-size:15px;font-weight:600}.gcpt-svg .th{font-size:14px;font-weight:800}' +
       '.gcpt-lg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;opacity:.8;margin:0 0 6px}.gcpt-lg span{display:inline-flex;align-items:center;gap:5px}.gcpt-lg i{display:inline-block;width:16px;height:8px;border-radius:3px}' +
       '.gcpt-zones{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}' +
-      '.gcpt-zone{border:1px solid rgba(100,118,138,.28);border-left:4px solid var(--gip-acc,#2d7a5a);border-radius:12px;padding:10px 12px;min-width:0}.gcpt-zone.bad{border-left-color:#dc2626}' +
+      '.gcpt-zone{background:rgba(15,23,42,.035);border:1px solid rgba(100,118,138,.28);border-left:4px solid var(--gip-acc,#2d7a5a);border-radius:12px;padding:10px 12px;min-width:0}.gcpt-zone.bad{border-left-color:#dc2626}' +
       '.gcpt-zone .zn{font-weight:800;font-size:14px;display:flex;justify-content:space-between;gap:6px;align-items:center}.gcpt-zone .zb{font-size:11.5px;color:#dc2626;white-space:nowrap}' +
       '.gcpt-zone .zv{display:flex;gap:12px;margin:4px 0 2px}.gcpt-zone .zv b{font-size:21px;font-weight:800;color:#ea580c}.gcpt-zone .zv b.h{color:#0284c7}' +
       '.gcpt-zone .zm{font-size:11.5px;opacity:.75;line-height:1.5;margin-top:3px}' +
