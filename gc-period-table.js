@@ -25,6 +25,7 @@
   /* 每頁的欄位。bar:true 的欄位畫比例底條；bad:true 的欄位有數字時紅字。 */
   var ADAPT = {
     cleaning: {
+      areaName: function (v) { if (typeof locName !== 'function') return ''; var n = locName(v); return n && n !== '—' ? n : ''; },
       anchor: '#pane-dash', where: 'prepend', title: function () { return t('🧹 清潔期間報表', '🧹 Cleaning period report', '🧹 របាយការណ៍អនាម័យ'); },
       cols: function () { return [t('檢查天數', 'Days', 'ថ្ងៃ'), t('檢查次數', 'Checks', 'ពិនិត្យ'), t('區域', 'Areas', 'តំបន់'), t('❌ 異常', '❌ Issues', '❌ បញ្ហា'), t('通過率', 'Pass rate', 'អត្រាល្អ')]; },
       row: function (rs, f) {
@@ -34,6 +35,14 @@
       }
     },
     temperature: {
+      /* 2026-11-25：za／zb… → A廠車間／B廠車間…；別名併成同一地點 */
+      areaKey: function (v) { return (typeof tempCanonicalZoneId === 'function' && typeof getZ === 'function' && tempCanonicalZoneId(v, getZ())) || String(v || ''); },
+      areaName: function (v) {
+        var defs = typeof getZ === 'function' ? getZ() : [], id = (typeof tempCanonicalZoneId === 'function' && tempCanonicalZoneId(v, defs)) || String(v || '');
+        var list = (typeof tempReportZones === 'function' ? tempReportZones() : []).concat(defs || []);
+        var z = list.filter(function (q) { return q && (String(q.id) === id || String(q.id) === String(v)); })[0];
+        return z ? lang3(z, '') : '';
+      },
       anchor: '#dash-stats', where: 'after', title: function () { return t('🌡️ 溫濕度期間報表', '🌡️ Temperature period report', '🌡️ របាយការណ៍សីតុណ្ហភាព'); },
       cols: function () { return [t('記錄天數', 'Days', 'ថ្ងៃ'), t('筆數', 'Records', 'កំណត់ត្រា'), t('平均溫度', 'Avg temp', 'សីតុណ្ហភាពមធ្យម'), t('平均濕度', 'Avg humidity', 'សំណើមមធ្យម'), t('⚠️ 超標', '⚠️ Out of range', '⚠️ ហួសកំណត់')]; },
       row: function (rs, f) {
@@ -100,6 +109,15 @@
       '.gcpt-br .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;color:#1d2b3a}.gcpt-br .tk{height:10px;background:#e6ecf2;border-radius:6px;overflow:hidden}.gcpt-br .tk i{display:block;height:100%;border-radius:6px;background:var(--gip-acc,#2d7a5a);opacity:.75}.gcpt-br .vl{font-weight:800;color:#1d2b3a;min-width:28px;text-align:right}' +
       '.gcpt-mt{width:100%;border-collapse:collapse;font-size:12.5px}.gcpt-mt th{font-size:11px;color:#64768a;font-weight:700;padding:5px 6px;text-align:right;white-space:nowrap;border-bottom:1px solid #e1e8ef}.gcpt-mt td{padding:6px;text-align:right;border-bottom:1px solid #eef2f6;white-space:nowrap}.gcpt-mt th:first-child,.gcpt-mt td:first-child{text-align:left;font-weight:700;color:#1d2b3a}.gcpt-mt .bad{color:#dc2626;font-weight:800}' +
       '.gcpt-sc{overflow-x:auto;-webkit-overflow-scrolling:touch}' +
+      /* 2026-11-25 卡片圖表／地點卡 */
+      '.gcpt-svg{display:block;width:100%;height:auto;margin:2px 0 4px;overflow:visible}.gcpt-svg .gl{stroke:currentColor;opacity:.13}.gcpt-svg .ax{fill:currentColor;opacity:.6;font-size:15px;font-weight:600}.gcpt-svg .th{font-size:14px;font-weight:800}' +
+      '.gcpt-lg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11.5px;opacity:.8;margin:0 0 6px}.gcpt-lg span{display:inline-flex;align-items:center;gap:5px}.gcpt-lg i{display:inline-block;width:16px;height:8px;border-radius:3px}' +
+      '.gcpt-zones{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}' +
+      '.gcpt-zone{border:1px solid rgba(100,118,138,.28);border-left:4px solid var(--gip-acc,#2d7a5a);border-radius:12px;padding:10px 12px;min-width:0}.gcpt-zone.bad{border-left-color:#dc2626}' +
+      '.gcpt-zone .zn{font-weight:800;font-size:14px;display:flex;justify-content:space-between;gap:6px;align-items:center}.gcpt-zone .zb{font-size:11.5px;color:#dc2626;white-space:nowrap}' +
+      '.gcpt-zone .zv{display:flex;gap:12px;margin:4px 0 2px}.gcpt-zone .zv b{font-size:21px;font-weight:800;color:#ea580c}.gcpt-zone .zv b.h{color:#0284c7}' +
+      '.gcpt-zone .zm{font-size:11.5px;opacity:.75;line-height:1.5;margin-top:3px}' +
+      '.gcpt-brn{font-size:11px;opacity:.7;margin:-3px 0 4px;padding-left:2px}.gcpt-bars .bad{color:#dc2626;font-weight:800}' +
       '.gcpt .sc{max-height:420px;overflow:auto}' +
       '.gcpt table{width:100%;border-collapse:collapse}' +
       '.gcpt th{position:sticky;top:0;z-index:1;background:var(--gc-alt,#e8f3ee);color:var(--gc-hdr,#1f4d3a);font-weight:800;padding:9px 8px;white-space:nowrap;text-align:center}' +
@@ -161,7 +179,10 @@
     var nsc = box.querySelector('.sc'); if (nsc) nsc.scrollTop = st0;
     var dy = box.getBoundingClientRect().top - top0; if (Math.abs(dy) > 1) window.scrollTo(0, wy + dy);
     st.sig = rs0.length + '|' + g + '|' + st.sel + '|' + L();
-    try { if (pages[tool] && pages[tool].isOpen()) pages[tool].refresh(); } catch (e) {}
+    /* 2026-11-25：卡片開著時，只有資料筆數／語言／粒度真的變了才重畫卡片（以前每 4 秒重畫一次，手指往下滑會被打斷） */
+    var dsig = rs0.length + '|' + g + '|' + L();
+    try { if (pages[tool] && pages[tool].isOpen() && st.dsig !== dsig) pages[tool].refresh(); } catch (e) {}
+    st.dsig = dsig;
   }
   /* ── 2026-11-23 Paul：點一列 → 跳出卡片（版面＝SEC 貨櫃頁的物品頁 .gip-ov：上面固定 n/N ◀ ▶ ✕，
         表頭＝圖示＋期間＋重點 chips，下面分頁；往下捲自動接上一期，左右滑／← → 換期）。只讀資料，不改任何功能。 ── */
@@ -169,7 +190,7 @@
   function needIP(cb) {
     if (window.GC && GC.ItemPage) return cb();
     if (!ipLoading) ipLoading = new Promise(function (res) {
-      var s = document.createElement('script'); s.src = SELF ? SELF.replace(/gc-period-table\.js.*$/, 'gc-item-page.js?v=20261123a') : './gc-item-page.js?v=20261123a';
+      var s = document.createElement('script'); s.src = SELF ? SELF.replace(/gc-period-table\.js.*$/, 'gc-item-page.js?v=20261125a') : './gc-item-page.js?v=20261125a';
       s.onload = function () { res(true); }; s.onerror = function () { res(false); }; document.head.appendChild(s);
     });
     ipLoading.then(function (ok) { if (ok && window.GC && GC.ItemPage) cb(); });
@@ -179,13 +200,175 @@
   function fmtN(n) { var a = Math.abs(n); return (Math.round(n * 10) / 10).toLocaleString('en-US', { maximumFractionDigits: a >= 100 ? 0 : 1 }); }
   function subOf(g) { return g === 'year' ? 'month' : (g === 'day' ? '' : 'day'); }
   function unitName(g) { return g === 'year' ? t('年度', 'Year', 'ឆ្នាំ') : g === 'month' ? t('月份', 'Month', 'ខែ') : g === 'week' ? t('週', 'Week', 'សប្ដាហ៍') : t('日', 'Day', 'ថ្ងៃ'); }
+  /* ── 2026-11-25 Paul：卡片改成「一期一整頁、往下一路滑」：重點 → 圖表 → 各地點 → 每天，不用切分頁；
+        地點顯示中文名稱（A廠車間…），不再顯示 za／zb 這種代號。 ── */
+  function lang3(o, fb) { if (!o) return fb; var l = L(); return (l === 'en' ? (o.en || o.zh) : l === 'km' ? (o.km || o.en || o.zh) : (o.zh || o.en)) || fb; }
+  /* 分組鍵：同一地點的別名併成一個（溫濕度 za／Building A … → za） */
+  function areaKey(tool, v) {
+    var A = ADAPT[tool]; if (A && A.areaKey) { try { var k = A.areaKey(v); if (k) return k; } catch (e) {} }
+    return String(v == null ? '' : v);
+  }
+  function areaName(tool, v) {
+    var A = ADAPT[tool], raw = String(v == null ? '' : v); if (!raw) return t('未分類', 'Unspecified', 'មិនបានបញ្ជាក់');
+    if (A && A.areaName) { try { var n = A.areaName(raw); if (n && n !== raw) return n; } catch (e) {} }
+    try {
+      var P = GC.pages[tool], sc = P && P.cfg && P.cfg.telegramScopes; sc = typeof sc === 'function' ? sc() : sc;
+      var hit = (sc || []).filter(function (s) { return s && String(s.value) === raw; })[0]; if (hit) return lang3(hit, raw);
+    } catch (e) {}
+    return pretty(raw);
+  }
+  function svgEsc(v) { return esc(v).replace(/"/g, '&quot;'); }
+  function niceRange(lo, hi) { if (!(hi > lo)) { lo -= 1; hi += 1; } var span = hi - lo, step = span > 40 ? 10 : span > 16 ? 5 : span > 6 ? 2 : 1; return { lo: Math.floor(lo / step) * step, hi: Math.ceil(hi / step) * step, step: step }; }
+  /* 折線圖：pts=[{lab, v, lo, hi, bad}]（由舊到新）；lines=[{v, col, lab}] 門檻虛線 */
+  function lineChart(o) {
+    var pts = o.pts.filter(function (p) { return p.v != null && !isNaN(p.v); }); if (pts.length < 2) return '';
+    var W = 640, H = 210, l = 44, r = 14, tp = 14, b = 30, iw = W - l - r, ih = H - tp - b;
+    var vals = []; pts.forEach(function (p) { vals.push(p.v); if (p.lo != null) vals.push(p.lo); if (p.hi != null) vals.push(p.hi); });
+    var mn = Math.min.apply(null, vals), mx = Math.max.apply(null, vals);
+    (o.lines || []).forEach(function (ln) { if (ln.v >= mn - (mx - mn) * 0.6 - 2 && ln.v <= mx + (mx - mn) * 0.6 + 2) { mn = Math.min(mn, ln.v); mx = Math.max(mx, ln.v); } });
+    var R = niceRange(mn, mx), n = pts.length;
+    var X = function (i) { return l + (n === 1 ? iw / 2 : i * iw / (n - 1)); }, Y = function (v) { return tp + ih - (v - R.lo) / (R.hi - R.lo) * ih; };
+    var s = '<svg class="gcpt-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + svgEsc(o.title || '') + '">';
+    for (var g = R.lo; g <= R.hi + 1e-9; g += R.step) s += '<line x1="' + l + '" x2="' + (W - r) + '" y1="' + Y(g).toFixed(1) + '" y2="' + Y(g).toFixed(1) + '" class="gl"/><text x="' + (l - 6) + '" y="' + (Y(g) + 4).toFixed(1) + '" text-anchor="end" class="ax">' + g + '</text>';
+    (o.lines || []).forEach(function (ln) { if (ln.v < R.lo || ln.v > R.hi) return; var y = Y(ln.v).toFixed(1); s += '<line x1="' + l + '" x2="' + (W - r) + '" y1="' + y + '" y2="' + y + '" stroke="' + ln.col + '" stroke-width="1.6" stroke-dasharray="6 5"/><text x="' + (W - r - 2) + '" y="' + (y - 4) + '" text-anchor="end" class="th" fill="' + ln.col + '">' + svgEsc(ln.lab) + '</text>'; });
+    var band = pts.filter(function (p) { return p.lo != null && p.hi != null; });
+    if (band.length === n) s += '<path d="M' + pts.map(function (p, i) { return X(i).toFixed(1) + ',' + Y(p.hi).toFixed(1); }).join('L') + 'L' + pts.slice().reverse().map(function (p, j) { return X(n - 1 - j).toFixed(1) + ',' + Y(p.lo).toFixed(1); }).join('L') + 'Z" fill="' + o.col + '" opacity=".14"/>';
+    s += '<path d="M' + pts.map(function (p, i) { return X(i).toFixed(1) + ',' + Y(p.v).toFixed(1); }).join('L') + '" fill="none" stroke="' + o.col + '" stroke-width="2.6" stroke-linejoin="round" stroke-linecap="round"/>';
+    pts.forEach(function (p, i) { s += '<circle cx="' + X(i).toFixed(1) + '" cy="' + Y(p.v).toFixed(1) + '" r="' + (p.bad ? 4.5 : 3) + '" fill="' + (p.bad ? '#dc2626' : o.col) + '"><title>' + svgEsc(p.lab + ' · ' + p.v.toFixed(1) + (o.unit || '') + (p.lo != null ? ' (' + p.lo.toFixed(1) + '–' + p.hi.toFixed(1) + ')' : '')) + '</title></circle>'; });
+    var every = Math.max(1, Math.ceil(n / 8));
+    pts.forEach(function (p, i) { if (i % every && i !== n - 1) return; s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" class="ax">' + svgEsc(p.lab) + '</text>'; });
+    return s + '</svg>';
+  }
+  /* 直條圖（可疊兩段：好／不好）：bars=[{lab, a, b}] */
+  function barChart(o) {
+    var bars = o.bars; if (!bars.length) return '';
+    var W = 640, H = 190, l = 36, r = 10, tp = 12, b = 30, iw = W - l - r, ih = H - tp - b, n = bars.length;
+    var mx = Math.max.apply(null, bars.map(function (x) { return (x.a || 0) + (x.b || 0); }).concat([1])), R = niceRange(0, mx);
+    var bw = Math.max(3, Math.min(34, iw / n * 0.7)), X = function (i) { return l + (i + 0.5) * iw / n; }, Y = function (v) { return tp + ih - v / R.hi * ih; };
+    var s = '<svg class="gcpt-svg" viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + svgEsc(o.title || '') + '">';
+    for (var g = 0; g <= R.hi + 1e-9; g += R.step) s += '<line x1="' + l + '" x2="' + (W - r) + '" y1="' + Y(g).toFixed(1) + '" y2="' + Y(g).toFixed(1) + '" class="gl"/><text x="' + (l - 5) + '" y="' + (Y(g) + 4).toFixed(1) + '" text-anchor="end" class="ax">' + g + '</text>';
+    bars.forEach(function (x, i) {
+      var a = x.a || 0, bb = x.b || 0, cx = X(i) - bw / 2;
+      if (a) s += '<rect x="' + cx.toFixed(1) + '" y="' + Y(a).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (Y(0) - Y(a)).toFixed(1) + '" rx="2" fill="' + o.colA + '"><title>' + svgEsc(x.lab + ' · ' + o.labA + ' ' + a) + '</title></rect>';
+      if (bb) s += '<rect x="' + cx.toFixed(1) + '" y="' + Y(a + bb).toFixed(1) + '" width="' + bw.toFixed(1) + '" height="' + (Y(a) - Y(a + bb)).toFixed(1) + '" rx="2" fill="' + o.colB + '"><title>' + svgEsc(x.lab + ' · ' + o.labB + ' ' + bb) + '</title></rect>';
+    });
+    var every = Math.max(1, Math.ceil(n / 8));
+    bars.forEach(function (x, i) { if (i % every && i !== n - 1) return; s += '<text x="' + X(i).toFixed(1) + '" y="' + (H - 9) + '" text-anchor="middle" class="ax">' + svgEsc(x.lab) + '</text>'; });
+    return s + '</svg>';
+  }
+  function legend(items) { return '<div class="gcpt-lg">' + items.map(function (x) { return '<span><i style="background:' + x[0] + (x[2] ? ';height:0;border-top:2px dashed ' + x[0] : '') + '"></i>' + esc(x[1]) + '</span>'; }).join('') + '</div>'; }
+  function shortLab(k, sg) { return sg === 'month' ? String(+k.slice(5, 7)) + t('月', '', '') : k.slice(5).replace('-', '/'); }
+  function bucket(rs, f, sg) { var gp = {}; rs.forEach(function (r) { var d = ymd(r[f]); if (!d) return; var k = key(d, sg); (gp[k] = gp[k] || []).push(r); }); return gp; }
+  function nums(rs, fld) { return rs.map(function (r) { return parseFloat(r[fld]); }).filter(function (v) { return !isNaN(v); }); }
+
+  /* 每個工具額外的圖表與分項（只讀資料） */
+  var EXTRA = {
+    temperature: function (x, st) {
+      var th = { t: { cold: 18, hot: 35 }, h: { dry: 40, humid: 80, vhum: 90 } }; try { if (typeof getTH === 'function') th = getTH(); } catch (e) {}
+      var anom = function (r) { try { return typeof isAnom === 'function' ? isAnom(r) : false; } catch (e) { return false; } };
+      var html = '', sg = subOf(st.g);
+      if (sg) {
+        var gp = bucket(x.rs, st.f, sg), ks = Object.keys(gp).sort();
+        var mk = function (fld) { return ks.map(function (k) { var v = nums(gp[k], fld); return v.length ? { lab: shortLab(k, sg), v: avg(v), lo: Math.min.apply(null, v), hi: Math.max.apply(null, v), bad: gp[k].some(anom) } : { lab: shortLab(k, sg), v: null }; }); };
+        var tc = lineChart({ title: t('溫度趨勢', 'Temperature trend', 'សីតុណ្ហភាព'), pts: mk('t'), col: '#ea580c', unit: '°C', lines: [{ v: th.t.hot, col: '#dc2626', lab: t('過熱 ', 'Hot ', 'ក្តៅ ') + th.t.hot + '°C' }, { v: th.t.cold, col: '#2563eb', lab: t('過冷 ', 'Cold ', 'ត្រជាក់ ') + th.t.cold + '°C' }] });
+        var hc = lineChart({ title: t('濕度趨勢', 'Humidity trend', 'សំណើម'), pts: mk('h'), col: '#0284c7', unit: '%', lines: [{ v: th.h.vhum, col: '#dc2626', lab: t('過濕 ', 'Too humid ', 'សើមខ្លាំង ') + th.h.vhum + '%' }, { v: th.h.dry, col: '#b45309', lab: t('過乾 ', 'Too dry ', 'ស្ងួត ') + th.h.dry + '%' }] });
+        var per = sg === 'month' ? t('每月', 'monthly', 'ប្រចាំខែ') : t('每天', 'daily', 'ប្រចាំថ្ងៃ');
+        if (tc) html += '<div class="gip-sub">🌡️ ' + esc(t('溫度趨勢（' + per + '平均，色帶＝最低～最高）', 'Temperature (' + per + ' average, band = min–max)', 'សីតុណ្ហភាព')) + '</div>' + tc + legend([['#ea580c', t('平均溫度', 'Average', 'មធ្យម')], ['#dc2626', t('超標點／門檻', 'Out of range / limit', 'ហួសកំណត់')]]);
+        if (hc) html += '<div class="gip-sub">💧 ' + esc(t('濕度趨勢（' + per + '平均）', 'Humidity (' + per + ' average)', 'សំណើម')) + '</div>' + hc + legend([['#0284c7', t('平均濕度', 'Average', 'មធ្យម')], ['#dc2626', t('超標點／門檻', 'Out of range / limit', 'ហួសកំណត់')]]);
+      }
+      /* 各地點 */
+      var by = {}; x.rs.forEach(function (r) { var k = areaKey('temperature', r.z); (by[k] = by[k] || []).push(r); });
+      var ks2 = Object.keys(by).sort(function (a, b) { return areaName('temperature', a).localeCompare(areaName('temperature', b)); });
+      if (ks2.length) {
+        html += '<div class="gip-sub">📍 ' + esc(t('各地點', 'By location', 'តាមទីតាំង')) + '</div><div class="gcpt-zones">';
+        ks2.forEach(function (k) {
+          var rs = by[k], T = nums(rs, 't'), H = nums(rs, 'h'), bad = rs.filter(anom).length, am = rs.filter(function (r) { return r.p === 'morning'; }), pm = rs.filter(function (r) { return r.p === 'afternoon'; });
+          var tA = T.length ? avg(T) : null, hA = H.length ? avg(H) : null;
+          var sl = function (list) { var a = nums(list, 't'), b = nums(list, 'h'); return a.length || b.length ? (a.length ? avg(a).toFixed(1) + '°C' : '—') + ' · ' + (b.length ? Math.round(avg(b)) + '%' : '—') : '—'; };
+          html += '<div class="gcpt-zone' + (bad ? ' bad' : '') + '"><div class="zn">' + esc(areaName('temperature', k)) + (bad ? '<span class="zb">⚠️ ' + bad + '</span>' : '') + '</div>' +
+            '<div class="zv"><b>' + (tA != null ? tA.toFixed(1) + '°C' : '—') + '</b><b class="h">' + (hA != null ? Math.round(hA) + '%' : '—') + '</b></div>' +
+            '<div class="zm">' + esc(t('溫度', 'Temp', 'សីតុណ្ហភាព')) + ' ' + (T.length ? Math.min.apply(null, T).toFixed(1) + '～' + Math.max.apply(null, T).toFixed(1) + '°C' : '—') + '<br>' + esc(t('濕度', 'Humidity', 'សំណើម')) + ' ' + (H.length ? Math.round(Math.min.apply(null, H)) + '～' + Math.round(Math.max.apply(null, H)) + '%' : '—') + '</div>' +
+            '<div class="zm">☀️ ' + esc(t('早上', 'AM', 'ព្រឹក')) + ' ' + sl(am) + '<br>🌇 ' + esc(t('下午', 'PM', 'រសៀល')) + ' ' + sl(pm) + '</div>' +
+            '<div class="zm">' + rs.length + ' ' + esc(t('筆', 'records', 'កំណត់ត្រា')) + '</div></div>';
+        });
+        html += '</div>';
+      }
+      return html;
+    },
+    cleaning: function (x, st) {
+      var isBad = function (r) { var c = parseObj(r.checks); return Object.keys(c).some(function (k) { return c[k] === false || c[k] === 'false' || c[k] === 'x' || c[k] === 'X'; }); };
+      var html = '', sg = subOf(st.g);
+      if (sg) {
+        var gp = bucket(x.rs, st.f, sg), ks = Object.keys(gp).sort();
+        var bc = barChart({ title: t('檢查次數', 'Checks', 'ពិនិត្យ'), bars: ks.map(function (k) { var b = gp[k].filter(isBad).length; return { lab: shortLab(k, sg), a: gp[k].length - b, b: b }; }), colA: '#16a34a', colB: '#dc2626', labA: t('通過', 'Pass', 'ល្អ'), labB: t('異常', 'Issue', 'បញ្ហា') });
+        if (bc) html += '<div class="gip-sub">🧹 ' + esc(sg === 'month' ? t('每月檢查次數', 'Checks per month', 'ពិនិត្យប្រចាំខែ') : t('每天檢查次數', 'Checks per day', 'ពិនិត្យប្រចាំថ្ងៃ')) + '</div>' + bc + legend([['#16a34a', t('通過', 'Pass', 'ល្អ')], ['#dc2626', t('有異常', 'With issues', 'មានបញ្ហា')]]);
+      }
+      /* 各地點：次數、異常、通過率 */
+      var by = {}; x.rs.forEach(function (r) { var k = areaKey('cleaning', r.locId); (by[k] = by[k] || []).push(r); });
+      var ks2 = Object.keys(by).sort(function (a, b) { return by[b].length - by[a].length; });
+      if (ks2.length) {
+        html += '<div class="gip-sub">📍 ' + esc(t('各地點（通過率）', 'By location (pass rate)', 'តាមទីតាំង')) + '</div><div class="gcpt-bars">';
+        ks2.forEach(function (k) {
+          var n = by[k].length, b = by[k].filter(isBad).length, pr = n ? Math.round((n - b) / n * 100) : 0;
+          html += '<div class="gcpt-br"><span class="nm">' + esc(areaName('cleaning', k)) + '</span><span class="tk"><i style="width:' + Math.max(3, pr) + '%;background:' + (pr >= 95 ? '#16a34a' : pr >= 80 ? '#d97706' : '#dc2626') + '"></i></span><span class="vl">' + pr + '%</span></div>' +
+            '<div class="gcpt-brn">' + n + ' ' + esc(t('次', 'checks', 'ដង')) + (b ? ' · <span class="bad">❌ ' + b + '</span>' : '') + '</div>';
+        });
+        html += '</div>';
+      }
+      /* 各檢查項目的異常次數 */
+      var IT = { smell: ['氣味', 'Smell', 'ក្លិន'], light: ['燈光', 'Light', 'អំពូល'], floor: ['地板', 'Floor', 'កម្រាល'], door: ['門', 'Door', 'ទ្វារ'], corner: ['角落', 'Corner', 'ជ្រុង'], ceiling: ['天花板', 'Ceiling', 'ពិដាន'] };
+      var ICO = { smell: '👃', light: '💡', floor: '🧹', door: '🚪', corner: '📐', ceiling: '🏠' };
+      var fails = {}, seen = {};
+      x.rs.forEach(function (r) { var c = parseObj(r.checks); Object.keys(c).forEach(function (k) { if (c[k] == null || c[k] === '') return; seen[k] = (seen[k] || 0) + 1; if (c[k] === false || c[k] === 'false' || c[k] === 'x' || c[k] === 'X') fails[k] = (fails[k] || 0) + 1; }); });
+      var items = Object.keys(seen).sort(function (a, b) { return (fails[b] || 0) - (fails[a] || 0); });
+      if (items.length) {
+        var mx = Math.max.apply(null, items.map(function (k) { return fails[k] || 0; }).concat([1]));
+        html += '<div class="gip-sub">❌ ' + esc(t('各項目異常次數', 'Issues by item', 'បញ្ហាតាមចំណុច')) + '</div><div class="gcpt-bars">' + items.map(function (k) {
+          var f = fails[k] || 0, nm = IT[k] ? (L() === 'en' ? IT[k][1] : L() === 'km' ? IT[k][2] : IT[k][0]) : pretty(k);
+          return '<div class="gcpt-br"><span class="nm">' + (ICO[k] || '•') + ' ' + esc(nm) + '</span><span class="tk"><i style="width:' + (f ? Math.max(3, Math.round(f / mx * 100)) : 0) + '%;background:#dc2626"></i></span><span class="vl' + (f ? ' bad' : '') + '">' + (f || '0') + '</span></div>';
+        }).join('') + '</div>';
+      }
+      return html;
+    }
+  };
+  /* 沒有專屬圖表的工具：通用「分項」長條 */
+  function genericArea(tool, x, st) {
+    if (!st.sf) return '';
+    var by = {}; x.rs.forEach(function (r) { var k = areaKey(tool, r[st.sf]); by[k] = (by[k] || 0) + 1; });
+    var ks = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }); if (!ks.length) return '';
+    var mx = by[ks[0]] || 1;
+    return '<div class="gip-sub">📍 ' + esc(t('分項', 'Breakdown', 'លម្អិត')) + '</div><div class="gcpt-bars">' + ks.map(function (k) { return '<div class="gcpt-br"><span class="nm">' + esc(areaName(tool, k)) + '</span><span class="tk"><i style="width:' + Math.max(3, Math.round(by[k] / mx * 100)) + '%"></i></span><span class="vl">' + by[k] + '</span></div>'; }).join('') + '</div>';
+  }
+  function keyHtml(tool, x) {
+    var A = ADAPT[tool], cols = A.cols(), l = (state[tool].rows || []), i = l.indexOf(x), prev = l[i + 1];   /* 列表是新→舊，下一列＝上一期 */
+    return '<div class="gcpt-kpis">' + x.c.map(function (v, ci) {
+      var n = cellNum(v), all = l.filter(function (y) { return y.rs.length; }).map(function (y) { return cellNum(y.c[ci]); }).filter(function (q) { return q != null; });
+      var mx = Math.max.apply(null, all.map(Math.abs).concat([1])), bad = v && typeof v === 'object' && v.bad && v.v;
+      var note = '';
+      if (n != null && x.rs.length) {
+        if (prev && prev.rs.length) { var pn = cellNum(prev.c[ci]); if (pn != null) { var d = n - pn; note += esc(t('上一期', 'Previous', 'មុន')) + ' ' + esc(cellText(prev.c[ci])) + ' · ' + (Math.abs(d) < 0.05 ? '＝ ' + esc(t('一樣', 'same', 'ដូចគ្នា')) : '<span class="' + (d > 0 ? 'up' : 'dn') + '">' + (d > 0 ? '▲ ' + esc(t('多', 'up', 'កើន')) : '▼ ' + esc(t('少', 'down', 'ថយ'))) + ' ' + fmtN(Math.abs(d)) + '</span>'); } }
+        if (all.length >= 3) note += (note ? '<br>' : '') + esc(t('各期平均', 'Average', 'មធ្យម')) + ' ' + fmtN(avg(all));
+      }
+      return '<div class="gcpt-kpi"><div class="l">' + esc(cols[ci] || '') + '</div><div class="v' + (bad ? ' bad' : '') + '">' + esc(cellText(v)) + '</div>' +
+        (n != null && all.length >= 2 ? '<div class="t"><i style="width:' + Math.max(3, Math.round(Math.abs(n) / mx * 100)) + '%"></i></div>' : '') + (note ? '<div class="n">' + note + '</div>' : '') + '</div>';
+    }).join('') + '</div>';
+  }
+  function timeHtml(tool, x, st) {
+    var sg = subOf(st.g); if (!sg) return '';
+    var gp = bucket(x.rs, st.f, sg), ks = Object.keys(gp).sort().reverse(); if (!ks.length) return '';
+    var A = ADAPT[tool], cols = A.cols(), skip = sg === 'day' && /天數|Days|ថ្ងៃ/.test(cols[0] || '') ? 0 : -1;   /* 每天明細不用「記錄天數」欄（都是 1） */
+    var keep = function (v, i) { return i !== skip; }; cols = cols.filter(keep);
+    return '<div class="gip-sub">📅 ' + esc(sg === 'month' ? t('各月明細', 'By month', 'តាមខែ') : t('每天明細', 'By day', 'តាមថ្ងៃ')) + '</div>' +
+      '<div class="gcpt-sc"><table class="gcpt-mt" data-keynote="off"><thead><tr><th>' + esc(sg === 'month' ? t('月份', 'Month', 'ខែ') : t('日期', 'Date', 'ថ្ងៃ')) + '</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
+      ks.map(function (k) { var c = A.row(gp[k], st.f).filter(keep); return '<tr><td>' + esc(label(k, sg)) + '</td>' + c.map(function (v) { var bad = v && typeof v === 'object' && v.bad && v.v; return '<td' + (bad ? ' class="bad"' : '') + '>' + esc(cellText(v)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+  }
   function page(tool) {
     if (pages[tool]) return pages[tool];
     var A = ADAPT[tool], st = state[tool];
     var rowsNow = function () { return (st.rows || []); };
     var icon = (function () { var m = String(typeof A.title === 'function' ? A.title() : A.title).match(/^\s*(\S+)/); return m ? m[1] : '📋'; })();
     pages[tool] = GC.ItemPage.create({
-      key: 'gcpt_' + tool, accent: 'var(--gc-acc,#2d7a5a)', z: 2000,
+      key: 'gcpt_' + tool, accent: 'var(--gc-acc,#2d7a5a)', z: 2000, hideSingleTab: true,
       list: rowsNow, id: function (x) { return x.k; },
       get: function (id) { var l = rowsNow(); for (var i = 0; i < l.length; i++) if (l[i].k === String(id)) return l[i]; return null; },
       head: function (x) {
@@ -195,41 +378,13 @@
         var d = days(x.rs, st.f); if (d && st.g !== 'day') chips.push('<span class="gip-chip">' + d + ' ' + esc(t('天有記錄', 'days with records', 'ថ្ងៃ')) + '</span>');
         return { icon: icon, code: unitName(st.g), title: label(x.k, st.g), chips: chips };
       },
-      tabs: [
-        { id: 'key', icon: '📊', label: function () { return t('重點', 'Key', 'សំខាន់'); }, render: function (x) {
-          var cols = A.cols(), l = rowsNow(), i = l.indexOf(x), prev = l[i + 1];   /* 列表是新→舊，下一列＝上一期 */
-          var html = '<div class="gcpt-kpis">' + x.c.map(function (v, ci) {
-            var n = cellNum(v), all = l.filter(function (y) { return y.rs.length; }).map(function (y) { return cellNum(y.c[ci]); }).filter(function (q) { return q != null; });
-            var mx = Math.max.apply(null, all.map(Math.abs).concat([1])), bad = v && typeof v === 'object' && v.bad && v.v;
-            var note = '';
-            if (n != null && x.rs.length) {
-              if (prev && prev.rs.length) { var pn = cellNum(prev.c[ci]); if (pn != null) { var d = n - pn; note += esc(t('上一期', 'Previous', 'មុន')) + ' ' + esc(cellText(prev.c[ci])) + ' · ' + (Math.abs(d) < 0.05 ? '＝ ' + esc(t('一樣', 'same', 'ដូចគ្នា')) : '<span class="' + (d > 0 ? 'up' : 'dn') + '">' + (d > 0 ? '▲ ' + esc(t('多', 'up', 'កើន')) : '▼ ' + esc(t('少', 'down', 'ថយ'))) + ' ' + fmtN(Math.abs(d)) + '</span>'); } }
-              if (all.length >= 3) note += (note ? '<br>' : '') + esc(t('各期平均', 'Average', 'មធ្យម')) + ' ' + fmtN(avg(all));
-            }
-            return '<div class="gcpt-kpi"><div class="l">' + esc(cols[ci] || '') + '</div><div class="v' + (bad ? ' bad' : '') + '">' + esc(cellText(v)) + '</div>' +
-              (n != null && all.length >= 2 ? '<div class="t"><i style="width:' + Math.max(3, Math.round(Math.abs(n) / mx * 100)) + '%"></i></div>' : '') + (note ? '<div class="n">' + note + '</div>' : '') + '</div>';
-          }).join('') + '</div>';
-          if (!x.rs.length) html += '<div class="gip-empty">' + esc(t('這一期沒有記錄', 'No records in this period', 'គ្មានកំណត់ត្រា')) + '</div>';
-          return html;
-        } },
-        { id: 'area', icon: '📍', label: function () { return t('分項', 'Breakdown', 'លម្អិត'); },
-          when: function () { return !!st.sf; }, count: function (x) { var o = {}; x.rs.forEach(function (r) { o[pretty(r[st.sf])] = 1; }); var n = Object.keys(o).filter(function (k) { return k !== '—'; }).length; return n || null; },
-          render: function (x) {
-            var by = {}; x.rs.forEach(function (r) { var s = pretty(st.sf ? r[st.sf] : ''); by[s] = (by[s] || 0) + 1; });
-            var ks = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }); if (!ks.length) return '';
-            var mx = by[ks[0]] || 1;
-            return '<div class="gcpt-bars">' + ks.map(function (k) { return '<div class="gcpt-br"><span class="nm">' + esc(k === '—' ? t('未分類', 'Unspecified', 'មិនបានបញ្ជាក់') : k) + '</span><span class="tk"><i style="width:' + Math.max(3, Math.round(by[k] / mx * 100)) + '%"></i></span><span class="vl">' + by[k] + '</span></div>'; }).join('') + '</div>';
-          } },
-        { id: 'time', icon: '📅', label: function () { return st.g === 'year' ? t('各月', 'By month', 'តាមខែ') : t('每天', 'By day', 'តាមថ្ងៃ'); },
-          when: function () { return !!subOf(st.g); },
-          render: function (x) {
-            var sg = subOf(st.g), gp = {}; x.rs.forEach(function (r) { var d = ymd(r[st.f]); if (!d) return; var k = key(d, sg); (gp[k] = gp[k] || []).push(r); });
-            var ks = Object.keys(gp).sort().reverse(); if (!ks.length) return '';
-            var cols = A.cols();
-            return '<div class="gcpt-sc"><table class="gcpt-mt" data-keynote="off"><thead><tr><th>' + esc(sg === 'month' ? t('月份', 'Month', 'ខែ') : t('日期', 'Date', 'ថ្ងៃ')) + '</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-              ks.map(function (k) { var c = A.row(gp[k], st.f); return '<tr><td>' + esc(label(k, sg)) + '</td>' + c.map(function (v) { var bad = v && typeof v === 'object' && v.bad && v.v; return '<td' + (bad ? ' class="bad"' : '') + '>' + esc(cellText(v)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
-          } }
-      ],
+      /* 一個分頁＝整期全部內容，一路往下滑；滑到底自動接上一期 */
+      tabs: [{ id: 'all', icon: '📊', label: function () { return t('總覽', 'Overview', 'ទិដ្ឋភាពទូទៅ'); }, render: function (x) {
+        var html = keyHtml(tool, x);
+        if (!x.rs.length) return html + '<div class="gip-empty">' + esc(t('這一期沒有記錄', 'No records in this period', 'គ្មានកំណត់ត្រា')) + '</div>';
+        var ex = ''; try { ex = EXTRA[tool] ? EXTRA[tool](x, st) : genericArea(tool, x, st); } catch (e) { if (window.console) console.warn('gcpt extra', e); ex = genericArea(tool, x, st); }
+        return html + ex + timeHtml(tool, x, st);
+      } }],
       labels: { end: function () { return t('已經到最早一期', 'No earlier period', 'គ្មានរយៈពេលមុនទៀតទេ'); } },
       onClose: function () { st.sel = ''; render(tool); }
     });

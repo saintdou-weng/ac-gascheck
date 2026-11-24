@@ -144,6 +144,8 @@
     }
     function tabsHtml(it) {
       var cur = curTab();
+      /* 2026-11-25：只有一個分頁的卡（期間報表）不顯示分頁列，內容一路往下滑 */
+      if (cfg.hideSingleTab && tabs().length <= 1) return '';
       return '<div class="gip-tabs">' + tabs().map(function (t) {
         var n = t.count ? t.count(it) : null;
         return '<button type="button" class="gip-tab' + (t.id === cur ? ' on' : '') + '" data-gip-tab="' + esc(t.id) + '">' + (t.icon ? t.icon + ' ' : '') + esc(fn(t.label)()) + (n ? '<span class="n">' + n + '</span>' : '') + '</button>';
