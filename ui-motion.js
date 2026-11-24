@@ -235,6 +235,24 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', function () { setTimeout(boot, 300); }); else setTimeout(boot, 300);
   window.UIMotion = { refresh: function () { markButtons(); setupSticky(); setupSpots(); setupTilt(); markCards(); } };
 })();
+/* 2026-11-24 Paul：回平台選單改成 🏠 小圖示（＋名稱）跟 ‹ 箭頭，放在上方標題列 logo 旁邊，不再佔一整條 */
+function __fxPlaceHome(a,name){
+ a.innerHTML='<span style="font-size:15px;line-height:1">‹</span><span style="font-size:15px;line-height:1">🏠</span><b>'+name+'</b>';
+ a.title='回 '+name+' 選單 Back to menu';
+ var base='font:700 12px/1 system-ui,"Noto Sans TC",sans-serif;text-decoration:none;display:inline-flex;align-items:center;gap:4px;padding:6px 10px;border-radius:999px;white-space:nowrap;flex:none;';
+ var light='color:#0f172a;background:#fff;border:1px solid rgba(15,23,42,.18);box-shadow:0 1px 4px rgba(15,23,42,.12);',dark='color:#fff;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);';
+ function lum(c){var m=String(c||'').match(/[\d.]+/g);if(!m||m.length<3||(m.length>3&&+m[3]<.5))return null;return (0.2126*m[0]+0.7152*m[1]+0.0722*m[2])/255}
+ function bgL(el){while(el&&el!==document.documentElement){var cs=getComputedStyle(el),l=lum(cs.backgroundColor);if(l===null&&/gradient/.test(cs.backgroundImage)){var g=cs.backgroundImage.match(/rgba?\([^)]+\)/);l=g&&lum(g[0])}if(l!==null)return l;el=el.parentElement}return 1}
+ var W=innerWidth,hdr=null,c=document.querySelectorAll('header,.header,.hdr,.top,.topbar,#topbar,.app-header,.ct-apphead,.hd,.head,.appbar,.app-bar');
+ for(var i=0;i<c.length&&!hdr;i++){var r=c[i].getBoundingClientRect(),cs=getComputedStyle(c[i]);if(cs.display!=='none'&&r.width>=W*.6&&r.top<120&&r.height>=28&&r.height<260)hdr=c[i]}
+ var spot=null;
+ if(hdr){var hr=hdr.getBoundingClientRect(),y=hr.top+Math.min(hr.height/2,40),x=hr.left+Math.min(30,hr.width*.05);
+  /* 找左上角那塊（logo／VRT／標題）→ 放在它前面 */
+  var p=document.elementFromPoint(Math.max(x,4),Math.max(y,4));
+  if(p&&hdr.contains(p)&&p!==hdr){while(p.parentElement&&p.parentElement!==hdr){var ps=getComputedStyle(p.parentElement);if(/flex|grid/.test(ps.display)&&!/column/.test(ps.flexDirection))break;p=p.parentElement}spot=p}
+  else{var f=hdr.firstElementChild;while(f&&/^(SCRIPT|STYLE)$/.test(f.tagName))f=f.nextElementSibling;spot=f}}
+ if(spot&&spot.parentElement){var pd=getComputedStyle(spot.parentElement).display;a.style.cssText=base+(bgL(spot.parentElement)<.45?dark:light)+'margin-right:8px;'+(/flex|grid/.test(pd)?'':'vertical-align:middle;');spot.parentElement.insertBefore(a,spot);return true}
+ a.style.cssText=base+light+'position:fixed;top:6px;left:6px;z-index:80;opacity:.95';document.body.appendChild(a);return false}
 /* ── 回平台選單（2026-11-22 Paul：每頁最上面一條，不用退出再進來；頁面最上面已經有回選單的連結就不加；放在平台框架裡面時不加）── */
 (function(){var O={href:'./ac_gascheck_portal_v1.html',name:'GASCheck',skip:/^(ac_gascheck_portal_v1\.html|index\.html)$/,alt:null};
  function run(){try{if(window.top!==window.self||document.getElementById('fx-home')||/[?&]embed=1/.test(location.search))return;
@@ -242,9 +260,5 @@
   var target=new URL(O.href,location.href).pathname,ls=document.querySelectorAll('a[href]');
   for(var i=0;i<ls.length;i++){var a=ls[i];if(/^\s*PROD v/i.test(a.textContent||''))continue;var u;try{u=new URL(a.getAttribute('href'),location.href)}catch(e){continue}
    if(u.pathname===target||(O.alt&&O.alt.test(u.pathname))){var r=a.getBoundingClientRect();if(r.width>0&&r.height>0&&r.top<180)return}}
-  var b=document.createElement('a');b.id='fx-home';b.href=O.href;b.setAttribute('data-fx','off');b.title='回 '+O.name+' 選單 Back to menu';
-  b.innerHTML='<span style="font-size:15px">‹</span> 🏠 <b>'+O.name+'</b> 選單 Menu';
-  b.style.cssText='font:600 13px/1 system-ui,"Noto Sans TC",sans-serif;color:var(--vc-ink,#1d2b3a);background:var(--vc-hd,#e8ecf1);border-bottom:1px solid rgba(15,23,42,.12);text-decoration:none;display:flex;align-items:center;justify-content:center;gap:6px;padding:5px 14px;width:100%;box-sizing:border-box;position:relative;z-index:5';
-  var bs=getComputedStyle(document.body);if((bs.display==='flex'&&!/column/.test(bs.flexDirection))||bs.display==='grid'){b.style.cssText+=';position:fixed;top:6px;left:50%;transform:translateX(-50%);width:auto;border-radius:999px;z-index:80;box-shadow:0 2px 10px rgba(15,23,42,.3);opacity:.94';document.body.appendChild(b)}
-  else document.body.insertBefore(b,document.body.firstChild)}catch(e){}}
+  var b=document.createElement('a');b.id='fx-home';b.href=O.href;b.setAttribute('data-fx','off');__fxPlaceHome(b,O.name)}catch(e){}}
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',function(){setTimeout(run,700)});else setTimeout(run,700)})();
