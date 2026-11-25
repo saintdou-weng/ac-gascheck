@@ -483,7 +483,7 @@ document.addEventListener('click', function(e) {
 @keyframes wdrFlash{0%{background:#fde68a}100%{background:#eff6ff}}
 </style>
 <script src="./gascheck-core.js?v=20261123b"></script>
-<script src="./gc-period-table.js?v=20261125a"></script>
+<script src="./gc-period-table.js?v=20261126a"></script>
 <script src="./ac-holidays.js?v=20261117m"></script>
 <script src="./ac-tg-chart.js?v=20261106d"></script>
 <script src="./gc-import-hub.js?v=20261022a"></script>
@@ -3219,7 +3219,7 @@ function waterCloudWrite(list){
 </script>
 <!-- VRT swipe-tabs：左右滑動（手指／滑鼠拖曳）切換分頁，只聽手勢、不改資料 -->
 <script src="https://saintdou-weng.github.io/ac-admin/shared/swipe-tabs.js" defer></script>
-<script src="./gc-compact.js?v=20261123d"></script>
+<script src="./gc-compact.js?v=20261126a"></script>
 <script>
 /* 2026-11-22 Paul：水桶「數據輸入」要更易填寫／更新／上傳／下載／編輯；手機點表格亂跳（每改一格整張表重畫）。
    手機改成「一天一行」清單：點一天 → 小視窗一次填好工廠／宿舍桶數、時間、單價、檢查人、備註，按儲存才寫入（只重畫一次）；
@@ -3327,13 +3327,15 @@ function waterCloudWrite(list){
   const hasData=r=>(r.fQty!==''&&r.fQty!=null)||(r.sQty!==''&&r.sQty!=null);
   const photoList=r=>{try{return [...new Set(GC.photo.list(r.fPhotos).concat(GC.photo.list(r.sPhotos),GC.photo.list(r.photos)))];}catch(e){return [];}};
   const money=n=>(+n||0).toLocaleString()+' ៛';
+  function monthSum(){const rs=currentRows.filter(hasData),fq=rs.reduce((a,r)=>a+(+r.fQty||0),0),sq=rs.reduce((a,r)=>a+(+r.sQty||0),0),amt=rs.reduce((a,r)=>a+(+r.fTtl||0)+(+r.sTtl||0),0);
+    return '<div style="margin:10px 2px 2px;padding:9px 11px;border-radius:12px;background:rgba(79,70,229,.08);font-size:13px;line-height:1.7"><b>📅 '+currentYear+'-'+String(currentMonth).padStart(2,'0')+' '+T2('本月','This month','ខែនេះ')+'</b><br>'+T2('送水','Deliveries','ដឹកទឹក')+' <b>'+rs.length+'</b> '+T2('天','days','ថ្ងៃ')+' · 🏭 <b>'+fq+'</b> · 🏠 <b>'+sq+'</b> '+T2('桶','drums','ធុង')+' · '+T2('金額','Amount','ទឹកប្រាក់')+' <b>'+money(amt)+'</b><br><span style="color:#64748b;font-size:12px">📊 '+T2('按上面「圖表」看每天桶數／金額','Tap “Charts” above for daily drums / amounts','ចុច “គំនូសតាង” ខាងលើ')+'</span></div>';}
   function openKey(i,order){
     if(!window.GC||!GC.Compact||!GC.Compact.sheet){openDay(i);return;}
-    order=(order&&order.length?order:currentRows.map((r,k)=>k)).filter(k=>currentRows[k]);
+    /* 2026-11-26 Paul：沒送水的日子不要放進可連續下滑的卡裡 */order=(order&&order.length?order:currentRows.map((r,k)=>k)).filter(k=>currentRows[k]&&(hasData(currentRows[k])||k===i));
     const items=order.map(k=>({k:k,r:currentRows[k]})),idx=Math.max(0,items.findIndex(x=>x.k===i));
     GC.Compact.sheet({items:items,index:idx,render:function(x){const r=x.r,date=currentYear+'-'+String(currentMonth).padStart(2,'0')+'-'+String(r.day).padStart(2,'0');
       return {title:'💧 '+date+' ('+wd(r.day)+')',sub:'🏭 '+(r.fQty||0)+' '+T2('桶','drums','ធុង')+' · 🏠 '+(r.sQty||0)+' '+T2('桶','drums','ធុង'),chips:'<b>'+money((+r.fTtl||0)+(+r.sTtl||0))+'</b>',date:date,photos:photoList(r),
-        kv:[[T2('🏭 工廠桶數','🏭 Factory drums','🏭 ធុងរោងចក្រ'),esc(r.fQty||'—')],[T2('🏭 送水時間','🏭 Delivery time','🏭 ម៉ោង'),esc(r.fTime||'—')],[T2('🏭 單價','🏭 Price','🏭 តម្លៃ'),esc(r.fPrice||'—')],[T2('🏭 小計','🏭 Subtotal','🏭 សរុប'),money(r.fTtl)],
+        extra:monthSum(),kv:[[T2('🏭 工廠桶數','🏭 Factory drums','🏭 ធុងរោងចក្រ'),esc(r.fQty||'—')],[T2('🏭 送水時間','🏭 Delivery time','🏭 ម៉ោង'),esc(r.fTime||'—')],[T2('🏭 單價','🏭 Price','🏭 តម្លៃ'),esc(r.fPrice||'—')],[T2('🏭 小計','🏭 Subtotal','🏭 សរុប'),money(r.fTtl)],
           [T2('🏠 宿舍桶數','🏠 Staff house drums','🏠 ធុងផ្ទះបុគ្គលិក'),esc(r.sQty||'—')],[T2('🏠 送水時間','🏠 Delivery time','🏠 ម៉ោង'),esc(r.sTime||'—')],[T2('🏠 單價','🏠 Price','🏠 តម្លៃ'),esc(r.sPrice||'—')],[T2('🏠 小計','🏠 Subtotal','🏠 សរុប'),money(r.sTtl)],
           [T2('檢查人','Checked by','អ្នកពិនិត្យ'),esc(r.checkBy||'—')],[T2('備註','Note','កំណត់ចំណាំ'),esc(r.note||'—'),1]]};},
       actions:function(x){return [{label:'✏️ '+T2('編輯','Edit','កែ'),fn:function(){openDay(x.k);}},{label:'📷 '+T2('加照片','Add photos','បន្ថែមរូប'),cls:'gh',fn:function(){if(typeof openWaterPhotos==='function')openWaterPhotos(x.k);}}];}});

@@ -149,7 +149,8 @@
     '@media(min-width:721px){.cmp-gph{grid-template-columns:repeat(8,minmax(0,1fr))}}',
     '.cmp-zoom .zh{flex:none;text-align:center;color:rgba(255,255,255,.65);font-size:11.5px;padding:6px 0 calc(10px + env(safe-area-inset-bottom))}',
   ].join('\n');
-  function injectCss() { if (document.getElementById('cmpCss')) return; var s = document.createElement('style'); s.id = 'cmpCss'; s.textContent = CSS; document.head.appendChild(s); }
+    CSS += '.cmp-ch{padding:4px 2px}.cmp-cc{border:1px solid rgba(100,116,139,.25);border-radius:12px;padding:8px 10px;margin:8px 0;background:rgba(255,255,255,.55)}.cmp-cc .h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:4px 10px;font-size:13px;margin-bottom:6px;color:#1e293b}.cmp-cc .h span{color:#475569;font-size:12px}.cmp-cc .bars{display:flex;align-items:flex-end;gap:2px;height:90px}.cmp-cc .cb{flex:1 1 0;min-width:3px;height:100%;display:flex;align-items:flex-end;padding:0!important;border:0!important;background:none!important;box-shadow:none!important;cursor:pointer;transform:none!important}.cmp-cc .cb::before,.cmp-cc .cb::after{display:none!important}.cmp-cc .cb i{display:block;width:100%;background:#93c5fd;border-radius:3px 3px 0 0}.cmp-cc .cb.on i{background:#4f46e5}.cmp-cc .cb.z i{background:#e2e8f0}.cmp-cc .ax{display:flex;justify-content:space-between;font-size:10.5px;color:#64748b;margin-top:3px}.cmp-tip{font-size:12px;color:#64748b;margin:6px 2px}';
+function injectCss() { if (document.getElementById('cmpCss')) return; var s = document.createElement('style'); s.id = 'cmpCss'; s.textContent = CSS; document.head.appendChild(s); }
 
   var OPEN = null; /* 目前開著的選單／詳細卡 */
   function closeOverlay() { if (OPEN) { if (OPEN.onclose) OPEN.onclose(); OPEN.el.remove(); OPEN = null; document.removeEventListener('keydown', onKey); } }
@@ -243,12 +244,35 @@
     injectCss(); var items = o.items || []; if (!items.length) return;
     var cur = Math.max(0, Math.min(items.length - 1, o.index || 0)), tab = o.tab || 'info', total = items.length, views = [];
     var d = document.createElement('div'); d.className = 'cmp-drawer';
+    /* 2026-11-26 Paul：卡片要有圖表——把這一串每筆的數字欄（桶數、金額、溫度…）畫成長條，這一筆亮起，點長條直接跳到那一筆 */
+    var CH = null;
+    function numOf(x) { var t = String(x == null ? '' : x).replace(/<[^>]+>/g, '').replace(/[,\s៛$]/g, ''); var m = t.match(/^-?\d+(\.\d+)?/); return m && /^-?\d+(\.\d+)?[a-z%°℃]*$/i.test(t) ? +m[0] : null; }
+    function charts() {
+      if (CH) return CH; CH = [];
+      if (total < 2) return CH;
+      var vs = items.map(function (it, k) { return views[k] ? views[k].v : (o.render(it) || {}); });
+      var fields = {}, order = [];
+      vs.forEach(function (v) { (v.kv || []).forEach(function (x) { if (!x || !x[0] || x[2]) return; var n = numOf(x[1]); var key = String(x[0]); if (!fields[key]) { fields[key] = { n:0, vals:[] }; order.push(key); } if (n !== null) fields[key].n++; }); });
+      order.forEach(function (key) { var f = fields[key]; if (f.n < Math.max(2, total * 0.5)) return; var vals = vs.map(function (v) { var x = (v.kv || []).filter(function (y) { return y && String(y[0]) === key; })[0]; return x ? numOf(x[1]) : null; }); var dist = {}; vals.forEach(function (z) { if (z !== null) dist[z] = 1; }); if (Object.keys(dist).length < 2) return; CH.push({ key:key, vals:vals }); });
+      CH = CH.slice(0, 4); CH.labels = vs.map(function (v) { var t = String(v.date || v.title || '').replace(/<[^>]+>/g, ''); var m = t.match(/(\d{4})-(\d{2})-(\d{2})/); return m ? (+m[2]) + '/' + (+m[3]) : t.replace(/^[^\w\u4e00-\u9fff]+/, '').slice(0, 6); });
+      var ds = vs.map(function (v) { var m = String(v.date || v.title || '').match(/(\d{4}-\d{2}-\d{2})/); return m ? m[1] : ''; }); CH.desc = ds[0] && ds[ds.length - 1] && ds[0] > ds[ds.length - 1];
+      return CH;
+    }
+    function chartHtml(k) {
+      var cs = charts(); if (!cs.length) return '<p class="cmp-none">📊 ' + esc(L('這一串沒有可以畫圖的數字', 'No numbers to chart in this list', 'គ្មានលេខសម្រាប់គំនូសតាង')) + '</p>';
+      return '<div class="cmp-ch">' + cs.map(function (c) {
+        var mx = 0, sum = 0, cnt = 0; c.vals.forEach(function (z) { if (z !== null) { mx = Math.max(mx, Math.abs(z)); sum += z; cnt++; } }); mx = mx || 1;
+        var idx = c.vals.map(function (_, j) { return j; }); if (CH.desc) idx.reverse(); var bars = idx.map(function (j) { var z = c.vals[j]; var h = z === null ? 0 : Math.max(2, Math.round(Math.abs(z) / mx * 100)); return '<div class="cb' + (j === k ? ' on' : '') + (z === null || z === 0 ? ' z' : '') + '" data-jump="' + j + '" title="' + esc(CH.labels[j] + ' · ' + (z === null ? '—' : z.toLocaleString())) + '"><i style="height:' + h + '%"></i></div>'; }).join('');
+        var me = c.vals[k];
+        return '<div class="cmp-cc"><div class="h"><b>' + esc(c.key) + '</b><span>' + esc(L('這筆', 'This', 'នេះ')) + ' <b>' + (me === null || me === undefined ? '—' : me.toLocaleString()) + '</b> · ' + esc(L('合計', 'Total', 'សរុប')) + ' ' + (Math.round(sum * 100) / 100).toLocaleString() + ' · ' + esc(L('平均', 'Avg', 'មធ្យម')) + ' ' + (cnt ? (Math.round(sum / cnt * 10) / 10).toLocaleString() : '—') + '</span></div><div class="bars">' + bars + '</div><div class="ax"><span>' + esc(CH.labels[CH.desc ? CH.labels.length - 1 : 0] || '') + '</span><span>' + esc(CH.labels[CH.desc ? 0 : CH.labels.length - 1] || '') + '</span></div></div>';
+      }).join('') + '<p class="cmp-tip">👆 ' + esc(L('點長條跳到那一筆', 'Tap a bar to jump to that record', 'ចុចរបារ ដើម្បីទៅកំណត់ត្រានោះ')) + '</p></div>';
+    }
     function recHtml(k) {
       var it = items[k], v = o.render(it) || {}, ph = (v.photos || []).filter(Boolean), acts = o.actions ? (o.actions(it) || []) : [];
       views[k] = { v:v, ph:ph, acts:acts, title:String(v.title || '').replace(/<[^>]+>/g, '') };
       var kv = (v.kv || []).filter(function (x) { return x && x[0]; }).map(function (x) { var val = x[1] == null || String(x[1]).replace(/<[^>]+>/g, '').trim() === '' ? '—' : x[1]; return '<div' + (x[2] ? ' class="w"' : '') + '><dt>' + esc(x[0]) + '</dt><dd>' + val + '</dd></div>'; }).join('');
       var slot = ph.length ? '<div class="cmp-pslot"><img class="cmp-pimg" loading="lazy" src="' + esc(psrc(ph[0], 400)) + '" alt="" data-sz="0">' + (ph.length > 1 ? '<span class="n">' + ph.length + '</span>' : '') + '</div>' : '<button type="button" class="cmp-pnone" data-tab="photo"><b>📷</b>' + esc(L('尚無照片', 'No photo', 'គ្មានរូប')) + '</button>';
-      var body = tab === 'photo' ? (ph.length ? '<div class="cmp-phsec">' + monthHtml([{ date:v.date || '', title:'📷 ' + L('照片', 'Photos', 'រូបថត'), photos:ph }], { open:'all' }) + '</div>' : '<p class="cmp-none">📷 ' + esc(L('這筆沒有照片', 'No photos on this record', 'គ្មានរូបថត')) + '</p>') : '<dl class="cmp-kv">' + kv + '</dl>';
+      var body = tab === 'chart' ? chartHtml(k) + (v.extra || '') : tab === 'photo' ? (ph.length ? '<div class="cmp-phsec">' + monthHtml([{ date:v.date || '', title:'📷 ' + L('照片', 'Photos', 'រូបថត'), photos:ph }], { open:'all' }) + '</div>' : '<p class="cmp-none">📷 ' + esc(L('這筆沒有照片', 'No photos on this record', 'គ្មានរូបថត')) + '</p>') : '<dl class="cmp-kv">' + kv + '</dl>' + (v.extra || '');
       return '<section class="cmp-rec" data-k="' + k + '"><div class="cmp-prof">' + slot + '<div style="min-width:0;flex:1 1 0"><div class="ttl"><span>' + (v.title || '') + '</span></div><div class="sub">' + (v.sub || '') + '</div><div class="chips">' + (v.chips || '') + '</div></div>' + (total > 1 ? '<span class="no">' + (k + 1) + '/' + total + '</span>' : '') + '</div>' +
         '<div class="cmp-body">' + body + '</div>' +
         (acts.length ? '<div class="cmp-acts">' + acts.map(function (a, j) { return '<button type="button" data-sa="' + j + '" class="' + (a.cls || (j ? 'gh' : '')) + '">' + esc(a.label) + '</button>'; }).join('') + '</div>' : '') + '</section>';
@@ -264,7 +288,7 @@
     function head() {
       var w = views[cur] || { ph:[], title:'' };
       cnt.textContent = (cur + 1) + '/' + total; now.textContent = w.title; prev.disabled = cur <= 0; next.disabled = cur >= total - 1;
-      tabBar.innerHTML = '<button type="button" data-tab="info" class="' + (tab === 'info' ? 'on' : '') + '">📋 ' + esc(L('現況', 'Current', 'បច្ចុប្បន្ន')) + '</button><button type="button" data-tab="photo" class="' + (tab === 'photo' ? 'on' : '') + '">📷 ' + esc(L('照片', 'Photos', 'រូបថត')) + ' <i' + (w.ph.length ? '' : ' class="z"') + '>' + w.ph.length + '</i></button>';
+      tabBar.innerHTML = '<button type="button" data-tab="info" class="' + (tab === 'info' ? 'on' : '') + '">📋 ' + esc(L('現況', 'Current', 'បច្ចុប្បន្ន')) + '</button><button type="button" data-tab="photo" class="' + (tab === 'photo' ? 'on' : '') + '">📷 ' + esc(L('照片', 'Photos', 'រូបថត')) + ' <i' + (w.ph.length ? '' : ' class="z"') + '>' + w.ph.length + '</i></button>' + (charts().length ? '<button type="button" data-tab="chart" class="' + (tab === 'chart' ? 'on' : '') + '">📊 ' + esc(L('圖表', 'Charts', 'គំនូសតាង')) + '</button>' : '');
     }
     function go(k, smooth) { k = Math.max(0, Math.min(total - 1, k)); cur = k; head(); if (recs[k]) body.scrollTo({ top:recs[k].offsetTop - 6, behavior:smooth ? 'smooth' : 'auto' }); }
     function stepS(dir) { go(cur + dir, true); }
@@ -280,6 +304,7 @@
     }, { passive:true });
     d.addEventListener('click', function (e) {
       var b = e.target.closest('button'), rec = e.target.closest('.cmp-rec'), rk = rec ? +rec.dataset.k : cur, w = views[rk] || { ph:[], acts:[], title:'' };
+      var jb = e.target.closest('[data-jump]'); if (jb) { var jk = +jb.dataset.jump; if (tab === 'chart') { tab = 'info'; paintAll(); } return go(jk, true); }
       if (b && b.hasAttribute('data-x')) return closeOverlay();
       if (b && b.dataset.step) return stepS(+b.dataset.step);
       if (b && b.dataset.tab) { tab = b.dataset.tab; if (rec) cur = rk; paintAll(); return go(cur, false); }

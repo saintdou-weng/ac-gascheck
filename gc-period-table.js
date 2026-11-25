@@ -63,7 +63,8 @@
     asset: {
       anchor: '#stats-bar', where: 'after', title: function () { return t('📦 資產期間報表（依購入日期）', '📦 Asset period report (by purchase date)', '📦 របាយការណ៍ទ្រព្យសម្បត្តិ'); },
       cols: function () { return [t('新增資產', 'New assets', 'ទ្រព្យថ្មី'), t('數量', 'Qty', 'ចំនួន'), t('金額', 'Value', 'តម្លៃ')]; },
-      row: function (rs) { var q = rs.reduce(function (s, r) { return s + (num(r.qty) || 1); }, 0), v = rs.reduce(function (s, r) { return s + num(r.value || r.price || r.cost) * (num(r.qty) || 1); }, 0); return [{ v: rs.length, bar: true }, q || '—', v ? '$' + Math.round(v).toLocaleString() : '—']; }
+      row: function (rs) { var q = rs.reduce(function (s, r) { return s + (num(r.qty) || 1); }, 0), v = rs.reduce(function (s, r) { return s + num(r.value || r.price || r.cost || r.unitPrice) * (num(r.qty) || 1); }, 0); return [{ v: rs.length, bar: true }, q || '—', v ? '$' + Math.round(v).toLocaleString() : '—']; },
+      open: function (r) { if (!r.code || typeof window.openDetail !== 'function') return false; var c = r.code, nz = function (v) { return String(v || '').toUpperCase().replace(/[^A-Z0-9]/g, ''); }; try { var all = (window.GC && GC.pages && GC.pages.asset && GC.pages.asset.read()) || []; if (typeof assets !== 'undefined' && assets.length) all = assets; var hit = all.filter(function (a) { return nz(a.code) === nz(c); })[0]; if (hit) c = hit.code; } catch (e) {} window.openDetail(c); return true; }
     },
     keymovement: {
       anchor: '#stat-grid', where: 'after', title: function () { return t('🔑 鑰匙借還期間報表', '🔑 Key period report', '🔑 របាយការណ៍សោ'); },
@@ -72,7 +73,9 @@
         var lost = function (r) { try { return typeof isLost === 'function' ? isLost(r) : /lost|遺失/i.test(r.return_condition || ''); } catch (e) { return false; } };
         var L0 = rs.filter(lost).length, R = rs.filter(function (r) { return !lost(r) && r.return_date; }).length;
         return [{ v: rs.length, bar: true }, R || '—', { v: rs.length - R - L0, bad: true }, { v: L0, bad: true }];
-      }
+      },
+      pick: function (ci, rs) { var lost = function (r) { try { return typeof isLost === 'function' ? isLost(r) : /lost|遺失/i.test(r.return_condition || ''); } catch (e) { return false; } }; if (ci === 1) return rs.filter(function (r) { return !lost(r) && r.return_date; }); if (ci === 2) return rs.filter(function (r) { return !lost(r) && !r.return_date; }); if (ci === 3) return rs.filter(lost); return rs; },
+      open: function (r) { if (typeof window.keyMasterOpen === 'function' && (r.key_id || r.key_no || r.key_code)) { try { window.keyMasterOpen(r.key_id || r.key_no || r.key_code); return true; } catch (e) {} } return false; }
     },
     waterdrum: {
       anchor: '#summary-cards', where: 'after', title: function () { return t('💧 飲用水期間報表', '💧 Water drum period report', '💧 របាយការណ៍ទឹក'); },
@@ -103,6 +106,8 @@
       '.gcpt-kpi .l{font-size:11.5px;color:#64768a;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}' +
       '.gcpt-kpi .v{font-size:22px;font-weight:800;color:#1d2b3a;line-height:1.2;margin-top:2px;word-break:break-word}.gcpt-kpi .v.bad{color:#dc2626}' +
       '.gcpt-kpi .t{height:6px;border-radius:4px;background:#e6ecf2;margin:7px 0 5px;overflow:hidden}.gcpt-kpi .t i{display:block;height:100%;border-radius:4px;background:var(--gip-acc,#2d7a5a)}' +
+      '.dk{cursor:pointer}.gcpt-kpi.dk:active,.gcpt-br.dk:active{transform:scale(.98)}.gcpt-kpi.on{outline:2px solid #4f46e5}.gcpt-br.on,.gcpt-mt tr.on{background:rgba(79,70,229,.1)}.gcpt-kpi .go{font-size:11px;color:#4f46e5;font-weight:700;margin-top:4px}' +
+      '.gcpt-dl{border:1px solid #c7d2fe;border-radius:12px;margin:8px 0 12px;background:#fff;overflow:hidden}.gcpt-dl .hd{font-weight:800;font-size:13px;padding:8px 12px;background:#eef2ff;color:#1e293b}.gcpt-di{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 12px;border-top:1px solid #f1f5f9;cursor:pointer;color:#0f172a;font-size:13px}.gcpt-di:hover{background:#f8fafc}.gcpt-di b{display:block}.gcpt-di small{display:block;color:#64748b;font-size:11.5px}.gcpt-di i{color:#94a3b8;font-style:normal;font-size:18px}.gcpt-di.z{color:#64748b;cursor:default}' +
       '.gcpt-kpi .n{font-size:11px;color:#64768a;line-height:1.45}.gcpt-kpi .up{color:#b45309;font-weight:700}.gcpt-kpi .dn{color:#15803d;font-weight:700}' +
       '.gcpt-bars{display:flex;flex-direction:column;gap:6px}' +
       '.gcpt-br{display:grid;grid-template-columns:minmax(84px,34%) 1fr auto;gap:8px;align-items:center;font-size:13px}' +
@@ -337,7 +342,7 @@
     var by = {}; x.rs.forEach(function (r) { var k = areaKey(tool, r[st.sf]); by[k] = (by[k] || 0) + 1; });
     var ks = Object.keys(by).sort(function (a, b) { return by[b] - by[a]; }); if (!ks.length) return '';
     var mx = by[ks[0]] || 1;
-    return '<div class="gip-sub">📍 ' + esc(t('分項', 'Breakdown', 'លម្អិត')) + '</div><div class="gcpt-bars">' + ks.map(function (k) { return '<div class="gcpt-br"><span class="nm">' + esc(areaName(tool, k)) + '</span><span class="tk"><i style="width:' + Math.max(3, Math.round(by[k] / mx * 100)) + '%"></i></span><span class="vl">' + by[k] + '</span></div>'; }).join('') + '</div>';
+    return '<div class="gip-sub">📍 ' + esc(t('分項', 'Breakdown', 'លម្អិត')) + '</div><div class="gcpt-bars">' + ks.map(function (k) { return '<div class="gcpt-br dk" data-dk="' + reg(tool, x.rs.filter(function (r) { return areaKey(tool, r[st.sf]) === k; }), areaName(tool, k)) + '"><span class="nm">▸ ' + esc(areaName(tool, k)) + '</span><span class="tk"><i style="width:' + Math.max(3, Math.round(by[k] / mx * 100)) + '%"></i></span><span class="vl">' + by[k] + '</span></div>'; }).join('') + '</div>';
   }
   function keyHtml(tool, x) {
     var A = ADAPT[tool], cols = A.cols(), l = (state[tool].rows || []), i = l.indexOf(x), prev = l[i + 1];   /* 列表是新→舊，下一列＝上一期 */
@@ -349,8 +354,9 @@
         if (prev && prev.rs.length) { var pn = cellNum(prev.c[ci]); if (pn != null) { var d = n - pn; note += esc(t('上一期', 'Previous', 'មុន')) + ' ' + esc(cellText(prev.c[ci])) + ' · ' + (Math.abs(d) < 0.05 ? '＝ ' + esc(t('一樣', 'same', 'ដូចគ្នា')) : '<span class="' + (d > 0 ? 'up' : 'dn') + '">' + (d > 0 ? '▲ ' + esc(t('多', 'up', 'កើន')) : '▼ ' + esc(t('少', 'down', 'ថយ'))) + ' ' + fmtN(Math.abs(d)) + '</span>'); } }
         if (all.length >= 3) note += (note ? '<br>' : '') + esc(t('各期平均', 'Average', 'មធ្យម')) + ' ' + fmtN(avg(all));
       }
-      return '<div class="gcpt-kpi"><div class="l">' + esc(cols[ci] || '') + '</div><div class="v' + (bad ? ' bad' : '') + '">' + esc(cellText(v)) + '</div>' +
-        (n != null && all.length >= 2 ? '<div class="t"><i style="width:' + Math.max(3, Math.round(Math.abs(n) / mx * 100)) + '%"></i></div>' : '') + (note ? '<div class="n">' + note + '</div>' : '') + '</div>';
+      var dk = x.rs.length ? reg(tool, A.pick ? A.pick(ci, x.rs) : x.rs, (cols[ci] || '') + ' · ' + label(x.k, state[tool].g)) : -1;
+      return '<div class="gcpt-kpi' + (dk >= 0 ? ' dk' : '') + '"' + (dk >= 0 ? ' data-dk="' + dk + '"' : '') + '><div class="l">' + esc(cols[ci] || '') + '</div><div class="v' + (bad ? ' bad' : '') + '">' + esc(cellText(v)) + '</div>' +
+        (n != null && all.length >= 2 ? '<div class="t"><i style="width:' + Math.max(3, Math.round(Math.abs(n) / mx * 100)) + '%"></i></div>' : '') + (note ? '<div class="n">' + note + '</div>' : '') + (dk >= 0 ? '<div class="go">▸ ' + esc(t('點看清單', 'Tap for list', 'ចុចមើលបញ្ជី')) + '</div>' : '') + '</div>';
     }).join('') + '</div>';
   }
   function timeHtml(tool, x, st) {
@@ -360,8 +366,38 @@
     var keep = function (v, i) { return i !== skip; }; cols = cols.filter(keep);
     return '<div class="gip-sub">📅 ' + esc(sg === 'month' ? t('各月明細', 'By month', 'តាមខែ') : t('每天明細', 'By day', 'តាមថ្ងៃ')) + '</div>' +
       '<div class="gcpt-sc"><table class="gcpt-mt" data-keynote="off"><thead><tr><th>' + esc(sg === 'month' ? t('月份', 'Month', 'ខែ') : t('日期', 'Date', 'ថ្ងៃ')) + '</th>' + cols.map(function (c) { return '<th>' + esc(c) + '</th>'; }).join('') + '</tr></thead><tbody>' +
-      ks.map(function (k) { var c = A.row(gp[k], st.f).filter(keep); return '<tr><td>' + esc(label(k, sg)) + '</td>' + c.map(function (v) { var bad = v && typeof v === 'object' && v.bad && v.v; return '<td' + (bad ? ' class="bad"' : '') + '>' + esc(cellText(v)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
+      ks.map(function (k) { var c = A.row(gp[k], st.f).filter(keep); return '<tr class="dk" data-dk="' + reg(tool, gp[k], label(k, sg)) + '"><td>▸ ' + esc(label(k, sg)) + '</td>' + c.map(function (v) { var bad = v && typeof v === 'object' && v.bad && v.v; return '<td' + (bad ? ' class="bad"' : '') + '>' + esc(cellText(v)) + '</td>'; }).join('') + '</tr>'; }).join('') + '</tbody></table></div>';
   }
+  /* 2026-11-26 Paul：卡片上的數字（新增資產 11、未還 3…）、分項長條、每天明細那一列 → 點了列出那幾筆；再點一筆 → 那一筆的完整資料頁 */
+  var REG = [];
+  function reg(tool, rs, ttl) { return REG.push({ tool: tool, rs: rs || [], ttl: ttl }) - 1; }
+  var TT = ['name', 'asset_name', 'item', 'item_name', 'key_name', 'key_no', 'title', 'room', 'location', 'area', 'borrower', 'code'];
+  function recTitle(r) { for (var i = 0; i < TT.length; i++) if (r[TT[i]]) return String(r[TT[i]]); return String(r.id || '—'); }
+  function recSub(tool, r) { var st = state[tool] || {}, a = []; var d = st.f && r[st.f]; if (d) a.push(String(d).slice(0, 16)); if (st.sf && r[st.sf] && String(r[st.sf]) !== recTitle(r)) a.push(areaName(tool, areaKey(tool, r[st.sf]))); if (r.qty) a.push('× ' + r.qty); var v = num(r.value || r.price || r.cost || r.unitPrice); if (v) a.push('$' + v.toLocaleString()); if (r.code && recTitle(r) !== String(r.code)) a.push(String(r.code)); return a.join(' · '); }
+  var SKIP = /^(id|_.*|photos?|.*_photos?|created.*|updated.*|ts|sig|rev|deleted|sync.*)$/i;
+  function photosOf(r) { var o = []; try { Object.keys(r).forEach(function (k) { if (/photo/i.test(k) && GC.photo && GC.photo.list) o = o.concat(GC.photo.list(r[k])); }); } catch (e) {} return o.filter(function (v, i, a) { return v && a.indexOf(v) === i; }); }
+  function sheetOpen(tool, rs, i) {
+    if (!(window.GC && GC.Compact && GC.Compact.sheet)) return;
+    GC.Compact.sheet({ items: rs, index: i, render: function (r) {
+      var st = state[tool] || {}, kv = [];
+      Object.keys(r).forEach(function (k) { var v = r[k]; if (SKIP.test(k) || v == null || v === '' || typeof v === 'object') return; kv.push([pretty(k), esc(String(v)).slice(0, 400), String(v).length > 40 ? 1 : 0]); });
+      return { title: esc(recTitle(r)), sub: esc(recSub(tool, r)), date: st.f ? String(r[st.f] || '').slice(0, 10) : '', photos: photosOf(r), kv: kv };
+    } });
+  }
+  function listHtml(it) {
+    var rs = it.rs.slice(0, 200);
+    return '<div class="gcpt-dl"><div class="hd">📋 ' + esc(it.ttl) + ' · ' + it.rs.length + ' ' + esc(t('筆', 'records', 'កំណត់ត្រា')) + '</div>' + (rs.length ? rs.map(function (r, j) { return '<div class="gcpt-di" data-di="' + j + '"><span><b>' + esc(recTitle(r)) + '</b><small>' + esc(recSub(it.tool, r)) + '</small></span><i>›</i></div>'; }).join('') : '<div class="gcpt-di z">' + esc(t('沒有資料', 'No records', 'គ្មាន')) + '</div>') + (it.rs.length > rs.length ? '<div class="gcpt-di z">' + esc(t('先列 200 筆', 'First 200 shown', '200 ដំបូង')) + '</div>' : '') + '</div>';
+  }
+  document.addEventListener('click', function (e) {
+    var di = e.target.closest && e.target.closest('.gcpt-di[data-di]');
+    if (di) { var box = di.closest('.gcpt-dl'), it = REG[+box.getAttribute('data-r')]; if (!it) return; e.stopPropagation(); var r = it.rs[+di.dataset.di], A = ADAPT[it.tool]; if (A && A.open && A.open(r)) { [60, 300].forEach(function (ms) { setTimeout(function () { [].forEach.call(document.querySelectorAll('.gip-ov,.modal.open,.modal.show,.modal-overlay.active,[role=dialog]'), function (o) { if (o.style.zIndex === '2000' || o.closest('.cmp-mask')) return; var cs = getComputedStyle(o); if (cs.display !== 'none' && cs.visibility !== 'hidden' && (+cs.zIndex || 0) < 2100) o.style.zIndex = '2100'; }); }, ms); }); return; } sheetOpen(it.tool, it.rs, +di.dataset.di); return; }
+    var dk = e.target.closest && e.target.closest('.dk[data-dk]'); if (!dk || !dk.closest('.gip-page,.gip-body,.gip-sec,[class*="gip"]')) return;
+    e.stopPropagation(); var id = +dk.getAttribute('data-dk'), it2 = REG[id]; if (!it2) return;
+    var anchor = dk.closest('.gcpt-kpis') || (dk.tagName === 'TR' ? dk.closest('.gcpt-sc') : dk);
+    var old = anchor.nextElementSibling; if (old && old.classList.contains('gcpt-dl')) { var same = old.getAttribute('data-r') === String(id); old.remove(); [].forEach.call(document.querySelectorAll('.dk.on'), function (x) { x.classList.remove('on'); }); if (same) return; }
+    [].forEach.call(document.querySelectorAll('.dk.on'), function (x) { x.classList.remove('on'); }); dk.classList.add('on');
+    var w = document.createElement('div'); w.innerHTML = listHtml(it2); var el = w.firstChild; el.setAttribute('data-r', id); anchor.parentNode.insertBefore(el, anchor.nextSibling);
+  }, true);
   function page(tool) {
     if (pages[tool]) return pages[tool];
     var A = ADAPT[tool], st = state[tool];
