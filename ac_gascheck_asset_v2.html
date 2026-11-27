@@ -288,6 +288,7 @@ button.user-pill{cursor:pointer;font-family:inherit;color:var(--tx)}
 </style>
   <!-- AC_GASCHECK Shared System -->
 <script src="./gascheck-core.js?v=20261123b"></script>
+<script src="https://saintdou-weng.github.io/ac-ga-exp/shared/item-links.js?v=20261127a"></script>
 <script src="./gc-period-table.js?v=20261126a"></script>
 <script src="./ac-holidays.js?v=20261117m"></script>
 <script src="./ac-tg-chart.js?v=20261106d"></script>
@@ -1894,6 +1895,10 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
         return (p?'<img class="gip-big" src="'+esc(photoSrc(p))+'" alt="" data-gip-act="viewPhoto"><div class="gip-cap">⭐ '+esc(L3('標準照（點開放大）','Standard photo (tap to enlarge)','រូបស្តង់ដារ'))+'</div>'
           :'<div class="gip-bigempty" role="button" data-gip-act="addPhoto"><b>📷</b>'+esc(L3('這項還沒有照片，點這裡拍或選照片','No photo yet — tap to take or choose one','មិនទាន់មានរូប ចុចដើម្បីថត'))+'</div>')+
           '<div class="gip-acts" style="margin-top:12px"><button type="button" class="gip-btn pri full" data-gip-act="addPhoto">📷 '+esc(p?L3('換照片（拍照／選照片）','Replace photo (camera / file)','ប្តូររូប'):L3('拍照／選照片','Take / choose photo','ថត / ជ្រើសរូប'))+'</button></div>';}},
+      {id:'link',icon:'🔗',label:()=>L3('共用','Shared','ចែករំលែក'),count:a=>window.ItemLinks?ItemLinks.find([a.code],'asset').length:0,render:a=>{
+        if(!window.ItemLinks)return '';
+        ItemLinks.lang=()=>{const t=L3('zh','en','km');return t;};
+        return ItemLinks.html([a.code],'asset')+'<div class="gip-cap" style="margin-top:8px">'+esc(L3('工務／總務登記或人資配發用同一個編號，照片和備註會在這裡一起看到。','Facility registers and HR issuance using the same code show their photos and notes here.','ការចុះបញ្ជីផ្សេងៗដែលប្រើលេខកូដដូចគ្នា នឹងបង្ហាញរូបថត និងកំណត់ចំណាំនៅទីនេះ។'))+'</div>';}},
       {id:'manage',icon:'⚙️',label:()=>L3('管理','Manage','គ្រប់គ្រង'),render:a=>{
         const live=a.status!=='disposed';
         return '<div class="gip-acts">'+
@@ -1916,6 +1921,7 @@ var AC_TG_CHAT_DEFAULT  = '-5113064563';
     onOpen:a=>{if(a)viewCode=a.code;}
   });
   window.ASSET_ITEM_PAGE=ip;
+  if(window.ItemLinks)ItemLinks.onUpdate(()=>{try{if(ip.isOpen())ip.refresh();}catch(e){}});
   /* 異動數字格：＋／🗑／📷 原本只有滑鼠提示，手機看不到 → 把提示字寫在數字下面 */
   const _ria=window.renderAssetInlineAnalysis;
   if(typeof _ria==='function')window.renderAssetInlineAnalysis=function(){const r=_ria.apply(this,arguments);try{document.querySelectorAll('#asset-inline-metrics>span[title]').forEach(sp=>{if(!sp.querySelector('small'))sp.insertAdjacentHTML('beforeend',' <small>'+esc(sp.getAttribute('title'))+'</small>');});}catch(e){}return r;};
