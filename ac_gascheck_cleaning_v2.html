@@ -186,6 +186,8 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 <script src="./gc-import-hub.js?v=20261022a"></script>
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
+<link rel="stylesheet" href="./gc-cleaning-team.css?v=20261128a">
+<script src="./gc-cleaning-team.js?v=20261128a"></script>
 </head>
 <body>
 <div class="topbar">
@@ -207,6 +209,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
   <div class="tab" data-tab="map" onclick="ui.tab('map')">🗺️ <span data-i="t-map">垃圾桶地圖</span></div>
   <div class="tab" data-tab="sixs" onclick="ui.tab('sixs')">⭐ <span data-i="t-sixs">6S 檢查</span></div>
   <div class="tab" data-tab="areas" onclick="ui.tab('areas')">📍 <span data-i="t-areas">區域管理</span></div>
+  <div class="tab" data-tab="people" onclick="ui.tab('people')">👥 <span data-i="t-people">人員與分工</span></div>
   <div class="tab" data-tab="cfg" onclick="ui.tab('cfg')">⚙️ <span data-i="t-cfg">設定</span></div>
 </div>
 
@@ -285,18 +288,24 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 <!-- ═══ DUSTBIN MAP ═══ -->
 <div class="pane" id="pane-map"><div class="main">
   <div class="card"><div class="ch"><span class="ch-icon">🗺️</span><span class="ch-title" data-i="map-title">垃圾桶配置地圖</span><span class="ch-note" id="bin-total-count">0 個</span> <button onclick="binMap.addZone()" class="btn bg" style="padding:6px 12px;font-size:11px;margin-left:8px">＋ <span data-i="add-zone">新增區域</span></button></div>
+    <div class="ct-bin-modes"><button class="btn bo" onclick="document.getElementById('clean-bin-inventory').scrollIntoView({behavior:'smooth'})">☷ <span data-i="bin-mgmt">垃圾桶管理</span></button></div>
     <div class="map-wrap">
-      <svg id="factory-map-svg" class="map-svg" viewBox="0 0 800 540" xmlns="http://www.w3.org/2000/svg"></svg>
+      <svg id="factory-map-svg" class="map-svg" viewBox="0 0 800 340" xmlns="http://www.w3.org/2000/svg"></svg>
     </div>
     <div class="bin-legend" id="bin-legend"></div>
   </div>
+  <div class="card"><div class="cb" id="clean-bin-inventory" data-no-i18n></div></div>
+  <details class="card"><summary class="ch" style="cursor:pointer"><span data-i="map-title">地圖區域設定</span></summary><div class="cb">
   <div class="card"><div class="ch"><span class="ch-icon">🗑️</span><span class="ch-title" data-i="bin-mgmt">垃圾桶管理</span><span class="ch-note" id="bin-count-lbl">0 個</span></div>
     <div class="cb">
       <div class="dbt" id="bin-type-filter"></div>
       <div class="tw"><table class="rt" id="bin-tbl">
-        <thead><tr><th data-i="th-area">區域</th><th data-i="th-bin-type">類型</th><th data-i="th-bin-loc">位置描述</th><th data-i="th-bin-resp">責任人</th><th data-i="th-bin-freq">清潔頻率</th><th data-i="th-bin-last">最後清潔</th><th></th></tr></thead>
+        <thead><tr><th data-i="th-area">區域</th><th data-i="total">總數</th><th data-i="th-bin-type">類型</th><th data-i="edit">編輯</th><th></th></tr></thead>
         <tbody id="bin-tbody"></tbody>
       </table></div>
+      </div></div></div></details>
+  <details class="card"><summary class="ch" style="cursor:pointer"><span data-i="add-bin">新增個別登記</span></summary><div class="cb">
+      <div id="clean-bin-legacy" data-no-i18n></div>
       <div style="margin-top:10px;padding-top:10px;border-top:1px solid var(--bdr2)">
         <div style="font-size:11px;font-weight:700;color:var(--acc2);margin-bottom:8px" data-i="add-bin">新增垃圾桶</div>
         <div class="fgrid c3">
@@ -311,7 +320,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
         </div>
       </div>
     </div>
-  </div>
+  </details>
 </div></div>
 
 <!-- ═══ 6S CHECK ═══ -->
@@ -352,10 +361,27 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
   <div class="card" id="add-area-card" style="display:none"><div class="ch"><span class="ch-icon">＋</span><span class="ch-title" data-i="add-area">新增地點</span></div>
     <div class="fgrid c3" style="margin-bottom:8px">
       <div class="fg"><div class="fl"><span data-i="f-area-name">地點名稱</span> <span style="color:var(--red)">*</span></div><input class="fi" id="a-name" placeholder="例：車縫區廁所 A"></div>
-      <div class="fg"><div class="fl" data-i="f-area-type">類型</div><select class="fi" id="a-type"><option value="toilet">🚻 廁所</option><option value="factory">🏭 廠房</option><option value="office">🏢 辦公室</option><option value="canteen">🍽️ 飯堂</option><option value="warehouse">📦 倉庫</option><option value="entrance">🚪 入口</option><option value="other">📌 其他</option></select></div>
+      <div class="fg"><div class="fl" data-i="f-area-type">類型</div><select class="fi" id="a-type"><option value="toilet">🚻 廁所</option><option value="factory">🏭 廠房</option><option value="office">🏢 辦公室</option><option value="canteen">🍽️ 飯堂</option><option value="kitchen">🍳 廚房</option><option value="warehouse">📦 倉庫</option><option value="entrance">🚪 入口</option><option value="other">📌 其他</option></select></div>
       <div class="fg"><div class="fl" data-i="f-area-resp">責任人</div><input class="fi" id="a-resp" placeholder="Cleaner name"></div>
     </div>
     <div class="br"><button class="btn bp" id="btn-area-add" onclick="areas.add()">✅ <span data-i="btn-confirm">確認新增</span></button><button class="btn bo" onclick="areas.hideAdd()">✕ <span data-i="btn-cancel">取消</span></button></div>
+  </div>
+</div></div>
+
+<!-- Personnel uses the original staff settings, not a second roster. -->
+<div class="pane" id="pane-people"><div class="main">
+ <div class="card"><div class="cb" id="clean-team-root" data-no-i18n></div></div>
+  <div class="card"><div class="ch"><span class="ch-icon">👥</span><span class="ch-title" data-i="staff-cfg">員工名單</span></div>
+    <div style="padding:10px">
+      <div style="margin-bottom:10px">
+        <div class="fbl" data-i="cleaners">清潔員</div><div class="stags" id="cleaner-tags"></div>
+        <div style="display:flex;gap:6px;margin-top:5px"><input class="fbi" id="new-cleaner" placeholder="姓名 Name"><button class="btn bp" style="padding:6px 10px" onclick="staff.add('cleaner')">＋</button></div>
+      </div>
+      <div>
+        <div class="fbl" data-i="checkers">檢查員</div><div class="stags" id="checker-tags"></div>
+        <div style="display:flex;gap:6px;margin-top:5px"><input class="fbi" id="new-checker" placeholder="姓名 Name"><button class="btn bp" style="padding:6px 10px" onclick="staff.add('checker')">＋</button></div>
+      </div>
+    </div>
   </div>
 </div></div>
 
@@ -373,18 +399,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
       <button class="btn bb" onclick="cfg.testGas()">🔌 <span data-i="btn-test-gas">測試 GAS</span></button>
     </div>
   </div>
-  <div class="card"><div class="ch"><span class="ch-icon">👥</span><span class="ch-title" data-i="staff-cfg">員工名單</span></div>
-    <div style="padding:10px">
-      <div style="margin-bottom:10px">
-        <div class="fbl" data-i="cleaners">清潔員</div><div class="stags" id="cleaner-tags"></div>
-        <div style="display:flex;gap:6px;margin-top:5px"><input class="fbi" id="new-cleaner" placeholder="姓名 Name"><button class="btn bp" style="padding:6px 10px" onclick="staff.add('cleaner')">＋</button></div>
-      </div>
-      <div>
-        <div class="fbl" data-i="checkers">檢查員</div><div class="stags" id="checker-tags"></div>
-        <div style="display:flex;gap:6px;margin-top:5px"><input class="fbi" id="new-checker" placeholder="姓名 Name"><button class="btn bp" style="padding:6px 10px" onclick="staff.add('checker')">＋</button></div>
-      </div>
-    </div>
-  </div>
+  <div class="br"><button class="btn bo" onclick="ui.tab('people')">👥 <span data-i="t-people">人員與分工</span></button></div>
   <div class="card"><div class="ch"><span class="ch-icon">⏰</span><span class="ch-title" data-i="slots-cfg">清潔時段設定</span></div>
     <div style="padding:10px">
       <div class="stags" id="slot-tags"></div>
@@ -496,7 +511,7 @@ var i18n = (() => {
   const D = {
     zh:{
       'tb-title':'清潔管理系統','t-dash':'總覽與記錄','t-rec':'新增記錄','t-hist':'歷史記錄',
-      't-map':'垃圾桶地圖','t-sixs':'6S 檢查','t-areas':'區域管理','t-cfg':'設定',
+      't-map':'垃圾桶地圖','t-sixs':'6S 檢查','t-people':'人員與分工','t-areas':'區域管理','t-cfg':'設定',
       'p-d':'日','p-w':'週','p-m':'月','p-y':'年','btn-refresh':'刷新',
       'k-total':'總記錄','k-pass':'通過率','k-anom':'異常','k-locs':'地點數',
       'ch-trend':'期間趨勢','ch-items':'各項目通過率','recent-title':'最近記錄','sync-status':'',
@@ -530,7 +545,7 @@ var i18n = (() => {
     },
     en:{
       'tb-title':'Cleaning Management','t-dash':'Overview & Records','t-rec':'New Record','t-hist':'History',
-      't-map':'Dustbin Map','t-sixs':'6S Check','t-areas':'Areas','t-cfg':'Settings',
+      't-map':'Dustbin Map','t-sixs':'6S Check','t-people':'People & teams','t-areas':'Areas','t-cfg':'Settings',
       'p-d':'Day','p-w':'Week','p-m':'Month','p-y':'Year','btn-refresh':'Refresh',
       'k-total':'Total Records','k-pass':'Pass Rate','k-anom':'Anomalies','k-locs':'Locations',
       'ch-trend':'Period Trend','ch-items':'Pass Rate by Item','recent-title':'Recent Records',
@@ -560,7 +575,7 @@ var i18n = (() => {
     },
     km:{
       'tb-title':'ប្រព័ន្ធគ្រប់គ្រងការសំអាត','t-dash':'ទិដ្ឋភាព និងកំណត់ត្រា','t-rec':'បន្ថែម','t-hist':'ប្រវត្តិ',
-      't-map':'ផែនទី','t-sixs':'6S','t-areas':'តំបន់','t-cfg':'ការកំណត់',
+      't-map':'ផែនទី','t-sixs':'6S','t-people':'បុគ្គលិក និងក្រុម','t-areas':'តំបន់','t-cfg':'ការកំណត់',
       'p-d':'ថ្ងៃ','p-w':'សប្តាហ៍','p-m':'ខែ','p-y':'ឆ្នាំ','btn-refresh':'ផ្ទុក',
       'k-total':'កំណត់ត្រា','k-pass':'អត្រាជាប់','k-anom':'មិនប្រក្រតី','k-locs':'ទីតាំង',
       'ch-trend':'និន្នាការតាមរយៈពេល','ch-items':'អត្រាជាប់តាមធាតុ','recent-title':'កំណត់ត្រាថ្មីៗ',
@@ -683,6 +698,7 @@ var i18n = (() => {
       if(typeof binMap!=='undefined'&&binMap&&typeof binMap.render==='function')binMap.render();
       if(typeof areas!=='undefined'&&areas&&typeof areas.render==='function')areas.render();
       if(typeof applyCleaningStaticLanguage==='function')applyCleaningStaticLanguage();
+      if(window.GCCleaningTeam){GCCleaningTeam.areaButtons();if(ui.current()==='people')GCCleaningTeam.paint();}
     },0);
   };
   const t = (k,vars) => {
@@ -711,7 +727,7 @@ function applyCleaningSelectLanguage(){
     'b-freq':{
       Daily:{zh:'Daily 每日',en:'Daily',km:'ប្រចាំថ្ងៃ'},'2x/Day':{zh:'2x/Day',en:'2x/Day',km:'២ ដង/ថ្ងៃ'},Weekly:{zh:'Weekly 每週',en:'Weekly',km:'ប្រចាំសប្តាហ៍'}
     },
-    'a-type':{
+    'a-type':{kitchen:{zh:'🍳 廚房',en:'🍳 Kitchen',km:'🍳 ផ្ទះបាយ'},
       toilet:{zh:'🚻 廁所',en:'🚻 Toilet',km:'🚻 បង្គន់'},factory:{zh:'🏭 廠房',en:'🏭 Factory',km:'🏭 រោងចក្រ'},office:{zh:'🏢 辦公室',en:'🏢 Office',km:'🏢 ការិយាល័យ'},canteen:{zh:'🍽️ 飯堂',en:'🍽️ Canteen',km:'🍽️ អាហារដ្ឋាន'},warehouse:{zh:'📦 倉庫',en:'📦 Warehouse',km:'📦 ឃ្លាំង'},entrance:{zh:'🚪 入口',en:'🚪 Entrance',km:'🚪 ច្រកចូល'},other:{zh:'📌 其他',en:'📌 Other',km:'📌 ផ្សេងៗ'}
     }
   };
@@ -724,11 +740,11 @@ function applyCleaningSelectLanguage(){
    舊版存成中文（廁所／廠房／飯堂…）的資料讀取時自動對應成代碼。 */
 const CLEAN_LOC_TYPES={
   toilet:{zh:'廁所',en:'Toilet',km:'បង្គន់'},factory:{zh:'廠房',en:'Factory',km:'រោងចក្រ'},
-  office:{zh:'辦公室',en:'Office',km:'ការិយាល័យ'},canteen:{zh:'飯堂',en:'Canteen',km:'អាហារដ្ឋាន'},
+  kitchen:{zh:'廚房',en:'Kitchen',km:'ផ្ទះបាយ'},office:{zh:'辦公室',en:'Office',km:'ការិយាល័យ'},canteen:{zh:'飯堂',en:'Canteen',km:'អាហារដ្ឋាន'},
   warehouse:{zh:'倉庫',en:'Warehouse',km:'ឃ្លាំង'},entrance:{zh:'入口',en:'Entrance',km:'ច្រកចូល'},
   other:{zh:'其他',en:'Other',km:'ផ្សេងៗ'}
 };
-const CLEAN_LOC_TYPE_ALIASES={'廁所':'toilet','洗手間':'toilet','廠房':'factory','工廠':'factory','辦公室':'office','飯堂':'canteen','食堂':'canteen','倉庫':'warehouse','入口':'entrance','其他':'other'};
+const CLEAN_LOC_TYPE_ALIASES={'廚房':'kitchen','厨房':'kitchen','廁所':'toilet','洗手間':'toilet','廠房':'factory','工廠':'factory','辦公室':'office','飯堂':'canteen','食堂':'canteen','倉庫':'warehouse','入口':'entrance','其他':'other'};
 function cleaningLocTypeCode(type){
   const raw=String(type==null?'':type).trim(),low=raw.toLowerCase();
   if(CLEAN_LOC_TYPES[low])return low;
@@ -774,7 +790,7 @@ const CLEAN_ORIGINAL_TEXT = new WeakMap();
 let _cleanApplying=false, _cleanLangTimer=0;
 /* B2：只做「整段文字完全相同」的字典對照；不做子字串替換（避免半翻譯），
    也不碰使用者資料（表格內容、人名、地點、Telegram 預覽、輸入框、選單）。 */
-const CLEAN_NO_TRANSLATE='[data-gc-preview],.gc-common-modal,.gc-head-tools,#hist-tbody,#s6-hist-body,#bin-tbody,#areas-grid,#cleaner-tags,#checker-tags,#slot-tags,#locs-wrap,#loc-cleaner-map,#factory-map-svg,#toast,#db-info,[contenteditable="true"],[data-no-i18n]';
+const CLEAN_NO_TRANSLATE='[data-gc-preview],.gc-common-modal,.gc-head-tools,#hist-tbody,#s6-hist-body,#bin-tbody,#areas-grid,#clean-team-root,#clean-team-modal,#clean-bin-inventory,#clean-bin-legacy,#cleaner-tags,#checker-tags,#slot-tags,#locs-wrap,#loc-cleaner-map,#factory-map-svg,#toast,#db-info,[contenteditable="true"],[data-no-i18n]';
 function cleaningStaticText(text,lang){
   const trimmed=String(text==null?'':text).trim(),exact=CLEAN_STATIC_EXACT.get(trimmed);
   return exact?(exact[lang||i18n.get()]||exact.en):trimmed;
@@ -898,7 +914,7 @@ function cleaningMemoSet(fn){try{const m=cleaningMemo();if(!m.cleaners||typeof m
 const CHK_ITEMS = ['smell','light','floor','door','corner','ceiling'];
 const CHK_ICONS = {smell:'👃',light:'💡',floor:'🧹',door:'🚪',corner:'📐',ceiling:'🏠'};
 const BIN_COLORS = {general:'#3B82F6',fabric:'#22C55E',plastic:'#F97316',metal:'#8B5CF6',paper:'#06B6D4',hazard:'#EF4444'};
-const LOC_ICONS = {toilet:'🚻',factory:'🏭',office:'🏢',canteen:'🍽️',warehouse:'📦',entrance:'🚪',other:'📌'};
+const LOC_ICONS = {toilet:'🚻',factory:'🏭',office:'🏢',canteen:'🍽️',kitchen:'🍳',warehouse:'📦',entrance:'🚪',other:'📌'};
 const SIXS_CATS = [
   {key:'sort',    zh:'整理 Sort',     en:'Sort',        items:['公告欄未清理','走道/角落有雜物','安全隱患']},
   {key:'order',   zh:'整頓 Set',      en:'Set in Order', items:['物品未在正確位置','使用後未放回','工作站未標明']},
@@ -1054,16 +1070,18 @@ function mergeCleaningSmartImport(current,incoming){
 }
 
 var state = (() => {
-  let _db = {records:[],sixsRecords:[],locations:[],bins:[],cleaners:[],checkers:[],slots:[...DEF_SLOTS],cfg:{},configUpdatedAt:''};
+  let _db = {records:[],sixsRecords:[],locations:[],bins:[],cleaners:[],checkers:[],slots:[...DEF_SLOTS],cfg:{},personnel:{links:{},assignments:{}},configUpdatedAt:''};
   let _selLocs = [], _selSlots = [], _chkState = {}, _sixsState = {}, _locCleaners = {}, _locSlots = {}, _locChecks = {};
   /* 2026-10-28：設定好的地點全部自動放進記錄頁（不用再一個個點選）；使用者手動取消某地點後就不再自動補回。 */
   let _autoLocs = true;
+  const _locManualCleaners=new Set();
   const memoCleaner = (id) => { const m=cleaningMemo(); return (m.cleaners&&m.cleaners[id])||''; };
   const addLoc = (id) => {
     if(_selLocs.includes(id)) return;
     _selLocs.push(id);
-    const loc=_db.locations.find(x=>x.id===id), fallback=memoCleaner(id)||gv('r-cleaner')||(loc&&personName(loc.resp))||'';
+    const loc=_db.locations.find(x=>x.id===id), fallback=memoCleaner(id)||(loc&&loc.type==='kitchen'?(window.GCCleaningTeam?GCCleaningTeam.defaultCleaner(loc):''):gv('r-cleaner')||(loc&&personName(loc.resp))||'');
     if(!_locCleaners[id]) _locCleaners[id]=fallback;
+    if(memoCleaner(id))_locManualCleaners.add(id);
     _locSlots[id]=_selSlots.slice();
     _locChecks[id]=copyChecks(_chkState);
   };
@@ -1086,6 +1104,7 @@ var state = (() => {
       {id:'loc_canteen',    name:'Canteen',       type:'canteen', resp:'Phea'},
     ];/* 預設地點不給修訂時間：新手機或清除後，雲端設定一定優先，不會被預設值蓋掉。 */}
     _db.locations=normalizeCleaningLocations(_db.locations);
+    if(window.GCCleaningTeam)GCCleaningTeam.migrate(_db);
     if(!_db.bins) _db.bins=[];
     if(!_db.cleaners) _db.cleaners=[];
     if(!_db.checkers) _db.checkers=[];
@@ -1114,14 +1133,14 @@ var state = (() => {
   const toggleLoc = (id) => {
     const i=_selLocs.indexOf(id);
     _autoLocs=false;
-    if(i>=0){ _selLocs.splice(i,1); delete _locCleaners[id]; delete _locSlots[id]; delete _locChecks[id]; }
+    if(i>=0){ _selLocs.splice(i,1); _locManualCleaners.delete(id);delete _locCleaners[id]; delete _locSlots[id]; delete _locChecks[id]; }
     else addLoc(id);
     renderRecordLocations();
   };
-  const resetLocs = () => { _selLocs=[]; _locCleaners={}; _locSlots={}; _locChecks={}; _autoLocs=true; ensureAllLocs(); renderRecordLocations(); };
-  const getLocCleaner = id => _locCleaners[id] || '';
-  const setLocCleaner = (id,value) => { _locCleaners[id]=String(value||''); cleaningMemoSet(m=>{if(value)m.cleaners[id]=String(value);}); renderLocationCleanerAssignments(); };
-  const applyDefaultCleaner = value => { _selLocs.forEach(id=>{_locCleaners[id]=String(value||'');}); cleaningMemoSet(m=>{m.defaultCleaner=String(value||'');if(value)_selLocs.forEach(id=>{m.cleaners[id]=String(value);});}); renderLocationCleanerAssignments(); };
+  const resetLocs = () => { _locManualCleaners.clear();_selLocs=[]; _locCleaners={}; _locSlots={}; _locChecks={}; _autoLocs=true; ensureAllLocs(); renderRecordLocations(); };
+  const getLocCleaner = id => {const loc=_db.locations.find(l=>l.id===id);if(_locManualCleaners.has(id))return _locCleaners[id]||'';return (loc&&window.GCCleaningTeam?GCCleaningTeam.defaultCleaner(loc):'') || _locCleaners[id] || '';};
+  const setLocCleaner = (id,value,opt) => { if(opt&&opt.auto)_locManualCleaners.delete(id);else _locManualCleaners.add(id);_locCleaners[id]=String(value||''); cleaningMemoSet(m=>{if(value&&!(opt&&opt.auto))m.cleaners[id]=String(value);else delete m.cleaners[id];}); renderLocationCleanerAssignments(); };
+  const applyDefaultCleaner = value => { const ids=_selLocs.filter(id=>_db.locations.find(l=>l.id===id)?.type!=='kitchen');ids.forEach(id=>{_locManualCleaners.add(id);_locCleaners[id]=String(value||'');}); cleaningMemoSet(m=>{m.defaultCleaner=String(value||'');if(value)ids.forEach(id=>{m.cleaners[id]=String(value);});}); renderLocationCleanerAssignments(); };
   /* 跟 SEC 一樣：全部 OK 按一次就全勾（id 空白＝所有地點）。 */
   const allOk = (id) => {
     if(id){ _locChecks[id]=copyChecks({}); CHK_ITEMS.forEach(k=>{_locChecks[id][k]=true;}); renderLocationCleanerAssignments(); return; }
@@ -1265,6 +1284,7 @@ var ui = (() => {
     if(t==='areas') areas.render();
     if(t==='sixs') sixs.renderCats();
     if(t==='cfg')  cfg.load();
+    if(t==='people'&&window.GCCleaningTeam)GCCleaningTeam.render();
   };
   /* 提示顯示在畫面上方（不蓋住底部「儲存並發送」）；❌ 錯誤會停留到使用者點一下。 */
   const toast = (msg,dur=3000) => {
@@ -1314,7 +1334,7 @@ var dash = (() => {
       return recs.length?Math.round(recs.filter(r=>r.checks[k]===true).length/recs.length*100):0;
     });
     chs.render('ch-items','bar',CHK_ITEMS.map(k=>i18n.t('ci-'+k)),[
-      {data:itemRate,backgroundColor:chs.PAL,borderRadius:4}
+      {label:GCX.L('通過率 %','Pass rate %','អត្រាជាប់ %'),data:itemRate,backgroundColor:chs.PAL,borderRadius:4}
     ]);
     // 舊版 Dashboard 的「最近記錄」與 History 重複；v52 改由下方完整記錄表呈現。
   };
@@ -1526,6 +1546,7 @@ function applyCleaningCloudMeta(payload){
     if(Array.isArray(meta.checkers))db.checkers=meta.checkers.map(personName).filter(Boolean);
     if(Array.isArray(meta.slots))db.slots=Array.from(new Set(meta.slots.map(String))).sort();
     if(Array.isArray(meta.locations))db.locations=meta.locations.filter(function(x){return x&&x.id;}).map(function(x){return Object.assign({},x);});
+    if(meta.personnel)db.personnel=GCCleaningTeam.metadata(meta.personnel);
     db.configUpdatedAt=remoteRev;
   }else if(!remoteRev){
     if(Array.isArray(meta.cleaners))db.cleaners=names(db.cleaners,meta.cleaners);
@@ -1542,6 +1563,7 @@ function applyCleaningCloudMeta(payload){
     if(Array.isArray(meta.bins))db.bins=byId(db.bins,meta.bins);
   }
   db.locations=normalizeCleaningLocations(db.locations);
+  if(window.GCCleaningTeam)GCCleaningTeam.migrate(db);
   db.slots=cleaningSlotOptions(db.slots);
   if(meta.cfg&&typeof meta.cfg==='object')db.cfg=Object.assign({},db.cfg||{},meta.cfg);
   window._cleaningCloudApplying=true;
@@ -1604,7 +1626,7 @@ var binMap = (() => {
 
   const getTotals = () => {
     const t={};
-    getZones().forEach(z=>Object.entries(z.bins).forEach(([n,q])=>{t[n]=(t[n]||0)+q;}));
+    getZones().forEach(z=>Object.entries(z.bins).forEach(([n,q])=>{t[n]=(t[n]||0)+(Number(q)||0);}));
     return t;
   };
 
@@ -1612,14 +1634,14 @@ var binMap = (() => {
     const svg = document.getElementById('factory-map-svg');
     if(!svg) return;
     const zones = getZones();
+    const extent=Math.max(340,...zones.map(z=>Number(z.y)+Number(z.h)+10));
+    svg.setAttribute('viewBox','0 0 800 '+extent);
     let out = '<rect width="800" height="400" fill="#D9EEE2" rx="8"/><rect width="800" height="400" fill="none" stroke="#7FA691" stroke-width="1.5" rx="8"/><rect width="800" height="400" fill="none" stroke="#86EFAC" stroke-width="1" rx="8" opacity=".4"/>';
-    out += '<text x="400" y="18" text-anchor="middle" font-size="11" font-weight="700" fill="#1A4D2E" font-family="DM Sans,sans-serif">'+svgEsc(i18n.t('map-svg-title'))+'</text>';
-    out += '<rect x="5" y="185" width="780" height="2" fill="#2D7A5A" opacity=".5" rx="1"/>';
-    out += '<text x="400" y="183" text-anchor="middle" font-size="10" fill="#1A5C34" font-weight="700" font-family="DM Sans,sans-serif">'+svgEsc(i18n.t('sewing-lines'))+'</text>';
+
 
     zones.forEach(z => {
-      const total = Object.values(z.bins).reduce((s,v)=>s+v,0);
-      out += `<g class="map-zone" onclick="binMap.editZone('${z.id}')" style="cursor:pointer">`;
+      const total = Object.values(z.bins||{}).reduce((s,v)=>s+(Number(v)||0),0);
+      out += `<g class="map-zone" data-ct-action="bin" data-id="${svgEsc(z.id)}" role="button" tabindex="0" aria-label="${svgEsc(z.label)}" style="cursor:pointer">`;
       out += `<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="${z.fill}" fill-opacity=".40" rx="5"/>`;
       out += `<rect x="${z.x}" y="${z.y}" width="${z.w}" height="${z.h}" fill="none" stroke="${z.fill}" stroke-width="2.5" rx="5" stroke-opacity=".85"/>`;
       out += `<text x="${z.x+z.w/2}" y="${z.y+12}" text-anchor="middle" font-size="11" font-weight="800" fill="#1A3A28" font-family="DM Sans,sans-serif">${svgEsc(z.label)}</text>`;
@@ -1627,26 +1649,16 @@ var binMap = (() => {
       let bx = z.x+5; const by = z.y+z.h-22;
       Object.entries(z.bins).forEach(([no,qty])=>{
         const item=getItemByNo(no); if(!item||!qty) return;
-        out += `<circle cx="${bx+8}" cy="${by+8}" r="11" fill="${item.color}"/><text x="${bx+11}" y="${by+15}" text-anchor="middle" font-size="10" fill="#fff" font-family="DM Sans,sans-serif" font-weight="700">${qty}</text>`;
-        bx += 26;
+        out += `<g transform="translate(${bx},${by-3})">${GCCleaningTeam.binIcon(no,item.color,16)}<rect x="15" y="2" width="18" height="16" rx="4" fill="${item.color}"/><text x="24" y="14" text-anchor="middle" font-size="10" fill="#fff" font-weight="700">${Number(qty)||0}</text></g>`;
+        bx += 35;
       });
       out += `<rect x="${z.x+z.w-22}" y="${z.y+2}" width="21" height="15" fill="${z.fill}" rx="4"/>`;
       out += `<text x="${z.x+z.w-11}" y="${z.y+12}" text-anchor="middle" font-size="10" fill="#fff" font-weight="800" font-family="DM Sans,sans-serif">${total}</text>`;
       out += '</g>';
     });
 
-    // Totals bar
     const totals = getTotals();
     const grand = Object.values(totals).reduce((s,v)=>s+v,0);
-    out += '<rect x="5" y="345" width="790" height="38" fill="#2D7A5A" opacity=".18" rx="5"/>';
-    out += '<text x="10" y="362" font-size="11" fill="#1A4D2E" font-weight="800" font-family="DM Sans,sans-serif">'+svgEsc(i18n.t('total'))+':</text>';
-    let tx=65;
-    BIN_ITEMS.forEach(item=>{
-      const q=totals[item.no]||0; if(!q) return;
-      out += `<circle cx="${tx+7}" cy="${tx>65?357:357}" r="6" fill="${item.color}" opacity=".9"/>`;
-      out += `<text x="${tx+15}" y="${tx>65?361:361}" font-size="9" fill="#166534" font-family="DM Sans,sans-serif" font-weight="600">${svgEsc(item.name)}: ${q}</text>`;
-      tx += item.name.length*5+32;
-    });
     svg.innerHTML = out;
 
     // Update counts
@@ -1654,6 +1666,7 @@ var binMap = (() => {
     if(totalEl) totalEl.textContent = grand+' '+i18n.t('pcs');
     renderLegend(totals);
     renderZoneTable();
+    if(window.GCCleaningTeam)GCCleaningTeam.renderBins();
   };
 
   const renderLegend = (totals) => {
@@ -1661,7 +1674,7 @@ var binMap = (() => {
     const t = totals || getTotals();
     el.innerHTML = BIN_ITEMS.map(item=>`
       <div class="bli"><div class="bld" style="background:${item.color}"></div>
-      ${item.emoji} ${item.name}<span style="font-size:9px;color:var(--dim);margin-left:4px">(×${t[item.no]||0})</span>
+      ${GCCleaningTeam.binIcon(item.no,item.color,24)} ${item.name}<span style="font-size:9px;color:var(--dim);margin-left:4px">(×${t[item.no]||0})</span>
       </div>`).join('');
   };
 
@@ -1673,7 +1686,7 @@ var binMap = (() => {
     if(el) el.textContent=grand+' '+i18n.t('items');
     if(!zones.length){tbody.innerHTML='<tr><td colspan="5" class="es">'+i18n.t('no-data')+'</td></tr>';return;}
     tbody.innerHTML=zones.map(z=>{
-      const total=Object.values(z.bins).reduce((s,v)=>s+v,0);
+      const total=Object.values(z.bins||{}).reduce((s,v)=>s+(Number(v)||0),0);
       const binsStr=Object.entries(z.bins).map(([no,q])=>{const it=getItemByNo(no);return it?`${it.emoji}×${q}`:'';}).filter(Boolean).join(' ');
       return `<tr>
         <td><strong>${esc(z.label)}</strong>${z.sub?'<br><span style="font-size:9px;color:var(--dim)">'+esc(z.sub)+'</span>':''}</td>
@@ -1711,7 +1724,7 @@ var binMap = (() => {
     const dlg = document.createElement('div');
     dlg.id='zone-edit-modal';dlg.setAttribute('data-no-i18n','');
     dlg.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:999;display:flex;align-items:center;justify-content:center';
-    dlg.innerHTML=`<div style="background:#fff;border-radius:12px;padding:20px;min-width:320px;max-width:420px;box-shadow:0 8px 32px rgba(0,0,0,.2)">
+    dlg.innerHTML=`<div style="background:#fff;border-radius:12px;padding:20px;min-width:0;width:min(420px,calc(100vw - 24px));max-height:90dvh;overflow:auto;box-shadow:0 8px 32px rgba(0,0,0,.2)">
       <h3 style="margin-bottom:14px;color:#2D5040;font-size:14px">✏️ ${esc(i18n.t('edit-zone'))}</h3>
       <input type="hidden" id="ze-id" value="${esc(z.id)}">
       <div style="margin-bottom:8px"><label style="font-size:10px;font-weight:700;color:#6b8a79;display:block">${esc(i18n.t('zone-name'))} <span style="color:#C94040">*</span></label>
@@ -1893,6 +1906,7 @@ var areas = (() => {
       const icon=LOC_ICONS[cleaningLocTypeCode(l.type)]||'📌';
       return`<div class="alc"><span class="ali">${icon}</span><div class="aln">${esc(l.name)}</div><div class="alct">${esc(cleaningAreaTypeLabel(l.type))} · ${cnt} ${i18n.t('records')}</div><button onclick="delArea('${esc(l.id)}')" aria-label="${esc(i18n.t('confirm-area-delete'))}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;margin-top:4px;min-width:36px;min-height:36px">✕</button></div>`;
     }).join('');
+    if(window.GCCleaningTeam)GCCleaningTeam.areaButtons();
   };
   const showAdd = () => document.getElementById('add-area-card').style.display='block';
   const hideAdd = () => document.getElementById('add-area-card').style.display='none';
@@ -1983,7 +1997,7 @@ var dataMgmt = (() => {
     if(Array.isArray(d.sixsRecords))db.sixsRecords=mergeSixsRecords(db.sixsRecords||[],d.sixsRecords.filter(x=>x&&x.id));
     const byIdNewer=(a,b)=>{const m=new Map((a||[]).filter(x=>x&&x.id).map(x=>[String(x.id),x]));(b||[]).forEach(x=>{if(!x||!x.id)return;const k=String(x.id),o=m.get(k);if(!o||String(x.updatedAt||'')>String(o.updatedAt||''))m.set(k,Object.assign({},o||{},x));});return Array.from(m.values());};
     let cfgChanged=false;
-    const before=JSON.stringify([db.locations,db.cleaners,db.checkers,db.slots,db.mapZones,db.bins]);
+    const before=JSON.stringify([db.locations,db.cleaners,db.checkers,db.slots,db.mapZones,db.bins,db.personnel]);
     if(Array.isArray(d.locations))db.locations=normalizeCleaningLocations(byIdNewer(db.locations,d.locations));
     const names=(a,b)=>{const out=[];(a||[]).concat(b||[]).forEach(v=>{const n=personName(v);if(n&&!out.includes(n))out.push(n);});return out;};
     if(Array.isArray(d.cleaners))db.cleaners=names(db.cleaners,d.cleaners);
@@ -1991,7 +2005,9 @@ var dataMgmt = (() => {
     if(Array.isArray(d.slots))db.slots=cleaningSlotOptions((db.slots||[]).concat(d.slots.map(String)));
     if(Array.isArray(d.mapZones))db.mapZones=byIdNewer(db.mapZones,d.mapZones);
     if(Array.isArray(d.bins))db.bins=byIdNewer(db.bins,d.bins);
-    cfgChanged=before!==JSON.stringify([db.locations,db.cleaners,db.checkers,db.slots,db.mapZones,db.bins]);
+    if(d.personnel&&String(d.configUpdatedAt||'')>=String(db.configUpdatedAt||''))db.personnel=GCCleaningTeam.metadata(d.personnel);
+    if(window.GCCleaningTeam)GCCleaningTeam.migrate(db);
+    cfgChanged=before!==JSON.stringify([db.locations,db.cleaners,db.checkers,db.slots,db.mapZones,db.bins,db.personnel]);
     if(cfgChanged)state.touchConfig();
   };
   const importAll = (inp) => {
@@ -2069,13 +2085,14 @@ function renderLocationCleanerAssignments(){
   selected.forEach(id=>{const loc=db.locations.find(x=>x.id===id),n=loc&&personName(loc.resp);if(n&&!names.includes(n))names.push(n);});
   wrap.innerHTML=selected.map(function(id){
     const loc=db.locations.find(x=>x.id===id), current=state.getLocCleaner(id);
-    const opts=['<option value="">'+esc(i18n.t('select'))+'</option>'].concat(names.map(n=>`<option value="${esc(n)}"${n===current?' selected':''}>${esc(n)}</option>`)).join('');
+    const locNames=names.slice();if(current&&!locNames.includes(current))locNames.push(current);
+    const opts=['<option value="">'+esc(i18n.t('select'))+'</option>'].concat(locNames.map(n=>`<option value="${esc(n)}"${n===current?' selected':''}>${esc(n)}</option>`)).join('');
     const locSlots=state.getLocSlots(id),locChecks=state.getLocChecks(id);
     const slotChips=cleaningSlotOptions(db.slots).map(s=>`<button type="button" class="loc-rule-chip ${locSlots.includes(s)?'on':''}" onclick="state.toggleLocSlot('${esc(id)}','${esc(s)}')">${esc(s)}</button>`).join('');
     const itemChips=CHK_ITEMS.map(k=>{const v=locChecks[k],cls=v===true?'pass':v===false?'fail':'';return `<button type="button" class="loc-rule-chip ${cls}" onclick="state.cycleLocCheck('${esc(id)}','${esc(k)}')">${CHK_ICONS[k]} ${esc(i18n.t('ci-'+k))} ${v===true?'✓':v===false?'✗':'—'}</button>`;}).join('');
     const allOk=CHK_ITEMS.every(k=>locChecks[k]===true),idle=!locSlots.length;
     const okBtn=`<button type="button" class="loc-rule-chip loc-allok ${allOk?'pass':''}" onclick="state.allOk('${esc(id)}')">✅ ${esc(GCX.L('全部 OK','All OK','ល្អទាំងអស់'))}</button>`;
-    return `<div class="loc-cleaner-row loc-rule-card${idle?' loc-idle':''}"><div class="loc-rule-head"><span>${cleaningLocIcon(loc)} ${esc(loc?loc.name:id)}${idle?` <small class="loc-idle-tag">${esc(GCX.L('未選時段＝這次不存','No slot = skipped','គ្មានម៉ោង = រំលង'))}</small>`:''}</span><select class="fi" onchange="state.setLocCleaner('${esc(id)}',this.value)">${opts}</select></div><div class="loc-rule-block"><span class="loc-rule-label">⏰ ${esc(i18n.t('location-slots'))}</span><div class="loc-rule-chips">${slotChips}</div></div><div class="loc-rule-block"><span class="loc-rule-label">🔍 ${esc(i18n.t('location-items'))}</span><div class="loc-rule-chips">${okBtn}${itemChips}</div></div></div>`;
+    return `<div class="loc-cleaner-row loc-rule-card${idle?' loc-idle':''}"><div class="loc-rule-head"><span><button type="button" class="ct-link" data-ct-action="location" data-id="${esc(id)}">${cleaningLocIcon(loc)} ${esc(loc?loc.name:id)} 👥</button>${idle?` <small class="loc-idle-tag">${esc(GCX.L('未選時段＝這次不存','No slot = skipped','គ្មានម៉ោង = រំលង'))}</small>`:''}</span><select class="fi" onchange="state.setLocCleaner('${esc(id)}',this.value)">${opts}</select></div><div class="loc-rule-block"><span class="loc-rule-label">⏰ ${esc(i18n.t('location-slots'))}</span><div class="loc-rule-chips">${slotChips}</div></div><div class="loc-rule-block"><span class="loc-rule-label">🔍 ${esc(i18n.t('location-items'))}</span><div class="loc-rule-chips">${okBtn}${itemChips}</div></div></div>`;
   }).join('');
 }
 
@@ -2156,7 +2173,7 @@ function delRec(id){
   refreshCleanOverview();updateDbInfo();ui.toast(i18n.t('deleted-sync'));
 }
 function delBin(id){if(!confirm(i18n.t('confirm-delete')))return;state.db().bins=state.db().bins.filter(b=>b.id!==id);state.save();binMap.render();}
-function delArea(id){if(!confirm(i18n.t('confirm-area-delete')))return;state.db().locations=state.db().locations.filter(l=>l.id!==id);state.touchConfig();state.save();areas.render();state.populate();}
+function delArea(id){if(!confirm(i18n.t('confirm-area-delete')))return;if(state.db().locations.find(l=>l.id===id)?.type==='kitchen')state.db().personnel.kitchenRemoved=true;state.db().locations=state.db().locations.filter(l=>l.id!==id);delete state.db().personnel.assignments[id];state.touchConfig();state.save();areas.render();state.populate();}
 function calcSixsScore(){sixs.calcScore();sixs.updateHeader();}
 
 function updateDbInfo(){
@@ -2182,6 +2199,7 @@ window.i18n=i18n; window.de=de; window.dash=dash; window.chs=chs;
   const run=()=>{
     try {
       state.load();
+      if(window.GCCleaningTeam)GCCleaningTeam.setup();
       const initialLang = i18n.get();
       i18n.set(initialLang);
       state.resetChk(); updateTs(); setInterval(updateTs,1000);
@@ -2609,7 +2627,7 @@ function validateCleaningTelegramSelection(ctx){
       fromCloud:cleaningFromCloud,
       extra:function(){
         const d=state.db();
-        return {cleaners:(d.cleaners||[]).map(personName).filter(Boolean),checkers:(d.checkers||[]).map(personName).filter(Boolean),locations:normalizeCleaningLocations(d.locations),slots:d.slots||DEF_SLOTS,mapZones:d.mapZones||[],bins:d.bins||[],cfg:d.cfg||{},configUpdatedAt:d.configUpdatedAt||''};
+        return {cleaners:(d.cleaners||[]).map(personName).filter(Boolean),checkers:(d.checkers||[]).map(personName).filter(Boolean),locations:normalizeCleaningLocations(d.locations),slots:d.slots||DEF_SLOTS,mapZones:d.mapZones||[],bins:d.bins||[],cfg:d.cfg||{},personnel:GCCleaningTeam.metadata(d.personnel),configUpdatedAt:d.configUpdatedAt||''};
       },
       onRemote:applyCleaningCloudMeta,
       onTelegramSent:function(ctx){
