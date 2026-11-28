@@ -8,7 +8,7 @@
   const unique = a => Array.from(new Set(a.map(text).filter(Boolean)));
   const E = v => text(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   const kitchen = e => /kitchen|cook|chef|廚房|廚師|厨师|ផ្ទះបាយ|ចុងភៅ/i.test([e.grp,e.pos].join(' '));
-  const cleaner = e => /clean(?:er|ing)?|housekeep|janitor|清潔|清洁|សម្អាត/i.test([e.grp,e.pos].join(' '));
+  const cleaner = e => /clean(?:er|ing)?|housekeep|janitor|清潔|清洁|環境|环境|餐廳|餐厅|សម្អាត/i.test([e.grp,e.pos,e.dept,e.title].join(' '));
   const today = () => new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Phnom_Penh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
   function metadata(v) {
     v = v && typeof v === 'object' ? v : {};
@@ -44,6 +44,10 @@
       people.set(id,old);
     });
     (db.emp || []).forEach(r=>{const p=people.get(text(r.emp_no));if(p){if(text(r.status))p.status=text(r.status);if(text(r.leave_date))p.exit=text(r.leave_date);}});
+    // Job title / department also come from job codes and pay records (PSJHR shows 職稱 環境／餐廳人員 from there).
+    const jc={};(db.jobcode||[]).forEach(j=>{if(j&&j.code)jc[j.code]=text(j.desc);});
+    (db.emp||[]).forEach(r=>{const p=people.get(text(r.emp_no));if(p&&r.title_code&&!p.title)p.title=jc[r.title_code]||text(r.title_code);});
+    (db.basepay||[]).concat(db.contact||[]).forEach(r=>{const p=people.get(text(r&&r.emp_no));if(!p)return;if(!p.title&&text(r.title))p.title=text(r.title);if(!p.dept&&text(r.dept)&&!/^\d{3}$/.test(text(r.dept)))p.dept=text(r.dept);});
     // Respect PSJHR's saved edits, without copying unrelated private fields.
     ['emp','empdet'].forEach(k => Object.entries((db.edits || {})[k] || {}).forEach(([id,patch]) => {
       const p=people.get(text(id)); if(!p || !patch || typeof patch !== 'object')return;
@@ -60,15 +64,20 @@
     const k=norm(alias), explicit=links && links[k];
     if(explicit) return people.find(p=>p.id===explicit) || null; // Never silently replace a saved link.
     if(!k)return null;
-    const ids=people.filter(p=>[p.id,p.name,p.en].some(s=>norm(s)===k));
-    if(ids.length===1)return ids[0];
-    // Paul 11/28: cleaners are few — a name used on a cleaning record belongs to the PSJHR employee whose
-    // position is Cleaner (or kitchen staff) with that name. Prefer people still employed when there are two.
+    // Paul 11/28: cleaners are few — a name on a cleaning record belongs to the PSJHR cleaner/kitchen staff
+    // (職稱 環境／餐廳人員, Cleaner…) with that name, even if spelt a little differently. Everyone else: exact name or ID.
     const pick=a=>{if(a.length===1)return a[0];const on=a.filter(p=>active(p,today()));return on.length===1?on[0]:null;};
     const team=people.filter(p=>cleaner(p)||kitchen(p));
+    const byId=people.filter(p=>norm(p.id)===k);if(byId.length===1)return byId[0];
     const exact=pick(team.filter(p=>[p.name,p.en].some(s=>norm(s)===k)));if(exact)return exact;
-    if(k.length<3)return null;
-    return pick(team.filter(p=>[p.name,p.en].some(s=>{const n=norm(s);return n.length>=3&&(n.includes(k)||k.includes(n));})));
+    if(k.length>=3){
+      const part=pick(team.filter(p=>[p.name,p.en].some(s=>{const n=norm(s);return n.length>=3&&(n.includes(k)||k.includes(n));})));if(part)return part;
+      const lev=(a,b)=>{const m=a.length,n=b.length;let d=Array.from({length:n+1},(_,j)=>j);for(let i=1;i<=m;i++){let p=d[0];d[0]=i;for(let j=1;j<=n;j++){const t=d[j];d[j]=Math.min(d[j]+1,d[j-1]+1,p+(a[i-1]===b[j-1]?0:1));p=t;}}return d[n];};
+      const sc=team.map(p=>({p,d:Math.min(...[p.name,p.en].filter(Boolean).map(s=>lev(k,norm(s))))})).sort((a,b)=>a.d-b.d);
+      if(sc.length&&sc[0].d<=Math.max(1,Math.floor(k.length*.25))&&(sc.length<2||sc[1].d>sc[0].d))return sc[0].p;
+    }
+    const ids=people.filter(p=>[p.name,p.en].some(s=>norm(s)===k));
+    return ids.length===1 ? ids[0] : null;
   }
   function attendance(batches,date) {
     const rows=new Map();
@@ -217,7 +226,7 @@
   }
   function personCard(ref,role) {
     const p=person(ref),id=p?.id||'',related=(db().locations||[]).filter(l=>refs(l).some(r=>r===ref || (p && person(r)?.id===id)));
-    return '<article class="ct-person"><div class="ct-avatar" '+(id?'data-ct-photo="'+E(id)+'"':'')+'>👤</div><div class="ct-person-main"><b>'+E(display(ref))+'</b><small>'+E(p?[p.grp,p.pos].filter(Boolean).join(' · '):L('待連結 PSJHR 工號','Link a PSJHR employee ID','ភ្ជាប់លេខកូដ PSJHR'))+'</small><small>'+E(role || related.map(l=>l.name).join(' / '))+'</small>'+status(p)+'</div><button class="btn bo" data-ct-action="person" data-ref="'+E(ref)+'">'+L('查看','View','មើល')+'</button></article>';
+    return '<article class="ct-person"><div class="ct-avatar" '+(id?'data-ct-photo="'+E(id)+'"':'')+'>👤</div><div class="ct-person-main"><b>'+E(display(ref))+'</b><small>'+E(p?[p.grp,p.pos||p.title].filter(Boolean).join(' · '):L('待連結 PSJHR 工號','Link a PSJHR employee ID','ភ្ជាប់លេខកូដ PSJHR'))+'</small><small>'+E(role || related.map(l=>l.name).join(' / '))+'</small>'+status(p)+'</div><button class="btn bo" data-ct-action="person" data-ref="'+E(ref)+'">'+L('查看','View','មើល')+'</button></article>';
   }
   function allRefs() {
     return unique((db().cleaners||[]).map(name).concat((db().checkers||[]).map(name),(db().locations||[]).flatMap(refs),people.filter(p=>(cleaner(p)||kitchen(p))&&active(p,selectedDate)).map(p=>'hr:'+p.id))).filter((r,i,a)=>{
