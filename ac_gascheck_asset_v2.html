@@ -644,10 +644,11 @@ function updateUHdr(){const el=document.getElementById('uhdr-name');if(el)el.tex
 // ════════════════════════════════
 // CONSTANTS（資料存代碼，顯示／匯出時翻譯；舊中文值仍可讀）
 // ════════════════════════════════
-const CATS=['office_furniture','metal_cabinet','office_appliance','dorm_furniture','dorm_appliance','vehicle','other'];
-const CAT_LABEL={office_furniture:['辦公家具','Office furniture','គ្រឿងសង្ហារិមការិយាល័យ'],metal_cabinet:['鐵櫃／文件櫃','Metal cabinet','ទូដែក / ទូឯកសារ'],office_appliance:['辦公家電','Office appliance','ឧបករណ៍អគ្គិសនីការិយាល័យ'],dorm_furniture:['宿舍家具','Dorm furniture','គ្រឿងសង្ហារិមអន្តេវាសិកដ្ឋាន'],dorm_appliance:['宿舍家電','Dorm appliance','ឧបករណ៍អគ្គិសនីអន្តេវាសិកដ្ឋាន'],vehicle:['車輛','Vehicle','យានយន្ត'],other:['其他','Others','ផ្សេងៗ']};
+/* 2026-11-28 Paul：加廚房設備、食堂桌椅、食堂設備、清潔工具、清潔耗材（接在 other 後面，原本 CATS[0..6] 位置不變，舊編號不動） */
+const CATS=['office_furniture','metal_cabinet','office_appliance','dorm_furniture','dorm_appliance','vehicle','other','kitchen_equipment','canteen_furniture','canteen_equipment','cleaning_tool','cleaning_supply'];
+const CAT_LABEL={office_furniture:['辦公家具','Office furniture','គ្រឿងសង្ហារិមការិយាល័យ'],metal_cabinet:['鐵櫃／文件櫃','Metal cabinet','ទូដែក / ទូឯកសារ'],office_appliance:['辦公家電','Office appliance','ឧបករណ៍អគ្គិសនីការិយាល័យ'],dorm_furniture:['宿舍家具','Dorm furniture','គ្រឿងសង្ហារិមអន្តេវាសិកដ្ឋាន'],dorm_appliance:['宿舍家電','Dorm appliance','ឧបករណ៍អគ្គិសនីអន្តេវាសិកដ្ឋាន'],vehicle:['車輛','Vehicle','យានយន្ត'],other:['其他','Others','ផ្សេងៗ'],kitchen_equipment:['廚房設備','Kitchen equipment','ឧបករណ៍ផ្ទះបាយ'],canteen_furniture:['食堂桌椅','Canteen tables & chairs','តុ កៅអី អាហារដ្ឋាន'],canteen_equipment:['食堂設備','Canteen equipment','ឧបករណ៍អាហារដ្ឋាន'],cleaning_tool:['清潔工具','Cleaning tools','ឧបករណ៍សម្អាត'],cleaning_supply:['清潔耗材','Cleaning supplies','សម្ភារៈសម្អាតប្រើអស់']};
 function catCode(v){const s=String(v==null?'':v).trim();if(!s)return'';if(CAT_LABEL[s])return s;const x=s.toLowerCase();for(const k in CAT_LABEL){if(CAT_LABEL[k].some(l=>l.toLowerCase()===x))return k;}
-  if(/鐵櫃|文件櫃|metal cabinet/.test(x))return'metal_cabinet';if(/宿舍家具|dorm furniture/.test(x))return'dorm_furniture';if(/宿舍家電|dorm appliance/.test(x))return'dorm_appliance';
+  if(/廚房|kitchen|stove|爐|鍋|wok|rice cooker|電鍋/.test(x))return'kitchen_equipment';if(/食堂桌|食堂椅|canteen table|canteen chair/.test(x))return'canteen_furniture';if(/食堂|canteen/.test(x))return'canteen_equipment';if(/清潔耗材|洗潔|漂白|垃圾袋|cleaning supply|detergent|bleach|tissue/.test(x))return'cleaning_supply';if(/清潔工具|拖把|掃把|刷|cleaning tool|mop|broom/.test(x))return'cleaning_tool';if(/鐵櫃|文件櫃|metal cabinet/.test(x))return'metal_cabinet';if(/宿舍家具|dorm furniture/.test(x))return'dorm_furniture';if(/宿舍家電|dorm appliance/.test(x))return'dorm_appliance';
   if(/辦公家電|office appliance|appliance|machine/.test(x))return'office_appliance';if(/辦公家具|office furniture|^furniture$/.test(x))return'office_furniture';if(/車輛|vehicle/.test(x))return'vehicle';if(/其他|other/.test(x))return'other';return s;}
 function catLabel(v){const c=catCode(v);const t=CAT_LABEL[c];return t?L(t[0],t[1],t[2]):String(v||'—');}
 const ST_KEYS=['active','standby','repair','disposed','lent'];
@@ -1717,6 +1718,8 @@ if(typeof GC!=='undefined'&&GC.storage&&GC.storage.ready)GC.storage.ready.then(b
     if(window.GC&&GC.sync&&GC.sync.schedule)GC.sync.schedule('asset','user_delete');
   };
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensureAssetUi);else{ensureAssetUi();if(typeof applyStatic==='function')applyStatic();}
+  /* ?cat=kitchen_equipment 之類：從清潔頁的清冊按鈕進來，先篩好那一類 */
+  setTimeout(function(){try{var c=new URLSearchParams(location.search).get('cat');var fc=document.getElementById('f-cat');if(c&&fc&&CATS.indexOf(c)>=0){fc.value=c;if(typeof render==='function')render()}}catch(e){}},1200);
   if(window.GC&&GC.storage&&GC.storage.ready)GC.storage.ready.then(hydrateAsset);else hydrateAsset();
   window.ASSET_V29={tombstones,setTombstones,addTombstone,normalizeCode,isFormalCode,hasRealName,cleanupMalformed,queueCleanupSync};
 })();

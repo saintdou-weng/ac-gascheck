@@ -1907,6 +1907,15 @@ var areas = (() => {
       return`<div class="alc"><span class="ali">${icon}</span><div class="aln">${esc(l.name)}</div><div class="alct">${esc(cleaningAreaTypeLabel(l.type))} · ${cnt} ${i18n.t('records')}</div><button onclick="delArea('${esc(l.id)}')" aria-label="${esc(i18n.t('confirm-area-delete'))}" style="background:none;border:none;color:var(--red);cursor:pointer;font-size:14px;margin-top:4px;min-width:36px;min-height:36px">✕</button></div>`;
     }).join('');
     if(window.GCCleaningTeam)GCCleaningTeam.areaButtons();
+    /* 2026-11-28 Paul：點區域卡片沒反應 → 整張卡都可點，打開這個區域的負責人員、出勤與分配（✕ 刪除鈕不受影響） */
+    grid.querySelectorAll('.alc').forEach(card=>{card.style.cursor='pointer';card.setAttribute('role','button');card.tabIndex=0;
+      const go=e=>{if(e.target.closest('button'))return;const b=card.querySelector('[data-ct-action="location"]');if(b)b.click()};
+      card.onclick=go;card.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();go(e)}}});
+    let inv=document.getElementById('clean-inv-links');if(!inv){inv=document.createElement('div');inv.id='clean-inv-links';inv.className='card';grid.after(inv)}
+    const A='ac_gascheck_asset_v2.html?cat=',LG=(typeof i18n!=='undefined'&&i18n.get)?i18n.get():'zh',T3=(z,e,k)=>LG==='en'?e:LG==='km'?k:z;
+    inv.innerHTML='<div class="ch"><span class="ch-icon">📦</span><span class="ch-title">'+T3('設備與耗材清冊','Equipment & supplies registers','បញ្ជីឧបករណ៍ និងសម្ភារៈ')+'</span></div><p style="font-size:12px;color:var(--t2,#64748b);margin:4px 0 8px">'+T3('在 Asset 登記：編號、照片、數量、位置（A／B 廠）、狀態，可匯入匯出 Excel。','Registered in Asset: code, photo, quantity, location (Factory A/B), status, Excel import/export.','ចុះបញ្ជីក្នុង Asset។')+'</p><div style="display:flex;gap:6px;flex-wrap:wrap">'+
+      [['kitchen_equipment','🍳',T3('廚房設備','Kitchen equipment','ឧបករណ៍ផ្ទះបាយ')],['canteen_furniture','🪑',T3('A／B 廠食堂桌椅','Canteen tables & chairs (A/B)','តុ កៅអី អាហារដ្ឋាន')],['canteen_equipment','🍽️',T3('食堂設備','Canteen equipment','ឧបករណ៍អាហារដ្ឋាន')],['cleaning_tool','🧹',T3('清潔工具','Cleaning tools','ឧបករណ៍សម្អាត')],['cleaning_supply','🧴',T3('清潔耗材','Cleaning supplies','សម្ភារៈសម្អាត')]]
+      .map(x=>'<a class="btn bo" href="'+A+x[0]+'">'+x[1]+' '+x[2]+'</a>').join('')+'</div>';
   };
   const showAdd = () => document.getElementById('add-area-card').style.display='block';
   const hideAdd = () => document.getElementById('add-area-card').style.display='none';
