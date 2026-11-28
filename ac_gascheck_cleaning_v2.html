@@ -187,7 +187,7 @@ select.fi{cursor:pointer}textarea.fi{min-height:60px;resize:vertical}
 <script src="./ac-report-doc.js?v=20261022a"></script>
 <script src="./gc-report.js?v=20261022a"></script>
 <link rel="stylesheet" href="./gc-cleaning-team.css?v=20261128a">
-<script src="./gc-cleaning-team.js?v=20261128a"></script>
+<script src="./gc-cleaning-team.js?v=20261128b"></script>
 </head>
 <body>
 <div class="topbar">
@@ -1334,7 +1334,7 @@ var dash = (() => {
       return recs.length?Math.round(recs.filter(r=>r.checks[k]===true).length/recs.length*100):0;
     });
     chs.render('ch-items','bar',CHK_ITEMS.map(k=>i18n.t('ci-'+k)),[
-      {label:GCX.L('通過率 %','Pass rate %','អត្រាជាប់ %'),data:itemRate,backgroundColor:chs.PAL,borderRadius:4}
+      {label:(GCX.L('通過率 %','Pass rate %','អត្រាជាប់ %')||'Pass rate %'),data:itemRate,backgroundColor:chs.PAL,borderRadius:4}
     ]);
     // 舊版 Dashboard 的「最近記錄」與 History 重複；v52 改由下方完整記錄表呈現。
   };

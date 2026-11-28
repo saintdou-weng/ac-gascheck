@@ -59,8 +59,16 @@
   function match(alias,people,links) {
     const k=norm(alias), explicit=links && links[k];
     if(explicit) return people.find(p=>p.id===explicit) || null; // Never silently replace a saved link.
+    if(!k)return null;
     const ids=people.filter(p=>[p.id,p.name,p.en].some(s=>norm(s)===k));
-    return k && ids.length===1 ? ids[0] : null;
+    if(ids.length===1)return ids[0];
+    // Paul 11/28: cleaners are few — a name used on a cleaning record belongs to the PSJHR employee whose
+    // position is Cleaner (or kitchen staff) with that name. Prefer people still employed when there are two.
+    const pick=a=>{if(a.length===1)return a[0];const on=a.filter(p=>active(p,today()));return on.length===1?on[0]:null;};
+    const team=people.filter(p=>cleaner(p)||kitchen(p));
+    const exact=pick(team.filter(p=>[p.name,p.en].some(s=>norm(s)===k)));if(exact)return exact;
+    if(k.length<3)return null;
+    return pick(team.filter(p=>[p.name,p.en].some(s=>{const n=norm(s);return n.length>=3&&(n.includes(k)||k.includes(n));})));
   }
   function attendance(batches,date) {
     const rows=new Map();
@@ -263,10 +271,10 @@
     modal(loc.name,'<p>'+E(selectedDate)+' · '+E(L('檢查人沿用記錄頁目前設定','Inspector follows the record form setting','អ្នកត្រួតពិនិត្យប្រើការកំណត់លើទម្រង់'))+'</p>'+refs(loc).map(r=>personCard(r)).join('')+(!refs(loc).length?'<p>'+L('尚未分配人員；可從 PSJHR 選人。','No people assigned. Select people from PSJHR.','មិនទាន់ចាត់តាំងបុគ្គលិក។')+'</p>':'')+'<button class="btn bp" data-ct-action="assign" data-id="'+E(id)+'">'+L('編輯分配','Edit assignments','កែសម្រួលការចាត់តាំង')+'</button>');
   }
   async function openPerson(ref) {
-    await load();const p=person(ref);
+    await load();try{await loadAttendance(selectedDate);}catch(_){}const p=person(ref);
     if(ref.startsWith('hr:')&&p){modal(display(ref),personCard(ref)+'<div class="ct-actions"><a class="btn bo" href="https://saintdou-weng.github.io/psjhr/#empno-'+encodeURIComponent(p.id)+'" target="_blank" rel="noopener">PSJHR ↗</a></div>');return;}
     modal(display(ref),personCard(ref)+
-      '<p class="ct-note">'+L('相同完整姓名或工號才自動連結；同名或簡稱請在此指定。','Only an exact full name or ID is linked automatically. Select an ID for short or ambiguous names.','ភ្ជាប់ស្វ័យប្រវត្តិតែឈ្មោះពេញ ឬលេខកូដដូចគ្នា។')+'</p><label>'+L('PSJHR 員工','PSJHR employee','បុគ្គលិក PSJHR')+'<input class="fi" id="ct-link-search" placeholder="'+L('輸入姓名或工號篩選','Filter by name or ID','ស្វែងរកឈ្មោះ ឬលេខកូដ')+'"><select class="fi" id="ct-link-id" data-selected="'+E(p?.id||'')+'">'+options(p?.id)+'</select></label><div class="ct-actions"><button class="btn bp" data-ct-action="link" data-ref="'+E(ref)+'">'+L('儲存工號連結','Save employee link','រក្សាទុកការភ្ជាប់')+'</button>'+(p?'<a class="btn bo" href="https://saintdou-weng.github.io/psjhr/#empno-'+encodeURIComponent(p.id)+'" target="_blank" rel="noopener">PSJHR ↗</a>':'')+'</div>');
+      '<p class="ct-note">'+L('工號或姓名相同就自動連結；清潔員只比對 PSJHR 職位是清潔（Cleaner）／廚房的人。連錯或連不到請在此指定。','Linked by ID or name; cleaners are matched only against PSJHR staff whose position is Cleaner/kitchen. Fix the link here if needed.','ភ្ជាប់តាមលេខកូដ ឬឈ្មោះ។')+'</p><label>'+L('PSJHR 員工','PSJHR employee','បុគ្គលិក PSJHR')+'<input class="fi" id="ct-link-search" placeholder="'+L('輸入姓名或工號篩選','Filter by name or ID','ស្វែងរកឈ្មោះ ឬលេខកូដ')+'"><select class="fi" id="ct-link-id" data-selected="'+E(p?.id||'')+'">'+options(p?.id)+'</select></label><div class="ct-actions"><button class="btn bp" data-ct-action="link" data-ref="'+E(ref)+'">'+L('儲存工號連結','Save employee link','រក្សាទុកការភ្ជាប់')+'</button>'+(p?'<a class="btn bo" href="https://saintdou-weng.github.io/psjhr/#empno-'+encodeURIComponent(p.id)+'" target="_blank" rel="noopener">PSJHR ↗</a>':'')+'</div>');
   }
   function options(id,filter) {
     return '<option value="">'+L('尚未連結','Unlinked','មិនទាន់ភ្ជាប់')+'</option>'+people.filter(p=>!filter||norm([p.id,p.name,p.en,p.grp,p.pos].join(' ')).includes(norm(filter))||p.id===id).map(p=>'<option value="'+E(p.id)+'" '+(p.id===id?'selected':'')+'>'+E([p.id,p.en||p.name,p.grp,p.pos].filter(Boolean).join(' · '))+'</option>').join('');
@@ -302,8 +310,29 @@
     const root=$('clean-bin-legacy');if(!root)return;
     root.innerHTML='<h3>'+L('個別登記明細','Individual registrations','ព័ត៌មានចុះបញ្ជីនីមួយៗ')+' · '+(db().bins||[]).length+'</h3>'+(db().bins||[]).map(b=>'<article class="ct-bin-row"><span>🗑️</span><span><b>'+E(b.area)+' · '+E(b.desc)+'</b><small>'+E([b.resp,b.freq,b.lastClean].filter(Boolean).join(' · '))+'</small></span><button class="btn bo" data-ct-action="delete-bin" data-id="'+E(b.id)+'">'+L('刪除','Delete','លុប')+'</button></article>').join('');
   }
+  /* Names shown on records / detail cards (清潔員、檢查員) become clickable employee cards. */
+  function knownNames() {
+    const d=db()||{},out=new Set();
+    (d.cleaners||[]).concat(d.checkers||[]).forEach(r=>out.add(text(name(r))));
+    (d.records||[]).slice(-600).forEach(r=>{if(!r)return;[r.cleaner,r.checker].forEach(v=>text(name(v)).split(/\s*[\/,、]\s*/).forEach(x=>x&&out.add(x)));});
+    return out;
+  }
+  let nameTimer=0;
+  function linkNames() {
+    clearTimeout(nameTimer);nameTimer=setTimeout(()=>{
+      if(!doc.getElementById('ct-name-css')){const st=doc.createElement('style');st.id='ct-name-css';st.textContent='.ct-name-link{cursor:pointer;text-decoration:underline dotted 1.5px;text-underline-offset:3px}.ct-name-link:after{content:" 👤";font-size:.8em}';doc.head.appendChild(st);}
+      const names=knownNames();if(!names.size)return;
+      doc.querySelectorAll('b,strong,span,div,dd,td,p').forEach(el=>{
+        if(el.children.length||el.classList.contains('ct-name-link')||el.closest('select,option,input,textarea,button,#clean-team-modal,.ct-person'))return;
+        const t=text(el.textContent);if(t.length<2||t.length>60||!names.has(t))return;
+        el.classList.add('ct-name-link');el.dataset.ctName=t;el.title=L('查看員工卡片','View employee card','មើលកាតបុគ្គលិក');
+      });
+    },350);
+  }
+  doc.addEventListener('click',e=>{const el=e.target.closest&&e.target.closest('.ct-name-link');if(!el)return;e.preventDefault();e.stopPropagation();openPerson(el.dataset.ctName);},true);
   function setup() {
     areaButtons();
+    try{new MutationObserver(linkNames).observe(doc.body,{childList:true,subtree:true});linkNames();}catch(_){}
     // Opening the module reads local HR once. Network access is lazy on the people page.
     get('db_v1').then(d=>{if(d&&!loaded&&!loadPromise){hrDB=d;people=roster(d);files=(d.hrfiles||[]).filter(f=>f.rep==='att');loaded=people.length>0;source=loaded?'local':'';}g.state.populate();});
   }
