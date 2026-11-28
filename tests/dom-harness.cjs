@@ -13,7 +13,7 @@ async function load(name,seed={},configure){
   if (configure) configure(w);
   w.addEventListener('error',e=>errors.push(e.error&&e.error.stack||e.message));
   for(const script of w.document.querySelectorAll('script')){
-    if(script.src){if(script.src.includes('gascheck-core.js')){w.eval(fs.readFileSync(root+'/gascheck-core.js','utf8'));const attach=w.GC.attach;w.__configs={};w.GC.attach=cfg=>{w.__configs[cfg.tool]=cfg;return attach(cfg);};}}
+    if(script.src){if(script.src.includes('gascheck-core.js')){w.eval(fs.readFileSync(root+'/gascheck-core.js','utf8'));const attach=w.GC.attach;w.__configs={};w.GC.attach=cfg=>{w.__configs[cfg.tool]=cfg;return attach(cfg);};}else if(script.src.includes('gc-cleaning-team.js')){w.eval(fs.readFileSync(root+'/gc-cleaning-team.js','utf8'));}}
     else try{vm.runInContext(script.textContent,dom.getInternalVMContext());}catch(e){errors.push(e.stack);}
   }
   await new Promise(r=>setTimeout(r,160));

@@ -1,0 +1,54 @@
+const assert=require('node:assert/strict');
+const {load}=require('./dom-harness.cjs');
+const T=require('../gc-cleaning-team.js');
+const flush=()=>new Promise(r=>setTimeout(r,15));
+(async()=>{
+ const date=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Phnom_Penh',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+ const cleaning={records:[{id:'old',date:'2026-11-27',locId:'office',cleaner:'Existing Cleaner',checker:'Existing Inspector',checks:{floor:true},photos:['data:image/png;base64,aGVsbG8=']}],sixsRecords:[],locations:[{id:'office',name:'Office',type:'office',resp:'Existing Cleaner'}],cleaners:['Existing Cleaner'],checkers:['Existing Inspector'],cfg:{},slots:['09:00'],configUpdatedAt:'2026-11-01T00:00:00.000Z'};
+ const hr={emp:[{emp_no:'100',name:'Existing Cleaner',status:'在職'},{emp_no:'200',name:'Test Cook',status:'在職'},{emp_no:'300',name:'Existing Inspector',status:'在職'}],empdet:[{emp_no:'100',position:'Cleaner',group:'GA'},{emp_no:'200',position:'Cook',group:'Kitchen'}],hrfiles:[{key:'att-current',rep:'att',range:[date,date],version:'v1'}]};
+ const reads={},table={'db_v1':hr,'bat|att-current':{cols:['emp_no','date','time_in','time_out','hrs_actual'],rows:[['100',date,'08:00','17:00',8],['200',date,'08:30','17:30',8]]}};
+ const {w,dom,errors}=await load('ac_gascheck_cleaning_v2.html',{vrt_clean_hub_v2:cleaning,ac_gc_clean_memo_v1:{checker:'Existing Inspector'}},w=>{
+   w.indexedDB={open(n){if(n!=='psjhr')throw Error('No test database');const q={};setTimeout(()=>{q.result={objectStoreNames:{contains:k=>k==='kv'},close(){},transaction(store,mode){assert.equal(mode,'readonly');return {objectStore(){return {get(k){reads[k]=(reads[k]||0)+1;const r={};setTimeout(()=>{r.result=table[k]||null;if(r.onsuccess)r.onsuccess();},0);return r;}};}};}};if(q.onsuccess)q.onsuccess();},0);return q;}};
+ });
+ try{
+  assert.deepEqual(errors,[]);
+  const oldRecords=JSON.stringify(w.state.db().records);
+  assert.equal(w.document.querySelector('#cleaner-tags').closest('.pane').id,'pane-people');
+  assert.equal(w.state.db().locations.length,2);
+  assert.equal(w.state.getLocCleaner('loc_kitchen'),'Test Cook');
+  assert.equal(w.document.getElementById('r-checker').value,'Existing Inspector');
+  w.state.applyDefaultCleaner('Existing Cleaner');
+  assert.equal(w.state.getLocCleaner('loc_kitchen'),'Test Cook','a global cleaner selection must not overwrite the kitchen team');
+  w.ui.tab('people');await w.GCCleaningTeam.render();
+  assert(w.document.querySelector('#clean-team-root').textContent.includes('Test Cook'));
+  const batReads=reads['bat|att-current'];await w.GCCleaningTeam.render();assert.equal(reads['bat|att-current'],batReads,'cached attendance must not be read repeatedly');
+  w.document.querySelector('[data-view="org"]').click();
+  assert(w.document.querySelector('.ct-org-head').textContent.includes('Existing Inspector'));
+  assert(w.document.querySelector('.ct-org-grid').textContent.includes('Test Cook'));
+  await w.GCCleaningTeam.openLocation('loc_kitchen');
+  assert(w.document.querySelector('#clean-team-modal').textContent.includes('Test Cook'));
+  assert(w.document.querySelector('#clean-team-modal').textContent.includes('有出勤'));
+  w.document.querySelector('[data-ct-action="close"]').click();
+  w.ui.tab('map');
+  const expected=T.binRows(w.state.db().mapZones).reduce((n,r)=>n+r.qty,0);
+  assert.equal(expected,628);
+  assert(w.document.querySelector('#bin-total-count').textContent.includes(String(expected)));
+  assert.equal(w.document.querySelectorAll('#clean-bin-inventory .ct-bin-row').length,T.binRows(w.state.db().mapZones).length);
+  assert(w.document.querySelector('#factory-map-svg .ct-bin-icon'));
+  const cfg=w.__configs.cleaning;
+  w.state.db().personnel.links.existingcleaner='100';
+  w.state.db().personnel.assignments.office=['hr:100'];
+  const extra=JSON.parse(JSON.stringify(cfg.extra()));
+  assert.equal(extra.personnel.links.existingcleaner,'100');
+  assert(!JSON.stringify(extra.personnel).includes('position'));
+  const next=Object.assign({},extra,{configUpdatedAt:'2099-01-01T00:00:00.000Z',personnel:{links:{existingcleaner:'100'},assignments:{office:['hr:100']}}});
+  cfg.onRemote({meta:next});
+  assert.equal(w.state.db().personnel.assignments.office[0],'hr:100');
+  assert.equal(w.state.db().locations.filter(l=>l.type==='kitchen').length,1);
+  assert.equal(w.state.db().checkers[0],'Existing Inspector');
+  assert.equal(w.document.getElementById('r-checker').value,'Existing Inspector');
+  assert.equal(JSON.stringify(w.state.db().records),oldRecords);
+  assert.deepEqual(errors,[]);
+  console.log('Cleaning UI: moved settings, kitchen staff, unchanged inspectors/photos, attendance caching, org chart, map/list parity and metadata round trip: PASS');
+ }finally{dom.window.close();}
+})().catch(e=>{console.error(e);process.exitCode=1;});
